@@ -1,0 +1,169 @@
+/* ------------------------------------------------------------------------------------------------------------- buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: var(--ctl); padding: 0 14px; border: 1px solid var(--line-2); background: transparent; color: var(--ink);
+  font: 500 13.5px/1 var(--text); letter-spacing: -0.003em; white-space: nowrap; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  transition: background-color var(--t-fast) ease, border-color var(--t-fast) ease, color var(--t-fast) ease, transform var(--t-press) var(--ease-out); }
+.btn svg { flex: none; }
+.btn:active:not(:disabled) { transform: scale(.97); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .42; cursor: not-allowed; }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: var(--inverse); font-weight: 600; }
+.btn.ghost { border-color: transparent; }
+.btn.sm { height: var(--ctl-sm); padding: 0 10px; font-size: 12.5px; gap: 6px; }
+.btn.lg { height: var(--ctl-lg); padding: 0 20px; font-size: 14.5px; }
+.btn.icon, .icon.btn { width: var(--ctl); padding: 0; }
+.btn.icon svg { width: 18px; height: 18px; }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+:root[data-theme="dark"] .btn.danger { color: #170405; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.danger { color: #170405; } }
+.btn.danger-text, .btn.ghost.danger { color: var(--bad); }
+.wsacts .btn svg, .btn svg[width="14"] { width: 14px; height: 14px; }
+/* links that act */
+.linkbtn { border: 0; background: none; padding: 0; color: var(--ink); cursor: pointer; font: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--line-3); text-decoration-thickness: 1px; text-underline-offset: 3px;
+  transition: text-decoration-color var(--t-fast) ease, color var(--t-fast) ease; }
+.linkbtn.nm { font-weight: 600; text-decoration-color: transparent; }
+/* "Finish my team" waits, grey, until every one-to-one is done */
+[data-spvdone]:disabled { background: var(--panel-2) !important; color: var(--muted) !important; border-color: var(--line-2) !important; opacity: 1; }
+
+/* ------------------------------------------------------------------------------------------------------------- fields */
+.field { display: grid; gap: 6px; }
+.field label, .field .lbl { font-weight: 500; font-size: 13px; color: var(--ink-2); }
+.field small { color: var(--muted); font-size: 12px; line-height: 1.45; }
+.field input:not([type=checkbox]):not([type=radio]), .field select, .field textarea, .drawer textarea, .drawer input:not([type=checkbox]):not([type=radio]):not(.cell), .mailform textarea, .mailform input:not([type=checkbox]), .mailform select,
+.toolbar input[type=search], .toolbar select, .wsfield select, select.cell, input.cell, textarea.cell, .pf input, .pf select, .rb .fld input, .rb .fld select, .rb .wslot select, .rbdate input[type=date], .rbta, .rb textarea, .scopeq, .basegrid input, .linkbox select {
+  min-height: var(--ctl); padding: 0 10px; border: 1px solid var(--line-2); background: var(--sunk); color: var(--ink); font-size: 13.5px; width: 100%;
+  transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease, background-color var(--t-fast) ease; }
+.field textarea, .drawer textarea, .mailform textarea, textarea.cell, .rbta, .rb textarea { padding: 8px 10px; line-height: 1.5; resize: vertical; min-height: 72px; }
+select { cursor: pointer; }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+.field input:focus, .field select:focus, .field textarea:focus, .drawer textarea:focus, .drawer input:focus, .mailform textarea:focus, .mailform input:focus, .mailform select:focus,
+.toolbar input[type=search]:focus, .toolbar select:focus, .wsfield select:focus, select.cell:focus, input.cell:focus, textarea.cell:focus, .pf input:focus, .pf select:focus,
+.rb .fld input:focus, .rb .fld select:focus, .rb .wslot select:focus, .rbdate input:focus, .rbta:focus, .rb textarea:focus, .scopeq:focus, .basegrid input:focus, .linkbox select:focus {
+  border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 26%, transparent); outline: none; background: var(--panel); }
+input:disabled, select:disabled, textarea:disabled { opacity: .55; cursor: not-allowed; }
+input[type=checkbox], input[type=radio] { accent-color: var(--ink); width: 15px; height: 15px; margin: 0; }
+input[type=date] { font-variant-numeric: tabular-nums; }
+/* the cells of a table that edit in place: quiet until pointed at */
+.cell { width: 100%; min-width: 120px; min-height: 32px; padding: 0 8px; border: 1px solid transparent; background: transparent; color: var(--ink); }
+table .cell { min-height: 30px; }
+.cell.w-id { min-width: 112px; font-variant-numeric: tabular-nums; font-size: 12.5px; }
+select.cell { width: auto; min-width: 0; padding-right: 4px; }
+.cell[data-f="name"] { min-width: 210px; } .cell[data-f="sys"] { min-width: 190px; } input.w-sup { min-width: 150px; }
+.check { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; }
+.withcopy { display: flex; gap: 6px; align-items: flex-start; }
+.withcopy > :first-child { flex: 1; min-width: 0; }
+/* labelled filters at the top of a page */
+.wsbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.wsfield { display: grid; gap: 5px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.wsfield select, .wsfield input { min-width: 150px; font-weight: 500; }
+.wsacts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.toolbar input[type=search] { flex: 1 1 220px; min-width: 0; }
+.toolbar select { width: auto; }
+
+/* ------------------------------------------------------------------------------------------------------------- choices */
+/* segmented control: one block slides under the chosen button */
+.seg { display: inline-flex; flex-wrap: wrap; position: relative; isolation: isolate; border: 1px solid var(--line-2); background: transparent; padding: 2px; gap: 2px; max-width: 100%; }
+.seg button { position: relative; z-index: 1; border: 0; background: transparent; color: var(--muted); min-height: 28px; padding: 0 11px; font: 500 12.5px/1 var(--text); white-space: nowrap; cursor: pointer;
+  user-select: none; -webkit-user-select: none; transition: color var(--t-fast) ease, background-color var(--t-fast) ease; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--panel-3); font-weight: 600; }
+.seg.thumbed > button[aria-pressed="true"] { background: transparent; }
+.seg > .sthumb { position: absolute; left: 0; top: 0; z-index: 0; background: var(--panel-3); pointer-events: none; transition: transform var(--t-move) var(--ease-in-out), width var(--t-move) var(--ease-in-out), height var(--t-move) var(--ease-in-out), opacity var(--t-fast) ease; }
+.seg.icons button { display: inline-flex; align-items: center; gap: 6px; }
+.seg.icons svg { width: 14px; height: 14px; }
+.seg .cnt { font-size: 11.5px; color: var(--muted); font-weight: 600; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.seg.sm button { min-height: 24px; padding: 0 9px; font-size: 12px; }
+.seg.wrap button { white-space: normal; }
+.cnt.warn, .seg .cnt.warn { min-width: 17px; height: 17px; padding: 0 5px; display: inline-grid; place-items: center; background: var(--warn); color: #170d00 !important; opacity: 1 !important; font-size: 10.5px; font-weight: 700; margin-left: 4px; }
+/* page tabs (WFM, report builder, the emails): underlined, the line slides */
+.wftabs, .rbtabs, .tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; border: 0; border-bottom: 1px solid var(--line); padding: 0; gap: 4px; background: none; justify-self: stretch; max-width: 100%; }
+.wftabs::-webkit-scrollbar, .rbtabs::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
+.wftabs button, .rbtabs button, .tab { min-height: 40px; padding: 0 12px; color: var(--muted); font: 500 13.5px/1 var(--text); background: transparent !important; border: 0; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; cursor: pointer; }
+.wftabs button[aria-pressed="true"], .rbtabs button[aria-pressed="true"], .tab[aria-selected="true"] { color: var(--ink); font-weight: 600; }
+.wftabs > .sthumb, .rbtabs > .sthumb { background: transparent !important; box-shadow: inset 0 -2px 0 var(--ink); }
+.wftabs:not(.thumbed) button[aria-pressed="true"], .rbtabs:not(.thumbed) button[aria-pressed="true"] { box-shadow: inset 0 -2px 0 var(--ink); }
+.tabs { position: relative; isolation: isolate; }
+.tabs > .thumb { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; box-shadow: inset 0 -2px 0 var(--ink); transition: transform var(--t-move) var(--ease-in-out), width var(--t-move) var(--ease-in-out), opacity var(--t-fast) ease; }
+.tab { position: relative; z-index: 1; margin: 0; }
+.tabs:not(:has(.thumb)) .tab[aria-selected="true"] { box-shadow: inset 0 -2px 0 var(--ink); }
+.rbtabs button svg { color: var(--good); }
+/* team filters as chips */
+.teamchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.teamchips button { border: 1px solid var(--line-2); background: transparent; color: var(--ink-2); min-height: 28px; padding: 0 11px; font: 500 12.5px/1 var(--text); cursor: pointer; transition: background-color var(--t-fast) ease, color var(--t-fast) ease, border-color var(--t-fast) ease, transform var(--t-press) var(--ease-out); }
+.teamchips button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--inverse); }
+.teamchips button:active { transform: scale(.97); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-2); min-height: 26px; padding: 0 10px; font-size: 12.5px; color: var(--ink-2); background: transparent; cursor: pointer; white-space: nowrap; user-select: none; }
+.chip:has(input:checked) { background: var(--panel-3); border-color: var(--line-3); color: var(--ink); }
+.chips-line { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+/* on / off */
+.sw { border: 1px solid var(--line-2); background: transparent; min-height: 26px; padding: 0 9px 0 5px; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--ink); }
+.sw i { width: 12px; height: 12px; background: var(--good); }
+.sw[aria-checked="false"] { color: var(--muted); }
+.sw[aria-checked="false"] i { background: var(--line-3); }
+
+/* ------------------------------------------------------------------------------------------------------------- small labels */
+.pill, .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 20px; padding: 0 7px; font: 500 11.5px/1 var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; background: var(--panel-2); color: var(--ink-2); border: 1px solid var(--line); }
+.pill.good { background: var(--good-bg); color: var(--good); border-color: var(--good-line); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); border-color: var(--bad-line); }
+.pill.info { background: var(--info-bg); color: var(--info); border-color: var(--info-line); }
+.badge { min-height: 18px; padding: 0 6px; font-size: 11px; font-weight: 600; }
+.badge.n { background: var(--bad-bg); color: var(--bad); border-color: var(--bad-line); }
+.tab .badge, .wftabs .badge { margin-left: 2px; }
+/* the state of a one-to-one, a signature, a follow-up */
+.fst, .sgn { display: inline-flex; align-items: center; justify-self: start; min-height: 20px; padding: 0 7px; font: 500 11.5px/1 var(--text); white-space: nowrap; color: var(--ink-2); background: var(--panel-2); border: 1px solid var(--line-2); }
+.fst.planned, .sgn.todo, .fst.fu.todo { color: var(--info); background: var(--info-bg); border-color: var(--info-line); }
+.fst.held, .fst.obj, .sgn.warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
+.fst.closed, .sgn.ok, .fst.fu { color: var(--good); background: var(--good-bg); border-color: var(--good-line); }
+.fst.final { color: var(--ink); background: transparent; border-color: var(--ink); }
+.fst.none { color: var(--muted); }
+.fromag { display: inline-flex; align-items: center; min-height: 18px; padding: 0 6px; margin-inline-start: 6px; font-size: 10.5px; font-weight: 600; color: var(--info); border: 1px solid var(--info-line); background: var(--info-bg); text-transform: none; letter-spacing: 0; vertical-align: 1px; }
+/* KPI ranks 1 to 5 */
+.rk { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 5px; font: 600 11.5px/1 var(--text); font-variant-numeric: tabular-nums; background: var(--panel-3); color: var(--ink-2); }
+.rk.r5 { background: var(--good-bg); color: var(--good); }
+.rk.r4 { background: color-mix(in srgb, var(--good-bg) 55%, var(--panel-2)); color: var(--good); }
+.rk.r3 { background: var(--warn-bg); color: var(--warn); }
+.rk.r2, .rk.r1 { background: var(--bad-bg); color: var(--bad); }
+.rk.na { opacity: .6; }
+/* the exports a person was found in */
+.mb { display: inline-flex; gap: 3px; flex: none; }
+.mb span { font: 600 10.5px/1 var(--text); padding: 3px 5px; border: 1px solid var(--line-2); color: var(--muted); opacity: .6; }
+.mb span.on { background: var(--panel-3); border-color: transparent; color: var(--ink); opacity: 1; }
+/* a check, a warning, a gap (the export checklist, the password rules) */
+.ck { width: 20px; height: 20px; display: grid; place-items: center; flex: none; font: 700 11px/1 var(--text); }
+.ck.ok { background: var(--good-bg); color: var(--good); }
+.ck.wa { background: var(--warn-bg); color: var(--warn); }
+.ck.no { background: var(--panel-3); color: var(--muted); }
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: rot .7s linear infinite; flex: none; }
+@keyframes rot { to { transform: rotate(360deg); } }
+.savestate { font-size: 12px; color: var(--muted); }
+.savestate.bad { color: var(--bad); }
+.privacy { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.privacy svg { width: 14px; height: 14px; }
+.rohint { display: flex; align-items: center; gap: 7px; margin: -6px 0 0; font-size: 12.5px; color: var(--muted); }
+.rohint svg { flex: none; }
+.langbtn { font-weight: 600; }
+.ico-dn { width: .72em; height: .72em; margin-right: .18em; vertical-align: -.02em; flex: none; }
+
+/* ------------------------------------------------------------------------------------------------------------- pointer hover, only where a mouse can hover (touch fires false hovers) */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled) { border-color: var(--line-3); background: var(--panel-2); }
+  .btn.primary:hover:not(:disabled) { background: var(--brand); border-color: var(--brand); color: #0a0a0a; }
+  .btn.ghost:hover:not(:disabled) { background: var(--panel-2); border-color: transparent; }
+  .btn.danger:hover:not(:disabled) { filter: brightness(1.08); background: var(--bad); border-color: var(--bad); }
+  .appbar .btn:hover:not(:disabled) { color: var(--shell-ink); background: var(--shell-hover); border-color: transparent; }
+  .appbar .btn.primary:hover:not(:disabled) { background: var(--brand); border-color: var(--brand); color: #0a0a0a; }
+  .appbar .findbtn:hover { border-color: rgba(255, 255, 255, .28) !important; color: var(--shell-muted) !important; }
+  .appbar .wsseg button:hover { color: var(--shell-ink); }
+  .step:hover { color: var(--shell-ink); }
+  .acctmenu button:hover { background: var(--panel-2); }
+  .linkbtn:hover { text-decoration-color: var(--brand); }
+  .linkbtn.nm:hover { text-decoration-color: currentColor; }
+  .seg button:hover { color: var(--ink); }
+  .wftabs button:hover, .rbtabs button:hover, .tab:hover { color: var(--ink); }
+  .teamchips button:hover { border-color: var(--line-3); color: var(--ink); }
+  .teamchips button[aria-pressed="true"]:hover { color: var(--inverse); }
+  .chip:hover { border-color: var(--line-3); }
+  .cell:hover { border-color: var(--line-2); }
+  .lockin:hover { border-color: var(--line-3); }
+  .field input:hover:not(:focus), .field select:hover:not(:focus), .toolbar input[type=search]:hover:not(:focus), .toolbar select:hover:not(:focus), .wsfield select:hover:not(:focus), select.cell:hover:not(:focus) { border-color: var(--line-3); }
+}

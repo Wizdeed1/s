@@ -1,0 +1,596 @@
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-day" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 14h3v3H8z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
+  <symbol id="i-rows" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-team" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.6c2.3.1 4.2 1.6 4.8 4.4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4"/><path d="M4 20h16"/><path d="m7 15 4-4 3 3 5-6"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.9-3.9 3.9-6 7.5-6s6.6 2.1 7.5 6"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.8 2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.8l-5.1 2.6 1-5.6-4.1-4 5.7-.8z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4.5 7 7.5 6 7.5-6"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="m14 8 3 3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="1.5"/><path d="M15.5 8.5V5.5A1.5 1.5 0 0 0 14 4H5.5A1.5 1.5 0 0 0 4 5.5V14a1.5 1.5 0 0 0 1.5 1.5h3"/></symbol>
+  <symbol id="i-bang" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"><path d="M12 4.5v9.5"/><path d="M12 19v.5"/></symbol><symbol id="i-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><path d="M7 12h10"/></symbol><symbol id="i-dn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 4v15"/><path d="m5.5 12.5 6.5 6.5 6.5-6.5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></symbol>
+</svg>
+
+<div class="lock" id="lock" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
+  <form class="lockcard" id="lockForm" novalidate>
+    <div class="lockhead">
+      <span class="lockmark" aria-hidden="true">WF</span>
+      <div class="eyebrow">MC Monthly Report Builder</div>
+      <h1 id="lockTitle">Loading…</h1>
+      <noscript><p class="lockerr">JavaScript is turned off here, so the tool cannot start. Open the file in Microsoft Edge or Google Chrome by double-clicking it in File Explorer.</p></noscript>
+      <p class="hint" id="lockSub"></p>
+    </div>
+    <div class="field" id="fName" hidden><label for="acName">Full name</label><input id="acName" class="lockin" autocomplete="name" dir="auto"></div>
+    <div class="field" id="fUser" hidden><label for="acUser">Username</label><input id="acUser" class="lockin" autocomplete="username" spellcheck="false" autocapitalize="off" maxlength="32" aria-describedby="userHint"><small id="userHint">3 to 32 letters or numbers; dots, dashes and underscores are fine. Not your email, so it is harder to guess.</small></div>
+    <div class="field" id="fKind" hidden><label for="acKind">I am</label><select id="acKind" class="lockin"><option value="agent">An agent</option><option value="spv">A supervisor or team lead</option><option value="quality">In the Quality team</option><option value="wfm">In the WFM team</option><option value="senior">The senior manager</option><option value="other">Someone else</option></select></div>
+    <div class="field" id="fSpv" hidden><label for="acSpv">My supervisor</label><select id="acSpv" class="lockin"><option value="">I am not sure</option></select><small>Your supervisor approves your account. Then you see your results and your one-to-ones here.</small></div>
+    <div class="field" id="fEmail" hidden><label for="acEmail" id="acEmailLbl">Work email</label><input id="acEmail" class="lockin" type="text" autocomplete="username" spellcheck="false" autocapitalize="off"></div>
+    <div class="field" id="fCur" hidden><label for="pwCur" id="pwCurLbl">Password</label><div class="pwfield"><input type="password" id="pwCur" autocomplete="current-password" spellcheck="false"><button type="button" class="btn sm ghost" data-show="pwCur" aria-label="Show password">Show</button></div></div>
+    <div class="field" id="fNew" hidden><label for="pwNew" id="pwNewLbl">New password</label><div class="pwfield"><input type="password" id="pwNew" autocomplete="new-password" spellcheck="false" aria-describedby="pwLevel pwRules"><button type="button" class="btn sm ghost" data-show="pwNew" aria-label="Show password">Show</button></div></div>
+    <div class="pwcheck" id="pwCheck" hidden>
+      <div class="meterrow"><div class="meter" id="pwMeter" data-l="0" aria-hidden="true"><i></i><i></i><i></i><i></i></div><span class="meterlbl" id="pwLevel">Strength: too short</span></div>
+      <ul class="rules" id="pwRules"></ul>
+    </div>
+    <div class="field" id="fConf" hidden><label for="pwConf">Type the new password again</label><div class="pwfield"><input type="password" id="pwConf" autocomplete="new-password" spellcheck="false"><button type="button" class="btn sm ghost" data-show="pwConf" aria-label="Show password">Show</button></div></div>
+    <div class="lockconnect" id="lockConnect" hidden></div>
+    <p class="lockerr" id="lockErr" role="alert" aria-live="assertive"></p>
+    <div class="lockacts"><button type="button" class="btn" id="lockCancel" hidden>Cancel</button><button type="submit" class="btn primary lg" id="lockGo" hidden>Unlock</button></div>
+    <div class="locklinks" id="lockLinks"></div>
+    <p class="lockfoot" id="lockFoot"></p>
+  </form>
+</div>
+
+<header class="appbar">
+  <div class="in">
+    <div class="brand"><img class="bl on-dark" id="blDark" alt="Beyond One" height="28"><img class="bl on-light" id="blLight" alt="Beyond One" height="28"><span class="mark" aria-hidden="true">WF</span><b>MC Monthly Report Builder</b></div>
+    <div class="seg wsseg" id="wsSeg" role="group" aria-label="Workspace" hidden>
+      <button data-ws="build" aria-pressed="true" title="Build the month: import, review, export, email"><svg aria-hidden="true"><use href="#i-up"/></svg><span>Build</span></button>
+      <button data-ws="team" aria-pressed="false" title="Supervisors: the team, one-to-ones"><svg aria-hidden="true"><use href="#i-team"/></svg><span>Team</span></button>
+      <button data-ws="results" aria-pressed="false" title="Senior manager: results and finals"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Results</span></button>
+      <button data-ws="cycle" aria-pressed="false" title="Senior manager: the one-to-one deadline, the supervisors and the month's emails"><svg aria-hidden="true"><use href="#i-clock"/></svg><span>Supervisors</span></button>
+      <button data-ws="wfm" aria-pressed="false" title="Workforce: analytics, agents, the daily data and the daily emails"><svg aria-hidden="true"><use href="#i-chart"/></svg><span>WFM</span></button>
+      <button data-ws="quality" aria-pressed="false" title="Quality team: the Final EVAL and the quality KPIs"><svg aria-hidden="true"><use href="#i-star"/></svg><span>Quality</span></button>
+      <button data-ws="me" aria-pressed="false" title="Your own results and one-to-ones"><svg aria-hidden="true"><use href="#i-user"/></svg><span>My page</span></button>
+    </div>
+    <nav class="steps" id="stepsNav" aria-label="Steps">
+      <button class="step" data-step="import" aria-current="page"><span class="n">1</span><span class="t"><b>Import</b><small id="sub-import">0 of 4 exports</small></span></button>
+      <button class="step" data-step="review"><span class="n">2</span><span class="t"><b>Review</b><small id="sub-review">Roster and names</small></span></button>
+      <button class="step" data-step="export"><span class="n">3</span><span class="t"><b>Export</b><small id="sub-export">Build the workbook</small></span></button>
+      <button class="step" data-step="email"><span class="n">4</span><span class="t"><b>Email</b><small id="sub-email">For review</small></span></button>
+    </nav>
+    <div class="tools">
+      <button class="btn ghost findbtn" id="findBtn" aria-label="Search (Ctrl K)" title="Search people, numbers, days and pages · Ctrl K"><svg aria-hidden="true"><use href="#i-search"/></svg><span class="fl">Search</span><kbd class="kbd">Ctrl K</kbd></button>
+      <button class="btn ghost icon bell" id="bell" aria-label="Notifications" title="Notifications"><svg><use href="#i-bell"/></svg><span class="bn" id="bellN" hidden>0</span></button>
+      <button class="btn ghost monthbtn" id="monthBtn" title="Change the month in Settings">Month</button>
+      <button class="btn ghost icon" id="setBtn" aria-label="Settings" title="Settings"><svg><use href="#i-gear"/></svg></button>
+      <button class="btn ghost icon" id="helpBtn" aria-label="How to use" title="How to use"><svg><use href="#i-help"/></svg></button>
+      <div class="acct">
+        <button class="btn ghost acctbtn" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="acctMenu" hidden><span class="avatar" id="acctInit" aria-hidden="true">?</span><span class="sr" id="acctSr">Account</span></button>
+        <div class="acctmenu" id="acctMenu" role="menu" hidden>
+          <div class="who"><b id="acctName" dir="auto"></b><span id="acctEmail"></span><span><span class="pill" id="acctRole">User</span></span></div>
+          <button role="menuitem" data-acct="accounts" hidden>Manage accounts</button>
+          <button role="menuitem" data-acct="lock">Lock now</button>
+          <button role="menuitem" data-acct="user" id="acctUserBtn">Change username</button>
+          <button role="menuitem" data-acct="pw">Change password</button>
+          <button role="menuitem" data-acct="out">Sign out</button>
+        </div>
+      </div>
+      <button class="btn primary" id="buildTop" disabled><svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>Build Excel</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="welcome" id="welcome" hidden><b id="welName"></b><time class="wtime" id="welTime"></time></div>
+  <div class="autonote" id="autoNote" role="status" hidden></div>
+  <div class="fresh" id="freshBar" role="status" hidden></div>
+  <div class="todaywrap" id="today" hidden></div>
+  <!-- ================================================================ IMPORT -->
+  <section class="view" id="v-import" aria-labelledby="h-import">
+    <div class="viewhead">
+      <div>
+        <h1 id="h-import">Import this month's files</h1>
+        <p>Drop the four Genesys exports and the supervisors' attendance sheets, together or one at a time. Each file is recognised by its columns, not its name, and checked against the others.</p>
+      </div>
+      <span class="privacy"><svg aria-hidden="true"><use href="#i-lock"/></svg>Files stay in your browser; only the month's results are shared</span>
+    </div>
+    <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
+      <svg aria-hidden="true"><use href="#i-up"/></svg>
+      <strong>Drop files here, or click to choose</strong>
+      <span id="dropHelp">.csv, .xlsx or .xlsb, several at once: the Genesys exports, the attendance sheets and the IDs file (ID, Name, Team, Dep). A new export replaces the old one of the same type; attendance files add up.</span>
+    </div>
+    <input type="file" id="picker" multiple accept=".csv,.txt,.xlsx,.xlsm,.xlsb" hidden>
+    <ul class="pending" id="pending" aria-live="polite"></ul>
+    <div class="slots" id="slots"></div>
+    <article class="slot attcard" id="attCard" aria-label="Supervisors' attendance"></article>
+    <article class="slot attcard idscard" id="idsCard" aria-label="IDs file" hidden></article>
+    <article class="slot attcard" id="kpiCardImp" aria-label="KPI file" hidden></article>
+    <div id="othersWrap" hidden>
+      <div class="eyebrow" style="margin-bottom:8px">Other files</div>
+      <ul class="others" id="others"></ul>
+    </div>
+    <div class="next">
+      <p class="hint" id="importNote"></p>
+      <button class="btn primary" id="toReview">Continue to review</button>
+    </div>
+  </section>
+
+  <!-- ================================================================ REVIEW -->
+  <section class="view" id="v-review" aria-labelledby="h-review" hidden>
+    <div class="viewhead">
+      <div>
+        <h1 id="h-review">Review</h1>
+        <p>Check the roster and fix names that don't match, then look at the numbers before you build.</p>
+      </div>
+      <span class="savestate" id="saveState" aria-live="polite"></span>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Review">
+      <button class="tab" role="tab" id="t-people" aria-controls="p-people" aria-selected="true" data-tab="people">People <span class="badge" id="bPeople">0</span></button>
+      <button class="tab" role="tab" id="t-issues" aria-controls="p-issues" aria-selected="false" tabindex="-1" data-tab="issues">Issues <span class="badge" id="bIssues">0</span></button>
+      <button class="tab" role="tab" id="t-preview" aria-controls="p-preview" aria-selected="false" tabindex="-1" data-tab="preview">Preview</button>
+      <button class="tab" role="tab" id="t-kpi" aria-controls="p-kpi" aria-selected="false" tabindex="-1" data-tab="kpi">KPI results <span class="badge" id="bKpi">0</span></button>
+      <button class="tab" role="tab" id="t-history" aria-controls="p-history" aria-selected="false" tabindex="-1" data-tab="history">History <span class="badge" id="bHist">0</span></button>
+    </div>
+
+    <div role="tabpanel" id="p-people" aria-labelledby="t-people" class="view" style="gap:12px">
+      <div class="toolbar">
+        <input type="search" id="rq" placeholder="Search name, ID or Genesys name" aria-label="Search people">
+        <div class="seg icons" id="pView" role="group" aria-label="Show people as">
+          <button data-f="cards" aria-pressed="true" title="Cards"><svg width="16" height="16" aria-hidden="true"><use href="#i-grid"/></svg>Cards</button>
+          <button data-f="table" aria-pressed="false" title="Table, to edit many people at once"><svg width="16" height="16" aria-hidden="true"><use href="#i-rows"/></svg>Table</button>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn sm" id="addPerson">Add person</button>
+        <button class="btn sm" id="importRoster">Import roster</button>
+        <button class="btn sm" id="exportRoster">Export roster</button>
+        <button class="btn sm" id="distBtn" title="Set each person's supervisor from the Teams Distribution email">Supervisors…</button>
+        <input type="file" id="rosterPicker" accept=".xlsx,.xlsm,.csv" hidden>
+        <input type="file" id="histPicker" multiple accept=".xlsx,.xlsm,.xlsb" hidden>
+      </div>
+      <div class="toolbar prow2">
+        <div class="teamchips" id="rteams" role="group" aria-label="Team"></div>
+        <span class="spacer"></span>
+          <div class="seg" id="rseg" role="group" aria-label="Filter people">
+          <button data-f="all" aria-pressed="true">All</button>
+          <button data-f="inactive" aria-pressed="false">Inactive</button>
+          <button data-f="sys" aria-pressed="false">Has system name</button>
+          <button data-f="noid" aria-pressed="false">Missing ID</button>
+          <button data-f="nomatch" aria-pressed="false">Not in exports</button>
+        </div>
+      </div>
+      <div class="bulk" id="bulk" hidden>
+        <span id="bulkN">0 selected</span>
+        <button class="btn sm" data-bulk="Inactive">Set Inactive</button>
+        <button class="btn sm" data-bulk="Active">Set Active</button>
+        <button class="btn sm ghost" data-bulk="clear">Clear selection</button>
+      </div>
+      <div class="tablewrap" id="rwrap">
+        <table>
+          <thead><tr>
+            <th class="chk"><input type="checkbox" id="selAll" aria-label="Select all shown"></th>
+            <th>Name</th><th>National ID</th><th>Brand</th><th>Team</th><th>System name (Genesys)</th><th>Supervisor</th><th>Status</th>
+            <th title="Which exports found this person">In exports</th><th><span class="sr">Actions</span></th>
+          </tr></thead>
+          <tbody id="roster"></tbody>
+        </table>
+      </div>
+      <div class="pgrid" id="pgrid" hidden></div>
+      <datalist id="supNames"></datalist>
+      <p class="hint" id="rosterState"></p>
+    </div>
+
+    <div role="tabpanel" id="p-issues" aria-labelledby="t-issues" hidden>
+      <div class="issues" id="issues"></div>
+    </div>
+
+    <div role="tabpanel" id="p-preview" aria-labelledby="t-preview" hidden>
+      <div class="view" id="preview"></div>
+    </div>
+
+    <div role="tabpanel" id="p-kpi" aria-labelledby="t-kpi" hidden>
+      <div class="view" style="gap:12px">
+        <div id="kpiTools" class="view" style="gap:10px" hidden>
+          <div class="toolbar">
+            <input type="search" id="kq" placeholder="Search name or ID" aria-label="Search the KPI results">
+            <select id="kTeam" class="cell" aria-label="Team"></select>
+            <span class="spacer"></span>
+            <button class="btn sm" id="kTpl">KPI input template</button>
+            <button class="btn sm" id="kPdf"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>PDF cards</button>
+            <button class="btn sm" id="kXl"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Excel</button>
+          </div>
+          <p class="hint" id="kpiCount"></p>
+        </div>
+        <div id="kpiBody"></div>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="p-history" aria-labelledby="t-history" hidden>
+      <div class="view" style="gap:12px">
+        <div id="histTools" class="view" style="gap:10px" hidden>
+          <div class="mchips" id="histMonths"></div>
+          <div class="toolbar">
+            <input type="search" id="hq" placeholder="Search name or ID" aria-label="Search the history">
+            <select id="hTeam" class="cell" aria-label="Team"></select>
+            <div class="seg" id="hMetric" role="group" aria-label="Metric"><button data-f="adh" aria-pressed="true">Adherence</button><button data-f="adhUnder" aria-pressed="false">Days under target</button><button data-f="aht" aria-pressed="false">AHT</button><button data-f="worked" aria-pressed="false">Worked</button><button data-f="absent" aria-pressed="false">Absent</button><button data-f="tardy" aria-pressed="false">Tardy</button><button data-f="leave2" aria-pressed="false">AL + SL</button><button data-f="ded" aria-pressed="false">Deduction</button><button data-f="conf" aria-pressed="false">Conformance</button><button data-f="fin" aria-pressed="false">Final %</button><button data-f="earned" aria-pressed="false">Earned SR</button></div>
+            <span class="spacer"></span>
+            <button class="btn sm" id="hExport"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Export history</button>
+          </div>
+          <p class="hint" id="histCount"></p>
+        </div>
+        <div id="historyBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ EXPORT -->
+  <section class="view" id="v-export" aria-labelledby="h-export" hidden>
+    <div class="viewhead">
+      <div>
+        <h1 id="h-export">Export</h1>
+        <p>Build the monthly report and the incentive data workbook. Both are formula-driven, so a change in Excel updates every table.</p>
+      </div>
+    </div>
+    <div class="card success" id="success" hidden></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Before you build</h2>
+        <ul class="checklist" id="checklist"></ul>
+      </div>
+      <div class="card buildbox">
+        <h2 style="margin:0">Build the workbook</h2>
+        <div class="fname-big" id="fileName"></div>
+        <button class="btn primary lg" id="build" disabled><svg width="18" height="18" aria-hidden="true"><use href="#i-down"/></svg>Build Excel file</button>
+        <p class="hint" id="buildNote"></p>
+      </div>
+    </div>
+    <div class="card" id="incCard">
+      <div class="incgrid"><div><h2 style="margin:0">Incentive data workbook</h2><div class="fname-big" id="incName"></div><p class="hint" id="incNote"></p></div>
+        <div style="display:grid;gap:8px;justify-items:end"><button class="btn primary lg" id="buildInc" disabled>Build incentive file</button><button class="btn sm" id="histAdd" disabled>Add this month to the history</button></div></div>
+      <div class="sheets" id="incSheets" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h2>Sheets in the monthly report</h2>
+      <div class="sheets" id="sheets"></div>
+    </div>
+    <div class="card">
+      <h2>After you download</h2>
+      <ol class="how">
+        <li>The <b>Attendance</b> sheet is filled from the attendance files you dropped. Without them, paste the month's attendance there, from the first day column; rows match by National ID, or by name.</li>
+        <li>Use these values. A number is tardy minutes and still counts as a worked day.
+          <div class="legend" style="margin-top:6px">
+            <span class="lgd at">Attend</span><span class="lgd off">OFF</span><span class="lgd al">AL</span><span class="lgd sl">SL</span><span class="lgd ab">Absent</span><span class="lgd td">15</span><span class="lgd ot">Other text</span>
+          </div>
+        </li>
+        <li>To change a deduction by hand, type over its Diff cell in the <b>Deduction</b> sheet. Typed values turn yellow.</li>
+        <li>Changing a Status in the workbook's <b>Roster</b> sheet updates every table after Excel recalculates.</li>
+        <li>Go to <b>Email</b> for the deduction and incentive emails. If you changed the report in Excel, save it and drop it there so the email uses your changes.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ================================================================ EMAIL -->
+  <section class="view" id="v-email" aria-labelledby="h-email" hidden>
+    <div class="viewhead">
+      <div>
+        <h1 id="h-email">Emails</h1>
+        <p id="emailLead">The deduction and incentive emails, for review and final, ready for Outlook.</p>
+      </div>
+      <div class="mailtabs">
+        <div class="seg" id="mKind" role="group" aria-label="Which email"><button data-f="ded" aria-pressed="true">Deduction</button><button data-f="inc" aria-pressed="false">Incentive</button></div>
+        <div class="seg" id="mStage" role="group" aria-label="Review or final"><button data-f="review" aria-pressed="true">For review</button><button data-f="final" aria-pressed="false">Final</button></div>
+      </div>
+    </div>
+    <div class="mailgrid">
+      <div class="mailside">
+        <div class="card">
+          <h2>Data</h2>
+          <div id="srcState" class="srcstate"></div>
+          <div class="drop small" id="wbDrop" role="button" tabindex="0" aria-describedby="wbHelp">
+            <strong id="wbDropT">Drop the monthly report</strong>
+            <span id="wbHelp">The report from this tool, after any changes in Excel</span>
+          </div>
+          <input type="file" id="wbPicker" accept=".xlsx,.xlsm" hidden>
+          <div id="revState" class="revstate" hidden></div>
+          <input type="file" id="revPicker" accept=".xlsx,.xlsm" hidden>
+        </div>
+        <div class="card mailform">
+          <h2>Message</h2>
+          <div class="field"><label for="mTo">To</label><div class="withcopy"><textarea id="mTo" rows="3" spellcheck="false"></textarea><button class="btn sm ghost" data-copy="mTo" aria-label="Copy To">Copy</button></div><small>Separate addresses with a semicolon.</small></div>
+          <div class="field"><label for="mCc">Cc</label><div class="withcopy"><textarea id="mCc" rows="2" spellcheck="false"></textarea><button class="btn sm ghost" data-copy="mCc" aria-label="Copy Cc">Copy</button></div></div>
+          <div class="field"><label for="mSubject">Subject</label><div class="withcopy"><input id="mSubject"><button class="btn sm ghost" data-copy="mSubject" aria-label="Copy subject">Copy</button></div></div>
+          <div class="field" id="fDeadline"><label for="mDeadline">Deadline</label><input type="date" id="mDeadline"></div>
+          <div class="field"><label for="mGreeting">Greeting</label><input id="mGreeting"></div>
+          <div class="field" id="fIntro"><label for="mIntro">Message</label><textarea id="mIntro" rows="2"></textarea></div>
+          <div class="field"><label for="mSign">Sign-off</label><textarea id="mSign" rows="2"></textarea><small>Your Outlook signature is added by Outlook when you send.</small></div>
+          <div class="field" id="fAbs"><label for="mAbsScope">Absences from</label><select id="mAbsScope"></select></div>
+          <label class="check" id="fZeros"><input type="checkbox" id="mZeros"> List people with 0 deduction minutes</label>
+          <label class="check" id="fChanges"><input type="checkbox" id="mChanges" checked> List the changes since the review</label>
+          <label class="check" id="mAttachWrap"><input type="checkbox" id="mAttach" checked> <span id="mAttachLbl">Attach the workbook to the .eml</span></label>
+          <button class="linkbtn" id="mReset" style="justify-self:start">Reset the message to the default</button>
+        </div>
+      </div>
+      <div class="card mailpreview">
+        <div class="mailbar">
+          <h2 style="margin:0">Preview</h2>
+          <span class="spacer"></span>
+          <button class="btn primary" id="copyMail">Copy for Outlook</button>
+          <button class="btn" id="emlBtn"><svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>Download .eml</button>
+          <button class="btn ghost" id="attBtn"><svg width="16" height="16" aria-hidden="true"><use href="#i-file"/></svg>Save attachment</button>
+        </div>
+        <ul class="warns" id="mailWarns"></ul>
+        <div class="mailhead" id="mailHead"></div>
+        <iframe id="mailFrame" title="Email preview" sandbox="allow-same-origin"></iframe>
+      </div>
+    </div>
+  </section>
+  <!-- ================================================================ WORKSPACES: one shared set of data, a view for each role -->
+  <section class="view ws" id="v-team" aria-labelledby="h-team" hidden>
+    <div class="viewhead"><div><div class="eyebrow" id="teamEyebrow">Supervisor</div><h1 id="h-team">My team</h1><p id="teamSub">Each agent's performance and status for the month, and their one-to-ones.</p></div><div class="wsbar" id="teamBar"></div></div>
+    <div id="teamBody"></div>
+  </section>
+  <section class="view ws" id="v-results" aria-labelledby="h-results" hidden>
+    <div class="viewhead"><div><div class="eyebrow" id="resEyebrow">Senior manager</div><h1 id="h-results">Results</h1><p id="resLead">Every department, supervisor and agent for the month. Finalize the month when the results are agreed; after that only the senior manager can change them.</p></div><div class="wsbar" id="resultsBar"></div></div>
+    <div id="resultsBody"></div>
+  </section>
+  <section class="view ws" id="v-wfm" aria-labelledby="h-wfm" hidden>
+    <div class="viewhead"><div><div class="eyebrow" id="wfmEyebrow">Workforce</div><h1 id="h-wfm">Workforce</h1><p id="wfmLead">Every department and month from the shared history: trends, comparisons, distributions and where the data comes from.</p></div><div class="wsbar" id="wfmBar"></div></div>
+    <div class="seg wftabs" id="wfmTabs" role="group" aria-label="WFM pages"><button data-wt="analytics" aria-pressed="true">Analytics</button><button data-wt="agents" aria-pressed="false">Agents</button><button data-wt="daily" aria-pressed="false">Daily</button><button data-wt="builder" aria-pressed="false" hidden>Report builder</button><button data-wt="dmail" aria-pressed="false" hidden>Daily emails</button><button data-wt="inter" aria-pressed="false">Interactions</button><button data-wt="mail" aria-pressed="false">Emails</button></div>
+    <p class="rohint" id="wfmRo" hidden><svg width="14" height="14" aria-hidden="true"><use href="#i-lock"/></svg><span>View only.</span></p>
+    <div id="wfmBody"></div>
+    <div id="wfmRb" class="rb" hidden></div>
+    <div id="wfmDm" class="rb dm" hidden></div>
+    <div id="wfmMail"></div>
+  </section>
+  <section class="view ws" id="v-cycle" aria-labelledby="h-cycle" hidden>
+    <div class="viewhead"><div><div class="eyebrow" id="cycEyebrow">Senior manager</div><h1 id="h-cycle">Supervisors</h1><p id="cycLead">Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month's four emails.</p></div><div class="wsbar" id="cycleBar"></div></div>
+    <div id="cycleBody"></div>
+  </section>
+  <section class="view ws" id="v-quality" aria-labelledby="h-quality" hidden>
+    <div class="viewhead"><div><div class="eyebrow" id="qEyebrow">Quality team</div><h1 id="h-quality">Quality results</h1><p>Drop the month's Final EVAL, check that every name matched, and correct any quality KPI by hand. The scorecards everywhere use these numbers straight away, until the senior manager finalizes the month.</p></div><div class="wsbar" id="qualityBar"></div></div>
+    <div id="qualityBody"></div>
+  </section>
+  <section class="view ws" id="v-me" aria-labelledby="h-me" hidden>
+    <div class="viewhead"><div><div class="eyebrow">My page</div><h1 id="h-me">My results</h1><p id="meSub">Your performance, attendance and one-to-ones. You fill in your part of a one-to-one here, and sign it when your supervisor sends the final.</p></div><div class="wsbar" id="meBar"></div></div>
+    <div id="meBody"></div>
+  </section>
+  <section class="view ws" id="v-wait" aria-labelledby="h-wait" hidden>
+    <div class="viewhead"><div><div class="eyebrow">Almost there</div><h1 id="h-wait">Waiting for access</h1><p id="waitSub">Your account is ready. An admin now gives you a role (supervisor, senior manager, WFM manager or WFM analyst); this page opens your workspace as soon as they do.</p></div></div>
+  </section>
+</main>
+<footer class="sitefoot" id="siteFoot">
+  <div class="in">
+    <span class="fbrand"><span class="fpx" aria-hidden="true"><i></i><i></i><i></i></span>MC Monthly Report Builder</span>
+    <span class="fmid">Workforce Management · one set of data, a page for every role</span>
+    <span class="fact"><button class="linkbtn" data-foot="find">Search <kbd>Ctrl K</kbd></button><button class="linkbtn" data-foot="help">How to use</button><button class="linkbtn" data-foot="top">Back to top <span aria-hidden="true">↑</span></button></span>
+  </div>
+</footer>
+
+<!-- ================================================================ DRAWERS -->
+<div class="scrim" id="scrim" hidden></div>
+
+<aside class="drawer" id="dSettings" role="dialog" aria-modal="true" aria-labelledby="h-set" hidden>
+  <header><div><h2 id="h-set">Settings</h2><div class="sub" id="setSaved"></div></div><button class="btn ghost icon" data-close aria-label="Close settings"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body">
+    <div class="field"><label for="month">Month</label><input type="month" id="month"><small id="monthHelp">Detected from the exports. Change it if a file covers more than one month.</small></div>
+    <div class="field"><label for="target">Adherence target (%)</label><input type="number" id="target" min="0" max="100" step="0.5" inputmode="decimal"><small>Averages under this show in red. Default 95.</small></div>
+    <div class="field"><label for="floor">NA cut-off (%)</label><input type="number" id="floor" min="0" max="100" step="1" inputmode="decimal"><small>A day under this, or blank, shows as NA and is left out of the average. Default 50.</small></div>
+    <div class="field"><label for="inactiveMin">Inactive days limit</label><input type="number" id="inactiveMin" min="0" max="31" step="1" inputmode="numeric"><small>Inactive people with fewer attended days than this are left out of the reports. Default 6.</small></div>
+    <div class="field"><span class="lbl" id="l-db">Deduction scope: brands</span><div class="chips" id="dedBrands" role="group" aria-labelledby="l-db"></div><small>Only these brands are listed in the Deduction sheet. Default Virgin.</small></div>
+    <div class="field"><span class="lbl" id="l-dt">Deduction scope: teams</span><div class="chips" id="dedTeams" role="group" aria-labelledby="l-dt"></div><small>Default CC (Customer Care).</small></div>
+    <div class="field"><span class="lbl" id="l-inc">Incentive: 100% adherence for</span><div class="chips" id="incFull" role="group" aria-labelledby="l-inc"></div><small>Teams with no Genesys adherence that still go in the incentive Adherence tab, at 100%. Default CT.</small></div>
+    <div class="field"><span class="lbl">Logo on the app bar, forms and Excel files</span><div class="logostate" id="logoState"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="logoPick">Choose logo file</button><button class="btn sm ghost" id="logoRemove" hidden>Use the Beyond One logo</button></div>
+      <input type="file" id="logoPicker" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+      <small>A PNG or JPG of your logo, for example from your brand kit or email signature. It goes at the top of the one-to-one forms and on the Excel files. The emails carry no logo: Outlook adds your signature.</small></div>
+    <div class="field"><span class="lbl">KPI scorecards</span><div><button class="btn sm" id="scoreBtn">Scorecards…</button></div><small>KPIs, weights and ranking bands per team, and the incentive base. Loaded from kpi.xlsx.</small></div>
+    <div class="field"><label for="mgrName">Final form: manager signing</label><input id="mgrName" autocomplete="off"><input id="mgrTitle" aria-label="Manager title" autocomplete="off" style="margin-top:6px"><small>Signs the final form with the agent and the supervisor.</small></div>
+    <div class="field"><label for="lockMins">Your sign-in</label><div class="hint" id="setWho"></div><select id="lockMins"><option value="5">After 5 minutes without activity</option><option value="15">After 15 minutes without activity</option><option value="30">After 30 minutes without activity</option><option value="60">After 60 minutes without activity</option></select>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><button class="btn sm" id="chgPw">Change password</button><button class="btn sm" id="lockNow2">Lock now</button><button class="btn sm" id="signOut2">Sign out</button></div>
+      <small id="lockHelp">It also asks you to sign in when you open the tool again. Your work on the page stays while it is locked.</small></div>
+    <div class="field"><span class="lbl" id="l-th">Theme</span><div class="seg" id="theme" role="group" aria-labelledby="l-th"><button data-f="system" aria-pressed="true">System</button><button data-f="light" aria-pressed="false">Light</button><button data-f="dark" aria-pressed="false">Dark</button></div></div>
+  </div>
+  <footer><button class="btn" id="resetSet">Reset to defaults</button><button class="btn primary" data-close>Done</button></footer>
+</aside>
+
+<aside class="drawer wide" id="dPerson" role="dialog" aria-modal="true" aria-labelledby="h-person" hidden>
+  <header><div><h2 id="h-person">Person</h2><div class="sub" id="personSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="personBody"></div>
+</aside>
+
+<aside class="drawer" id="dConfirm" role="dialog" aria-modal="true" aria-labelledby="h-confirm" hidden>
+  <header><h2 id="h-confirm">Import roster</h2><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="confirmBody"></div>
+  <footer><button class="btn" data-close>Cancel</button><button class="btn primary" id="confirmOk">Import</button></footer>
+</aside>
+
+<aside class="drawer wide" id="dAccounts" role="dialog" aria-modal="true" aria-labelledby="h-acc" hidden>
+  <header><div><h2 id="h-acc">Manage accounts</h2><div class="sub" id="accSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body">
+    <div id="accTemp" aria-live="polite"></div>
+    <section class="sec shareinfo" id="shareInfo"></section>
+    <section class="sec"><h3>How people sign in</h3>
+      <div class="seg" id="signinSeg" role="group" aria-label="Sign in with"><button type="button" data-signin="both" aria-pressed="true">Username or email</button><button type="button" data-signin="user" aria-pressed="false">Username only</button></div>
+      <p class="hint" id="signinHint" style="margin-top:8px"></p></section>
+    <section class="sec"><h3>People with an account</h3><div class="acclist" id="accList"></div></section>
+    <section class="sec" id="migrateBox" hidden><h3>Data from before</h3><p class="hint">This computer still has what this browser kept before the shared folder: the roster, history, settings, forms and accounts. Copy it into the shared folder once, so everyone has it. Older accounts keep their password; each person signs in once more, and the access opens the next time an admin opens the tool.</p><button class="btn primary" id="migrateGo">Copy it into the shared folder</button> <span class="hint" id="migrateMsg"></span></section>
+    <section class="sec"><h3>Team copy</h3><p class="hint" id="teamInfo" style="margin-bottom:10px"></p><button class="btn primary" id="teamCopy"><svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>Download team copy</button></section>
+    <section class="sec"><h3>Roles</h3><ul class="rolelist">
+      <li><b>Admin</b> does everything below and manages the accounts. There is always at least one admin.</li>
+      <li><b>WFM analyst</b> builds the month (imports, roster, settings, workbooks) and the daily emails: in <b>WFM › Report builder</b> they drop the day's exports, send MC Leaders and the WFM Daily Review, and the four brand emails go to the WFM manager. The rest of the WFM page and the teams are read-only for them, and they do not see the incentive amounts. The month is saved to the shared data as they work.</li>
+      <li><b>WFM manager</b> sends the four brand emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay) from <b>WFM › Daily emails</b>, adds the interactions export, sends the deduction and absence emails, fixes the accepted objections on adherence and AHT, and sees the analytics, results and every team.</li>
+      <li><b>Senior manager</b> sees every department, supervisor and agent (the WFM page read-only, without its emails; on the Team page who has a one-to-one arranged and who not yet); sets the supervisors' scorecards, the one-to-one deadline and the month-close due days; changes the incentive rules (with an admin); decides the objections sent to him; sends the one-to-ones-ready, deadline, review and final emails; finalizes each month. After that only he can change the results. He sees every change made by hand.</li>
+      <li><b>Supervisor</b> (linked to their name in the roster) sees their own team, arranges the one-to-ones (following up last month's actions), reads what each agent wrote and sends the final back (accepted or rejected, with a comment), corrects the team's attendance, answers the agents' objections, approves the agents of the team, and tells the senior manager when the team is done. When you make someone a supervisor here, link them to their name (the operations team is listed) and tick the agents they lead.</li>
+      <li><b>Quality team</b> drops the Final EVAL (the template with national IDs links every row by itself), corrects the quality KPIs until the month is final, and fixes the accepted objections on quality.</li>
+      <li><b>Agent</b> (linked to their name) sees only their own results, attendance and forms, fills in their part of the one-to-one and sends it to the supervisor, signs it after the supervisor's final, raises objections, and sees this month so far (in English or Arabic).</li>
+      <li><b>Waiting for access</b>: anyone who signs up starts here. The admin opens staff accounts; a supervisor opens the accounts of their own agents.</li></ul></section>
+  </div>
+</aside>
+
+<aside class="drawer wide" id="dNotes" role="dialog" aria-modal="true" aria-labelledby="h-notes" hidden>
+  <header><div><h2 id="h-notes">Checks and notifications</h2><div class="sub" id="notesSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="notesBody"></div>
+</aside>
+
+<aside class="drawer wide xwide" id="dScore" role="dialog" aria-modal="true" aria-labelledby="h-score" hidden>
+  <header><div><h2 id="h-score">KPI scorecards</h2><div class="sub">Changes apply straight away and are saved with the tool.</div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="scoreBody"></div>
+</aside>
+
+<aside class="drawer wide" id="dSign" role="dialog" aria-modal="true" aria-labelledby="h-sign" hidden>
+  <header><div><h2 id="h-sign">Form</h2><div class="sub" id="signSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="signBody"></div>
+  <footer id="signFoot"></footer>
+</aside>
+
+<aside class="drawer wide" id="dForm" role="dialog" aria-modal="true" aria-labelledby="h-form" hidden>
+  <header><div><h2 id="h-form">Form</h2><div class="sub" id="formSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="formBody"></div>
+  <footer><button class="btn ghost" id="formSwitch">Switch form</button><span class="spacer"></span><button class="btn" id="formSave">Save</button><button class="btn primary" id="formPdf"><svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>Download PDF</button></footer>
+</aside>
+
+<aside class="drawer" id="dObj" role="dialog" aria-modal="true" aria-labelledby="h-obj" hidden>
+  <header><div><h2 id="h-obj">Objection</h2><div class="sub" id="objSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="objBody"></div>
+  <footer id="objFoot"></footer>
+</aside>
+
+<aside class="drawer" id="dHelp" role="dialog" aria-modal="true" aria-labelledby="h-help" hidden>
+  <header><h2 id="h-help">How to use</h2><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body help">
+    <section>
+      <h3>Every month</h3>
+      <ol>
+        <li>In Genesys Cloud, export the month's <b>Monthly Adherence</b>, <b>Agent Performance Summary</b>, <b>Schedule</b> (activities) and <b>Agent Status Timeline Summary</b>.</li>
+        <li>Drop all four on <b>Import</b>, with every supervisor's attendance sheet. Each card shows what was found. The bell at the top lists anything the tool fixed, anything you need to decide (for example two files that disagree on a day), and differences between the attendance and Genesys.</li>
+        <li>On <b>Review</b>, open <b>Issues</b>: link each unknown name to a person as their system name, or add them. When a roster name is clearly one Genesys name, the tool links it by itself (the bell shows it, with Undo). Set people who left to Inactive in <b>People</b>.</li>
+        <li><b>People</b> shows a card per agent with their Genesys name, National ID, brand, team and this month's numbers. Point at any agent, anywhere in the tool, for a quick profile; select the card for the full page, where you can edit their details, see their history chart and export it. Switch to <b>Table</b> to edit many people at once.</li>
+        <li>Check <b>Preview</b>, then press <b>Build Excel</b>.</li>
+        <li>Performance (optional): export the <b>Agent Performance Summary</b> a second time with every column (Answered, Handle, Avg Handle, Avg Talk, Avg Hold, Avg ACW, Held, Transferred, Outbound) and drop it on Import. <b>Preview</b> then shows each employee's performance with team totals and a sortable table (green at least 15% better than the team, red at least 15% worse), and each person's page compares them with their team. Times are weighted the way Genesys works them out. Exports of past months go to the history, so the person's chart can show answered, handle time, hold, ACW and transfer rate by month. An export with only voice also gives the AHT.</li>
+        <li>Workforce and exceptions: with the Schedule and Agent Status Timeline in, every scheduled day of the month is judged with the same rules as the Daily WFM &amp; Performance Review (late after 0 min, no sign-on after 180 min, short of shift from 15 min, adherence 95%, AHT ceiling 2:30, high hold 45 s, at least 5 calls; leave days left out) and added up per employee: shifts, worked, no sign-on, late sign-ons and minutes, short of shift, break changes, time signed on, occupancy, conformance and exceptions. <b>Preview</b> shows the totals by team, the priority follow-up list with reasons and a sortable table; each person's page lists their days one by one. Late first call, calls under 10 s, longest calls and dropped calls need the daily Interactions export, so they stay in the daily email.</li>
+        <li>Build the incentive data workbook too. Both files are filled in, including attendance and tardy minutes.</li>
+        <li>On <b>Email</b>, pick Deduction or Incentive, then For review. Use <b>Copy for Outlook</b> and paste into a new email, or <b>Download .eml</b> and open it in Outlook. The data sent for review is remembered. The WFM manager and the senior manager send the deduction and absences emails from <b>WFM › Emails</b>, from the shared month (with the supervisors' attendance corrections).</li>
+        <li>After the review deadline, drop any corrected files, open <b>Final</b>, and send. The final email lists what changed since the review.</li>
+        <li>The daily emails are built into the tool. A WFM analyst drops the day's exports on <b>WFM › Report builder</b> (on a Sunday, Thursday to Saturday): MC Leaders and the WFM Daily Review are made and sent from there, and Virgin Postpaid, Virgin Mobile, FRiENDi Mobile and FRiENDi Pay appear straight away on the WFM manager's <b>WFM › Daily emails</b>, where he writes the SLA insight, checks them and sends them (Copy for Outlook or Open in Outlook), then marks each one sent. The emails are made by the same parts as Member Care Report Builder 14, so they look exactly as before. Every day dropped is kept for everyone; building the WFM Daily Review also keeps each agent's day, and a month without monthly exports is shown from the stored days.</li>
+        <li>Supervisors: drop the <b>Teams Distribution</b> email (.msg) on Import, or paste its table with <b>Review › People › Supervisors…</b>. The tool shows who changes team before anything is saved; names it cannot match are listed so you can fix them in the roster's Supervisor column.</li>
+        <li>Saving: while you build a month, its results are saved to the shared history by themselves, a few seconds after each change (the line at the top says when). A month already in the history from an older file is kept until you replace it in <b>Review › History</b>, and a month the senior manager has finalized is never overwritten.</li>
+        <li>For a one-to-one, open a person and use <b>One-to-one form</b>, then <b>Final form</b> after the investigation. Both download as PDF.</li>
+        <li>KPI results: drop the monthly KPI file (DRC-CSAT, Quality, Empowerment, FCR…) on Import. Adherence, AHT, days under target and tardiness come from the exports and the attendance. <b>Review › KPI results</b> shows every agent's ranking, final %, incentive target and earned SR, with PDF cards, Excel and a copy-for-email card. Scorecards are in Settings.</li>
+        <li>History: drop the past monthly incentive files (MC_all_team_incentive _data) and the Genesys exports of past months (AHT, Agent Performance, Monthly Adherence, Schedule, Agent Status Timeline) on Import or in <b>Review › History</b>. Each file goes to its own month; a month still running is left out. The incentive file's values are kept, and the Genesys exports fill the gaps and add deduction minutes and conformance (only for agents whose schedule covers the whole month, so drop all the schedule files that touch a month together). Each person's page shows their months as a chart, and <b>Review › History</b> shows everyone side by side. The month you send as final is added by itself.</li>
+      </ol>
+    </section>
+    <section>
+      <h3>Getting each export from Genesys Cloud</h3>
+      <p>A number shows as – or "not found" when the person is not in that export. Export for the whole month, for every team you report on, and drop the files together. Menu names can differ slightly with your Genesys version or permissions.</p>
+      <div class="tablewrap gxtab"><table><thead><tr><th>Export</th><th>Where in Genesys Cloud</th><th>Settings</th><th>Fills</th></tr></thead><tbody>
+        <tr><td><b>Schedule</b> (activities)</td><td>Admin › Workforce Management › Schedules, open the schedule, <b>Export › Activities</b></td><td>Every schedule that touches the month (schedules run 4 or 5 weeks, so usually two), for every business unit: Virgin, FRiENDi, FRiENDi Pay. Teams that are not scheduled in WFM never appear.</td><td>Sched. / Actual / Diff, deduction, conformance, no sign-on, late sign-on, short of shift, break changes</td></tr>
+        <tr><td><b>Agent Status Timeline</b></td><td>Analytics Workspace › Agent Status Summary view, <b>Export › Agent Status Timeline Details</b></td><td>The month, all agents. One month per export.</td><td>Actual minutes, first sign-on, time signed on, occupancy</td></tr>
+        <tr><td><b>Agent Performance Summary</b> (AHT)</td><td>Analytics Workspace › Agents Performance Summary view, <b>Export</b></td><td>The month, Media Type voice, columns Interval Start, Media Type, Agent Name, Avg Handle.</td><td>AHT, the AHT sheet, the AHT KPI</td></tr>
+        <tr><td><b>Agent Performance</b> (all columns)</td><td>The same view, <b>Export</b> with Include all columns</td><td>The month. Keep Answered, Handle, Avg Handle, Avg Talk, Avg Hold, Avg ACW, Total Talk, Total Hold, Total ACW, Held, Transferred, Outbound and Alert - No Answer. Voice only also fills AHT.</td><td>Performance in Preview and on each person's page, occupancy, high hold, no-answer alerts</td></tr>
+        <tr><td><b>Monthly Adherence</b></td><td>The adherence export you use today (one column per day)</td><td>The whole month, every team.</td><td>Daily adherence, Adherence Avr., days under target</td></tr>
+        <tr><td><b>KPI file</b></td><td>Not from Genesys: the monthly file with DRC-CSAT, Quality, Empowerment, FCR</td><td>Drop it on Import.</td><td>KPI results, final %, earned SR</td></tr>
+        <tr><td><b>Interactions</b></td><td>Performance › Interactions, <b>Export</b> (all columns)</td><td>Inbound, any period (a day, a week, a month). Users, Date, Duration, Queue, Disconnect Type, Error Code and ANI.</td><td>WFM › Interactions: volumes, answered, abandoned, IVR, who hung up, call drops, repeat callers; calls per agent</td></tr>
+      </tbody></table></div>
+      <p>Late first call, calls under 10 seconds, longest calls, repeat callers and dropped calls need the Interactions export day by day, so they stay in the daily email.</p>
+    </section>
+    <section>
+      <h3>Rules used</h3>
+      <ol>
+        <li>Adherence: a blank day, or one under the NA cut-off, is NA. Avr. is the average of the other days.</li>
+        <li>Deduction: Sched. is the minutes of On Queue, Break, Meal, Update Break Time and Training. Actual is the time in On Queue, Break, Meal, Training or Meeting during those segments. Diff is Sched. minus Actual, never below 0, and 0 when Actual is 0.</li>
+        <li>Inactive people with fewer attended days than the limit are left out of every report. They stay in the Roster and are listed in the Overview.</li>
+        <li>Names: the system name is used when filled, otherwise the name. Spaces and capital letters don't matter.</li>
+        <li>Attendance: codes like "Off", "AL leave" or "SL leaves" are tidied to OFF, AL and SL. A number in a day cell is tardy minutes; when the day cells and a Tardy column disagree, the day cells are used until you choose. Each fix can be undone from the bell.</li>
+      </ol>
+    </section>
+    <section>
+      <h3>Roles and pages</h3>
+      <ul>
+        <li><b>Supervisor › Team</b>: their own agents (the roster's Supervisor column), the team's average of every KPI (their own KPIs as a supervisor), their supervisor scorecard, a one-to-one board, the month's attendance (counted from Genesys; only the supervisor can correct a day), the agents waiting for their approval, and <b>Finish my team</b>, which tells the senior manager in the tool and makes an email draft to him. It stays grey until every agent's one-to-one is done. The one-to-one: arrange it; an agent with an account fills in their part on their own page (what was discussed, the root cause, their comments, actions, the next review date) and sends it; the supervisor reads it, accepts or rejects it with a final comment and sends the final back; only then does the agent sign. For an agent without an account the supervisor fills in the form when they meet. Supervisors do not see the incentive amounts.</li>
+        <li><b>Senior manager › Supervisors</b>: the one-to-one deadline, which supervisors have finished (a notification and a count on the page button when one does), the supervisors' scorecards and their items (team averages, one-to-ones by the deadline, the quality team's leader items, or items he types), and the month's four emails: one-to-ones ready (to the supervisors), the deadline reminder (to those not finished), the results for review (“Hi All”: the ID, name, final % and earned SR of everyone on the incentive list who earned it, with the same table as an Excel file) and the final result form (his own form: everyone on the incentive list with their final % and earned SR, the month's total and the table the VP, HR Director, Finance Director and CEO sign, as an email and as the same Excel form). The <b>incentive list</b> on the same page says who is on those two, in order, with the names as the tool has them; add or remove people there. The emails carry no logo or name: Outlook adds your signature. <b>Results</b>: every agent; he decides who is eligible against the rules and finalizes the month.</li>
+        <li><b>WFM</b>: Analytics by team, brand and month; Agents with every measure and the best and worst quarter marked; Daily with the stored days; <b>Report builder</b> (the WFM analysts: the day's exports, MC Leaders, the WFM Daily Review); <b>Daily emails</b> (the WFM manager: the four brand emails to send); Interactions from the interactions export; Emails with the deduction and absences emails (the WFM manager). The senior manager and the analysts read the rest of the page.</li>
+        <li><b>Team page</b> for the senior manager, the WFM team and the admin: every team; the agents ranked lowest first (adherence, final %, exceptions, absence or tardiness), with a name search and the supervisor under each name.</li>
+        <li><b>Quality team › Quality</b>: drop the Final EVAL; the final score fills Quality Observations, critical errors are kept (an attitude error stops the incentive), the Leaders sheet scores the team leads. Any quality KPI can be corrected by hand until the month is final; each change is logged.</li>
+        <li><b>Agent › My page</b>: only their own results, attendance, daily adherence and forms. They fill in their part of the one-to-one and send it to their supervisor; when the supervisor sends the final back, they read it and sign it on screen, download the signed PDF and email it to themselves and their supervisor.</li>
+        <li><b>WFM analyst</b> and <b>admin</b> build the month. Incentive: base by brand (Virgin 1000, FRiENDi 500, FRiENDi Pay 500, a person's own base in the roster wins); nobody earns it with a final under 80%, an attitude critical error or fewer than 5 days attended, unless the senior manager decides otherwise.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>Closing a month</h3>
+      <p><b>Supervisors › Month close</b> shows who does what by which day of the next month: the month built from the exports (day 2), the KPI file and the EVAL (day 3), the results on the agents' pages and the ready email (day 5), the objections answered (day 8), the one-to-ones and the review (day 9), the final and the final emails (day 10). Most steps tick themselves when the tool sees them done; tick the others when they are done outside the tool. Late steps are red, the next two days amber. The senior manager can change the due days under <b>Due days</b>.</p>
+      <p><b>Today</b>, at the top of each person's first page, lists what is theirs to do now: their late month-close steps, one-to-ones to hold, objections to answer or fix, agents waiting for approval, forms waiting for a signature, last month's actions to check, a daily review not stored yet, names to link, accounts waiting. Each line opens the place to do it; <b>Hide for today</b> folds it to one line.</p>
+    </section>
+    <section>
+      <h3>Objections</h3>
+      <p>An agent who thinks a number is wrong raises an objection on their own page: a day of attendance or adherence (select the day), a KPI, the AHT, the quality result, the incentive, or anything else, with what it should be and why. The window closes on the month's objection day. The supervisor accepts it (attendance is corrected straight away), says why not, or sends it to the senior manager; an agent whose objection was not accepted can ask the senior manager to look, once. An accepted objection that the WFM team, the quality team or the senior manager must correct waits on their page until they mark it fixed. The agent sees every answer. <b>Supervisors › Objections</b> shows each team's dispute rate.</p>
+    </section>
+    <section>
+      <h3>Coaching that follows up</h3>
+      <p>A one-to-one starts with what was agreed last month: each action (Done, Partly, Not done) and each KPI then and now (better or worse). The PDF and the agent's copy carry it, and the board shows "Follow-up 2/3". The senior manager can count it in the supervisors' scorecard: add an item from <b>Follow-up of last month's one-to-ones</b> (actions done, or KPIs better).</p>
+    </section>
+    <section>
+      <h3>This month so far (agents)</h3>
+      <p>While a month runs, each stored daily review updates every agent's page: the projected final % and incentive if the month stays like this, and the weakest KPI to work on first. The KPIs that come only at the end of the month use last month's values until this month's arrive. Agents can read their page in Arabic (<b>العربية</b> at the top of their page).</p>
+    </section>
+    <section>
+      <h3>Incentive rules</h3>
+      <p>The scorecards (KPIs, weights, bands), the incentive bases and who earns the incentive (lowest final %, fewest days attended) are one set of rules. Only the senior manager or an admin changes them (<b>Supervisors › Incentive rules</b>, or Settings › Scorecards); everyone else sees them read-only. <b>Start new rules from</b> a month: that month and the ones after it use the new set, the months before keep theirs, and a final month never changes. Every change is logged. <b>Supervisors › Changes by hand</b> lists, for a month, everything changed by hand: eligibility and results, attendance days, quality numbers, objections, the rules, one-to-ones changed after the agent signed. It downloads as Excel.</p>
+    </section>
+    <section>
+      <h3>Parallel run and the EVAL with IDs</h3>
+      <p>While the team still works the old way, drop the old Excel of the month on <b>Results</b> (the final result with ID, Name, Final % and Earned SR, or the incentive data workbook): the tool lines every person up by national ID, then by name, and lists what differs with the likely reason. The quality team can download <b>EVAL template with IDs</b> on the Quality page: an EVAL workbook with every agent's national ID, so a filled-in EVAL links every row by its ID.</p>
+    </section>
+    <section>
+      <h3>Search</h3>
+      <p>Press <b>Ctrl K</b> (or <b>/</b>) on any page, or click <b>Search</b>, and type in plain words: a name, a measure, a month or a day, a team, a brand, a supervisor or a page. For example <i>Tala AHT</i>, <i>lowest adherence Virgin</i>, <i>adherence below 95%</i>, <i>absent yesterday</i>, <i>below target August</i>, <i>supervisors not finished</i>, <i>one-to-ones not held</i>, <i>my one-to-one</i>, or a how-to question. The answer shows straight away; <b>Tab</b> completes the word being typed, and the buttons under the box add the likely next word. Typos and a few Arabic words are understood.</p>
+      <p>The search finds only what your role may see: a supervisor their own team, the quality team the KPI results, an agent their own page. It remembers what you pick, in this browser only, to suggest it first; <b>Clear my searches</b> forgets it.</p>
+    </section>
+    <section>
+      <h3>The shared folder</h3>
+      <ol>
+        <li>Put this HTML in the common folder, with an empty folder next to it, for example <b>MC Data</b>.</li>
+        <li>The first person opens the HTML in Edge or Chrome, chooses the data folder, and makes the admin account. Everyone else opens the same HTML, chooses the same folder once (the browser remembers it), and makes an account with a username.</li>
+        <li>The admin gives staff their role in Manage accounts, links supervisors to their name in the roster (only the operations team is listed) and ticks the agents each supervisor leads. Agents choose their supervisor when they sign up; the supervisor approves them.</li>
+      </ol>
+      <p>The data files are locked: staff accounts open them with the team's key, an agent's account only the agent's own place, both unlocked by the person's password. Opened outside the tool, a file is unreadable. Anyone who can delete files in the common folder can still delete them, so keep the folder's permissions to the people who need it, and keep it in the usual IT backup. The tool picks up other people's changes every few seconds.</p>
+    </section>
+    <section>
+      <h3>Accounts</h3>
+      <p>Everyone signs in with a username and a password; the sign-up asks no email. The first account becomes the admin. A user who forgets their password asks the admin, who resets it; in the shared folder their access is then opened again by the admin (or, for an agent, by their supervisor).</p>
+    </section>
+    <section>
+      <h3>Your data</h3>
+      <p>Export files are read on your computer and never uploaded. What is kept: the roster, the months' results (one row per agent), the quality numbers, the forms and signatures, and day totals of the daily data and of the interactions export (never the callers' numbers). With the shared folder it is kept there, locked; otherwise in this browser on this computer. Use Export roster for a backup copy of the roster.</p>
+    </section>
+  </div>
+</aside>
+
+<div class="find" id="find" hidden>
+  <div class="findscrim" data-findclose></div>
+  <div class="findbox" role="dialog" aria-modal="true" aria-label="Search">
+    <div class="findin"><svg aria-hidden="true"><use href="#i-search"/></svg>
+      <div class="findfield"><div class="findghost" id="findGhost" aria-hidden="true"></div><input id="findQ" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" dir="auto" placeholder="Search a name, a measure, a day, a page…" role="combobox" aria-expanded="true" aria-controls="findList" aria-autocomplete="both" aria-label="Search"></div>
+      <button class="btn ghost sm findx" data-findclose aria-label="Close the search">Esc</button></div>
+    <div class="findchips" id="findChips" hidden></div>
+    <div class="findbody"><div id="findAns"></div><ul class="findlist" id="findList" role="listbox" aria-label="Suggestions"></ul></div>
+    <div class="findfoot"><span><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> choose</span><span><kbd class="kbd">Enter</kbd> open</span><span><kbd class="kbd">Tab</kbd> complete</span><span class="spacer"></span><span id="findScope"></span><button class="linkbtn" data-fforget title="The search remembers what you pick, in this browser only, to suggest it first">Clear my searches</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button id="toastAct" hidden>Undo</button></div>
+<div class="tt" id="tt" role="tooltip" hidden></div>
+<div class="pop" id="pop" role="tooltip" hidden></div>

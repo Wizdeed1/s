@@ -1,0 +1,24 @@
+/* ------------------------------------------------------------------------------------------------------------- motion
+   Only where something changes: a page swaps in (a short fade, no choreography), a sheet slides from its edge, a menu grows from
+   its button, a tab's line slides, a press gives a little, a toast rises, a check draws itself when an email is marked sent.
+   Never on what people do a hundred times a day from the keyboard (the search opens at once). Numbers do not count up; cards do
+   not rise as you scroll. Under 300 ms, ease-out, and quieter still when the device asks for less motion. */
+.view.enter { animation: viewIn 180ms var(--ease-out) both; }
+@keyframes viewIn { from { opacity: 0; } }
+.welcome:not([hidden]), .todaywrap:not([hidden]) > * { animation: fadeIn 200ms ease both; }
+.rv, .rv.rv-in { opacity: 1; transform: none; }
+details[open] > :not(summary) { animation: openIn 180ms var(--ease-out) both; }
+@keyframes openIn { from { opacity: 0; transform: translateY(-3px); } }
+.drop.over svg, .hdrop.over svg { animation: nudge 600ms var(--ease-out) infinite alternate; }
+@keyframes nudge { to { transform: translateY(-3px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* less movement, the same feedback: things still fade and change colour, nothing slides or scales */
+  *, *::before, *::after { scroll-behavior: auto !important; }
+  .drawer, .drawer.out { animation-name: fadeIn !important; animation-duration: 120ms !important; }
+  .drawer.out { animation-name: fadeOut !important; }
+  .acctmenu, .pop.in, .attpop, .toast:not([hidden]), .lockcard, .rbfile, .rbsent, details[open] > :not(summary) { animation-name: fadeIn !important; }
+  .btn:active:not(:disabled), .atile:active, .teamchips button:active, .mosaic .mc:active, .rb .actions button:not(.btn):active { transform: none !important; }
+  .drop.over svg, .hdrop.over svg, .bell.ping svg, .progress i { animation: none !important; }
+  .seg > .sthumb, .steps > .thumb, .tabs > .thumb { transition-duration: 1ms !important; }
+}

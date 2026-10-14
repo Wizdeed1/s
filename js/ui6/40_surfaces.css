@@ -1,0 +1,143 @@
+/* ------------------------------------------------------------------------------------------------------------- page head */
+.viewhead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 32px; }
+.viewhead > div:first-child { flex: 1 1 440px; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; row-gap: 8px; }
+.viewhead > div:first-child > h1 { grid-column: 1; grid-row: 1; }
+.viewhead > div:first-child > p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.55; max-width: 68ch; }
+/* whose page it is: a small label beside the title, not a kicker above it */
+.viewhead .eyebrow { grid-column: 2; grid-row: 1; justify-self: start; display: inline-flex; align-items: center; gap: 7px; min-height: 24px; padding: 0 9px; margin-top: 4px;
+  font: 500 12px/1 var(--text); color: var(--ink-2); border: 1px solid var(--line-2); background: var(--panel); white-space: nowrap; }
+.viewhead .eyebrow::before { content: ""; width: 6px; height: 6px; background: var(--brand); flex: none; }
+.viewhead .wsbar { flex: 0 1 auto; }
+.eyebrow { font: 500 12px/1.3 var(--text); color: var(--muted); }
+#v-wait .viewhead p { max-width: 56ch; }
+
+/* ------------------------------------------------------------------------------------------------------------- panels */
+.card { background: var(--panel); border: 1px solid var(--line); padding: 20px 22px; min-width: 0; }
+.card > h2 { margin-bottom: 12px; }
+.cardhead { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; }
+.cardhead > div:first-child { min-width: 0; flex: 1 1 360px; }
+.cardhead h2 { margin: 0; }
+.cardhead .cap, .card > .cap { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 76ch; }
+.card > .cap { margin: -6px 0 14px; }
+.card .cap { color: var(--muted); font-size: 13px; }
+h3.sub { font: 600 13px/1.4 var(--text); color: var(--ink-2); margin: 0 0 8px; }
+.cbars + h3.sub, .tablewrap + h3.sub, ol + h3.sub { margin-top: 18px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.grid2.top { align-items: start; }
+.grid2.tight { gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+details.card > summary, .sced summary, .chgcard > summary, .wslog summary { cursor: pointer; font: 600 15px/1.3 var(--display); letter-spacing: -0.01em; list-style: none; display: flex; align-items: center; gap: 10px; }
+details.card > summary::-webkit-details-marker, details > summary::-webkit-details-marker { display: none; }
+details.card > summary::before, .sced summary::before, .chgcard > summary::before, .wslog summary::before, .caldays summary::before, .pfall > summary::before, .objdone summary::before, .meobj summary::before,
+.rulelog summary::before, .cmpmore summary::before, .inclist summary::before, .rbhelp summary::before, .rb .acc summary::before, .rb .wfm-pass summary::before, .rbbrands details summary::before, .htable summary::before, .wfdd summary::before, .note details summary::before {
+  content: ""; width: 7px; height: 7px; flex: none; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); margin-right: 2px; transition: transform var(--t-base) var(--ease-out); }
+details[open] > summary::before { transform: rotate(45deg) translate(-2px, -1px) !important; }
+details.card[open] > summary { margin-bottom: 14px; }
+.success { border-color: var(--good-line); background: color-mix(in srgb, var(--good-bg) 60%, var(--panel)); }
+.success h2 { color: var(--good); }
+
+/* ------------------------------------------------------------------------------------------------------------- tables */
+.tablewrap { overflow: auto; max-height: min(66vh, 720px); background: var(--panel); border: 1px solid var(--line); overscroll-behavior: contain; }
+.card .tablewrap { border-color: var(--line); }
+table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; vertical-align: middle; }
+thead th { position: sticky; top: 0; z-index: 1; background: var(--panel-2); color: var(--muted); font: 600 12px/1.3 var(--text); border-bottom: 1px solid var(--line-2); }
+thead th .linkbtn { color: inherit; font: inherit; text-decoration: none; white-space: nowrap; }
+tbody tr { transition: background-color var(--t-fast) ease; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.inactive td { color: var(--muted); }
+td.c, th.c { text-align: center; }
+td.r, th.r { text-align: right; }
+th.chk, td.chk { width: 36px; text-align: center; padding-inline: 6px; }
+.tablewrap tbody tr { height: 40px; }
+.tablewrap tr.vspace td { padding: 0; border: 0; }
+.teamtab td, .teamtab th { padding: 7px 10px; }
+.teamtab tbody tr:last-child td, .pfteam tr.tot td, tr.tot td { font-weight: 600; background: var(--panel-2); }
+.teamtab .bad, td.num.bad, .restab td.bad, .heat td.bad { color: var(--bad); font-weight: 600; }
+td.num.low, .wfdays td.num.low { color: var(--bad); font-weight: 600; }
+table input.cell, table select.cell, table textarea.cell { border-color: transparent; background: transparent; }
+@media (hover: hover) and (pointer: fine) {
+  tbody tr:hover td { background: color-mix(in srgb, var(--panel-2) 70%, transparent); }
+  table input.cell:hover, table select.cell:hover { border-color: var(--line-2); }
+}
+
+/* ------------------------------------------------------------------------------------------------------------- numbers at a glance: one strip, cells divided by hairlines */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(156px, 1fr)); background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
+.tile { position: relative; padding: 16px 18px 15px; display: grid; align-content: start; gap: 6px; min-width: 0; box-shadow: -1px 0 0 var(--line), 0 -1px 0 var(--line); }
+.tile b { display: block; font: 600 26px/1.05 var(--text); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.tile span { color: var(--muted); font-size: 12px; line-height: 1.45; }
+.tile .tl { display: inline; color: var(--ink-2); font-weight: 600; font-size: 13px; }
+.tile.alert b { color: var(--bad); }
+.tile.good b { color: var(--good); }
+.wstiles .tile b { font-size: 26px; }
+/* label and value pairs */
+.kv { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1.5fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.kv div { background: var(--panel-2); padding: 8px 10px; min-width: 0; }
+.kv b { display: block; font: 600 14px/1.3 var(--text); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kv span { font-size: 11.5px; color: var(--muted); }
+.minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; padding: 1px; background: none; }
+.minis div { box-shadow: 0 0 0 1px var(--line); background: var(--panel); padding: 10px 12px; min-width: 0; }
+.minis b { display: block; font: 600 17px/1.25 var(--text); letter-spacing: -0.015em; font-variant-numeric: tabular-nums; }
+.minis span { font-size: 12px; color: var(--muted); }
+.minis div small { display: block; font-size: 11.5px; color: var(--muted); }
+.wsminis { grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); }
+.wsminis div.bad b { color: var(--bad); }
+
+/* ------------------------------------------------------------------------------------------------------------- messages on the page */
+.banner, .wsstatus { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); background: var(--warn-bg); border: 1px solid var(--warn-line); }
+.banner.info { background: var(--info-bg); border-color: var(--info-line); }
+.wsstatus .dot { width: 8px; height: 8px; margin-top: 6px; flex: none; background: var(--warn); }
+.wsstatus > div { min-width: 0; overflow-wrap: anywhere; }
+.wsstatus b { color: var(--ink); }
+.wsstatus.final { background: var(--good-bg); border-color: var(--good-line); } .wsstatus.final .dot { background: var(--good); }
+.wsstatus.soon { background: var(--warn-bg); border-color: var(--warn-line); }
+.wsstatus.late { background: var(--bad-bg); border-color: var(--bad-line); } .wsstatus.late .dot { background: var(--bad); }
+.wsstatus.draft { background: var(--panel); border-color: var(--line); } .wsstatus.draft .dot { background: var(--c1); }
+.lockban { margin-bottom: 12px; }
+.warns { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.warns li { font-size: 12.5px; color: var(--warn); background: var(--warn-bg); border: 1px solid var(--warn-line); padding: 6px 9px; }
+.notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.note { border: 1px solid var(--line); background: var(--panel); padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.note.decide { border-color: var(--info-line); background: var(--info-bg); }
+.note.warn { border-color: var(--warn-line); }
+.note.fixed, .note.done { border-color: var(--good-line); }
+.note .nt { display: grid; gap: 3px; min-width: 0; }
+.note .tag { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.note b { overflow-wrap: anywhere; font-weight: 600; }
+.note details summary { cursor: pointer; color: var(--ink-2); font-size: 12.5px; width: max-content; display: flex; align-items: center; gap: 8px; list-style: none; }
+.note details ul { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); max-height: 260px; overflow: auto; }
+.note .na, .note .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.note select.cell { max-width: 100%; border: 1px solid var(--line-2); }
+.empty { padding: 32px 18px; text-align: center; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+.empty b { display: block; color: var(--ink); font: 600 16px/1.3 var(--display); margin-bottom: 6px; }
+.card.empty { padding: 40px 24px; }
+/* lists of lines with actions */
+.ilist { list-style: none; margin: 0; padding: 0; display: grid; }
+.ilist li { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 10px 2px; border-top: 1px solid var(--line); font-size: 13px; }
+.ilist li:first-child { border-top: 0; }
+.ilist .nm { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ilist .sg { color: var(--muted); }
+.ilist .sp { flex: 1; }
+.ilist .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ilist select.cell { min-width: 170px; width: auto; border-color: var(--line-2); background: var(--sunk); }
+.ilist .mb { flex: none; }
+.issues { display: grid; gap: 12px; }
+.issue h3 { font-size: 14.5px; display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.issue p { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+.how, .steplist { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13.5px; color: var(--ink-2); }
+.steplist { margin: 8px 0; gap: 4px; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.checklist li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; }
+/* a bar that shows how far something is */
+.progress { height: 3px; background: var(--panel-3); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 40%; background: var(--ink); animation: slide 1s var(--ease-in-out) infinite; }
+@keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+.prog { display: inline-flex; align-items: center; gap: 8px; min-width: 120px; justify-content: flex-end; }
+.prog .bar { flex: 1; height: 4px; background: var(--panel-3); min-width: 56px; position: relative; }
+.prog .bar i { position: absolute; inset: 0 auto 0 0; background: var(--good); }
+.prog .pv { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.pbar { display: inline-block; width: 160px; height: 4px; background: var(--panel-3); position: relative; overflow: hidden; }
+.pbar i { position: absolute; inset: 0 auto 0 0; background: var(--good); transition: width 480ms var(--ease-out); }
+/* placeholders while something loads, the shape of what comes */
+.sk { display: block; height: 12px; background: linear-gradient(90deg, var(--panel-2) 25%, var(--panel-3) 50%, var(--panel-2) 75%); background-size: 200% 100%; animation: skShine 1.3s linear infinite; }
+.sk.w40 { width: 40%; } .sk.w70 { width: 70%; } .sk.w90 { width: 90%; } .sk.tall { height: 320px; }
+@keyframes skShine { from { background-position: 200% 0; } to { background-position: -200% 0; } }

@@ -1,0 +1,52 @@
+<script>
+/* The start guard, in plain old JavaScript on purpose so it runs in any browser: when the tool has not shown its first screen
+   a few seconds after the page loaded, the sign-in card says why (and what the browser said), instead of "Loading..." for ever. */
+(function () {
+  var W = window, B = W.__mcBoot = { step: '', ran: false, ok: false, folder: false, errs: [] }, t0 = new Date().getTime();
+  function note(m) { if (B.errs.length < 6) B.errs.push(String(m).slice(0, 240)); }
+  W.addEventListener('error', function (e) { if (e && e.target && e.target !== W && e.target.nodeType === 1) return; note((e && e.message ? e.message : 'Script error') + (e && e.lineno ? ' (line ' + e.lineno + ')' : '')); }, true);
+  W.addEventListener('unhandledrejection', function (e) { var r = e && e.reason; note(r && (r.message || r.name) ? (r.name && r.name !== 'Error' ? r.name + ': ' : '') + (r.message || '') : String(r)); });
+  function ua() { return navigator.userAgent || ''; }
+  function browser() {
+    var u = ua(), m;
+    if ((m = u.match(/Edg\/(\d+)/))) return 'Microsoft Edge ' + m[1];
+    if ((m = u.match(/Edge\/(\d+)/))) return 'the old Microsoft Edge (' + m[1] + ')';
+    if ((m = u.match(/OPR\/(\d+)/))) return 'Opera ' + m[1];
+    if ((m = u.match(/Chrome\/(\d+)/))) return 'Google Chrome ' + m[1];
+    if ((m = u.match(/Firefox\/(\d+)/))) return 'Firefox ' + m[1];
+    if (/Trident|MSIE/.test(u)) return 'Internet Explorer';
+    if ((m = u.match(/Version\/(\d+).*Safari/))) return 'Safari ' + m[1];
+    return 'this browser';
+  }
+  function tooOld() { var m = ua().match(/(?:Chrome|Edg)\/(\d+)/); return /Trident|MSIE|Edge\//.test(ua()) || (m && +m[1] < 86); }
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&quot;'; }); }
+  function links(repick) {
+    var L = el('lockLinks'); if (!L) return;
+    L.innerHTML = '<button type="button" class="linkbtn" id="bootRetry">Try again</button>' + (repick ? '<button type="button" class="linkbtn" id="bootPick">Choose the data folder again</button>' : '');
+    el('bootRetry').onclick = function () { location.reload(); };
+    if (repick) el('bootPick').onclick = function () { if (W.__mcRepick) W.__mcRepick(); else location.reload(); };
+  }
+  function said() { return B.errs.length ? 'What the browser said: ' + B.errs.slice(0, 2).join(' | ') : ''; }
+  function check() {
+    if (B.ok) return;
+    var t = el('lockTitle'), s = el('lockSub'), e = el('lockErr'), secs = Math.round((new Date().getTime() - t0) / 1000);
+    if (!t || !s) { setTimeout(check, 1000); return; }
+    if (!B.ran) {   // the page's script stopped while loading: nothing more will come
+      t.innerHTML = 'The tool could not start';
+      s.innerHTML = !el('mcEnd') ? '<b>This copy of the file is incomplete:</b> it stops before its end. Copy the HTML into the common folder again (it is about 2.3 MB), then open it again.'
+        : tooOld() ? '<b>' + esc(browser()) + ' is too old for this tool.</b> Open the file in the newest Microsoft Edge or Google Chrome.'
+        : 'The browser stopped the tool while it was loading (' + esc(browser()) + '). Open the file in Microsoft Edge or Google Chrome by double-clicking it in File Explorer, not in a preview. If it stops here again, copy the HTML into the common folder again: the copy may be incomplete (the file is about 2.3 MB).';
+      if (e) e.textContent = said();
+      links(false); return;
+    }
+    t.innerHTML = 'Still opening...';
+    s.innerHTML = 'Waiting ' + secs + ' seconds for ' + esc(B.step || 'the data') + '.' + (B.folder ? ' If the folder is on the network, check that you can open it in File Explorer (network or VPN), then press Try again.' : '');
+    if (e) e.textContent = said();
+    links(B.folder);
+    setTimeout(check, 3000);
+  }
+  function go() { setTimeout(function () { if (B.ok) return; if (!B.ran) check(); else setTimeout(check, 9000); }, 1500); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+})();
+</script>

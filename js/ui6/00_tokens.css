@@ -1,0 +1,100 @@
+/* ==========================================================================================================================
+   MC Monthly Report Builder: the interface.
+   One world, Beyond One's own: black and white, square corners, Poppins for the brand's voice, Inter for the work, and the
+   logo's mosaic colours only where they mean something (state, a person, a data series, the one-to-one mosaic).
+   Dark by default, like the company website; light on request (Settings › Theme). The bar at the top is black in both.
+   Built on the rules of Emil Kowalski's design engineering, Impeccable and Taste skills: tokens first, one radius, one accent,
+   tabular figures, motion only where a state changes (fast, ease-out, never on keyboard actions), every state designed.
+   ========================================================================================================================== */
+
+:root {
+  color-scheme: light;
+  /* surfaces */
+  --bg: #f6f6f4; --panel: #ffffff; --panel-2: #f1f1ee; --panel-3: #e7e7e3; --sunk: #ecece8;
+  --line: #e2e2dd; --line-2: #cacac4; --line-3: #a9a9a2;
+  /* text */
+  --ink: #121211; --ink-2: #3a3a37; --muted: #676762; --faint: #8b8b85; --inverse: #ffffff;
+  /* the shell: the black bar at the top, in both themes */
+  --shell: #0a0a0a; --shell-2: #141414; --shell-ink: #ffffff; --shell-muted: rgba(255, 255, 255, .64); --shell-faint: rgba(255, 255, 255, .42);
+  --shell-line: rgba(255, 255, 255, .12); --shell-hover: rgba(255, 255, 255, .08);
+  /* the brand: Beyond One orange, and the logo's mosaic */
+  --brand: #f26722; --brand-ink: #b8481a; --brand-soft: #fdeee6;
+  --px1: #f26722; --px2: #f8951d; --px3: #ed1c24; --px4: #0d76bd; --px5: #5f89c7; --px6: #bf9dca; --px7: #026c44; --px8: #f6adcd; --px9: #087b96;
+  /* states */
+  --good: #0f7a45; --good-bg: #e7f4ec; --good-line: #a8d8bc;
+  --warn: #965800; --warn-bg: #fcf2df; --warn-line: #ecc98a;
+  --bad: #c0242a; --bad-bg: #fcebeb; --bad-line: #f0b0b2;
+  --info: #0b6aa8; --info-bg: #e6f0f8; --info-line: #a9cbe5;
+  --focus: #f26722; --toast-act: #ff9259;
+  /* attendance codes */
+  --at: #e7f4ec; --at-ink: #0f6b3d; --off: #ecece8; --off-ink: #6b6b66; --al: #dcf0e2; --al-ink: #0e5e34; --sl: #fbf0cf; --sl-ink: #855400;
+  --abs: #fbe1e2; --abs-ink: #a8161c; --tardy: #b65000; --ot: #ece6f4; --ot-ink: #573877;
+  /* data: the validated categorical palette (dataviz reference instance) */
+  --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --c5: #e87ba4; --c6: #008300; --heat: #2a78d6; --bar: #2a78d6;
+  /* type */
+  --display: "Poppins", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  --text: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  /* space and size */
+  --maxw: 1320px; --gutter: 32px; --bar-h: 56px;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s7: 32px; --s8: 40px; --s9: 48px;
+  --ctl: 36px; --ctl-sm: 30px; --ctl-lg: 44px;
+  /* depth: only things that float over the page */
+  --shadow-pop: 0 1px 2px rgba(18, 18, 17, .06), 0 14px 36px rgba(18, 18, 17, .16);
+  --shadow-sheet: -1px 0 0 var(--line), -28px 0 56px rgba(18, 18, 17, .14);
+  --scrim: rgba(10, 10, 10, .40);
+  /* motion (Emil Kowalski): strong ease-out for things that arrive, ease-in-out for things that move, the iOS drawer curve */
+  --ease-out: cubic-bezier(.23, 1, .32, 1); --ease-in-out: cubic-bezier(.77, 0, .175, 1); --ease-drawer: cubic-bezier(.32, .72, 0, 1);
+  --t-press: 140ms; --t-fast: 160ms; --t-base: 200ms; --t-move: 240ms; --t-sheet: 340ms;
+  /* layers */
+  --z-bar: 30; --z-menu: 40; --z-scrim: 50; --z-sheet: 55; --z-pop: 65; --z-tt: 70; --z-toast: 75; --z-find: 90; --z-lock: 100;
+  /* names the older parts of the page still use */
+  --surface: var(--panel); --surface-2: var(--panel-2); --surface-3: var(--panel-3);
+  --accent: var(--ink); --accent-2: var(--ink-2); --accent-ink: var(--inverse); --accent-soft: var(--panel-2);
+  --good-soft: var(--good-bg); --warn-soft: var(--warn-bg); --bad-soft: var(--bad-bg);
+  --cta: var(--ink); --cta-ink: var(--inverse); --cta-hover: var(--brand); --thumb: var(--ink); --thumb-ink: var(--inverse);
+  --sans: var(--text); --mono: var(--text); --r: 0px;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0a0a; --panel: #121212; --panel-2: #181818; --panel-3: #222222; --sunk: #0e0e0e;
+  --line: #232323; --line-2: #343434; --line-3: #4a4a4a;
+  --ink: #f4f4f2; --ink-2: #cdcdc8; --muted: #9a9a95; --faint: #6f6f6a; --inverse: #0a0a0a;
+  --shell: #030303; --shell-2: #0d0d0d; --shell-line: rgba(255, 255, 255, .10);
+  --brand-ink: #ff9259; --brand-soft: rgba(242, 103, 34, .14);
+  --good: #4fc58d; --good-bg: rgba(79, 197, 141, .11); --good-line: rgba(79, 197, 141, .34);
+  --warn: #f2b24d; --warn-bg: rgba(242, 178, 77, .11); --warn-line: rgba(242, 178, 77, .34);
+  --bad: #ff6f6f; --bad-bg: rgba(255, 111, 111, .11); --bad-line: rgba(255, 111, 111, .36);
+  --info: #5eabeb; --info-bg: rgba(94, 171, 235, .11); --info-line: rgba(94, 171, 235, .34);
+  --focus: #ff8a4c; --toast-act: #b8481a;
+  --at: rgba(79, 197, 141, .14); --at-ink: #7fd8a8; --off: #1d1d1d; --off-ink: #85857f; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
+  --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;
+  --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --heat: #3987e5; --bar: #3987e5;
+  --shadow-pop: 0 0 0 1px #2e2e2e, 0 18px 44px rgba(0, 0, 0, .66);
+  --shadow-sheet: -1px 0 0 #2a2a2a, -28px 0 56px rgba(0, 0, 0, .6);
+  --scrim: rgba(0, 0, 0, .62);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0a0a0a; --panel: #121212; --panel-2: #181818; --panel-3: #222222; --sunk: #0e0e0e;
+    --line: #232323; --line-2: #343434; --line-3: #4a4a4a;
+    --ink: #f4f4f2; --ink-2: #cdcdc8; --muted: #9a9a95; --faint: #6f6f6a; --inverse: #0a0a0a;
+    --shell: #030303; --shell-2: #0d0d0d; --shell-line: rgba(255, 255, 255, .10);
+    --brand-ink: #ff9259; --brand-soft: rgba(242, 103, 34, .14);
+    --good: #4fc58d; --good-bg: rgba(79, 197, 141, .11); --good-line: rgba(79, 197, 141, .34);
+    --warn: #f2b24d; --warn-bg: rgba(242, 178, 77, .11); --warn-line: rgba(242, 178, 77, .34);
+    --bad: #ff6f6f; --bad-bg: rgba(255, 111, 111, .11); --bad-line: rgba(255, 111, 111, .36);
+    --info: #5eabeb; --info-bg: rgba(94, 171, 235, .11); --info-line: rgba(94, 171, 235, .34);
+    --focus: #ff8a4c; --toast-act: #b8481a;
+    --at: rgba(79, 197, 141, .14); --at-ink: #7fd8a8; --off: #1d1d1d; --off-ink: #85857f; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
+    --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;
+    --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --heat: #3987e5; --bar: #3987e5;
+    --shadow-pop: 0 0 0 1px #2e2e2e, 0 18px 44px rgba(0, 0, 0, .66);
+    --shadow-sheet: -1px 0 0 #2a2a2a, -28px 0 56px rgba(0, 0, 0, .6);
+    --scrim: rgba(0, 0, 0, .62);
+  }
+}
+/* series colours by name (lines, legends, brands) */
+.s1, .b-virgin { --sc: var(--c1); } .s2, .b-friendi { --sc: var(--c2); } .s3, .b-fpay { --sc: var(--c3); } .s4 { --sc: var(--c4); } .s5 { --sc: var(--c5); } .s6 { --sc: var(--c6); }
+/* the company logo: the white one on the black bar (both themes) */
+:root { --bl-light: none; --bl-dark: block; }

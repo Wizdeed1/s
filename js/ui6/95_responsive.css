@@ -62,7 +62,7 @@
   .ptext { font-size: 17px; line-height: 22px; }
   .roletag { display: none; }
   .appbar .tools { gap: 2px; }
-  .appbar #helpBtn, .appbar #setBtn { display: none; }
+  .appbar #helpBtn, .appbar #setBtn, .appbar .hpop:has(#themeBtn) { display: none; }   /* in the More sheet on a phone */
   .periodbtn { padding: 0 8px; }
   .periodbtn .pl, .periodbtn .pst { display: none; }
   .appbar .btn { min-width: 44px; min-height: 44px; }

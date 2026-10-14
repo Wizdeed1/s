@@ -824,6 +824,15 @@ table input.cell, table select.cell, table textarea.cell { border-color: transpa
 .blockedcard .bico svg { width: 20px; height: 20px; }
 .blockedcard h1 { font: 600 22px/28px var(--display); letter-spacing: -0.015em; }
 .blockedcard p { margin: 0; color: var(--muted); max-width: 60ch; }
+/* a long page's own list of sections (Supervisors) */
+.secnav { position: sticky; top: calc(var(--head-h) + 8px); z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px; background: color-mix(in srgb, var(--surface) 92%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
+.secnav .snl { font: 600 12px/16px var(--text); color: var(--muted); padding: 0 8px; }
+.secnav button { border: 0; background: none; color: var(--ink-2); min-height: 30px; padding: 0 10px; border-radius: var(--r-ctl); font: 500 12.5px/1 var(--text); cursor: pointer; }
+.secnav button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+@media (hover: hover) and (pointer: fine) { .secnav button:hover { background: var(--fill); color: var(--ink); } }
+@media (max-width: 767.98px) { .secnav { position: static; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .secnav button { white-space: nowrap; } }
+.savestate .linkbtn { color: var(--bad); font-weight: 600; }
 
 /* ------------------------------------------------------------------------------------------------------------- sheets from the right */
 .scrim { position: fixed; inset: 0; z-index: var(--z-scrim); background: var(--scrim); animation: fadeIn var(--t-base) ease both; }
@@ -1305,7 +1314,7 @@ b.bad, .astats b.bad { color: var(--bad); }
 .chkbody dd { margin: 0; font-size: 13px; color: var(--ink-2); line-height: 1.5; overflow-wrap: anywhere; }
 .chkbody details summary { cursor: pointer; color: var(--ink-2); font-size: 12.5px; margin-top: 6px; display: flex; gap: 8px; align-items: center; list-style: none; }
 .chkbody details ul { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; max-height: 220px; overflow: auto; }
-.chk .na { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chk .na, .chk .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .chk .na.inplace { padding: 0 14px 14px 52px; }
 .chk .na select.cell { border: 1px solid var(--ctl-line); max-width: 260px; }
 .chk.rise { animation: rise var(--t-ws) var(--ease-out) both; animation-delay: calc(var(--i, 0) * var(--stagger)); }
@@ -1365,7 +1374,7 @@ b.bad, .astats b.bad { color: var(--bad); }
 .bcard { display: grid; gap: 5px; min-width: 0; padding: 11px 0 12px; border-top: 1px solid var(--line); }
 .bcard .nm { justify-self: start; text-align: left; font-weight: 600; font-size: 13.5px; overflow-wrap: anywhere; }
 .bcard.hot .nm { display: inline-flex; align-items: baseline; gap: 7px; }
-.bcard.hot .nm::before { content: ""; width: 6px; height: 6px; flex: none; background: var(--bad); transform: translateY(-1px); }
+.bcard.hot .nm::before { content: ""; border-radius: 50%; width: 6px; height: 6px; flex: none; background: var(--bad); transform: translateY(-1px); }
 .bcard small { color: var(--muted); font-size: 12px; line-height: 1.45; }
 .bcard .spvl { font-size: 11.5px; }
 .bcard .arr { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 3px; }
@@ -1395,7 +1404,7 @@ b.bad, .astats b.bad { color: var(--bad); }
 .mosaic .mn { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; }
 .mosaic .mkey { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; font-size: 12px; color: var(--muted); }
 .mosaic .mkey span { display: inline-flex; align-items: center; gap: 6px; }
-.mosaic .mkey i { width: 10px; height: 10px; background: var(--panel-3); box-shadow: inset 0 0 0 1px var(--line-2); }
+.mosaic .mkey i { border-radius: 50%; width: 10px; height: 10px; background: var(--panel-3); box-shadow: inset 0 0 0 1px var(--line-2); }
 .mosaic .mkey i.planned { background: var(--c1); box-shadow: none; } .mosaic .mkey i.held { background: var(--c4); box-shadow: none; } .mosaic .mkey i.closed { background: var(--good); box-shadow: none; }
 @media (hover: hover) and (pointer: fine) { .mosaic .mc:hover { box-shadow: 0 0 0 2px var(--ink); } }
 
@@ -1516,7 +1525,7 @@ button.ad:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; 
 .cb .v { font-weight: 600; font-variant-numeric: tabular-nums; min-width: 54px; text-align: right; }
 .cbars.dots .track { height: 18px; background: transparent; }
 .cbars.dots .track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--line-2); }
-.cbars.dots .dot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; background: var(--bar); box-shadow: 0 0 0 2px var(--panel); }
+.cbars.dots .dot { position: absolute; top: 50%; border-radius: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; background: var(--bar); box-shadow: 0 0 0 2px var(--panel); }
 .cbars.dots .ref { top: 0; bottom: 0; }
 .cb.axis { font-size: 11px; color: var(--muted); }
 .cb.axis .ax { position: relative; display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; height: 28px; }
@@ -1587,12 +1596,12 @@ textarea.cell[data-signers] { width: 100%; min-height: 86px; resize: vertical; p
 .approvals { border-color: var(--info-line) !important; background: color-mix(in srgb, var(--info-bg) 50%, var(--panel)); }
 /* the month close */
 .calsum { font-size: 13.5px; color: var(--ink-2); } .calsum b { font: 600 22px/1 var(--text); font-variant-numeric: tabular-nums; }
-.calbar { display: flex; gap: 2px; margin: -4px 0 14px; } .calbar i { flex: 1; height: 4px; background: var(--panel-3); }
+.calbar { display: flex; gap: 2px; margin: -4px 0 14px; } .calbar i { flex: 1; height: 4px; border-radius: 2px; background: var(--fill-2); }
 .calbar i.done { background: var(--good); } .calbar i.late { background: var(--bad); } .calbar i.soon { background: var(--warn); } .calbar i.past { opacity: .45; }
 .callist { list-style: none; margin: 0; padding: 0; display: grid; }
 .callist li { display: grid; grid-template-columns: 8px 92px minmax(0, 1fr) auto auto; gap: 14px; align-items: center; padding: 9px 4px; font-size: 13px; border-top: 1px solid var(--line); }
 .callist li:first-child { border-top: 0; }
-.callist .cdot { width: 8px; height: 8px; background: var(--line-3); }
+.callist .cdot { border-radius: 50%; width: 8px; height: 8px; background: var(--line-3); }
 .callist li.done .cdot { background: var(--good); } .callist li.late .cdot { background: var(--bad); } .callist li.soon .cdot { background: var(--warn); }
 .callist li.past .clab b, .callist li.done .clab b { font-weight: 500; color: var(--ink-2); }
 .callist .cdue { font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
@@ -1742,7 +1751,7 @@ tr.fromagrow td { background: var(--panel-2); }
 .tteamwrap { margin: 0 -20px; border-top: 1px solid var(--line); }
 .tteam { font-size: 13px; }
 .tteam thead th { position: sticky; top: var(--head-h); z-index: 2; height: var(--row-h); background: var(--raised); padding: 0 12px; }
-.tteam th.rk, .tteam td.rk { width: 44px; text-align: right; color: var(--muted); padding-inline: 12px 4px; }
+.tteam th.trk, .tteam td.trk { width: 44px; text-align: right; color: var(--muted); padding-inline: 12px 4px; }
 .sorth { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font: inherit; color: inherit; border-radius: 4px; padding: 2px 0; }
 .sorth svg { width: 12px; height: 12px; opacity: 0; transition: opacity var(--t-hover) ease, transform var(--t-small) var(--ease-out); }
 th[aria-sort="ascending"] .sorth, th[aria-sort="descending"] .sorth { color: var(--ink); }
@@ -1773,17 +1782,14 @@ p.prange { padding-top: 12px; }
   .tteamwrap { margin: 0 -16px; }
   .tteam thead { display: none; }
   .tteam, .tteam tbody { display: block; }
-  .tteam tr { display: grid !important; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "rk who adh" ". st st"; gap: 6px 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); height: auto !important; }
+  .tteam tr { display: grid !important; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "rk who adh" ". el one"; gap: 6px 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); height: auto !important; }
   .tteam td { border: 0; padding: 0; }
-  .tteam td.rk { grid-area: rk; width: auto; padding: 4px 0 0; }
+  .tteam td.trk { grid-area: rk; width: auto; padding: 4px 0 0; }
   .tteam td.who { grid-area: who; min-width: 0; }
   .tteam td.who .av { display: none; }
   .tteam td[data-l="Adherence"] { grid-area: adh; align-self: start; font-size: 15px; font-weight: 600; }
-  .tteam td.num:not(.rk):not([data-l="Adherence"]), .tteam td[data-l="Eligible"], .tteam td[data-l="One-to-one"] { display: inline-flex; grid-column: 2 / -1; font-size: 12px; color: var(--ink-2); }
-  .tteam td.num:not(.rk):not([data-l="Adherence"])::before { content: attr(data-l) " "; color: var(--muted); margin-inline-end: 4px; }
   .tteam tbody tr td:nth-child(n+4) { display: none; }
-  .tteam tbody tr td[data-l="Eligible"], .tteam tbody tr td[data-l="One-to-one"] { display: inline-flex; grid-column: auto; }
-  .tteam tbody tr { grid-template-areas: "rk who adh" ". el one"; }
+  .tteam tbody tr td[data-l="Eligible"], .tteam tbody tr td[data-l="One-to-one"] { display: inline-flex; align-items: center; gap: 4px; }
   .tteam td[data-l="Eligible"] { grid-area: el; } .tteam td[data-l="One-to-one"] { grid-area: one; justify-self: end; }
   .pager { margin: 0 -16px; padding-inline: 16px; }
   .fbar { padding: 12px; }
@@ -1817,8 +1823,8 @@ p.prange { padding-top: 12px; }
 .kl { font: 600 12px/16px var(--text); color: var(--ink-2); }
 .kval { font: 600 30px/36px var(--text); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
 .kpi.un .kval { color: var(--faint); }
-.kd { display: inline-flex; align-items: center; gap: 4px; font: 500 12px/16px var(--text); color: var(--muted); min-height: 16px; }
-.kd svg { width: 11px; height: 11px; flex: none; }
+.kd { display: block; font: 500 12px/16px var(--text); color: var(--muted); min-height: 16px; }
+.kd svg { display: inline-block; width: 11px; height: 11px; vertical-align: -1px; margin-inline-end: 4px; }
 .kd.up svg { transform: rotate(180deg); }
 .kd.good { color: var(--good); } .kd.bad { color: var(--bad); } .kd.same svg, .kd.none svg { display: none; }
 .kd .vs { color: var(--muted); font-weight: 400; }
@@ -1946,7 +1952,7 @@ p.prange { padding-top: 12px; }
 .rbfiles { display: grid; gap: 4px; max-height: 280px; overflow: auto; overscroll-behavior: contain; }
 .rbfiles .hint { display: flex; align-items: center; gap: 8px; }
 .rbfile { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 2px 10px; font-size: 12px; padding: 7px 10px; background: var(--panel-2); border: 1px solid var(--line); animation: itemIn 220ms var(--ease-out) both; }
-.rbfile::before { content: ""; width: 6px; height: 6px; flex: none; background: var(--good); margin-right: -4px; }
+.rbfile::before { content: ""; border-radius: 50%; width: 6px; height: 6px; flex: none; background: var(--good); margin-right: -4px; }
 .rbfile.wfm::before { background: var(--c1); }
 .rbfile.bad { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn); }
 .rbfile.bad::before { background: var(--warn); }
@@ -2174,7 +2180,7 @@ details[open] > :not(summary) { animation: openIn var(--t-small) var(--ease-out)
   .ptext { font-size: 17px; line-height: 22px; }
   .roletag { display: none; }
   .appbar .tools { gap: 2px; }
-  .appbar #helpBtn, .appbar #setBtn { display: none; }
+  .appbar #helpBtn, .appbar #setBtn, .appbar .hpop:has(#themeBtn) { display: none; }   /* in the More sheet on a phone */
   .periodbtn { padding: 0 8px; }
   .periodbtn .pl, .periodbtn .pst { display: none; }
   .appbar .btn { min-width: 44px; min-height: 44px; }
@@ -2865,6 +2871,15 @@ details[open] > :not(summary) { animation: openIn var(--t-small) var(--ease-out)
 <aside class="drawer" id="dHelp" role="dialog" aria-modal="true" aria-labelledby="h-help" hidden>
   <header><h2 id="h-help">How to use</h2><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
   <div class="body help">
+    <section>
+      <h3>Getting around</h3>
+      <ul>
+        <li>Your pages are in the <b>sidebar</b> on the left. On a laptop it narrows to icons (point at one for its name); the button at its foot widens it again, and this browser remembers your choice. On a phone the pages are in the bar at the bottom, and <b>More</b> holds the rest.</li>
+        <li>The <b>header</b> carries the page's title, <b>Search</b> (Ctrl K), the bell with the checks (for the people who build the month), the <b>month</b> the page shows, the <b>theme</b> (System, Light or Dark) and your account. A final month shows a lock and is read-only. On Build the month comes from the exports instead; change it in Settings › Month.</li>
+        <li>The WFM roles and the senior manager start on the <b>Dashboard</b>: the month's six numbers against the month before, the trend, what is yours to do today, what needs attention, the month close, recent activity and how old each source is. Everyone else starts on their own page with Today at the top.</li>
+        <li><b>Build</b> has its own step bar: Import, Review, Export, Email. Review opens on <b>Checks</b>, the same checks as the bell, with what each one means and what happens until you act. Only three things stop a build: an empty roster, files still being read, and no export or attendance file at all.</li>
+      </ul>
+    </section>
     <section>
       <h3>Every month</h3>
       <ol>
@@ -11228,19 +11243,23 @@ function limited(fn) {
     if (active < 6) run(); else slotsQ.push(run);
   });
 }
+const failedW = new Map();   // writes that failed, by record: Try again sends the latest of each once more
 function queueWrite(key, fn) {
   const p = (chains.get(key) || Promise.resolve()).then(() => limited(fn));
   chains.set(key, p.catch(() => {}));
   inflight++; lastErr = null; setSave();
-  p.then(() => { inflight--; setSave(); }, e => { inflight--; lastErr = (e && e.code) || 'error'; setSave(); });
+  p.then(() => { inflight--; failedW.delete(key); setSave(); }, e => { inflight--; lastErr = (e && e.code) || 'error'; failedW.set(key, fn); setSave(); });
   return p;
 }
+function retrySaves() { const L = [...failedW.entries()]; failedW.clear(); lastErr = null; L.forEach(([k, fn]) => queueWrite(k, fn).catch(() => {})); setSave(); }
 function setSave() {
   const el = $('saveState'); if (!state.db) { el.textContent = state.rosterReady ? 'Test roster - changes are not saved' : ''; return; }
   if (state.db.local && state.db.persistent === false) { el.textContent = 'This browser blocks saving - changes last until you close the page'; return; }
   el.classList.toggle('bad', !!lastErr);
+  if (lastErr && failedW.size) { el.innerHTML = `Not saved (${esc(lastErr)}). Check your connection. <button class="linkbtn" data-retry>Try again</button>`; return; }
   el.textContent = lastErr ? `Not saved (${lastErr}). Check your connection and try again.` : inflight ? 'Saving…' : 'All changes saved';
 }
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-retry]')) retrySaves(); });
 // ---- the start: each wait has a time limit, and the start guard in the page head says what is being waited for
 const bootStep = (what, folder) => { const B = window.__mcBoot; if (B) { B.step = what; if (folder != null) B.folder = folder; } };
 const withTimeout = (p, ms, late) => Promise.race([Promise.resolve(p), new Promise(r => setTimeout(() => r(late), ms))]);
@@ -12763,7 +12782,8 @@ function renderSteps() {
   $('sub-import').textContent = state.pending.length ? `Reading ${plural(state.pending.length, 'file')}…` : state.attFiles.length ? `${n}/4 exports · ${state.attFiles.length} attendance` : `${n} of 4 exports`;
   $('sub-review').textContent = !state.ctx ? `${plural(rosterRows().length, 'person', 'people')}` : iss ? `${plural(iss, 'name issue')}` : 'Names match';
   $('sub-export').textContent = state.built ? (freshBuild() ? 'Downloaded' : 'Changed since build') : canBuild() ? 'Ready to build' : 'Needs files';
-  $('sub-email').textContent = `${state.mailKind === 'inc' ? 'Incentive' : 'Deduction'} ${state.mailStage === 'final' ? 'final' : 'review'}${state.mailDone[`${state.mailKind}-${state.mailStage}`] ? ' ✓' : ''}`;
+  const md = state.mailDone[`${state.mailKind}-${state.mailStage}`];   // the tool never sends: the step says what was done, and when
+  $('sub-email').textContent = md ? `${md.how || 'Copied'} ${md.at || ''} · ${state.mailKind === 'inc' ? 'incentive' : 'deduction'} ${state.mailStage === 'final' ? 'final' : 'review'}`.replace(/\s+·/, ' ·') : `${state.mailKind === 'inc' ? 'Incentive' : 'Deduction'} ${state.mailStage === 'final' ? 'final' : 'review'}`;
   document.querySelectorAll('.step').forEach(b => {
     const s = b.dataset.step;
     const done = s === 'import' ? n === 4 : s === 'review' ? !!state.ctx && !iss : s === 'export' ? !!freshBuild() : !!state.mailDone[`${state.mailKind}-${state.mailStage}`];
@@ -12775,7 +12795,7 @@ function renderSteps() {
   moveThumb(document.querySelector('.steps'), '.step[aria-current="page"]');
 }
 function renderBadges() {
-  const ck = state.notes.filter(n => n.sev === 'decide' || n.sev === 'warn').length, bc = $('bChecks'); bc.textContent = ck; bc.classList.toggle('n', ck > 0); bc.setAttribute('aria-label', plural(ck, 'check') + ' to look at');
+  const ck = checkNotes().filter(n => n.sev === 'decide' || n.sev === 'warn').length, bc = $('bChecks'); bc.textContent = ck; bc.classList.toggle('n', ck > 0); bc.setAttribute('aria-label', plural(ck, 'check') + ' to look at');
   $('bPeople').textContent = rosterRows().length; $('bHist').textContent = Object.keys(state.history).length; $('bKpi').textContent = state.kpi.size;
   const b = $('bIssues'); b.textContent = state.issues.length; b.classList.toggle('n', state.issues.length > 0);
   b.setAttribute('aria-label', plural(state.issues.length, 'issue'));
@@ -13098,7 +13118,7 @@ async function build() {
     const filename = fileNameOut();
     const c = await saveRaw(filename, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     if (c === 'ok') {
-      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), sheets: sheetsHtml(true) }; state.builtNew = true;
+      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), sheets: sheetsHtml(true) }; state.builtNew = true;
       toast(`Saved ${filename}. Nothing was sent or uploaded.`);
     } else { state.buildErr = saveMsg(c, filename); toast(state.buildErr); }
   } catch (e) { state.buildErr = 'Could not build the file: ' + (e && e.message ? e.message : e); toast(state.buildErr); }
@@ -13345,7 +13365,7 @@ function computeNotes() {
 }
 let notesPrimed = false, lastNoteIds = new Set();
 function notify() {
-  const N = state.notes, open = N.filter(n => n.sev === 'decide' || n.sev === 'warn');
+  const N = checkNotes(), open = N.filter(n => n.sev === 'decide' || n.sev === 'warn');   // counted as Review › Checks counts them
   const b = $('bellN'); b.textContent = open.length; b.hidden = !open.length;
   $('bell').setAttribute('aria-label', open.length ? `Notifications: ${plural(open.length, 'item')} to check` : 'Notifications');
   const fresh = open.filter(n => !lastNoteIds.has(n.id));
@@ -13355,7 +13375,7 @@ function notify() {
 }
 /** after files are read: one pop-up with what the checks found */
 function notesSummary() {
-  const N = state.notes, nd = N.filter(n => n.sev === 'decide').length, nw = N.filter(n => n.sev === 'warn').length;
+  const N = checkNotes(), nd = N.filter(n => n.sev === 'decide').length, nw = N.filter(n => n.sev === 'warn').length;
   const nf = state.attRes ? state.attRes.fixes.reduce((t, f) => t + (f.undoable === false ? 0 : f.count), 0) : 0;
   const parts = [nf && `${nf.toLocaleString('en-US')} attendance ${nf === 1 ? 'cell' : 'cells'} fixed`, nd && `${nd} to decide`, nw && `${plural(nw, 'thing')} to check`].filter(Boolean);
   return parts.length ? parts.join(', ') : '';
@@ -14666,8 +14686,8 @@ function snapNow(kind) {
   if (kind === 'ded') { const md = mailModel('review'); saveSnap('ded', { ded: md.dedFull, abs: md.abs ? md.abs.rows.map(a => ({ id: a.id, name: a.name, days: a.days })) : null }); }
   else { const d = incData(); if (d) saveSnap('inc', { att: d.att, adh: d.adh, aht: d.aht, y: d.y, m: d.m }); }
 }
-function markSent() {
-  state.mailDone[doneKey()] = true; renderSteps();
+function markSent(how) {
+  state.mailDone[doneKey()] = { how: how || 'Copied', at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) }; renderSteps();
   if (state.mailStage === 'review') snapNow(state.mailKind);
   if (state.mailStage === 'final' && state.mailKind === 'inc') saveMonthToHistory('final incentive email').then(k => { if (k) setTimeout(() => toast(`${ymLabel(k)} added to the history`), 3600); });
   if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(ymKey(mm.y, mm.m), 'deduction'); }   // the month-close step
@@ -15633,8 +15653,8 @@ document.querySelector('.mailform').addEventListener('click', async e => {
 $('copyMail').addEventListener('click', async () => {
   const cm = curMail();
   if (await copyRich(cm.html(state.logo ? state.logo.dataUrl : null, false), cm.text)) {
-    markSent();
-    toast(`Copied. In Outlook, start a new email and paste into the body.${cm.md.attach && mailCfg().attach ? ' Use Save attachment to get the file to attach.' : ''}`);
+    markSent('Copied');
+    toast(`Copied, nothing was sent. In Outlook, start a new email and paste into the body.${cm.md.attach && mailCfg().attach ? ' Use Save attachment to get the file to attach.' : ''}`);
   } else toast('Copy is blocked in this view. Use Download .eml instead.');
 });
 $('attBtn').addEventListener('click', async () => {
@@ -15652,9 +15672,9 @@ $('emlBtn').addEventListener('click', async () => {
   if (c === 'rejected_extension' || c === 'extension_not_enabled') {
     const zn = fn.replace(/\.eml$/, '.zip');
     c = await saveRaw(zn, new Blob([await Core.writeZip([{ name: fn, data: bytes }])], { type: 'application/zip' }));
-    if (c === 'ok') { markSent(); toast(`Saved ${zn}. This view cannot save .eml files directly, so it is inside the zip: open the zip, then the .eml.`); return; }
+    if (c === 'ok') { markSent('Downloaded'); toast(`Saved ${zn}. This view cannot save .eml files directly, so it is inside the zip: open the zip, then the .eml. Nothing was sent.`); return; }
   }
-  if (c === 'ok') { markSent(); toast(`Saved ${fn}. Open it to get a ready-to-send Outlook draft.`); } else toast(saveMsg(c, fn));
+  if (c === 'ok') { markSent('Downloaded'); toast(`Saved ${fn}. Open it to get a ready-to-send Outlook draft. Nothing was sent.`); } else toast(saveMsg(c, fn));
 });
 
 // notifications: the bell's drawer and Review › Checks show the same checks, with the same actions
@@ -16598,6 +16618,7 @@ function leaveWs() { if (state.ws === 'build') return; state.ws = 'build'; for (
 function renderWs() {
   const w = state.ws;
   if (w === 'dash') renderDash(); else if (w === 'team') renderTeam(); else if (w === 'results') renderResults(); else if (w === 'wfm') renderWfmWs(); else if (w === 'quality') renderQuality(); else if (w === 'cycle') renderCycle(); else if (w === 'me') renderMe();
+  if (w === 'cycle') sectionNav('cycleBody');
   renderAutoNote(); renderFresh(); cycleBadge(); renderToday(); syncNav();
   requestAnimationFrame(segThumbs);
 }
@@ -18111,14 +18132,14 @@ function teamTableHtml(items, set, showSR, spv) {
   const rows = view.map((x, i) => {
     const rr = x.r, on = x.p.status !== 'Inactive', below = rr && rr.adh != null && rr.adh < set.target;
     const v = c => { const z = TCOL[c].v(x); return z == null ? '–' : c === 'adh' ? (below ? belowB(z, pct(z, 1)) : esc(pct(z, 1))) : c === 'fin' ? esc(pct1(z)) : c === 'aht' ? esc(mss(z)) : c === 'tardy' ? String(Math.round(z)) : c === 'earned' ? Math.round(z).toLocaleString('en-US') : String(z); };
-    return `<tr data-row="${esc(x.p._id)}"${on ? '' : ' class="inactive"'}><td class="rk num">${from + i + 1}</td>
+    return `<tr data-row="${esc(x.p._id)}"${on ? '' : ' class="inactive"'}><td class="trk num">${from + i + 1}</td>
       <td class="who"><div class="whoin"><span class="av" aria-hidden="true"${avStyle(x.exp)}>${esc(initials(x.exp))}</span><span class="wl"><button class="linkbtn nm" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" dir="auto">${esc(x.exp)}</button>${spv ? '' : spvLine(x.p._id)}<small>${esc(Core.cleanId((effP(x.p._id) || x.p).nid) || 'No National ID')} · ${esc(unitOf(x.p))}${on ? '' : ' · Inactive'}</small></span></div></td>
       ${['adh', 'fin', showSR ? 'earned' : 'exc', 'aht', 'absent', 'tardy'].map(c => `<td class="r num${c === 'adh' && below ? ' low' : ''}" data-l="${esc(TCOL[c].l)}">${v(c)}</td>`).join('')}<td data-l="Eligible">${eligBadge(rr)}</td><td data-l="One-to-one">${oneBadge(x)}</td></tr>`;
   }).join('');
   const pager = pages > 1 ? `<nav class="pager" aria-label="Pages of agents"><span class="prange">${from + 1}–${from + view.length} of ${L.length}</span><span class="spacer"></span><button class="btn sm ghost" data-tpage="${pg - 1}"${pg ? '' : ' disabled'} aria-label="Previous page"><svg width="14" height="14" aria-hidden="true"><use href="#i-chevl"/></svg>Previous</button>${Array.from({ length: pages }, (_, i) => i).filter(i => pages <= 7 || i === 0 || i === pages - 1 || Math.abs(i - pg) <= 1).map((i, j, A) => `${j && i - A[j - 1] > 1 ? '<span class="pgap">…</span>' : ''}<button class="btn sm ${i === pg ? 'cur' : 'ghost'}" data-tpage="${i}"${i === pg ? ' aria-current="page"' : ''} aria-label="Page ${i + 1}">${i + 1}</button>`).join('')}<button class="btn sm ghost" data-tpage="${pg + 1}"${pg < pages - 1 ? '' : ' disabled'} aria-label="Next page">Next<svg width="14" height="14" aria-hidden="true"><use href="#i-chevr"/></svg></button></nav>` : `<p class="prange">${plural(L.length, 'agent')}</p>`;
   return `<div class="card tagents" id="teamAgents"><div class="cardhead"><div><h2>Agents</h2><p class="cap">Ranked by ${esc(so ? so[3] : TCOL[key].l.toLowerCase())}${dir < 0 ? ', highest first' : ', lowest first'}. Point at a name for a quick look; select a row for the agent's panel.</p></div>
     <label class="wsfield"><span>Rank by</span><select class="cell" data-tsort>${TEAM_SORTS.map(([v, l]) => `<option value="${v}"${v === state.teamSort ? ' selected' : ''}>${esc(l)}</option>`).join('')}${TEAM_SORTS.some(x => x[0] === state.teamSort) ? '' : `<option value="${esc(key)}" selected>${esc(TCOL[key].l)}</option>`}</select></label></div>
-    <div class="tteamwrap"><table class="tteam"><caption class="sr">Agents for the month, ${esc(TCOL[key].l)} order</caption><thead><tr><th scope="col" class="rk">#</th>${cols.map(th).join('')}</tr></thead><tbody>${rows}</tbody></table></div>${pager}</div>`;
+    <div class="tteamwrap"><table class="tteam"><caption class="sr">Agents for the month, ${esc(TCOL[key].l)} order</caption><thead><tr><th scope="col" class="trk">#</th>${cols.map(th).join('')}</tr></thead><tbody>${rows}</tbody></table></div>${pager}</div>`;
 }
 const teamCountText = (shown, n, so) => `${shown === n ? plural(n, 'agent') : `${shown} of ${plural(n, 'agent')}`}, ranked by ${so[3]}${so[0] === 'name' ? '' : ' (number 1 first)'}. Point at a name for a quick look; select the row for the full profile, history and forms.`;
 /** the senior manager's view of the one-to-ones: who has one arranged and who does not yet, by supervisor; the supervisors do the rest */
@@ -18310,7 +18331,7 @@ $('teamBody').addEventListener('click', e => {
   const tb = t.closest('[data-ttab]'); if (tb) { teamTabTo(tb.dataset.ttab); return; }
   const sc = t.closest('[data-tsortc]'); if (sc) { const k2 = sc.dataset.tsortc, C = TCOL[k2]; if (state.teamSort === k2) state.teamDir = (state.teamDir || C.d) === 'asc' ? 'desc' : 'asc'; else { state.teamSort = k2; state.teamDir = C.d; } state.teamPage = 0; renderWs(); const b = $('teamBody').querySelector(`[data-tsortc="${k2}"]`); if (b) b.focus(); return; }
   const pg = t.closest('[data-tpage]'); if (pg && !pg.disabled) { state.teamPage = +pg.dataset.tpage; renderWs(); const top = $('teamAgents'); if (top) top.scrollIntoView({ block: 'start' }); const b = $('teamBody').querySelector('.pager [aria-current="page"]'); if (b) b.focus({ preventScroll: true }); return; }
-  const row = t.closest('tr[data-row]'); if (row && !t.closest('button, a, input, select')) { openPerson(row.dataset.row); }
+  const row = t.closest('tr[data-row]'); if (row && !t.closest('button, a, input, select')) { const nb = row.querySelector('[data-open]'); if (nb) nb.focus({ preventScroll: true }); openPerson(row.dataset.row); }
 });
 function teamTabTo(v, focus = true) { state.teamTab = v; renderWs(); if (focus) { const b = $('teamBody').querySelector(`[data-ttab="${v}"]`); if (b) b.focus(); } }
 $('teamBody').addEventListener('keydown', e => {
@@ -22450,6 +22471,27 @@ window.addEventListener('beforeunload', e => { if (state.pending.length || infli
 // ---- the header's shadow once the page scrolls under it, and the skip link lands on the page
 $('skipLink').addEventListener('click', e => { e.preventDefault(); const m = $('main'); m.focus({ preventScroll: true }); m.scrollIntoView({ block: 'start' }); });
 applyRail(); syncTheme();
+// ---- a long page (Supervisors) gets a local list of its sections, so each one is a click away
+function sectionNav(bodyId) {
+  const body = $(bodyId); if (!body) return;
+  const old = body.querySelector(':scope > .secnav'); if (old) old.remove();
+  const S = [...body.children].filter(el => el.matches('.card, details.card')).map((el, i) => {
+    const h = el.matches('details') ? el.querySelector(':scope > summary') : el.querySelector('h2'); if (!h) return null;
+    const t = normSpace(h.textContent).replace(/\s*·.*$/, ''); if (!t) return null;
+    if (!el.id) el.id = `${bodyId}-s${i}`; return { id: el.id, t };
+  }).filter(Boolean);
+  if (S.length < 4) return;
+  const nav = document.createElement('nav'); nav.className = 'secnav'; nav.setAttribute('aria-label', 'On this page');
+  nav.innerHTML = `<span class="snl">On this page</span>${S.map(x => `<button data-sec="${esc(x.id)}">${esc(x.t)}</button>`).join('')}`;
+  body.prepend(nav);
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.secnav [data-sec]'); if (!b) return;
+  const el = $(b.dataset.sec); if (!el) return;
+  if (el.matches('details') && !el.open) el.open = true;
+  el.scrollIntoView({ block: 'start', behavior: RM() ? 'auto' : 'smooth' });
+  const f = el.querySelector('h2, summary'); if (f) { f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
+});
 
 // ================================================================ BUILD (Option C): the import log, Review › Checks, readiness, the build dialog
 // The checks are the bell's checks (computeNotes), shown as a tab in Review (D5) with five filter tiles. Each row expands to
@@ -22460,7 +22502,7 @@ Object.assign(state, { chkFilter: '', chkOpen: new Set(), chkAt: 0 });
 
 // ---------------------------------------------------------------- the import log (this session only, never saved)
 const IMP_LOG = [];
-const hhmm = (d = new Date()) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const hhmm = (d = new Date()) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 function impLogAdd(kind, text) { IMP_LOG.unshift({ at: new Date(), kind, text }); if (IMP_LOG.length > 60) IMP_LOG.length = 60; renderImpLog(); }
 /** what the page holds before files are read, to say afterwards what each file did */
 function impSnap() {
@@ -22543,7 +22585,7 @@ function chkWhy(n) {
 /** Genesys names not on the roster: one check each, so each one can be linked in place */
 function checkNotes() {
   const N = state.notes.filter(n => n.id !== 'gen-unm'), gen = state.notes.find(n => n.id === 'gen-unm');
-  if (gen) for (const x of state.issues) N.push({ id: 'gen:' + x.key, sev: 'warn', group: 'Genesys', title: `Not on the roster: ${x.name}`, body: `In the ${x.where.map(w => WHERE[w]).join(', ')} export${x.where.length > 1 ? 's' : ''}.${x.sugg ? ` Looks like ${x.sugg.name}.` : ' No close match on the roster.'}`, issue: x.key });
+  if (gen) for (const x of state.issues) N.push({ id: 'gen:' + x.key, sev: 'warn', group: 'Genesys', title: `Not on the roster: ${x.name}`, body: `In the ${x.where.map(w => WHERE[w]).join(', ')} export${x.where.length > 1 ? 's' : ''}.${x.sugg ? ` Looks like ${x.sugg.name.replace(/\.$/, '')}.` : ' No close match on the roster.'}`, issue: x.key });
   return N;
 }
 function checkRowHtml(n, acts, list) {
@@ -22752,16 +22794,23 @@ function dashChartHtml(months, mt, narrow) {
   if (!vals.length) return `<div class="empty"><b>Nothing to draw</b>No ${esc(mt.label.toLowerCase())} in these months for the groups shown.</div>`;
   let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * 0.12 || Math.abs(hi) * 0.05 || 1; lo -= pad; hi += pad;
   if (mt.k === 'adh' || mt.k === 'fin') { lo = Math.max(0, lo); hi = Math.min(1.02, hi); }
+  // even steps on the axis (0.5 pts, 5 s, 10 days …), never odd values
+  const isP = mt.k === 'adh' || mt.k === 'fin' || mt.pct, raw = (hi - lo) / 3, mag = Math.pow(10, Math.floor(Math.log10(raw))), step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(x => x >= raw) || 10 * mag;
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
   const n = months.length, X = i => L + (n === 1 ? (W - L - R) / 2 : (i / (n - 1)) * (W - L - R)), Y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
-  const ticks = [0, 1, 2, 3].map(t => lo + (hi - lo) * t / 3), fmt = v => fmtM(mt, v);
-  const grid = ticks.map(t => `<line class="g" x1="${L}" x2="${W - R}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/><text x="${L - 8}" y="${(Y(t) + 4).toFixed(1)}" text-anchor="end">${esc(fmt(t))}</text>`).join('');
+  const ticks = []; for (let t = lo; t <= hi + step / 2; t += step) ticks.push(t);
+  const fmt = v => fmtM(mt, v), fmtAx = v => (isP ? `${(v * 100).toFixed(step * 100 < 1 ? 1 : 0)}%` : mt.k === 'aht' ? mss(v) : fmtM(mt, v));
+  const grid = ticks.map(t => `<line class="g" x1="${L}" x2="${W - R}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/><text x="${L - 8}" y="${(Y(t) + 4).toFixed(1)}" text-anchor="end">${esc(fmtAx(t))}</text>`).join('');
+  // the end labels never sit on top of each other: sorted by height, pushed 14 px apart
+  const ends = narrow ? [] : on.map(s => { const i = s.values.map((v, j) => (v == null ? -1 : j)).filter(j => j >= 0).pop(); return i == null || i < 0 ? null : { s, i, y: Y(s.values[i]) }; }).filter(Boolean).sort((a, b) => a.y - b.y);
+  for (let j = 1; j < ends.length; j++) if (ends[j].y - ends[j - 1].y < 14) ends[j].y = ends[j - 1].y + 14;
+  const endAt = new Map(ends.map(e => [e.s.name, e]));
   const xl = months.map((x, i) => (narrow && n > 6 && i % 2 && i !== n - 1) ? '' : `<text x="${X(i).toFixed(1)}" y="${H - 8}" text-anchor="middle">${esc(MON[+x.slice(5) - 1])}</text>`).join('');
   const tgt = mt.k === 'adh' ? `<line class="tg" x1="${L}" x2="${W - R}" y1="${Y(set.target).toFixed(1)}" y2="${Y(set.target).toFixed(1)}"/><text class="tl" x="${W - R + 4}" y="${(Y(set.target) + 4).toFixed(1)}">Target ${pct(set.target, 0)}</text>` : '';
   const lines = on.map(s => {
     const pts = s.values.map((v, i) => (v == null ? null : [X(i), Y(v)])), segs = []; let cur = [];
     pts.forEach(p => { if (p) cur.push(p); else if (cur.length) { segs.push(cur); cur = []; } }); if (cur.length) segs.push(cur);
-    const lastI = s.values.map((v, i) => (v == null ? -1 : i)).filter(i => i >= 0).pop();
-    return `<g class="ser s${s.c}">${segs.map(sg => `<polyline class="dline" pathLength="1" points="${sg.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')}"/>`).join('')}${pts.map((p, i) => (p ? `<circle class="dpt${i === state.dashPt ? ' on' : ''}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i === state.dashPt ? 4.5 : 3}"/>` : '')).join('')}${!narrow && lastI != null && lastI >= 0 ? `<text class="el" x="${(X(lastI) + 8).toFixed(1)}" y="${(Y(s.values[lastI]) + 4).toFixed(1)}">${esc(s.name)}</text>` : ''}</g>`;
+    return `<g class="ser s${s.c}">${segs.map(sg => `<polyline class="dline" pathLength="1" points="${sg.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')}"/>`).join('')}${pts.map((p, i) => (p ? `<circle class="dpt${i === state.dashPt ? ' on' : ''}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i === state.dashPt ? 4.5 : 3}"/>` : '')).join('')}${endAt.has(s.name) ? `<text class="el" x="${(X(endAt.get(s.name).i) + 8).toFixed(1)}" y="${(endAt.get(s.name).y + 4).toFixed(1)}">${esc(s.name)}</text>` : ''}</g>`;
   }).join('');
   const pi = state.dashPt >= 0 && state.dashPt < n ? state.dashPt : -1;
   const cross = pi >= 0 ? `<line class="xh on" x1="${X(pi).toFixed(1)}" x2="${X(pi).toFixed(1)}" y1="${T}" y2="${H - B}"/>` : '';

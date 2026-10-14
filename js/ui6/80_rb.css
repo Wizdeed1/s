@@ -22,7 +22,7 @@
 .rbfiles { display: grid; gap: 4px; max-height: 280px; overflow: auto; overscroll-behavior: contain; }
 .rbfiles .hint { display: flex; align-items: center; gap: 8px; }
 .rbfile { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 2px 10px; font-size: 12px; padding: 7px 10px; background: var(--panel-2); border: 1px solid var(--line); animation: itemIn 220ms var(--ease-out) both; }
-.rbfile::before { content: ""; width: 6px; height: 6px; flex: none; background: var(--good); margin-right: -4px; }
+.rbfile::before { content: ""; border-radius: 50%; width: 6px; height: 6px; flex: none; background: var(--good); margin-right: -4px; }
 .rbfile.wfm::before { background: var(--c1); }
 .rbfile.bad { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn); }
 .rbfile.bad::before { background: var(--warn); }

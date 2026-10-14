@@ -69,16 +69,23 @@ function dashChartHtml(months, mt, narrow) {
   if (!vals.length) return `<div class="empty"><b>Nothing to draw</b>No ${esc(mt.label.toLowerCase())} in these months for the groups shown.</div>`;
   let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * 0.12 || Math.abs(hi) * 0.05 || 1; lo -= pad; hi += pad;
   if (mt.k === 'adh' || mt.k === 'fin') { lo = Math.max(0, lo); hi = Math.min(1.02, hi); }
+  // even steps on the axis (0.5 pts, 5 s, 10 days …), never odd values
+  const isP = mt.k === 'adh' || mt.k === 'fin' || mt.pct, raw = (hi - lo) / 3, mag = Math.pow(10, Math.floor(Math.log10(raw))), step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(x => x >= raw) || 10 * mag;
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
   const n = months.length, X = i => L + (n === 1 ? (W - L - R) / 2 : (i / (n - 1)) * (W - L - R)), Y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
-  const ticks = [0, 1, 2, 3].map(t => lo + (hi - lo) * t / 3), fmt = v => fmtM(mt, v);
-  const grid = ticks.map(t => `<line class="g" x1="${L}" x2="${W - R}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/><text x="${L - 8}" y="${(Y(t) + 4).toFixed(1)}" text-anchor="end">${esc(fmt(t))}</text>`).join('');
+  const ticks = []; for (let t = lo; t <= hi + step / 2; t += step) ticks.push(t);
+  const fmt = v => fmtM(mt, v), fmtAx = v => (isP ? `${(v * 100).toFixed(step * 100 < 1 ? 1 : 0)}%` : mt.k === 'aht' ? mss(v) : fmtM(mt, v));
+  const grid = ticks.map(t => `<line class="g" x1="${L}" x2="${W - R}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/><text x="${L - 8}" y="${(Y(t) + 4).toFixed(1)}" text-anchor="end">${esc(fmtAx(t))}</text>`).join('');
+  // the end labels never sit on top of each other: sorted by height, pushed 14 px apart
+  const ends = narrow ? [] : on.map(s => { const i = s.values.map((v, j) => (v == null ? -1 : j)).filter(j => j >= 0).pop(); return i == null || i < 0 ? null : { s, i, y: Y(s.values[i]) }; }).filter(Boolean).sort((a, b) => a.y - b.y);
+  for (let j = 1; j < ends.length; j++) if (ends[j].y - ends[j - 1].y < 14) ends[j].y = ends[j - 1].y + 14;
+  const endAt = new Map(ends.map(e => [e.s.name, e]));
   const xl = months.map((x, i) => (narrow && n > 6 && i % 2 && i !== n - 1) ? '' : `<text x="${X(i).toFixed(1)}" y="${H - 8}" text-anchor="middle">${esc(MON[+x.slice(5) - 1])}</text>`).join('');
   const tgt = mt.k === 'adh' ? `<line class="tg" x1="${L}" x2="${W - R}" y1="${Y(set.target).toFixed(1)}" y2="${Y(set.target).toFixed(1)}"/><text class="tl" x="${W - R + 4}" y="${(Y(set.target) + 4).toFixed(1)}">Target ${pct(set.target, 0)}</text>` : '';
   const lines = on.map(s => {
     const pts = s.values.map((v, i) => (v == null ? null : [X(i), Y(v)])), segs = []; let cur = [];
     pts.forEach(p => { if (p) cur.push(p); else if (cur.length) { segs.push(cur); cur = []; } }); if (cur.length) segs.push(cur);
-    const lastI = s.values.map((v, i) => (v == null ? -1 : i)).filter(i => i >= 0).pop();
-    return `<g class="ser s${s.c}">${segs.map(sg => `<polyline class="dline" pathLength="1" points="${sg.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')}"/>`).join('')}${pts.map((p, i) => (p ? `<circle class="dpt${i === state.dashPt ? ' on' : ''}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i === state.dashPt ? 4.5 : 3}"/>` : '')).join('')}${!narrow && lastI != null && lastI >= 0 ? `<text class="el" x="${(X(lastI) + 8).toFixed(1)}" y="${(Y(s.values[lastI]) + 4).toFixed(1)}">${esc(s.name)}</text>` : ''}</g>`;
+    return `<g class="ser s${s.c}">${segs.map(sg => `<polyline class="dline" pathLength="1" points="${sg.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')}"/>`).join('')}${pts.map((p, i) => (p ? `<circle class="dpt${i === state.dashPt ? ' on' : ''}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i === state.dashPt ? 4.5 : 3}"/>` : '')).join('')}${endAt.has(s.name) ? `<text class="el" x="${(X(endAt.get(s.name).i) + 8).toFixed(1)}" y="${(endAt.get(s.name).y + 4).toFixed(1)}">${esc(s.name)}</text>` : ''}</g>`;
   }).join('');
   const pi = state.dashPt >= 0 && state.dashPt < n ? state.dashPt : -1;
   const cross = pi >= 0 ? `<line class="xh on" x1="${X(pi).toFixed(1)}" x2="${X(pi).toFixed(1)}" y1="${T}" y2="${H - B}"/>` : '';

@@ -231,3 +231,24 @@ window.addEventListener('beforeunload', e => { if (state.pending.length || infli
 // ---- the header's shadow once the page scrolls under it, and the skip link lands on the page
 $('skipLink').addEventListener('click', e => { e.preventDefault(); const m = $('main'); m.focus({ preventScroll: true }); m.scrollIntoView({ block: 'start' }); });
 applyRail(); syncTheme();
+// ---- a long page (Supervisors) gets a local list of its sections, so each one is a click away
+function sectionNav(bodyId) {
+  const body = $(bodyId); if (!body) return;
+  const old = body.querySelector(':scope > .secnav'); if (old) old.remove();
+  const S = [...body.children].filter(el => el.matches('.card, details.card')).map((el, i) => {
+    const h = el.matches('details') ? el.querySelector(':scope > summary') : el.querySelector('h2'); if (!h) return null;
+    const t = normSpace(h.textContent).replace(/\s*·.*$/, ''); if (!t) return null;
+    if (!el.id) el.id = `${bodyId}-s${i}`; return { id: el.id, t };
+  }).filter(Boolean);
+  if (S.length < 4) return;
+  const nav = document.createElement('nav'); nav.className = 'secnav'; nav.setAttribute('aria-label', 'On this page');
+  nav.innerHTML = `<span class="snl">On this page</span>${S.map(x => `<button data-sec="${esc(x.id)}">${esc(x.t)}</button>`).join('')}`;
+  body.prepend(nav);
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.secnav [data-sec]'); if (!b) return;
+  const el = $(b.dataset.sec); if (!el) return;
+  if (el.matches('details') && !el.open) el.open = true;
+  el.scrollIntoView({ block: 'start', behavior: RM() ? 'auto' : 'smooth' });
+  const f = el.querySelector('h2, summary'); if (f) { f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
+});

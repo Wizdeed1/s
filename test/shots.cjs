@@ -20,6 +20,7 @@ for (const theme of ['dark', 'light']) for (const [role, wss] of Object.entries(
   for (const ws of wss) S.push({ name: `${role}-${ws}-${theme}`, role, ws, theme, w: 1440, h: 900 });
 for (const [role, ws] of [['wfm', 'dash'], ['wfm', 'team'], ['user', 'build'], ['spv', 'team']]) S.push({ name: `${role}-${ws}-phone`, role, ws, theme: 'dark', w: 390, h: 844 });
 S.push({ name: 'wfm-dash-laptop', role: 'wfm', ws: 'dash', theme: 'dark', w: 1180, h: 820 });
+for (const [role, ws] of [['wfm', 'dash'], ['wfm', 'team'], ['user', 'build'], ['senior', 'cycle']]) S.push({ name: `${role}-${ws}-tablet`, role, ws, theme: 'light', w: 900, h: 1100 });
 (async () => {
   const b = await chromium.launch();
   let bad = 0;

@@ -108,19 +108,23 @@ function limited(fn) {
     if (active < 6) run(); else slotsQ.push(run);
   });
 }
+const failedW = new Map();   // writes that failed, by record: Try again sends the latest of each once more
 function queueWrite(key, fn) {
   const p = (chains.get(key) || Promise.resolve()).then(() => limited(fn));
   chains.set(key, p.catch(() => {}));
   inflight++; lastErr = null; setSave();
-  p.then(() => { inflight--; setSave(); }, e => { inflight--; lastErr = (e && e.code) || 'error'; setSave(); });
+  p.then(() => { inflight--; failedW.delete(key); setSave(); }, e => { inflight--; lastErr = (e && e.code) || 'error'; failedW.set(key, fn); setSave(); });
   return p;
 }
+function retrySaves() { const L = [...failedW.entries()]; failedW.clear(); lastErr = null; L.forEach(([k, fn]) => queueWrite(k, fn).catch(() => {})); setSave(); }
 function setSave() {
   const el = $('saveState'); if (!state.db) { el.textContent = state.rosterReady ? 'Test roster - changes are not saved' : ''; return; }
   if (state.db.local && state.db.persistent === false) { el.textContent = 'This browser blocks saving - changes last until you close the page'; return; }
   el.classList.toggle('bad', !!lastErr);
+  if (lastErr && failedW.size) { el.innerHTML = `Not saved (${esc(lastErr)}). Check your connection. <button class="linkbtn" data-retry>Try again</button>`; return; }
   el.textContent = lastErr ? `Not saved (${lastErr}). Check your connection and try again.` : inflight ? 'Saving…' : 'All changes saved';
 }
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-retry]')) retrySaves(); });
 // ---- the start: each wait has a time limit, and the start guard in the page head says what is being waited for
 const bootStep = (what, folder) => { const B = window.__mcBoot; if (B) { B.step = what; if (folder != null) B.folder = folder; } };
 const withTimeout = (p, ms, late) => Promise.race([Promise.resolve(p), new Promise(r => setTimeout(() => r(late), ms))]);
@@ -603,7 +607,8 @@ function renderSteps() {
   $('sub-import').textContent = state.pending.length ? `Reading ${plural(state.pending.length, 'file')}…` : state.attFiles.length ? `${n}/4 exports · ${state.attFiles.length} attendance` : `${n} of 4 exports`;
   $('sub-review').textContent = !state.ctx ? `${plural(rosterRows().length, 'person', 'people')}` : iss ? `${plural(iss, 'name issue')}` : 'Names match';
   $('sub-export').textContent = state.built ? (freshBuild() ? 'Downloaded' : 'Changed since build') : canBuild() ? 'Ready to build' : 'Needs files';
-  $('sub-email').textContent = `${state.mailKind === 'inc' ? 'Incentive' : 'Deduction'} ${state.mailStage === 'final' ? 'final' : 'review'}${state.mailDone[`${state.mailKind}-${state.mailStage}`] ? ' ✓' : ''}`;
+  const md = state.mailDone[`${state.mailKind}-${state.mailStage}`];   // the tool never sends: the step says what was done, and when
+  $('sub-email').textContent = md ? `${md.how || 'Copied'} ${md.at || ''} · ${state.mailKind === 'inc' ? 'incentive' : 'deduction'} ${state.mailStage === 'final' ? 'final' : 'review'}`.replace(/\s+·/, ' ·') : `${state.mailKind === 'inc' ? 'Incentive' : 'Deduction'} ${state.mailStage === 'final' ? 'final' : 'review'}`;
   document.querySelectorAll('.step').forEach(b => {
     const s = b.dataset.step;
     const done = s === 'import' ? n === 4 : s === 'review' ? !!state.ctx && !iss : s === 'export' ? !!freshBuild() : !!state.mailDone[`${state.mailKind}-${state.mailStage}`];
@@ -615,7 +620,7 @@ function renderSteps() {
   moveThumb(document.querySelector('.steps'), '.step[aria-current="page"]');
 }
 function renderBadges() {
-  const ck = state.notes.filter(n => n.sev === 'decide' || n.sev === 'warn').length, bc = $('bChecks'); bc.textContent = ck; bc.classList.toggle('n', ck > 0); bc.setAttribute('aria-label', plural(ck, 'check') + ' to look at');
+  const ck = checkNotes().filter(n => n.sev === 'decide' || n.sev === 'warn').length, bc = $('bChecks'); bc.textContent = ck; bc.classList.toggle('n', ck > 0); bc.setAttribute('aria-label', plural(ck, 'check') + ' to look at');
   $('bPeople').textContent = rosterRows().length; $('bHist').textContent = Object.keys(state.history).length; $('bKpi').textContent = state.kpi.size;
   const b = $('bIssues'); b.textContent = state.issues.length; b.classList.toggle('n', state.issues.length > 0);
   b.setAttribute('aria-label', plural(state.issues.length, 'issue'));
@@ -938,7 +943,7 @@ async function build() {
     const filename = fileNameOut();
     const c = await saveRaw(filename, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     if (c === 'ok') {
-      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), sheets: sheetsHtml(true) }; state.builtNew = true;
+      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), sheets: sheetsHtml(true) }; state.builtNew = true;
       toast(`Saved ${filename}. Nothing was sent or uploaded.`);
     } else { state.buildErr = saveMsg(c, filename); toast(state.buildErr); }
   } catch (e) { state.buildErr = 'Could not build the file: ' + (e && e.message ? e.message : e); toast(state.buildErr); }
@@ -1185,7 +1190,7 @@ function computeNotes() {
 }
 let notesPrimed = false, lastNoteIds = new Set();
 function notify() {
-  const N = state.notes, open = N.filter(n => n.sev === 'decide' || n.sev === 'warn');
+  const N = checkNotes(), open = N.filter(n => n.sev === 'decide' || n.sev === 'warn');   // counted as Review › Checks counts them
   const b = $('bellN'); b.textContent = open.length; b.hidden = !open.length;
   $('bell').setAttribute('aria-label', open.length ? `Notifications: ${plural(open.length, 'item')} to check` : 'Notifications');
   const fresh = open.filter(n => !lastNoteIds.has(n.id));
@@ -1195,7 +1200,7 @@ function notify() {
 }
 /** after files are read: one pop-up with what the checks found */
 function notesSummary() {
-  const N = state.notes, nd = N.filter(n => n.sev === 'decide').length, nw = N.filter(n => n.sev === 'warn').length;
+  const N = checkNotes(), nd = N.filter(n => n.sev === 'decide').length, nw = N.filter(n => n.sev === 'warn').length;
   const nf = state.attRes ? state.attRes.fixes.reduce((t, f) => t + (f.undoable === false ? 0 : f.count), 0) : 0;
   const parts = [nf && `${nf.toLocaleString('en-US')} attendance ${nf === 1 ? 'cell' : 'cells'} fixed`, nd && `${nd} to decide`, nw && `${plural(nw, 'thing')} to check`].filter(Boolean);
   return parts.length ? parts.join(', ') : '';
@@ -2506,8 +2511,8 @@ function snapNow(kind) {
   if (kind === 'ded') { const md = mailModel('review'); saveSnap('ded', { ded: md.dedFull, abs: md.abs ? md.abs.rows.map(a => ({ id: a.id, name: a.name, days: a.days })) : null }); }
   else { const d = incData(); if (d) saveSnap('inc', { att: d.att, adh: d.adh, aht: d.aht, y: d.y, m: d.m }); }
 }
-function markSent() {
-  state.mailDone[doneKey()] = true; renderSteps();
+function markSent(how) {
+  state.mailDone[doneKey()] = { how: how || 'Copied', at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) }; renderSteps();
   if (state.mailStage === 'review') snapNow(state.mailKind);
   if (state.mailStage === 'final' && state.mailKind === 'inc') saveMonthToHistory('final incentive email').then(k => { if (k) setTimeout(() => toast(`${ymLabel(k)} added to the history`), 3600); });
   if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(ymKey(mm.y, mm.m), 'deduction'); }   // the month-close step
@@ -3473,8 +3478,8 @@ document.querySelector('.mailform').addEventListener('click', async e => {
 $('copyMail').addEventListener('click', async () => {
   const cm = curMail();
   if (await copyRich(cm.html(state.logo ? state.logo.dataUrl : null, false), cm.text)) {
-    markSent();
-    toast(`Copied. In Outlook, start a new email and paste into the body.${cm.md.attach && mailCfg().attach ? ' Use Save attachment to get the file to attach.' : ''}`);
+    markSent('Copied');
+    toast(`Copied, nothing was sent. In Outlook, start a new email and paste into the body.${cm.md.attach && mailCfg().attach ? ' Use Save attachment to get the file to attach.' : ''}`);
   } else toast('Copy is blocked in this view. Use Download .eml instead.');
 });
 $('attBtn').addEventListener('click', async () => {
@@ -3492,9 +3497,9 @@ $('emlBtn').addEventListener('click', async () => {
   if (c === 'rejected_extension' || c === 'extension_not_enabled') {
     const zn = fn.replace(/\.eml$/, '.zip');
     c = await saveRaw(zn, new Blob([await Core.writeZip([{ name: fn, data: bytes }])], { type: 'application/zip' }));
-    if (c === 'ok') { markSent(); toast(`Saved ${zn}. This view cannot save .eml files directly, so it is inside the zip: open the zip, then the .eml.`); return; }
+    if (c === 'ok') { markSent('Downloaded'); toast(`Saved ${zn}. This view cannot save .eml files directly, so it is inside the zip: open the zip, then the .eml. Nothing was sent.`); return; }
   }
-  if (c === 'ok') { markSent(); toast(`Saved ${fn}. Open it to get a ready-to-send Outlook draft.`); } else toast(saveMsg(c, fn));
+  if (c === 'ok') { markSent('Downloaded'); toast(`Saved ${fn}. Open it to get a ready-to-send Outlook draft. Nothing was sent.`); } else toast(saveMsg(c, fn));
 });
 
 // notifications: the bell's drawer and Review › Checks show the same checks, with the same actions

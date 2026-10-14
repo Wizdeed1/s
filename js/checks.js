@@ -7,7 +7,7 @@ Object.assign(state, { chkFilter: '', chkOpen: new Set(), chkAt: 0 });
 
 // ---------------------------------------------------------------- the import log (this session only, never saved)
 const IMP_LOG = [];
-const hhmm = (d = new Date()) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const hhmm = (d = new Date()) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 function impLogAdd(kind, text) { IMP_LOG.unshift({ at: new Date(), kind, text }); if (IMP_LOG.length > 60) IMP_LOG.length = 60; renderImpLog(); }
 /** what the page holds before files are read, to say afterwards what each file did */
 function impSnap() {
@@ -90,7 +90,7 @@ function chkWhy(n) {
 /** Genesys names not on the roster: one check each, so each one can be linked in place */
 function checkNotes() {
   const N = state.notes.filter(n => n.id !== 'gen-unm'), gen = state.notes.find(n => n.id === 'gen-unm');
-  if (gen) for (const x of state.issues) N.push({ id: 'gen:' + x.key, sev: 'warn', group: 'Genesys', title: `Not on the roster: ${x.name}`, body: `In the ${x.where.map(w => WHERE[w]).join(', ')} export${x.where.length > 1 ? 's' : ''}.${x.sugg ? ` Looks like ${x.sugg.name}.` : ' No close match on the roster.'}`, issue: x.key });
+  if (gen) for (const x of state.issues) N.push({ id: 'gen:' + x.key, sev: 'warn', group: 'Genesys', title: `Not on the roster: ${x.name}`, body: `In the ${x.where.map(w => WHERE[w]).join(', ')} export${x.where.length > 1 ? 's' : ''}.${x.sugg ? ` Looks like ${x.sugg.name.replace(/\.$/, '')}.` : ' No close match on the roster.'}`, issue: x.key });
   return N;
 }
 function checkRowHtml(n, acts, list) {

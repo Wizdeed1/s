@@ -369,6 +369,7 @@ function leaveWs() { if (state.ws === 'build') return; state.ws = 'build'; for (
 function renderWs() {
   const w = state.ws;
   if (w === 'dash') renderDash(); else if (w === 'team') renderTeam(); else if (w === 'results') renderResults(); else if (w === 'wfm') renderWfmWs(); else if (w === 'quality') renderQuality(); else if (w === 'cycle') renderCycle(); else if (w === 'me') renderMe();
+  if (w === 'cycle') sectionNav('cycleBody');
   renderAutoNote(); renderFresh(); cycleBadge(); renderToday(); syncNav();
   requestAnimationFrame(segThumbs);
 }

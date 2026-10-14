@@ -42,7 +42,7 @@ function renderMe() {
   if (!rec) { body.innerHTML = prof + emptyCard(T('Nothing here yet'), T('Your results show here once your supervisor or the WFM team shares the month with you.')); return; }
   const fin = rec.status === 'final', w = objWindow(rec, k), ob = w.open;
   const status = `<div class="wsstatus ${fin ? 'final' : 'draft'}"><span class="dot"></span><div><b>${esc(T(fin ? 'Final' : 'Draft'))}</b> · ${esc(fin ? T('{m} is final.', { m: ymLabelT(k) }) : T('{m}: the numbers can still change until the month is final.', { m: ymLabelT(k) }))} ${esc(T('Updated {when}', { when: agoT(rec.at) || fmtWhen(rec.at) }))}${rec.by ? esc(T(' by {who}', { who: rec.by })) : ''}.</div></div>`;
-  const tile = (b, l, s, cls) => `<div class="tile ${cls || ''}"><b>${esc(b)}</b><span><span class="tl">${esc(l)}</span>${s ? `<br>${esc(s)}` : ''}</span></div>`;
+  const tile = (b, l, s, cls) => `<div class="tile ${cls || ''}"><span class="tl">${esc(l)}</span><b>${esc(b)}</b>${s ? `<span class="ts">${esc(s)}</span>` : ''}</div>`;
   const el = r.el || r._el, whyT = L => whyTr(L);
   const run = !!(rec.mtd && !fin);   // a month still running: its projection is in the card above
   const tiles = tile(pct(r.adh, 1), T('adherence'), T('target {t}', { t: pct(set.target, 0) }), r.adh != null && r.adh < set.target ? 'alert' : '') + (run ? '' : tile(pct1(r.fin), T('final % (KPI)'), r.kc || ''))

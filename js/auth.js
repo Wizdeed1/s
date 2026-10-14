@@ -193,7 +193,7 @@ const Auth = (() => {
     mode = m;
     if (m !== 'loading' && window.__mcBoot) window.__mcBoot.ok = true;   // the start guard: the first screen is here
     $('lock').hidden = m === 'open';
-    for (const n of ['.appbar', '#main']) { const x = document.querySelector(n); if (m === 'open') { x.removeAttribute('inert'); x.removeAttribute('aria-hidden'); } else { x.setAttribute('inert', ''); x.setAttribute('aria-hidden', 'true'); } }
+    for (const n of ['.appbar', '#main', '.sidebar', '.tabbar']) { const x = document.querySelector(n); if (m === 'open') { x.removeAttribute('inert'); x.removeAttribute('aria-hidden'); } else { x.setAttribute('inert', ''); x.setAttribute('aria-hidden', 'true'); } }
     renderUser();
     if (m === 'open') return;
     closeDrawer(); $('acctMenu').hidden = true;
@@ -289,18 +289,20 @@ const Auth = (() => {
     $('pwRules').innerHTML = c.rules.map(([id, label, ok]) => `<li class="${ok ? 'ok' : ''}"><span class="ck ${ok ? 'ok' : 'no'}" aria-hidden="true">${ok ? '<svg width="11" height="11"><use href="#i-check"/></svg>' : '<svg width="11" height="11"><use href="#i-dash"/></svg>'}</span><span>${esc(label)}<span class="sr">${ok ? ': done' : ': not yet'}</span></span></li>`).join('');
     return c;
   }
+  /** the visual tests only (no data store, no sign-in): a pretend person, so each role's pages can be looked at */
+  const testUser = () => (!db && window.__NOLOCK__ && window.__mcUser) || null;
   function renderUser() {
-    const on = !!user && mode === 'open';
+    const me = user || testUser(), on = !!me && mode === 'open';
     $('acctBtn').hidden = !on;
-    if (!user) { if (mode === 'open') applyRole(); return; }   // no sign-in in this view: every workspace
-    const ini = String(user.name || '').split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || String(user.username || '?')[0].toUpperCase();
-    const role = ROLE_NAME[user.role] || 'User';
-    $('acctInit').textContent = ini; $('acctBtn').classList.toggle('admin', isAdmin());
-    $('acctSr').textContent = `Account: ${user.name}, ${role}`; $('acctName').textContent = user.name; $('acctEmail').textContent = user.username || user.email || '';
-    $('acctRole').textContent = role; $('acctRole').className = 'pill ' + (isAdmin() ? 'info' : '');
-    $('acctBtn').title = `${user.name} (${user.username || user.email}) - ${role}`;
-    $('acctUserBtn').textContent = user.username ? 'Change username' : 'Choose a username';
-    $('acctMenu').querySelector('[data-acct="accounts"]').hidden = !isAdmin();
+    if (!me) { if (mode === 'open') applyRole(); return; }   // no sign-in in this view: every workspace
+    const ini = String(me.name || '').split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || String(me.username || '?')[0].toUpperCase();
+    const role = ROLE_NAME[me.role] || 'User';
+    $('acctInit').textContent = ini; $('acctBtn').classList.toggle('admin', me.role === 'admin');
+    $('acctSr').textContent = `Account: ${me.name}, ${role}`; $('acctName').textContent = me.name; $('acctEmail').textContent = me.username || me.email || '';
+    $('acctRole').textContent = role; $('acctRole').className = 'pill ' + (me.role === 'admin' ? 'info' : '');
+    $('acctBtn').title = `${me.name} (${me.username || me.email}) - ${role}`;
+    $('acctUserBtn').textContent = me.username ? 'Change username' : 'Choose a username';
+    $('acctMenu').querySelector('[data-acct="accounts"]').hidden = me.role !== 'admin';
     if (on) applyRole();
   }
   function busy(on, label) { const b = $('lockGo'); b.disabled = on; if (on) { b.dataset.l = b.textContent; b.innerHTML = `<span class="spin" aria-hidden="true"></span>${label}`; } else if (b.dataset.l) b.textContent = b.dataset.l; }
@@ -751,6 +753,6 @@ const Auth = (() => {
   $('accTemp').addEventListener('click', async e => { if (e.target.id === 'tempCopy') toast(await copyRich(null, $('tempPw').textContent) ? 'Temporary password copied' : 'Select the password and press Ctrl+C.'); });
   $('teamCopy').addEventListener('click', downloadTeamCopy);
   $('migrateGo').addEventListener('click', migrateLocal);
-  return { start, lock, signOut, change: () => { if (user) setMode('change'); }, setLockMins, lockMins, user: () => user, isAdmin, openAccounts, check, team: () => TEAM, people, refreshMe, onDb: () => db,
+  return { start, lock, signOut, change: () => { if (user) setMode('change'); }, setLockMins, lockMins, user: () => user || testUser(), isAdmin, openAccounts, check, team: () => TEAM, people, refreshMe, onDb: () => db,
     connect, setConnect: o => { connectCb = o; }, mode: () => mode, onReady: f => readyFns.push(f), info, setAccess, approveAgent, rejectAgent, waitingAgents, autoGrants, folder, ROLES, STAFF, KINDS };
 })();

@@ -2,8 +2,8 @@
 // Everyone works on one set of data: the shared folder next to the HTML (or the online page's database). The month being built
 // is saved as the analyst works; supervisors, the senior manager, the WFM manager, the quality team and the agents read the
 // same history, final results and one-to-ones, live. A month the senior manager finalizes is frozen in `final/<month>`.
-const WS_VIEWS = ['team', 'results', 'cycle', 'wfm', 'quality', 'me', 'wait'];
-const WS_OF = { admin: ['build', 'team', 'results', 'cycle', 'wfm', 'quality'], user: ['build', 'team', 'wfm'], senior: ['cycle', 'results', 'team', 'wfm'], wfm: ['wfm', 'results', 'team'], spv: ['team'], quality: ['quality'], agent: ['me'], pending: [] };
+const WS_VIEWS = ['dash', 'team', 'results', 'cycle', 'wfm', 'quality', 'me', 'wait', 'blocked'];
+const WS_OF = { admin: ['dash', 'build', 'team', 'results', 'cycle', 'wfm', 'quality'], user: ['dash', 'build', 'team', 'wfm'], senior: ['dash', 'cycle', 'results', 'team', 'wfm'], wfm: ['dash', 'wfm', 'results', 'team'], spv: ['team'], quality: ['quality'], agent: ['me'], pending: [] };
 Object.assign(state, { ws: 'build', finals: {}, finVer: 0, frozen: {}, people: [], wsMonth: '', wsSpv: '', wsUnit: '', wsQ: '', resSort: 'name', resDir: 'asc', resUnit: '', resSpv: '', resQ: '',
   wfmMetric: 'adh', wfmGroup: 'unit', wfmUnit: '', teamMetric: 'adh', autoAt: 0, autoNote: '', boardAll: {}, wfmTab: 'analytics', spvDone: {}, spvDoneVer: 0, cycleLog: {} });
 const FORM_STATUS = [['planned', 'Arranged'], ['held', 'Held'], ['closed', 'Closed']];
@@ -329,12 +329,13 @@ function applyRole() {
   document.body.dataset.wsrole = r; document.body.classList.toggle('ro', !isBuilder());
   renderWelcome(); roleHeads(r);
   if (state.db) { watchDailyMail(state.db); rbPrefsCarry(); }
-  const seg = $('wsSeg'); seg.hidden = L.length < 2;
-  seg.querySelectorAll('[data-ws]').forEach(b => { b.hidden = !L.includes(b.dataset.ws); });
-  for (const id of ['bell', 'monthBtn', 'setBtn']) { const el = $(id); if (el) el.hidden = !isBuilder(); }
+  for (const id of ['bell', 'setBtn']) { const el = $(id); if (el) el.hidden = !isBuilder(); }
   syncFindBtn();
-  if (!L.length) { state.ws = 'wait'; hidePop(); showWsView('wait'); syncWsSeg(); $('stepsNav').hidden = true; waitText(); return; }
+  if (!L.length) { state.ws = 'wait'; hidePop(); showWsView('wait'); syncWsSeg(); waitText(); return; }
   const fresh = state.wsRole !== r; state.wsRole = r;   // someone else signed in, or the role changed: their own first workspace
+  const want = fresh ? hashWs() : '';   // a link to a page (#/team): opened when the role has it, else "Not one of your pages"
+  if (want && want !== L[0] && !L.includes(want) && WS_LABEL[want]) { showBlocked(want); return; }
+  if (want && L.includes(want)) { setWs(want); return; }
   if (fresh || !L.includes(state.ws)) setWs(L[0]); else setWs(state.ws, true);
 }
 /** the waiting page says who opens the access */
@@ -347,20 +348,17 @@ function waitText() {
   } else { $('h-wait').textContent = 'Waiting for access'; $('waitSub').textContent = 'Your account is ready. An admin now gives you a role (supervisor, senior manager, WFM manager, WFM analyst or quality team); this page opens your workspace as soon as they do.'; }
 }
 function syncWsSeg() {
-  $('wsSeg').querySelectorAll('[data-ws]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ws === state.ws)));
-  requestAnimationFrame(() => segThumb($('wsSeg')));
-  $('stepsNav').hidden = state.ws !== 'build';
-  $('buildTop').hidden = state.ws !== 'build';
+  syncNav();
   renderAutoNote(); renderToday();
 }
 function showWsView(v) {
   for (const s of STEPS) $('v-' + s).hidden = true;
   for (const w of WS_VIEWS) $('v-' + w).hidden = w !== v;
-  $('stepsNav').hidden = true;
+  $('buildBar').hidden = true;
 }
 function setWs(ws, quiet) {
   const L = WS_OF[roleNow()] || []; if (!L.includes(ws)) return;
-  const changed = state.ws !== ws; state.ws = ws; syncWsSeg(); hidePop();
+  const changed = state.ws !== ws; state.ws = ws; syncWsSeg(); hidePop(); putHash(ws);
   if (ws !== 'wfm') mountMail(false);
   if (ws === 'build') { for (const w of WS_VIEWS) $('v-' + w).hidden = true; const s = STEPS.includes(state.step) ? state.step : 'import'; state.step = '__'; setStep(s); return; }
   showWsView(ws); renderWs();
@@ -370,8 +368,8 @@ function setWs(ws, quiet) {
 function leaveWs() { if (state.ws === 'build') return; state.ws = 'build'; for (const w of WS_VIEWS) $('v-' + w).hidden = true; syncWsSeg(); }
 function renderWs() {
   const w = state.ws;
-  if (w === 'team') renderTeam(); else if (w === 'results') renderResults(); else if (w === 'wfm') renderWfmWs(); else if (w === 'quality') renderQuality(); else if (w === 'cycle') renderCycle(); else if (w === 'me') renderMe();
-  renderAutoNote(); renderFresh(); cycleBadge(); renderToday();
+  if (w === 'dash') renderDash(); else if (w === 'team') renderTeam(); else if (w === 'results') renderResults(); else if (w === 'wfm') renderWfmWs(); else if (w === 'quality') renderQuality(); else if (w === 'cycle') renderCycle(); else if (w === 'me') renderMe();
+  renderAutoNote(); renderFresh(); cycleBadge(); renderToday(); syncNav();
   requestAnimationFrame(segThumbs);
 }
 const monthSelHtml = (k, attr) => { const L = wsMonths(); return L.length ? `<label class="wsfield"><span>Month</span><select class="cell" ${attr} aria-label="Month">${L.slice().reverse().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(ymLabel(x))}${monthLocked(x) ? ' · final' : ''}</option>`).join('')}</select></label>` : ''; };
@@ -381,7 +379,7 @@ function statusBanner(k) {
   const H = D.rec;
   return `<div class="wsstatus draft"><span class="dot"></span><div><b>Draft</b> · ${H.auto ? `saved by the tool as the month was built${H.by ? ' by ' + esc(H.by) : ''}` : esc(H.src || 'saved')}${H.at ? `, ${esc(fmtWhen(H.at))}` : ''}. Numbers can still change until the senior manager finalizes the month.</div></div>`;
 }
-const tileW = (b, l, s, cls) => `<div class="tile ${cls || ''}"><b>${esc(b)}</b><span><span class="tl">${esc(l)}</span>${s ? `<br>${esc(s)}` : ''}</span></div>`;
+const tileW = (b, l, s, cls) => `<div class="tile ${cls || ''}"><span class="tl">${esc(l)}</span><b>${esc(b)}</b>${s ? `<span class="ts">${esc(s)}</span>` : ''}</div>`;
 function aggRows(L) {   // L: history rows
   const set = state.settings, adh = L.map(r => r.adh).filter(v => v != null);
   return { n: L.length, adh: mean(adh), below: adh.filter(v => v < set.target).length, aht: mean(L.map(r => r.aht)), ded: sum(L.map(r => r.ded)), conf: mean(L.map(r => r.conf)),
@@ -720,7 +718,7 @@ document.addEventListener('click', e => {
   const wm = t.closest('[data-wfmm]'); if (wm && wm.tagName === 'BUTTON') { state.wfmMetric = wm.dataset.wfmm; renderWs(); return; }
   const hm = t.closest('[data-hm]'); if (hm) { state.wsMonth = hm.dataset.hm; renderWs(); return; }
   const rs = t.closest('[data-ressort]'); if (rs) { const c = rs.dataset.ressort; if (state.resSort === c) state.resDir = state.resDir === 'asc' ? 'desc' : 'asc'; else { state.resSort = c; state.resDir = ['name', 'unit', 'spv'].includes(c) ? 'asc' : 'desc'; } renderWs(); const b = $('resultsBody').querySelector(`[data-ressort="${c}"]`); if (b) b.focus(); return; }
-  const fz = t.closest('[data-finalize]'); if (fz) { if (!fz.dataset.confirm) { fz.dataset.confirm = '1'; fz.textContent = `Click again to finalize ${ymLabel(wsMonthNow())}`; setTimeout(() => { if (fz.isConnected) { delete fz.dataset.confirm; fz.textContent = `Finalize ${ymLabel(wsMonthNow())}`; } }, 4000); return; } finalizeMonth(wsMonthNow()); return; }
+  const fz = t.closest('[data-finalize]'); if (fz) { askFinalize(wsMonthNow(), fz); return; }
   const ro = t.closest('[data-reopen]'); if (ro) { if (!ro.dataset.confirm) { ro.dataset.confirm = '1'; ro.textContent = 'Click again to reopen'; setTimeout(() => { if (ro.isConnected) { delete ro.dataset.confirm; ro.textContent = `Reopen ${ymLabel(wsMonthNow())}`; } }, 4000); return; } reopenMonth(wsMonthNow()); return; }
   const op = t.closest('[data-open]'); if (op) { openPerson(op.dataset.open); }
 });

@@ -1,22 +1,25 @@
-/* ------------------------------------------------------------------------------------------------------------- sizes */
-@media (max-width: 1480px) {
-  .appbar .findbtn .kbd { display: none; }
+/* ------------------------------------------------------------------------------------------------------------- sizes: 1,280 (rail) · 1,024 (one column) · 768 (phone: tab bar, two-line rows) */
+@media (max-width: 1440px) {
+  .appbar .findbtn { width: 200px; }
 }
-@media (max-width: 1240px) {
+@media (max-width: 1279.98px) {
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .appbar .findbtn { width: auto; }
   .appbar .findbtn .fl, .appbar .findbtn .kbd { display: none; }
-  .appbar .findbtn { width: 36px; padding: 0 !important; justify-content: center; margin-inline-end: 0; }
-  .appbar .wsseg button { padding: 0 10px; }
+  .appbar .findbtn { width: var(--ctl); padding: 0 !important; justify-content: center; margin-inline-end: 0; }
+  .qacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chktiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ehead, .egrid > .ecard { grid-template-columns: [rk] var(--rkw, 26px) [who] minmax(190px, 2.6fr) [big] minmax(76px, .8fr) [s1] minmax(170px, 2fr) [s2] minmax(170px, 2fr) [st] minmax(116px, 1.2fr); column-gap: 14px; }
 }
-@media (max-width: 1100px) {
+@media (max-width: 1023.98px) {
+  .dgrid, .impgrid, .chkgrid { grid-template-columns: minmax(0, 1fr); }
+  .impside, .chkside { position: static; }
+  .slots { grid-template-columns: minmax(0, 1fr); }
+  .bbend .monthbtn::after { display: none; }
+  .step .t small { display: none; }
+}
+@media (max-width: 1100px) {@media (max-width: 1100px) {
   :root { --gutter: 24px; }
-  .appbar .in { column-gap: 12px; }
-  .appbar .wsseg { grid-column: 1 / -1; justify-self: stretch; margin-inline-start: -12px; height: 46px; overflow-x: auto; scrollbar-width: none; }
-  .steps { grid-column: 1 / -1; grid-row: 3; justify-self: stretch; border-top: 1px solid var(--shell-line); min-height: 50px; }
-  .step:first-of-type { margin-inline-start: 0; }
-  .appbar .wsseg::-webkit-scrollbar { display: none; }
-  .brand, .appbar .tools { height: var(--bar-h); }
-  .appbar .monthbtn { display: none; }
   .rbgrid { grid-template-columns: minmax(0, 1fr); }
   .rb .wfm-g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -46,29 +49,61 @@
   .rbbrands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .wffollow li { grid-template-columns: 28px minmax(0, 1fr) auto; } .wffollow .why { grid-column: 2 / -1; }
 }
-/* phone: the workspaces move to a bar at the bottom, under the thumb */
-@media (max-width: 720px) {
-  :root { --gutter: 16px; --bar-h: 52px; }
+/* phone: the workspaces in a tab bar at the bottom (four items and More); a 56 px header; Today first */
+@media (max-width: 767.98px) {
+  :root { --gutter: 16px; --head-h: 56px; --side-cur: 0px; }
+  html.rail { --side-cur: 0px; }
   body { font-size: 14px; }
-  main { padding-top: var(--s5); padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-  .appbar .in { column-gap: 6px; }
-  .brand { gap: 8px; }
-  .bl { height: 22px; }
-  .appbar .tools { gap: 0; }
-  .appbar .wsseg { position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: var(--z-bar); height: calc(60px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); display: flex; justify-content: space-around;
-    background: var(--shell); border-top: 1px solid var(--shell-line); overflow: visible; margin: 0; }
-  .appbar .wsseg button { flex: 1 1 0; flex-direction: column; justify-content: center; gap: 4px; padding: 0 2px; font-size: 10.5px; min-width: 0; }
-  .appbar .wsseg button span { display: block !important; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .appbar .wsseg button svg { width: 20px; height: 20px; }
-  .appbar .wsseg > .sthumb { box-shadow: inset 0 2px 0 var(--brand); }
-  .appbar .wsseg:not(.thumbed) button[aria-pressed="true"] { box-shadow: inset 0 2px 0 var(--brand); }
-  .wsdot { position: absolute; top: 6px; right: calc(50% - 22px); margin: 0; }
-  .toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
-  .steps { min-height: 48px; }
-  .step { margin-inline-start: 12px; gap: 8px; }
-  .step .t small { display: none; }
-  #buildTop { width: 36px; padding: 0; font-size: 0; gap: 0; }
-  #buildTop svg { width: 18px; height: 18px; }
+  .sidebar { display: none; }
+  .tabbar:not([hidden]) { display: flex; }
+  main { padding-top: var(--s4); padding-bottom: calc(var(--tab-h) + 40px + env(safe-area-inset-bottom, 0px)); }
+  .sitefoot { margin-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); }
+  .appbar .in { gap: 8px; }
+  .ptext { font-size: 17px; line-height: 22px; }
+  .roletag { display: none; }
+  .appbar .tools { gap: 2px; }
+  .appbar #helpBtn, .appbar #setBtn { display: none; }
+  .periodbtn { padding: 0 8px; }
+  .periodbtn .pl, .periodbtn .pst { display: none; }
+  .appbar .btn { min-width: 44px; min-height: 44px; }
+  .menu { position: fixed; inset: auto 0 0 0; top: auto; max-width: none; max-height: 70vh; border-radius: var(--r-dlg) var(--r-dlg) 0 0; padding: 10px 10px calc(16px + env(safe-area-inset-bottom, 0px)); animation-name: sheetUp; z-index: var(--z-sheet); }
+  .menu button { min-height: 48px; font-size: 15px; }
+  .toast { left: 50%; bottom: calc(var(--tab-h) + 16px + env(safe-area-inset-bottom, 0px)); }
+  .buildbar { flex-wrap: wrap; gap: 8px; padding: 8px; }
+  .buildbar .steps { order: 3; flex-basis: 100%; }
+  .bbend { margin-inline-start: auto; }
+  .step { padding: 8px 10px; gap: 8px; }
+  #buildTop span { display: none; }
+  #buildTop { width: 44px; padding: 0; }
+  .drawer, .drawer.wide, .drawer.xwide, #dPerson { width: 100%; border-radius: 0; }
+  .dlg { align-items: end; padding: 0; }
+  .dlgbox { width: 100%; border-radius: var(--r-dlg) var(--r-dlg) 0 0; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+  .dlgfoot .btn { flex: 1; min-height: 44px; }
+  /* the dashboard: greeting and Today first, KPIs two per row, the chart without end labels, open month-close steps only */
+  #dashBody { display: flex; flex-direction: column; }
+  .dgrid, .dmain, .dside { display: contents; }
+  .dhead { order: 1; } #dashToday { order: 2; } .kpis { order: 3; } .dtrend { order: 4; } .dattn { order: 5; } .dclose { order: 6; } .dact { order: 7; } .ddata { order: 8; }
+  .qacts { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .kpi { padding: 12px; }
+  .kval { font-size: 24px; line-height: 30px; }
+  .kd .vs { display: none; }
+  .ktip { width: 200px; }
+  .clist:not(.all) .cs.done, .clist:not(.all) .cs.past { display: none; }
+  .actl:not(.all) li:nth-child(n+4) { display: none; }
+  .lowl li:nth-child(n+4) { display: none; }
+  .greet .gt { font-size: 21px; line-height: 27px; }
+  .dctl { width: 100%; }
+  .dctl .wsfield { flex: 1 1 100%; }
+  .chktiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chkbody { padding-left: 14px; }
+  .chkbody dl { grid-template-columns: minmax(0, 1fr); }
+  .chk .na.inplace { padding-left: 14px; }
+  .chkhead { grid-template-columns: 28px minmax(0, 1fr) 18px; }
+  .chkhead .sw { display: none; }
+  .btn { min-height: 44px; }
+  .btn.sm { min-height: 36px; }
+  .btn.xs { min-height: 0; }
   .viewhead { gap: 14px; }
   .viewhead > div:first-child { flex-basis: 100%; }
   .viewhead > div:first-child > p { font-size: 14px; }
@@ -116,8 +151,6 @@
   .sitefoot .fmid { display: none; }
   /* fields a finger uses: 16px text, so the phone does not zoom in */
   input, select, textarea { font-size: 16px !important; }
-  .btn { min-height: 40px; }
-  .btn.sm { min-height: 34px; }
 }
 @media (max-width: 420px) {
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -126,7 +159,9 @@
 }
 /* hover and press feedback for touch: the press shows at once, nothing sticks after a tap */
 @media (pointer: coarse) {
-  .btn, .seg button, .appbar .wsseg button, .step, .teamchips button, .ecard, .atile, .linkbtn, .chip, .fchip, .tab { -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  .btn, .appbar .btn { min-height: 44px; }
+  .btn.sm { min-height: 36px; }
+  .btn, .seg button, .tabbar button, .sbnav button, .step, .teamchips button, .ecard, .atile, .linkbtn, .chip, .fchip, .tab { -webkit-user-select: none; user-select: none; touch-action: manipulation; }
 }
 
 /* ------------------------------------------------------------------------------------------------------------- Arabic (the agents' own page reads right to left) */
@@ -138,7 +173,8 @@
 
 /* ------------------------------------------------------------------------------------------------------------- print */
 @media print {
-  .appbar, .pop, .sitefoot, .toast, .tt, .scrim, .drawer, .find, .fresh, .todaywrap { display: none !important; }
+  .appbar, .sidebar, .tabbar, .buildbar, .pop, .sitefoot, .toast, .tt, .scrim, .drawer, .dlg, .find, .fresh, .todaywrap { display: none !important; }
+  main { margin: 0 !important; }
   .cvauto { content-visibility: visible; }
   body { background: #fff; color: #000; }
   .card, .tiles, .tablewrap { border-color: #ccc; }

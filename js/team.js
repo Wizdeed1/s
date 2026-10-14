@@ -83,8 +83,11 @@ function spvScoreHtml(spvPid, k, opts = {}) {
     </tbody></table></div>${S.missing.length ? `<p class="hint">No value yet: ${esc(S.missing.join(', '))}. The final uses the items that have one.</p>` : ''}${opts.showSR && S.earned != null ? `<p class="hint">Earned: ${S.earned.toLocaleString('en-US')} SR.</p>` : ''}</div>`;
 }
 function teamKpiHtml(rows, deptRows, k) {
-  const KS = teamKpiStats(rows, deptRows); if (!KS.length) return '';
-  return `<div class="card"><div class="cardhead"><div><h2>Team KPIs · ${esc(ymLabel(k))}</h2><p class="cap">Every KPI of your agents' scorecards, averaged over the team: your own KPIs as a supervisor. The bar is the team; the tick is the department.</p></div></div>
+  // only the KPIs of the scorecard most of these agents use, and any other KPI that has a value (TM-03)
+  const cnt = new Map(); rows.forEach(r => { const c = cardOfRow(r); if (c) cnt.set(c, (cnt.get(c) || 0) + 1); });
+  const main = [...cnt.entries()].sort((a, b) => b[1] - a[1])[0], ids = new Set(main ? main[0].kpis.map(x => x.id) : []);
+  const KS = teamKpiStats(rows, deptRows).filter(x => ids.has(x.k.id) || x.n > 0); if (!KS.length) return '';
+  return `<div class="card"><div class="cardhead"><div><h2>Team KPIs · ${esc(ymLabel(k))}</h2><p class="cap">The scorecard's KPIs averaged over the team${main ? ` (${esc(main[0].title)}, ${main[1]} of ${plural(rows.length, 'agent')})` : ''}: the supervisor's own KPIs. The bar is the team; the tick is the department.</p></div></div>
     <div class="tkpis">${KS.map(x => {
       const lo = x.k.unit === 'pct' ? 0.5 : 0, hi = x.k.unit === 'pct' ? 1 : Math.max(x.avg || 0, x.dept || 0, +(x.k.bands || [])[0] || 0) * 1.25 || 1, X = v => Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
       const t0 = (x.k.bands || [])[0], good = x.avg != null && t0 != null && (x.k.dir === 'low' ? x.avg <= t0 + 1e-9 : x.avg >= t0 - 1e-9);
@@ -139,7 +142,7 @@ const agentHasAccount = pid => (state.people || []).some(a => a.role === 'agent'
 // ---------------------------------------------------------------- the agent's part: written on their own page, sent to the supervisor
 // The agent fills the places the supervisor left empty and sends them (agent/<pid>/reply/<form>). The supervisor reads it,
 // accepts or rejects it with a final comment and sends the final back; only then does the agent sign.
-Object.assign(state, { replies: new Map(), replyVer: 0, teamSort: 'adh', teamQ: '' });
+Object.assign(state, { replies: new Map(), replyVer: 0, teamSort: 'adh', teamDir: '', teamQ: '', teamBrand: '', teamDep: '', teamTab: 'agents', teamPage: 0 });
 const AGENT_TXT = { '1to1': ['discussion', 'rootCause', 'agentComments', 'reviewDate'], final: ['agentComments'] };
 const replyOf = id => (state.replies && state.replies.get(id)) || null;
 /** the agent sent their part and the supervisor has not sent the final since */
@@ -228,39 +231,42 @@ function renderTeam() {
   $('teamSub').textContent = spv ? 'Each agent\'s performance and status for the month, and their one-to-ones.' : r === 'senior' ? 'Every team\'s agents for the month, ranked, and where each one-to-one stands. The supervisors arrange and hold the one-to-ones.'
     : r === 'admin' ? 'Every team\'s agents and one-to-ones for the month.' : 'Every team\'s agents for the month, ranked, with their supervisor. View only: the supervisors hold the one-to-ones.';
   const S = spvList();
-  const spvSel = spv ? '' : `<label class="wsfield"><span>Supervisor</span><select class="cell" data-wsspv aria-label="Supervisor"><option value="">Every agent</option>${S.map(a => `<option value="${esc(a.pid)}"${a.pid === state.wsSpv ? ' selected' : ''}>${esc(a.name)} (${a.size})</option>`).join('')}</select></label>`;
+  const spvSel = spv ? '' : `<label class="wsfield"><span>Supervisor</span><select class="cell" data-wsspv aria-label="Supervisor"><option value="">Every supervisor</option>${S.map(a => `<option value="${esc(a.pid)}"${a.pid === state.wsSpv ? ' selected' : ''}>${esc(a.name)} (${a.size})</option>`).join('')}</select></label>`;
   const done = k && cur ? state.spvDone[`${k}_${cur}`] : null;
-  // "Finish my team" stays grey until every agent's one-to-one is done (the final sent, for agents with an account)
+  // "Finish my team" stays grey until every agent's one-to-one is done (the final sent, for agents with an account): the reason is said beside it
   const ready = spv && k && u.pid && !done ? teamReady(u.pid, k) : null, can = ready && ready.n && !ready.left.length;
+  const why = ready && !can ? (ready.n ? `${ready.left.length} of ${ready.n} one-to-ones still to do` : 'No agents in your team yet') : '';
   const finBtn = spv && k && !monthLocked(k) ? (done ? '<button class="btn sm" data-spvreopen>Reopen my team</button>'
-    : `<button class="btn sm${can ? ' primary' : ''}" data-spvdone${can ? '' : ` disabled aria-disabled="true" title="${esc(ready && ready.n ? `${ready.left.length} of ${ready.n} still to do: ${ready.left.slice(0, 6).map(p => gname(effP(p._id) || p) || p.name).join(', ')}${ready.left.length > 6 ? '…' : ''}` : 'No agents in your team yet')}"`}><svg width="14" height="14" aria-hidden="true"><use href="#i-check"/></svg>Finish my team${can ? '' : ready && ready.n ? ` · ${ready.done}/${ready.n}` : ''}</button>`) : '';
-  $('teamBar').innerHTML = `${monthSelHtml(k, 'data-wsmonth')}${spvSel}<div class="wsacts">${finBtn}<button class="btn sm" data-x="team"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Team Excel</button><button class="btn sm" data-x="teamadh"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Daily adherence</button></div>`;
+    : `<span class="finwrap">${why ? `<small class="dwhy" id="finWhy">${esc(why)}</small>` : ''}<button class="btn sm${can ? ' primary' : ''}" data-spvdone${can ? '' : ` disabled aria-disabled="true" aria-describedby="finWhy" title="${esc(ready && ready.n ? `${ready.left.length} of ${ready.n} still to do: ${ready.left.slice(0, 6).map(p => gname(effP(p._id) || p) || p.name).join(', ')}${ready.left.length > 6 ? '…' : ''}` : 'No agents in your team yet')}"`}><svg width="14" height="14" aria-hidden="true"><use href="#i-check"/></svg>Finish my team${can ? '' : ready && ready.n ? ` · ${ready.done}/${ready.n}` : ''}</button></span>`) : '';
+  $('teamBar').innerHTML = `${monthSelHtml(k, 'data-wsmonth')}<div class="wsacts">${finBtn}<button class="btn sm" data-x="team"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Team Excel</button><button class="btn sm" data-x="teamadh"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Daily adherence</button></div>`;
   const body = $('teamBody'), P = wsPeople();
   if (spv && !u.pid && !(u.scope && scopeCount(u.scope))) { body.innerHTML = emptyCard('Not linked yet', 'Your admin links your account to your name in the roster; your team then shows here.'); return; }
-  const wait = spv ? waitingHtml(u.pid) : '';
+  const wait = spv ? waitingHtml(u.pid) : '', nWait = spv ? waitingList(u.pid).length : 0;
   if (spv && !P.length) { body.innerHTML = wait + emptyCard('No agents yet', 'Nobody in the roster has you as their supervisor yet. The WFM team fills the Supervisor column in the roster, or imports the Teams Distribution.'); return; }
   if (!k) { body.innerHTML = wait + emptyCard('No months yet', isBuilder() ? 'Build a month on Import; it is saved here by itself as you work.' : 'Your WFM team has not saved a month yet. It appears here as soon as they start building it.'); return; }
   if (monthLocked(k)) loadFrozen(k);
   const map = rowsByPid(k), locked = monthLocked(k) && !isSenior(), canForm = !locked && (spv || r === 'admin');   // the supervisors arrange; the senior manager and the WFM analysts look
-  const items = P.map(p => { const pp = effP(p._id) || p; return { p, exp: gname(pp) || p.name, r: map.get(p._id) || null, os: oneStatus(p._id, k), spvN: spvOf(p._id).map(a => a.name).join(', ') }; });
+  const all = P.map(p => { const pp = effP(p._id) || p; return { p, exp: gname(pp) || p.name, r: map.get(p._id) || null, os: oneStatus(p._id, k), spvN: spvOf(p._id).map(a => a.name).join(', ') }; });
+  // the filters: brand, team, supervisor (managers) and a search; they narrow the tiles and every tab
+  const q = normName(state.teamQ || ''), fb = state.teamBrand || '', fd = state.teamDep || '';
+  const items = all.filter(x => (!fb || x.p.brand === fb) && (!fd || x.p.team === fd) && (!q || normName(`${x.exp} ${x.p.name} ${x.p.sys || ''} ${x.p.nid || ''}`).includes(q)));
   const R = items.filter(x => x.r).map(x => x.r), A = aggRows(R), deptRows = (monthData(k) || { rows: [] }).rows;
   const held = items.filter(x => x.os.st === 'held' || x.os.st === 'closed').length, arranged = items.filter(x => x.os.st === 'planned').length;
   const signed = items.filter(x => x.os.o && sigState(x.os.o) === 'signed').length, toReview = items.filter(x => x.os.o && replyNew(x.os.o)).length;
-  const all = aggRows(deptRows);
+  const dept = aggRows(deptRows);
   const tiles = tileW(String(items.length), 'agents', `${plural(R.length, 'person', 'people')} in ${ymLabel(k)}`)
-    + tileW(pct(A.adh, 1), 'adherence', `department ${pct(all.adh, 1)} · target ${pct(set.target, 0)}`, A.adh != null && A.adh < set.target ? 'alert' : '')
+    + tileW(pct(A.adh, 1), 'adherence', `department ${pct(dept.adh, 1)} · target ${pct(set.target, 0)}`, A.adh != null && A.adh < set.target ? 'alert' : '')
     + tileW(String(A.below), 'below target', 'agents under the adherence target', A.below ? 'alert' : '')
-    + tileW(pct1(A.fin), 'final % (KPI)', `department ${pct1(all.fin)}`)
+    + tileW(pct1(A.fin), 'final % (KPI)', `department ${pct1(dept.fin)}`)
     + (showSR ? tileW(A.earned == null ? '–' : `${Math.round(A.earned).toLocaleString('en-US')}`, 'earned SR', 'incentive for the team') : '')
     + tileW(A.exc == null ? '–' : String(A.exc), 'exceptions', 'late, no sign-on, short, low adherence')
     + tileW(`${held} / ${items.length}`, 'one-to-ones held', `${toReview ? `${toReview} replied, to review · ` : ''}${arranged ? `${arranged} arranged · ` : ''}${signed} signed by the agent`, toReview ? 'alert' : held < items.length ? '' : 'good');
-  // the board
+  // the one-to-one board
   const col = (st, title, hint) => {
     const L = items.filter(x => (st === 'none' ? x.os.st === 'none' : x.os.st === st)).sort((a, b) => st === 'none' ? needScore(b.r, set) - needScore(a.r, set) : (replyNew(b.os.o) - replyNew(a.os.o)) || String((a.os.o || {}).plannedAt || '').localeCompare(String((b.os.o || {}).plannedAt || '')) || byExp(a, b));
     const cut = state.boardAll[st] || L.length <= 8 ? L.length : 6;
     return `<div class="bcol ${st}"><div class="bhead"><b>${esc(title)}</b><span class="cnt">${L.length}</span></div><p class="hint">${esc(hint)}</p>${L.slice(0, cut).map(x => {
       const o = x.os.o, need = needScore(x.r, set), fl = o ? formFlow(o) : 'none', acct = agentHasAccount(x.p._id);
-      // what the supervisor does next: review the agent's part, fill in (no account: they meet), or open it
       const go = !canForm ? 'View' : fl === 'review' ? 'Review' : st === 'planned' ? (acct ? 'Open' : 'Fill in') : fl === 'held' && acct ? 'Send the final' : 'Open';
       const prim = canForm && (fl === 'review' || (st === 'planned' && !acct) || (fl === 'held' && acct));
       const acts = st === 'none' ? (canForm ? `<span class="arr"><input type="date" class="cell" data-arrdate="${esc(x.p._id)}" value="${esc(todayIso())}" aria-label="Day for ${esc(x.exp)}"><button class="btn sm" data-arrange="${esc(x.p._id)}">Arrange</button></span>` : '')
@@ -269,33 +275,34 @@ function renderTeam() {
       return `<div class="bcard${(st === 'none' && need > 6) || fl === 'review' ? ' hot' : ''}"><button class="linkbtn nm" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" dir="auto">${esc(x.exp)}</button>${spv ? '' : spvLine(x.p._id)}<small>${esc(whyLine(x.r, set))}</small>${x.os.fin ? `<span class="fst final">Final form${x.os.fin.outcome ? ' · ' + esc((Forms.OUTCOMES.find(z => z[0] === x.os.fin.outcome) || [, ''])[1]) : ''}</span>` : ''}${x.os.fin && replyNew(x.os.fin) ? '<span class="sgn todo">Final form: replied</span>' : ''}${st !== 'none' ? sigChip(o) + safeHtml(fuChip, o) : ''}${obN ? `<span class="fst obj">${plural(obN, 'objection')}</span>` : ''}${acts}</div>`;
     }).join('') || '<p class="subtle">Nobody.</p>'}${L.length > 8 ? `<button class="btn sm ghost bmore" data-more="${st}">${state.boardAll[st] ? 'Show fewer' : `Show all ${L.length}`}</button>` : ''}</div>`;
   };
-  const board = isSenior() ? seniorBoardHtml(items, k) : `<div class="card cvauto"><div class="cardhead"><div><h2>One-to-ones · ${esc(ymLabel(k))}</h2><p class="cap">${locked ? 'The month is final: one-to-ones are read-only.' : 'Arrange each agent\'s one-to-one. An agent with an account fills in their part on their own page and sends it to you: review it, write your final comment (accepted or rejected) and send the final back; they then sign it. For an agent without an account, fill in the form when you meet.'}</p></div></div>
+  const board = () => isSenior() ? seniorBoardHtml(items, k) : `<div class="card"><div class="cardhead"><div><h2>One-to-ones · ${esc(ymLabel(k))}</h2><p class="cap">${locked ? '<svg class="sti" aria-hidden="true"><use href="#i-lock"/></svg>The month is final: one-to-ones are read-only.' : 'Arrange each agent\'s one-to-one. An agent with an account fills in their part on their own page and sends it to you: review it, write your final comment (accepted or rejected) and send the final back; they then sign it. For an agent without an account, fill in the form when you meet.'}</p></div></div>
     <div class="board">${col('none', 'To arrange', 'No one-to-one yet')}${col('planned', 'Arranged', 'With the agent, or a day set')}${col('held', 'Held', 'Final sent, or filled in')}${col('closed', 'Closed', 'Signed and done')}</div></div>`;
-  const so = TEAM_SORTS.find(x => x[0] === state.teamSort) || TEAM_SORTS[0], ranked = items.slice().sort((a, b) => so[2](a, b, set) || byExp(a, b)), q = normName(state.teamQ || '');
-  const cards = ranked.map((x, i) => {
-    const rr = x.r, on = x.p.status !== 'Inactive', below = rr && rr.adh != null && rr.adh < set.target, nm = normName(`${x.exp} ${x.p.name} ${x.p.sys || ''}`);
-    return `<button class="ecard" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" data-nm="${esc(nm)}"${q && !nm.includes(q) ? ' hidden' : ''} aria-label="${esc(x.exp)}, number ${i + 1}, open the profile">
-      <span class="rk${i < 3 && below && so[0] !== 'name' && so[0] !== 'need' ? ' top' : ''}" aria-hidden="true">${i + 1}</span>
-      <span class="atop"><span class="av" aria-hidden="true"${avStyle(x.exp)}>${esc(initials(x.exp))}</span><span class="who"><b dir="auto">${esc(x.exp)}</b>${!spv ? spvLine(x.p._id) : ''}<small>${esc(Core.cleanId((effP(x.p._id) || x.p).nid) || 'No National ID')} · ${esc(unitOf(x.p))}</small></span><span class="stt${on ? ' on' : ''}">${on ? 'Active' : 'Inactive'}</span></span>
-      <span class="big">${!rr || rr.adh == null ? '<b>–</b>' : below ? belowB(rr.adh, pct(rr.adh, 1)) : `<b>${pct(rr.adh, 1)}</b>`}<i>Adherence</i></span>
-      <span class="astats"><span><b>${rr ? pct1(rr.fin) : '–'}</b><i>Final</i></span>${showSR ? `<span><b>${rr && rr.earned != null ? rr.earned : '–'}</b><i>Earned SR</i></span>` : `<span><b>${rr && rr.wfExc != null ? rr.wfExc : '–'}</b><i>Exceptions</i></span>`}<span><b>${rr ? mss(rr.aht) : '–'}</b><i>AHT</i></span></span>
-      <span class="astats"><span><b>${rr && rr.absent != null ? rr.absent : '–'}</b><i>Absent</i></span><span><b>${rr && rr.tardy != null ? Math.round(rr.tardy) : '–'}</b><i>Tardy min</i></span><span><b>${rr && rr._el ? (rr._el.ok ? 'Yes' : 'No') : '–'}</b><i>Eligible</i></span></span>
-      <span class="wfl ${x.os.st === 'none' ? '' : 'ok'}">${x.os.st === 'none' ? 'No one-to-one yet' : `One-to-one: ${esc((FORM_STATUS.find(z => z[0] === x.os.st) || [, ''])[1].toLowerCase())}${x.os.o && x.os.o.plannedAt ? ' · ' + esc(Forms.fmtDate(x.os.o.plannedAt)) : ''}`}</span></button>`;
-  }).join('');
-  const shown = q ? ranked.filter(x => normName(`${x.exp} ${x.p.name} ${x.p.sys || ''}`).includes(q)).length : ranked.length;
+  // the team against the department
   const tm = [['adh', 'Adherence'], ['fin', 'Final %'], ['wfExc', 'Exceptions'], ['aht', 'AHT'], ['absent', 'Absent']].filter(([mk]) => wsMonths().some(x => (monthData(x) || { rows: [] }).rows.some(rr => rr[mk] != null)));
-  const mk = tm.some(x => x[0] === state.teamMetric) ? state.teamMetric : (tm[0] || ['adh'])[0], mt = History.METRICS.find(x => x.k === mk);
-  const months = wsMonths(), pids = new Set(P.map(p => p._id));
-  const teamSeries = months.map(x => mean([...rowsByPid(x).entries()].filter(([pid]) => pids.has(pid)).map(([, rr]) => History.valOf(rr, mt))));
-  const deptSeries = months.map(x => mean(((monthData(x) || { rows: [] }).rows).map(rr => History.valOf(rr, mt))));
-  const chart = `<div class="card"><div class="cardhead"><div><h2>${spv ? 'Your team' : 'This team'} against the department</h2><p class="cap">${esc(mt.label)} by month, ${mt.total === 'sum' ? 'per agent' : 'average per agent'}.</p></div>
-    <div class="seg sm" role="group" aria-label="Metric">${tm.map(([k2, l]) => `<button data-teamm="${k2}" aria-pressed="${k2 === mk}">${esc(l)}</button>`).join('')}</div></div>
-    ${lineChart(months.map(x => MON[+x.slice(5) - 1] + ' ' + x.slice(2, 4)), [{ name: spv ? 'Your team' : 'This team', values: teamSeries, cls: 's1' }, { name: 'Department', values: deptSeries, cls: 's2', dash: true }], mt, mk === 'adh' ? set.target : null, true)}</div>`;
-  const scoreCard = cur && (spv || isSenior() || Auth.isAdmin()) ? spvScoreHtml(cur, k, { showSR: !spv && (isSenior() || Auth.isAdmin()), cap: spv ? 'Set by the senior manager. Team items are your agents\' averages; the leader items come from the quality team\'s EVAL.' : `${supName(cur)}'s scorecard, as the senior manager set it.` }) : '';
-  const att = attGridHtml(items, k, spv && !monthLocked(k)), calls = teamInterHtml(items, k);
-  body.innerHTML = `${statusBanner(k)}${deadlineBanner(k, cur, spv)}${wait}<div class="tiles wstiles">${tiles}</div>${teamKpiHtml(R, deptRows, k)}${scoreCard}${safeHtml(objTeamHtml, k, cur)}${board}${att}${calls}${chart}<div class="card emps cvauto" id="teamAgents"><div class="cardhead"><div><h2>Agents</h2><p class="cap" data-tcount>${teamCountText(shown, items.length, so)}</p></div>
-    <div class="toolbar"><input type="search" data-tq value="${esc(state.teamQ || '')}" placeholder="Search by name" aria-label="Search agents by name"><select class="cell" data-tsort aria-label="Rank by">${TEAM_SORTS.map(([v, l]) => `<option value="${v}"${v === so[0] ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>
-    <div class="egrid${so[0] === 'name' ? ' byname' : ''}"><div class="ehead" aria-hidden="true"><span class="c-rk">#</span><span class="c-who">Agent</span><span class="c-big">Adherence</span><span class="c-s1 r3"><span>Final</span><span>${showSR ? 'Earned SR' : 'Exceptions'}</span><span>AHT</span></span><span class="c-s2 r3"><span>Absent</span><span>Tardy min</span><span>Eligible</span></span><span class="c-st">One-to-one</span></div>${cards}</div><p class="subtle tnone"${shown ? ' hidden' : ''}>Nobody called that in this team.</p></div>`;
+  const chart = () => {
+    const mk = tm.some(x => x[0] === state.teamMetric) ? state.teamMetric : (tm[0] || ['adh'])[0], mt = History.METRICS.find(x => x.k === mk);
+    const months = wsMonths(), pids = new Set(items.map(x => x.p._id));
+    const teamSeries = months.map(x => mean([...rowsByPid(x).entries()].filter(([pid]) => pids.has(pid)).map(([, rr]) => History.valOf(rr, mt))));
+    const deptSeries = months.map(x => mean(((monthData(x) || { rows: [] }).rows).map(rr => History.valOf(rr, mt))));
+    return `<div class="card"><div class="cardhead"><div><h2>${spv ? 'Your team' : 'This team'} against the department</h2><p class="cap">${esc(mt.label)} by month, ${mt.total === 'sum' ? 'per agent' : 'average per agent'}.</p></div>
+      <div class="seg sm" role="group" aria-label="Metric">${tm.map(([k2, l]) => `<button data-teamm="${k2}" aria-pressed="${k2 === mk}">${esc(l)}</button>`).join('')}</div></div>
+      ${lineChart(months.map(x => MON[+x.slice(5) - 1] + ' ' + x.slice(2, 4)), [{ name: spv ? 'Your team' : 'This team', values: teamSeries, cls: 's1' }, { name: 'Department', values: deptSeries, cls: 's2', dash: true }], mt, mk === 'adh' ? set.target : null, true)}</div>`;
+  };
+  const scoreCard = () => cur && (spv || isSenior() || Auth.isAdmin()) ? spvScoreHtml(cur, k, { showSR: !spv && (isSenior() || Auth.isAdmin()), cap: spv ? 'Set by the senior manager. Team items are your agents\' averages; the leader items come from the quality team\'s EVAL.' : `${supName(cur)}'s scorecard, as the senior manager set it.` }) : '';
+  // the tabs: each keeps the filters
+  const nObj = objList({ k, st: ['open', 'escalated', 'accepted'] }).filter(o => items.some(x => x.p._id === o.pid)).length, hasCalls = !!state.inter[k];
+  const TABS = [['agents', 'Agents', items.length], ['one', 'One-to-ones', `${held}/${items.length}`], ['att', 'Attendance', ''], ['obj', 'Objections', nObj || ''], ...(hasCalls ? [['calls', 'Calls', '']] : []), ['kpis', 'Team KPIs', ''], ...(spv ? [['wait', 'Waiting for approval', nWait || '']] : [])];
+  const tab = TABS.some(t => t[0] === state.teamTab) ? state.teamTab : 'agents';
+  const tabsHtml = `<div class="tabs ttabs" role="tablist" aria-label="Team">${TABS.map(([v, l, n]) => `<button class="tab" role="tab" id="tt-${v}" aria-controls="tp-${v}" aria-selected="${v === tab}" tabindex="${v === tab ? 0 : -1}" data-ttab="${v}">${esc(l)}${n !== '' ? ` <span class="badge${v === 'wait' || (v === 'obj' && n) ? ' n' : ''}">${esc(String(n))}</span>` : ''}</button>`).join('')}</div>`;
+  const panel = tab === 'agents' ? teamTableHtml(items, set, showSR, spv)
+    : tab === 'one' ? board()
+    : tab === 'att' ? (attGridHtml(items, k, spv && !monthLocked(k)) || emptyCard('No attendance yet', 'The month\'s attendance shows here once the schedule and the sign-ons (or the attendance sheets) are in.'))
+    : tab === 'obj' ? (safeHtml(objTeamHtml, k, cur) || emptyCard('No objections', `Nobody in ${spv ? 'your team' : 'these agents'} questioned a number for ${ymLabel(k)}.`))
+    : tab === 'calls' ? (teamInterHtml(items, k) || emptyCard('No calls for these agents', 'The interactions export has no calls for the agents shown.'))
+    : tab === 'kpis' ? `${teamKpiHtml(R, deptRows, k)}${scoreCard()}${chart()}`
+    : (wait || emptyCard('Nobody is waiting', 'Agents who make an account and choose you show here for your approval.'));
+  const fbar = teamFilterHtml(all, spvSel, items.length);
+  body.innerHTML = `${statusBanner(k)}${deadlineBanner(k, cur, spv)}${fbar}<div class="tiles wstiles">${tiles}</div>${tabsHtml}<div class="tpanel" role="tabpanel" id="tp-${tab}" aria-labelledby="tt-${tab}">${panel}</div>`;
   reveal(body);
 }
 /** how the Agents cards are ranked: the lowest first, as asked; ties by name */
@@ -309,6 +316,65 @@ const TEAM_SORTS = [
   ['need', 'Needs attention first', (a, b, set) => needScore(b.r, set) - needScore(a.r, set), 'what needs attention'],
   ['name', 'Name A–Z', () => 0, 'name'],
 ];
+/** the filter bar: brand, team, supervisor and a search; what is active shows as chips, with Clear all and what the filters affect */
+function teamFilterHtml(all, spvSel, shown) {
+  const brands = [...new Set(all.map(x => x.p.brand).filter(Boolean))].sort((a, b) => BRANDS.indexOf(a) - BRANDS.indexOf(b)), deps = [...new Set(all.map(x => x.p.team).filter(Boolean))].sort((a, b) => (DEP_ORDER.indexOf(a) + 1 || 99) - (DEP_ORDER.indexOf(b) + 1 || 99));
+  const fb = state.teamBrand || '', fd = state.teamDep || '', q = state.teamQ || '', sp = roleNow() !== 'spv' && state.wsSpv ? supName(state.wsSpv) : '';
+  const chips = [fb && ['brand', `Brand: ${fb}`], fd && ['dep', `Team: ${fd}`], sp && ['spv', `Supervisor: ${sp}`], q && ['q', `Search: “${q}”`]].filter(Boolean);
+  return `<div class="fbar" role="search" aria-label="Filter the agents">
+    <label class="wsfield"><span>Brand</span><select class="cell" data-tbrand><option value="">All brands</option>${brands.map(b => `<option${b === fb ? ' selected' : ''}>${esc(b)}</option>`).join('')}</select></label>
+    <label class="wsfield"><span>Team</span><select class="cell" data-tdep><option value="">All teams</option>${deps.map(d => `<option value="${esc(d)}"${d === fd ? ' selected' : ''}>${esc(d)}${DEP_NAMES[d] ? ' · ' + esc(DEP_NAMES[d]) : ''}</option>`).join('')}</select></label>
+    ${spvSel}<label class="wsfield fsearch"><span>Search</span><input type="search" class="cell" data-tq value="${esc(q)}" placeholder="Name, Genesys name or National ID" autocomplete="off"></label></div>
+    <div class="fline">${chips.map(([k2, l]) => `<button class="fpill" data-tclear="${k2}" aria-label="Remove the filter ${esc(l)}">${esc(l)}<svg aria-hidden="true"><use href="#i-x"/></svg></button>`).join('')}${chips.length ? '<button class="btn sm ghost" data-tclear="all">Clear all</button>' : ''}
+    <span class="fscope" aria-live="polite">${chips.length ? `${plural(shown, 'agent')} of ${all.length} · the filters apply to the tiles and every tab below` : `Every agent (${all.length}) · filters apply to the tiles and every tab below`}</span></div>`;
+}
+/** the agents, one row each: sortable columns (aria-sort), 25 to a page (D11), the row opens the agent's panel */
+const TCOL = {
+  name: { l: 'Agent', v: x => x.exp, d: 'asc', t: true },
+  adh: { l: 'Adherence', v: x => (x.r ? x.r.adh : null), d: 'asc' },
+  fin: { l: 'Final', v: x => (x.r ? x.r.fin : null), d: 'asc' },
+  earned: { l: 'Earned SR', v: x => (x.r ? x.r.earned : null), d: 'desc' },
+  exc: { l: 'Exceptions', v: x => (x.r ? x.r.wfExc : null), d: 'desc' },
+  aht: { l: 'AHT', v: x => (x.r ? x.r.aht : null), d: 'desc' },
+  absent: { l: 'Absent', v: x => (x.r ? x.r.absent : null), d: 'desc' },
+  tardy: { l: 'Tardy min', v: x => (x.r ? x.r.tardy : null), d: 'desc' },
+  elig: { l: 'Eligible', v: x => (x.r && x.r._el ? (x.r._el.ok ? 1 : 0) : null), d: 'asc' },
+  one: { l: 'One-to-one', v: x => ({ none: 0, planned: 1, held: 2, closed: 3 }[x.os.st]), d: 'asc' },
+  need: { l: 'Needs attention', v: x => needScore(x.r, state.settings), d: 'desc' },
+};
+const TPAGE = 25;
+function teamSorted(items) {
+  const key = TCOL[state.teamSort] ? state.teamSort : 'adh', C = TCOL[key], dir = (state.teamDir || C.d) === 'desc' ? -1 : 1;
+  return { key, dir, L: items.slice().sort((a, b) => { const va = C.v(a), vb = C.v(b); if (va == null && vb == null) return byExp(a, b); if (va == null) return 1; if (vb == null) return -1; return (C.t ? String(va).localeCompare(String(vb)) : va - vb) * dir || byExp(a, b); }) };
+}
+function eligBadge(r) {
+  if (!r || !r._el) return '<span class="fst none">–</span>';
+  if (r._el.ok) return `<span class="pill good"><svg width="11" height="11" aria-hidden="true"><use href="#i-check"/></svg>Eligible${r._el.forced ? ' (decided)' : ''}</span>`;
+  const w = (r._el.why || [])[0] || 'not eligible'; return `<span class="pill bad" title="${esc((r._el.why || []).join('; '))}"><svg width="11" height="11" aria-hidden="true"><use href="#i-x"/></svg>${esc(w[0].toUpperCase() + w.slice(1))}</span>`;
+}
+function oneBadge(x) {
+  const st = x.os.st, o = x.os.o;
+  const t = st === 'none' ? 'Not arranged' : st === 'planned' ? `Arranged${o && o.plannedAt ? ' · ' + Forms.fmtDate(o.plannedAt) : ''}` : st === 'held' ? 'Held' : 'Signed';
+  return `<span class="fst ${st === 'none' ? 'none' : st}">${esc(t)}</span>${o && replyNew(o) ? '<span class="sgn todo">Replied</span>' : ''}`;
+}
+function teamTableHtml(items, set, showSR, spv) {
+  if (!items.length) return emptyCard('No agents match these filters', 'Change or clear the filters above to see the agents.');
+  const { key, dir, L } = teamSorted(items), pages = Math.max(1, Math.ceil(L.length / TPAGE)), pg = Math.min(Math.max(0, state.teamPage || 0), pages - 1), from = pg * TPAGE, view = L.slice(from, from + TPAGE);
+  const cols = ['name', 'adh', 'fin', showSR ? 'earned' : 'exc', 'aht', 'absent', 'tardy', 'elig', 'one'];
+  const th = c => { const on = c === key, srt = on ? (dir < 0 ? 'descending' : 'ascending') : 'none'; return `<th scope="col" class="${['name', 'elig', 'one'].includes(c) ? '' : 'r'}" aria-sort="${srt}"><button class="sorth" data-tsortc="${c}">${esc(TCOL[c].l)}<svg aria-hidden="true"><use href="#i-chev"/></svg></button></th>`; };
+  const so = TEAM_SORTS.find(x => x[0] === state.teamSort);
+  const rows = view.map((x, i) => {
+    const rr = x.r, on = x.p.status !== 'Inactive', below = rr && rr.adh != null && rr.adh < set.target;
+    const v = c => { const z = TCOL[c].v(x); return z == null ? '–' : c === 'adh' ? (below ? belowB(z, pct(z, 1)) : esc(pct(z, 1))) : c === 'fin' ? esc(pct1(z)) : c === 'aht' ? esc(mss(z)) : c === 'tardy' ? String(Math.round(z)) : c === 'earned' ? Math.round(z).toLocaleString('en-US') : String(z); };
+    return `<tr data-row="${esc(x.p._id)}"${on ? '' : ' class="inactive"'}><td class="rk num">${from + i + 1}</td>
+      <td class="who"><div class="whoin"><span class="av" aria-hidden="true"${avStyle(x.exp)}>${esc(initials(x.exp))}</span><span class="wl"><button class="linkbtn nm" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" dir="auto">${esc(x.exp)}</button>${spv ? '' : spvLine(x.p._id)}<small>${esc(Core.cleanId((effP(x.p._id) || x.p).nid) || 'No National ID')} · ${esc(unitOf(x.p))}${on ? '' : ' · Inactive'}</small></span></div></td>
+      ${['adh', 'fin', showSR ? 'earned' : 'exc', 'aht', 'absent', 'tardy'].map(c => `<td class="r num${c === 'adh' && below ? ' low' : ''}" data-l="${esc(TCOL[c].l)}">${v(c)}</td>`).join('')}<td data-l="Eligible">${eligBadge(rr)}</td><td data-l="One-to-one">${oneBadge(x)}</td></tr>`;
+  }).join('');
+  const pager = pages > 1 ? `<nav class="pager" aria-label="Pages of agents"><span class="prange">${from + 1}–${from + view.length} of ${L.length}</span><span class="spacer"></span><button class="btn sm ghost" data-tpage="${pg - 1}"${pg ? '' : ' disabled'} aria-label="Previous page"><svg width="14" height="14" aria-hidden="true"><use href="#i-chevl"/></svg>Previous</button>${Array.from({ length: pages }, (_, i) => i).filter(i => pages <= 7 || i === 0 || i === pages - 1 || Math.abs(i - pg) <= 1).map((i, j, A) => `${j && i - A[j - 1] > 1 ? '<span class="pgap">…</span>' : ''}<button class="btn sm ${i === pg ? 'cur' : 'ghost'}" data-tpage="${i}"${i === pg ? ' aria-current="page"' : ''} aria-label="Page ${i + 1}">${i + 1}</button>`).join('')}<button class="btn sm ghost" data-tpage="${pg + 1}"${pg < pages - 1 ? '' : ' disabled'} aria-label="Next page">Next<svg width="14" height="14" aria-hidden="true"><use href="#i-chevr"/></svg></button></nav>` : `<p class="prange">${plural(L.length, 'agent')}</p>`;
+  return `<div class="card tagents" id="teamAgents"><div class="cardhead"><div><h2>Agents</h2><p class="cap">Ranked by ${esc(so ? so[3] : TCOL[key].l.toLowerCase())}${dir < 0 ? ', highest first' : ', lowest first'}. Point at a name for a quick look; select a row for the agent's panel.</p></div>
+    <label class="wsfield"><span>Rank by</span><select class="cell" data-tsort>${TEAM_SORTS.map(([v, l]) => `<option value="${v}"${v === state.teamSort ? ' selected' : ''}>${esc(l)}</option>`).join('')}${TEAM_SORTS.some(x => x[0] === state.teamSort) ? '' : `<option value="${esc(key)}" selected>${esc(TCOL[key].l)}</option>`}</select></label></div>
+    <div class="tteamwrap"><table class="tteam"><caption class="sr">Agents for the month, ${esc(TCOL[key].l)} order</caption><thead><tr><th scope="col" class="rk">#</th>${cols.map(th).join('')}</tr></thead><tbody>${rows}</tbody></table></div>${pager}</div>`;
+}
 const teamCountText = (shown, n, so) => `${shown === n ? plural(n, 'agent') : `${shown} of ${plural(n, 'agent')}`}, ranked by ${so[3]}${so[0] === 'name' ? '' : ' (number 1 first)'}. Point at a name for a quick look; select the row for the full profile, history and forms.`;
 /** the senior manager's view of the one-to-ones: who has one arranged and who does not yet, by supervisor; the supervisors do the rest */
 function seniorBoardHtml(items, k) {
@@ -479,17 +545,34 @@ $('teamBody').addEventListener('click', async e => {
   const rj = e.target.closest('[data-reject]');
   if (rj) { const li = rj.closest('[data-wid]'); if (!rj.dataset.confirm) { rj.dataset.confirm = '1'; rj.textContent = 'Click again: turn it off'; return; } if (await Auth.rejectAgent(li.dataset.wid)) { toast('The account is turned off. The admin can turn it back on.'); loadPeople(); } }
 });
+let tqT = 0;
 $('teamBody').addEventListener('input', e => {
   const t = e.target; if (!t.matches('[data-tq]')) return;
-  state.teamQ = t.value; const q = normName(t.value), box = t.closest('.emps'); if (!box) return;
-  let shown = 0; const L = box.querySelectorAll('.egrid .ecard');
-  L.forEach(c => { const on = !q || (c.dataset.nm || '').includes(q); c.hidden = !on; if (on) shown++; });
-  const so = TEAM_SORTS.find(x => x[0] === state.teamSort) || TEAM_SORTS[0], cap = box.querySelector('[data-tcount]'); if (cap) cap.textContent = teamCountText(shown, L.length, so);
-  const none = box.querySelector('.tnone'); if (none) none.hidden = !!shown;
+  state.teamQ = t.value; state.teamPage = 0; clearTimeout(tqT);
+  tqT = setTimeout(() => { const pos = t.selectionStart; renderWs(); const n = $('teamBody').querySelector('[data-tq]'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (x) { /* search fields */ } } }, 120);
 });
 $('teamBody').addEventListener('change', e => {
-  const t = e.target; if (!t.matches('[data-tsort]')) return;
-  state.teamSort = t.value; renderWs(); const s = $('teamBody').querySelector('[data-tsort]'); if (s) s.focus();
+  const t = e.target, refocus = sel => { const n = $('teamBody').querySelector(sel); if (n) n.focus(); };
+  if (t.matches('[data-tsort]')) { state.teamSort = t.value; state.teamDir = ''; state.teamPage = 0; renderWs(); refocus('[data-tsort]'); }
+  if (t.matches('[data-tbrand]')) { state.teamBrand = t.value; state.teamPage = 0; renderWs(); refocus('[data-tbrand]'); }
+  if (t.matches('[data-tdep]')) { state.teamDep = t.value; state.teamPage = 0; renderWs(); refocus('[data-tdep]'); }
+  if (t.matches('[data-wsspv]')) { state.wsSpv = t.value; state.teamPage = 0; renderWs(); refocus('[data-wsspv]'); }
+});
+$('teamBody').addEventListener('click', e => {
+  const t = e.target;
+  const c = t.closest('[data-tclear]');
+  if (c) { const w = c.dataset.tclear; if (w === 'brand' || w === 'all') state.teamBrand = ''; if (w === 'dep' || w === 'all') state.teamDep = ''; if (w === 'q' || w === 'all') state.teamQ = ''; if (w === 'spv' || w === 'all') state.wsSpv = ''; state.teamPage = 0; renderWs(); const f = $('teamBody').querySelector('[data-tclear]') || $('teamBody').querySelector('[data-tbrand]'); if (f) f.focus(); return; }
+  const tb = t.closest('[data-ttab]'); if (tb) { teamTabTo(tb.dataset.ttab); return; }
+  const sc = t.closest('[data-tsortc]'); if (sc) { const k2 = sc.dataset.tsortc, C = TCOL[k2]; if (state.teamSort === k2) state.teamDir = (state.teamDir || C.d) === 'asc' ? 'desc' : 'asc'; else { state.teamSort = k2; state.teamDir = C.d; } state.teamPage = 0; renderWs(); const b = $('teamBody').querySelector(`[data-tsortc="${k2}"]`); if (b) b.focus(); return; }
+  const pg = t.closest('[data-tpage]'); if (pg && !pg.disabled) { state.teamPage = +pg.dataset.tpage; renderWs(); const top = $('teamAgents'); if (top) top.scrollIntoView({ block: 'start' }); const b = $('teamBody').querySelector('.pager [aria-current="page"]'); if (b) b.focus({ preventScroll: true }); return; }
+  const row = t.closest('tr[data-row]'); if (row && !t.closest('button, a, input, select')) { openPerson(row.dataset.row); }
+});
+function teamTabTo(v, focus = true) { state.teamTab = v; renderWs(); if (focus) { const b = $('teamBody').querySelector(`[data-ttab="${v}"]`); if (b) b.focus(); } }
+$('teamBody').addEventListener('keydown', e => {
+  const tb = e.target.closest('[data-ttab]'); if (!tb) return;
+  const L = [...$('teamBody').querySelectorAll('[data-ttab]')], i = L.indexOf(tb);
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); teamTabTo(L[(i + (e.key === 'ArrowRight' ? 1 : L.length - 1)) % L.length].dataset.ttab); }
+  if (e.key === 'Home') { e.preventDefault(); teamTabTo(L[0].dataset.ttab); } if (e.key === 'End') { e.preventDefault(); teamTabTo(L[L.length - 1].dataset.ttab); }
 });
 $('teamBar').addEventListener('click', async e => {
   const d = e.target.closest('[data-spvdone]');

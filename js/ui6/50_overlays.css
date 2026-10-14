@@ -1,14 +1,15 @@
 /* ------------------------------------------------------------------------------------------------------------- sheets from the right */
 .scrim { position: fixed; inset: 0; z-index: var(--z-scrim); background: var(--scrim); animation: fadeIn var(--t-base) ease both; }
-.scrim.out { animation: fadeOut 200ms ease both; pointer-events: none; }
+.scrim.out { animation: fadeOut var(--t-exit) ease both; pointer-events: none; }
 @keyframes fadeIn { from { opacity: 0; } }
 @keyframes fadeOut { to { opacity: 0; } }
-.drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: var(--z-sheet); width: min(480px, 100%); background: var(--panel); color: var(--ink); box-shadow: var(--shadow-sheet); display: flex; flex-direction: column;
-  padding-top: env(safe-area-inset-top, 0px); overscroll-behavior: contain; animation: sheetIn var(--t-sheet) var(--ease-drawer) both; }
-.drawer.out { animation: sheetOut 220ms var(--ease-out) both; pointer-events: none; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: var(--z-sheet); width: min(440px, 100%); background: var(--overlay); color: var(--ink); box-shadow: var(--shadow-sheet); display: flex; flex-direction: column;
+  border-radius: var(--r-dlg) 0 0 var(--r-dlg); padding-top: env(safe-area-inset-top, 0px); overscroll-behavior: contain; animation: sheetIn var(--t-panel) var(--ease-drawer) both; }
+.drawer.out { animation: sheetOut var(--t-exit) var(--ease-in) both; pointer-events: none; }
 @keyframes sheetIn { from { transform: translateX(100%); } }
 @keyframes sheetOut { to { transform: translateX(100%); } }
 .drawer.wide { width: min(680px, 100%); }
+#dPerson { width: min(600px, 100%); }
 .drawer.xwide { width: min(960px, 100%); }
 .drawer header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); flex: none; }
 .drawer header > div { min-width: 0; }
@@ -39,7 +40,7 @@
 .gxtab tbody tr { height: auto; }
 
 /* ------------------------------------------------------------------------------------------------------------- a person at a glance, when the pointer rests on a name */
-.pop { position: fixed; z-index: var(--z-pop); width: 316px; max-width: calc(100vw - 20px); background: var(--panel); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow-pop); padding: 16px; display: grid; gap: 12px; cursor: pointer; }
+.pop { position: fixed; z-index: var(--z-pop); width: 316px; max-width: calc(100vw - 20px); background: var(--overlay); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-pop); padding: 16px; display: grid; gap: 12px; cursor: pointer; }
 .pop.in { animation: popIn var(--t-fast) var(--ease-out) both; }
 @keyframes popIn { from { opacity: 0; transform: translateY(4px) scale(.98); } }
 .pop .ph { display: flex; align-items: center; gap: 11px; }
@@ -47,7 +48,7 @@
 .pop .pwho b { font: 600 15px/1.3 var(--text); letter-spacing: -0.01em; }
 .pop .pwho small { color: var(--muted); font-size: 12px; }
 .pfx { display: grid; grid-template-columns: 1.3fr 1fr .7fr; gap: 1px; padding: 1px; margin: 0; background: none; }
-.pfx > div { box-shadow: 0 0 0 1px var(--line); background: var(--panel-2); padding: 6px 8px; min-width: 0; }
+.pfx > div { box-shadow: 0 0 0 1px var(--line); background: var(--fill); padding: 6px 8px; min-width: 0; border-radius: 4px; }
 .pfx dt { font-size: 10.5px; color: var(--muted); font-weight: 500; }
 .pfx dd { margin: 0; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .pmx { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
@@ -63,9 +64,9 @@
 .pspark small { font-size: 10.5px; color: var(--muted); line-height: 1.3; }
 .phint { margin: 0; font-size: 11.5px; color: var(--muted); }
 /* a day in the attendance, corrected by the supervisor */
-.attpop { position: fixed; z-index: var(--z-pop); display: grid; gap: 10px; padding: 12px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow-pop); font-size: 13px; animation: popIn var(--t-fast) var(--ease-out) both; }
+.attpop { position: fixed; z-index: var(--z-pop); display: grid; gap: 10px; padding: 12px; background: var(--overlay); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-pop); font-size: 13px; animation: popIn var(--t-fast) var(--ease-out) both; }
 .attpop .ops { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
-.attpop .ops button { all: unset; box-sizing: border-box; cursor: pointer; padding: 7px 9px; background: var(--panel-2); font-size: 12.5px; border: 1px solid transparent; transition: border-color var(--t-fast) ease; }
+.attpop .ops button { all: unset; box-sizing: border-box; cursor: pointer; padding: 7px 9px; background: var(--fill); border-radius: var(--r-ctl); font-size: 12.5px; border: 1px solid transparent; transition: border-color var(--t-fast) ease; }
 .attpop .ops button:focus-visible { border-color: var(--ink); }
 .attpop .late { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
 .attpop .late input { width: 64px; min-height: 30px; padding: 0 6px; border: 1px solid var(--line-2); background: var(--sunk); }
@@ -73,11 +74,11 @@
 .attpop .foot .spacer { flex: 1; }
 @media (hover: hover) and (pointer: fine) { .attpop .ops button:hover { border-color: var(--ink); } }
 /* the hover readout of a chart, a table cell or a bar */
-.tt { position: fixed; z-index: var(--z-tt); pointer-events: none; max-width: 320px; background: var(--ink); color: var(--inverse); padding: 6px 9px; font-size: 12px; line-height: 1.4; font-weight: 500; box-shadow: var(--shadow-pop); }
+.tt { position: fixed; z-index: var(--z-tt); pointer-events: none; max-width: 320px; background: var(--ink); color: var(--inverse); border-radius: var(--r-ctl); padding: 6px 9px; font-size: 12px; line-height: 1.4; font-weight: 500; box-shadow: var(--shadow-pop); }
 /* a message at the bottom, with its undo */
-.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: var(--z-toast); display: flex; gap: 14px; align-items: center; max-width: min(560px, calc(100% - 32px));
-  padding: 11px 12px 11px 16px; background: var(--ink); color: var(--inverse); font-size: 13.5px; line-height: 1.45; box-shadow: var(--shadow-pop); }
-.toast:not([hidden]) { animation: toastIn 280ms var(--ease-out) both; }
+.toast { position: fixed; left: calc(50% + var(--side-cur) / 2); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: var(--z-toast); display: flex; gap: 14px; align-items: center; width: max-content; max-width: min(560px, calc(100vw - 32px));
+  padding: 11px 12px 11px 16px; border-radius: var(--r-card); background: var(--ink); color: var(--inverse); font-size: 13.5px; line-height: 1.45; box-shadow: var(--shadow-pop); }
+.toast:not([hidden]) { animation: toastIn var(--t-small) var(--ease-out) both; }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px); } to { transform: translate(-50%, 0); } }
 .toast button { border: 0; background: none; color: var(--toast-act); font: 600 13px/1 var(--text); cursor: pointer; padding: 6px 6px; white-space: nowrap; }
 
@@ -85,7 +86,7 @@
 body.findon { overflow: hidden; }
 .find { position: fixed; inset: 0; z-index: var(--z-find); display: grid; justify-items: center; align-items: start; padding: max(9vh, 24px) 16px 24px; }
 .findscrim { position: absolute; inset: 0; background: var(--scrim); }
-.findbox { position: relative; width: min(720px, 100%); max-height: min(80vh, 780px); display: flex; flex-direction: column; background: var(--panel); color: var(--ink); border: 1px solid var(--line-2); box-shadow: var(--shadow-pop); }
+.findbox { position: relative; width: min(720px, 100%); max-height: min(80vh, 780px); display: flex; flex-direction: column; background: var(--overlay); color: var(--ink); border: 1px solid var(--line-2); border-radius: var(--r-dlg); box-shadow: var(--shadow-modal); overflow: hidden; }
 .findin { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .findin > svg { width: 20px; height: 20px; flex: none; color: var(--muted); }
 .findfield { position: relative; flex: 1; min-width: 0; }
@@ -95,16 +96,16 @@ body.findon { overflow: hidden; }
 .findghost .gt { color: transparent; }
 .findx { flex: none; }
 .findchips { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px 0; }
-.fchip { border: 1px solid var(--line-2); background: transparent; color: var(--ink-2); font: 500 12.5px/1 var(--text); min-height: 26px; padding: 0 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.fchip { border: 1px solid var(--line-2); border-radius: var(--r-chip); background: transparent; color: var(--ink-2); font: 500 12.5px/1 var(--text); min-height: 26px; padding: 0 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
 .fchip::before { content: "+"; color: var(--muted); }
 .findbody { overflow: auto; padding: 10px 8px 8px; display: grid; gap: 8px; align-content: start; overscroll-behavior: contain; min-height: 0; }
 #findAns:empty { display: none; }
-.fans { margin: 0 8px; padding: 16px; background: var(--panel-2); border: 1px solid var(--line); display: grid; gap: 12px; min-width: 0; }
+.fans { margin: 0 8px; padding: 16px; background: var(--fill); border: 1px solid var(--line); border-radius: var(--r-card); display: grid; gap: 12px; min-width: 0; }
 .fahead { display: flex; gap: 10px; align-items: flex-start; }
 .fahead > div { display: grid; gap: 2px; min-width: 0; flex: 1; }
 .fahead b { font: 600 15px/1.3 var(--text); overflow-wrap: anywhere; }
 .fahead > div > span { font-size: 12.5px; color: var(--muted); }
-.fic { width: 28px; height: 28px; flex: none; display: grid; place-items: center; background: var(--panel); color: var(--ink-2); border: 1px solid var(--line); }
+.fic { width: 28px; height: 28px; flex: none; display: grid; place-items: center; background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); border-radius: var(--r-ctl); }
 .fic svg { width: 15px; height: 15px; }
 .fabig { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 .fabig > b { font: 600 30px/1.1 var(--text); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
@@ -131,8 +132,8 @@ body.findon { overflow: hidden; }
 .farows b.bad { color: var(--bad); }
 .faacts { display: flex; flex-wrap: wrap; gap: 6px; }
 .findlist { list-style: none; margin: 0; padding: 0; display: grid; }
-.findlist li[role=option] { display: flex; align-items: center; gap: 12px; padding: 9px 10px; cursor: pointer; min-width: 0; }
-.findlist li[aria-selected=true] { background: var(--panel-3); }
+.findlist li[role=option] { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: var(--r-ctl); cursor: pointer; min-width: 0; }
+.findlist li[aria-selected=true] { background: var(--accent-soft); }
 .findlist .ftx { display: grid; min-width: 0; flex: 1; gap: 1px; }
 .findlist .ftx b { font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .findlist .ftx small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -142,4 +143,24 @@ body.findon { overflow: hidden; }
 .findfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 9px 16px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
 .findfoot .kbd { margin-right: 3px; }
 .findfoot .linkbtn { font-size: 11.5px; color: var(--muted); }
-@media (hover: hover) and (pointer: fine) { .fchip:hover { border-color: var(--ink); color: var(--ink); } .findlist li[role=option]:hover { background: var(--panel-2); } }
+@media (hover: hover) and (pointer: fine) { .fchip:hover { border-color: var(--ink); color: var(--ink); } .findlist li[role=option]:hover { background: var(--fill); } }
+
+/* ------------------------------------------------------------------------------------------------------------- dialogs: centred over a scrim; the title says the action, the body the consequence, Cancel has the focus */
+.dlg { position: fixed; inset: 0; z-index: var(--z-dlg); display: grid; place-items: center; padding: 24px 16px; background: var(--scrim); animation: fadeIn var(--t-small) ease both; }
+.dlgbox { width: min(520px, 100%); max-height: calc(100vh - 48px); overflow: auto; background: var(--overlay); color: var(--ink); border-radius: var(--r-dlg); box-shadow: var(--shadow-modal); padding: 24px; display: grid; gap: 14px; animation: dlgIn var(--t-panel) var(--ease-out) both; }
+@keyframes dlgIn { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+.dlg.out { animation: fadeOut var(--t-exit) var(--ease-in) both; pointer-events: none; }
+.dlg.out .dlgbox { animation: dlgOut var(--t-exit) var(--ease-in) both; }
+@keyframes dlgOut { to { opacity: 0; transform: translateY(6px) scale(.98); } }
+.dlgbox h2 { font: 600 18px/24px var(--display); letter-spacing: -0.012em; }
+.dlgbody { display: grid; gap: 10px; font-size: 14px; color: var(--ink-2); }
+.dlgbody p { margin: 0; }
+.dlglist { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.dlgfoot { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
+/* the link panel: a search and the likely people */
+.linklist { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.lcand { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: var(--r-ctl); cursor: pointer; border: 1px solid transparent; transition: background-color var(--t-hover) ease, border-color var(--t-hover) ease; }
+.lcand .who { flex: 1; }
+.lcand:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.linkfoot { border-top: 1px solid var(--line); padding-top: 14px; }
+@media (hover: hover) and (pointer: fine) { .lcand:hover { background: var(--fill); border-color: var(--line); } }

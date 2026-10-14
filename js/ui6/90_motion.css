@@ -1,24 +1,46 @@
-/* ------------------------------------------------------------------------------------------------------------- motion
-   Only where something changes: a page swaps in (a short fade, no choreography), a sheet slides from its edge, a menu grows from
-   its button, a tab's line slides, a press gives a little, a toast rises, a check draws itself when an email is marked sent.
-   Never on what people do a hundred times a day from the keyboard (the search opens at once). Numbers do not count up; cards do
-   not rise as you scroll. Under 300 ms, ease-out, and quieter still when the device asks for less motion. */
-.view.enter { animation: viewIn 180ms var(--ease-out) both; }
-@keyframes viewIn { from { opacity: 0; } }
-.welcome:not([hidden]), .todaywrap:not([hidden]) > * { animation: fadeIn 200ms ease both; }
+/* ------------------------------------------------------------------------------------------------------------- motion (design review §10)
+   Still for everyday work; bold in three moments only: the dashboard's first load (72_dash.css), a Build step change (below) and a
+   finished build (60_build.css). Typing, filtering, sorting and paging never animate, numbers never count up, keyboard shortcuts act
+   at once. Entrances use transform and opacity only (no layout shift); nothing animates a blur. Things leave faster than they come. */
+.view.enter { animation: viewIn var(--t-ws) var(--ease-out) both; }
+@keyframes viewIn { from { opacity: 0; transform: translateY(10px); } }
+.todaywrap:not([hidden]) > * { animation: fadeIn var(--t-small) ease both; }
 .rv, .rv.rv-in { opacity: 1; transform: none; }
-details[open] > :not(summary) { animation: openIn 180ms var(--ease-out) both; }
+details[open] > :not(summary) { animation: openIn var(--t-small) var(--ease-out) both; }
 @keyframes openIn { from { opacity: 0; transform: translateY(-3px); } }
+.chk.open .chkbody { animation: openIn var(--t-small) var(--ease-out) both; }
 .drop.over svg, .hdrop.over svg { animation: nudge 600ms var(--ease-out) infinite alternate; }
 @keyframes nudge { to { transform: translateY(-3px); } }
+/* Build, one step to the next (about 0.9 s): the page slides in 28 px from its side, the new step's number glows once, the ring pulses */
+.view.stepin { animation: stepIn var(--t-ws) var(--ease-out) both; }
+.view.stepin.back { animation-name: stepBack; }
+@keyframes stepIn { from { opacity: 0; transform: translateX(28px); } }
+@keyframes stepBack { from { opacity: 0; transform: translateX(-28px); } }
+.step .n.glow { animation: glow 900ms var(--ease-out) 1 both; }
+@keyframes glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 60% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent); } 100% { box-shadow: 0 0 0 3px var(--accent-soft); } }
+.bbring.pulse .rf { transition-duration: var(--t-ws); }
+/* menus, popovers and toasts leave faster than they came */
+.toast.out { animation: toastOut var(--t-exit) var(--ease-in) both; }
+@keyframes toastOut { to { opacity: 0; transform: translate(-50%, 8px); } }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px); } to { transform: translate(-50%, 0); } }
+/* a newly available task: one pulse */
+.tlist li.fresh .tdot { animation: pulse 1400ms var(--ease-out) 1; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
 
 @media (prefers-reduced-motion: reduce) {
-  /* less movement, the same feedback: things still fade and change colour, nothing slides or scales */
+  /* movement becomes a 120 ms fade, staggers collapse, the chart is there at once, emphasis effects do not play, nothing loops */
   *, *::before, *::after { scroll-behavior: auto !important; }
-  .drawer, .drawer.out { animation-name: fadeIn !important; animation-duration: 120ms !important; }
-  .drawer.out { animation-name: fadeOut !important; }
-  .acctmenu, .pop.in, .attpop, .toast:not([hidden]), .lockcard, .rbfile, .rbsent, details[open] > :not(summary) { animation-name: fadeIn !important; }
-  .btn:active:not(:disabled), .atile:active, .teamchips button:active, .mosaic .mc:active, .rb .actions button:not(.btn):active { transform: none !important; }
-  .drop.over svg, .hdrop.over svg, .bell.ping svg, .progress i { animation: none !important; }
-  .seg > .sthumb, .steps > .thumb, .tabs > .thumb { transition-duration: 1ms !important; }
+  .drawer, .drawer.out, .sheet-more, .dlgbox, .dlg.out .dlgbox { animation-name: fadeIn !important; animation-duration: 120ms !important; }
+  .drawer.out, .dlg.out .dlgbox { animation-name: fadeOut !important; }
+  .menu, .acctmenu, .pop.in, .attpop, .toast:not([hidden]), .lockcard, .rbfile, .rbsent, details[open] > :not(summary), .view.enter, .view.stepin, .chk.open .chkbody { animation-name: fadeIn !important; animation-duration: 120ms !important; }
+  .chk.rise, #dashBody.intro .kpi { animation: none !important; }
+  #dashBody.intro .dline, #dashBody.intro .dpt, #dashBody.intro .dglow { animation: none !important; stroke-dashoffset: 0 !important; }
+  #dashBody.intro .greet::after, #success.sweep::after, .step .n.glow, .tlist li.fresh .tdot { display: none; animation: none !important; }
+  #success.sweep, #success.sweep .tick { animation: none !important; }
+  .btn:active:not(:disabled), .atile:active, .qa:active, .teamchips button:active, .mosaic .mc:active, .rb .actions button:not(.btn):active { transform: none !important; }
+  .drop.over svg, .hdrop.over svg, .bell.ping svg { animation: none !important; }
+  /* the indeterminate bar becomes a dim full bar; the words say what is happening */
+  .progress i { animation: none !important; width: 100% !important; opacity: .35; }
+  .seg > .sthumb, .steps > .thumb, .tabs > .thumb, .sidebar, .appbar, main, .sitefoot { transition-duration: 1ms !important; }
+  .sbnav button[aria-current="page"]::before { animation: none; }
 }

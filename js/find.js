@@ -192,7 +192,7 @@ function findPages(role) {
     add('rules', 'Incentive rules (scorecards, bases, who earns it), in force from a month', 'incentive rules|rules|governance|bases|eligibility rules|minimum final|rule history|new rules', 'Supervisors', () => openRules());
     add('changes', 'Changes by hand this month', 'changes by hand|overrides|audit|changes report|who changed|hand changes|manual changes', 'Supervisors', () => { state.chgOpen = true; setWs('cycle'); renderWs(); scrollTo_('#cycleBody .chgcard'); });
   }
-  if (W.includes('team') && !W.includes('cycle')) add('objteam', 'Objections from the agents', 'objections|objection|disputes|complaints', 'Team', () => { setWs('team'); scrollTo_('#objCard'); });
+  if (W.includes('team') && !W.includes('cycle')) add('objteam', 'Objections from the agents', 'objections|objection|disputes|complaints', 'Team', () => { state.teamTab = 'obj'; setWs('team'); renderWs(); scrollTo_('#objCard'); });
   if (W.includes('results')) add('compare', 'Parallel run: compare with the old Excel', 'compare|old excel|parallel run|reconcile|reconciliation|differences|check against excel', 'Results', () => { setWs('results'); scrollTo_('.cmpcard'); });
   if (W.includes('wfm')) {
     for (const [t, l] of wfmTabsFor(role)) add('wfm-' + t, `WFM › ${l}`, t === 'mail' ? 'emails tab' : t === 'inter' ? 'interactions|interactions export|calls page' : t === 'agents' ? 'agents table|all agents|agent analytics' : t === 'daily' ? 'daily|daily dashboard|daily data' : t === 'builder' ? 'report builder|member care report builder|daily files|drop daily|daily exports' : t === 'dmail' ? 'daily emails|brand emails|send daily' : 'analytics|charts|dashboard', 'WFM', wfm(t));

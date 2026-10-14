@@ -6,8 +6,8 @@ const SRC = (() => {   // the page's own source, for the team copy
     const me = document.currentScript && document.currentScript.textContent.includes('const Auth = (() =>') ? document.currentScript : [...document.scripts].find(x => x.textContent.includes('const Auth = (() =>'));
     const style = [...document.querySelectorAll('style')].find(x => x.textContent.includes('.lockcard'));
     const head = [document.querySelector('title'), ...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]'), style].filter(Boolean).map(e => e.outerHTML).join('\n');
-    const body = [...document.querySelectorAll('svg, #lock, header.appbar, main#main, footer.sitefoot, #scrim, aside.drawer, #toast, #tt, #pop, script#rb-data, script#rb-code, script#brand-assets')]
-      .filter(e => (e.tagName.toLowerCase() !== 'svg' || e.querySelector('symbol#i-up')) && !(e.parentElement && e.parentElement.closest('#lock, header.appbar, main#main, aside.drawer')))
+    const body = [...document.querySelectorAll('svg, #lock, a#skipLink, nav#sidebar, header.appbar, main#main, footer.sitefoot, nav#tabBar, #moreSheet, #scrim, div.dlg, aside.drawer, #toast, #tt, #pop, script#rb-data, script#rb-code, script#brand-assets')]
+      .filter(e => (e.tagName.toLowerCase() !== 'svg' || e.querySelector('symbol#i-up')) && !(e.parentElement && e.parentElement.closest('#lock, nav#sidebar, header.appbar, main#main, aside.drawer, div.dlg, #moreSheet')))
       .map(e => e.outerHTML).join('\n');
     const eng = document.getElementById('engine-src'), wg = [...document.scripts].find(x => x.textContent.includes('const Writer2'));
     const scripts = [eng, wg, me].map(x => (x ? x.textContent : ''));
@@ -39,10 +39,11 @@ const XKINDS = [
 const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
+const REVIEW_TABS = ['checks', 'people', 'issues', 'preview', 'kpi', 'history'];
 const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
-  step: 'import', tab: 'people',
+  step: 'import', tab: 'checks',
   slots: {}, others: [], pending: [],
   roster: [], rosterReady: false, rosterMsg: 'Loading the roster…', db: null,
   y: prevMonth.y, m: prevMonth.m, monthManual: false,
@@ -343,7 +344,8 @@ async function addFiles(list) {
   list = rest;
   const items = [...list].map(f => ({ fid: ++fseq, name: f.name, size: f.size, file: f, t0: Date.now() }));
   if (!items.length) return;
-  state.pending.push(...items); renderPending(); renderSteps();
+  const snap0 = impSnap(); items.forEach(it => impLogAdd('wait', `Reading ${it.name} (${fmtSize(it.size)})`));
+  state.pending.push(...items); renderPending(); renderSteps(); renderImpSide();
   const notes = [];
   const parsed = await Promise.all(items.map(async it => {
     let dets;
@@ -363,7 +365,7 @@ async function addFiles(list) {
     if (!state.monthManual) { const g = Core.guessMonth(allDets()); state.y = g.y; state.m = g.m; }
   }
   const gh = route.hist.length ? applyGenesysHistory(route.hist, route.W) : null;
-  refresh();
+  refresh(); impLogAfter(items, snap0, notes);
   const bad = notes.filter(n => n.bad).length, replaced = notes.filter(n => n.replaced).map(n => n.replaced), sum = notesSummary();
   const kpiN = notes.filter(n => n.kpi).map(n => n.kpi), idsN = notes.filter(n => n.ids).length, histK = [...new Set(notes.filter(n => n.hist).map(n => n.hist))].sort();
   const head = (replaced.length ? `Replaced ${replaced.join(', ')}` : bad ? `${plural(items.length - bad, 'file')} read, ${bad} not recognised` : `${plural(items.length, 'file')} read`) + (idsN && state.idsLog.length ? `. ${plural(state.idsLog.length, 'National ID')} added to the roster from the IDs file` : '') + (histK.length ? `. Added ${histK.map(ymLabel).join(', ')} to the history (Review › History)` : '') + (gh ? '. ' + ghistText(gh) : '') + (kpiN.length ? `. KPI file for ${MONTH_LONG[state.m - 1]}: ${kpiN.join('; ')}` : '');
@@ -576,6 +578,7 @@ function render(o = {}) {
       else if (o.table === false && o.row) renderRow(o.row); else if (o.table !== false && !tableHasFocus()) renderRoster(); else if (o.table !== false) state.pendingRender = true;
       renderPeopleFilters(); renderPeopleMeta();
     }
+    if (state.tab === 'checks') renderChecks();
     if (state.tab === 'issues') renderIssues();
     if (state.tab === 'preview') renderPreview();
     if (state.tab === 'history') renderHistory();
@@ -608,16 +611,18 @@ function renderSteps() {
     b.querySelector('.n').innerHTML = done ? '<svg aria-hidden="true"><use href="#i-check"/></svg><span class="sr">done</span>' : String(STEPS.indexOf(s) + 1);
     if (s === state.step) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
+  renderRing();
   moveThumb(document.querySelector('.steps'), '.step[aria-current="page"]');
 }
 function renderBadges() {
+  const ck = state.notes.filter(n => n.sev === 'decide' || n.sev === 'warn').length, bc = $('bChecks'); bc.textContent = ck; bc.classList.toggle('n', ck > 0); bc.setAttribute('aria-label', plural(ck, 'check') + ' to look at');
   $('bPeople').textContent = rosterRows().length; $('bHist').textContent = Object.keys(state.history).length; $('bKpi').textContent = state.kpi.size;
   const b = $('bIssues'); b.textContent = state.issues.length; b.classList.toggle('n', state.issues.length > 0);
   b.setAttribute('aria-label', plural(state.issues.length, 'issue'));
 }
 
 // ---- import
-function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); }
+function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); }
 function renderPending() {
   $('pending').innerHTML = state.pending.map(p => `<li><div class="row"><b>${esc(p.name)}</b><span>${fmtSize(p.size)}</span></div><div class="progress" role="progressbar" aria-label="Reading ${esc(p.name)}"><i></i></div><div class="hint">Reading and recognising the columns…</div></li>`).join('');
 }
@@ -815,7 +820,7 @@ function renderPreview() {
     : !top.length ? `<p class="subtle">No deduction minutes for ${esc(scope)} this month.</p>`
     : `<div class="hbars">${top.map(m => `<button class="hb" data-open="${esc(m.p._id)}" data-agent="${esc(m.p._id)}"><span class="nm" dir="auto">${esc(m.exp)}</span><span class="track"><span class="fill" style="display:block;width:${m.ded / tmx * 100}%"></span></span><span class="v">${m.ded}</span></button>`).join('')}</div>`;
   el.innerHTML = `
-    <div class="tiles">${tiles.map(([b, l, s, alert]) => `<div class="tile ${alert ? 'alert' : ''}"><b>${esc(b)}</b><span><span style="color:var(--ink-2);font-weight:600">${esc(l)}</span><br>${esc(s)}</span></div>`).join('')}</div>
+    <div class="tiles">${tiles.map(([b, l, s, alert]) => `<div class="tile ${alert ? 'alert' : ''}"><span class="tl">${esc(l)}</span><b>${esc(b)}</b><span class="ts">${esc(s)}</span></div>`).join('')}</div>
     <div class="banner info">${state.attRes ? `Attendance from ${plural(state.attFiles.length, 'file')} is in: attended days come from it, and it fills the Attendance sheet and the incentive file.` : 'No attendance files yet, so attended days come from adherence. Drop the supervisors\' attendance files on Import to fill the Attendance sheet.'}</div>
     <div class="grid2">
       <div class="card"><h2>By team</h2><p class="cap">People in the reports. Same totals as the Overview sheet.</p>
@@ -904,10 +909,17 @@ function renderExport() {
   renderIncExport();
   $('sheets').closest('.card').hidden = !!freshBuild();
   const sc = $('success');
-  if (state.built) {
+  sc.classList.remove('success', 'building', 'failed', 'sweep');
+  if (state.building) {   // honest progress: no percentage the tool cannot measure; the words say what is happening
+    sc.hidden = false; sc.classList.add('building');
+    sc.innerHTML = `<div class="bstate"><h2>Building ${esc(fileNameOut())}…</h2><p class="hint">Writing the nine sheets and their formulas on this computer. Nothing is sent or uploaded.</p></div><div class="progress ind" role="progressbar" aria-label="Building the workbook" aria-busy="true"><i></i></div>`;
+  } else if (state.buildErr && !state.built) {
+    sc.hidden = false; sc.classList.add('failed');
+    sc.innerHTML = `<div class="bstate"><h2><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>Not saved</h2><p class="hint">${esc(state.buildErr)} Nothing was sent or uploaded.</p></div><button class="btn" id="buildAgain">Try again</button>`;
+  } else if (state.built) {
     const b = state.built, stale = b.ver !== state.ver;
-    sc.hidden = false; sc.classList.toggle('success', !stale);
-    sc.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><div><h2 style="margin:0">${stale ? 'Built before your latest changes' : 'Workbook saved'}</h2><p class="hint" style="margin-top:4px">${esc(b.filename)} · ${esc(b.at)}${stale ? ' · build again to include the changes' : ''}</p></div><button class="btn ${stale ? 'primary' : ''}" id="buildAgain">Build again</button></div>
+    sc.hidden = false; sc.classList.toggle('success', !stale); if (state.builtNew && !stale) { sc.classList.add('sweep'); state.builtNew = false; }
+    sc.innerHTML = `<div class="bsrow"><div class="bstate">${stale ? '<h2><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>Changed since build</h2>' : '<h2><svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Workbook saved</h2>'}<p class="hint">${stale ? `${esc(b.filename)} was saved at ${esc(b.at)}, before your latest changes. Build again to include them.` : `Saved ${esc(b.filename)} at ${esc(b.at)}. Nothing was sent or uploaded.`}</p></div><div class="bsact"><button class="btn ${stale ? 'primary' : ''}" id="buildAgain">Build again</button><small>Makes a new file with the page as it is now.</small></div></div>
       ${stale ? '' : `<div class="sheets" style="margin-top:12px">${b.sheets}</div><p class="hint" style="margin-top:10px">Next: open it in Excel and paste the attendance into the Attendance sheet. The steps are below.</p>`}`;
   } else sc.hidden = true;
 }
@@ -915,7 +927,7 @@ function renderExport() {
 // ---------------------------------------------------------------- build + save
 async function build() {
   if (!canBuild() || state.building) return;
-  state.building = true; renderHeader(); if (state.step === 'export') renderExport();
+  state.building = true; state.buildErr = ''; renderHeader(); if (state.step !== 'export') setStep('export'); else renderExport();
   const btns = [$('build'), $('buildTop')]; const labels = btns.map(b => b.innerHTML);
   btns.forEach(b => { b.innerHTML = '<span class="spin" aria-hidden="true"></span>Building…'; });
   try {
@@ -924,12 +936,15 @@ async function build() {
     ctx.logo = await xlLogo();
     const bytes = await Writer2.build(ctx);
     const filename = fileNameOut();
-    const saved = await save(filename, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    if (saved) { state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), sheets: sheetsHtml(true) }; }
-  } catch (e) { toast('Could not build the file: ' + (e && e.message ? e.message : e)); }
+    const c = await saveRaw(filename, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    if (c === 'ok') {
+      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), sheets: sheetsHtml(true) }; state.builtNew = true;
+      toast(`Saved ${filename}. Nothing was sent or uploaded.`);
+    } else { state.buildErr = saveMsg(c, filename); toast(state.buildErr); }
+  } catch (e) { state.buildErr = 'Could not build the file: ' + (e && e.message ? e.message : e); toast(state.buildErr); }
   finally {
     state.building = false; btns.forEach((b, i) => { b.innerHTML = labels[i]; });
-    if (state.built && state.step !== 'export') setStep('export'); else render();
+    if (state.step !== 'export') setStep('export'); else render();
   }
 }
 let downloadsP = null;
@@ -1193,13 +1208,22 @@ function renderNotes() {
   const groups = [['decide', 'Needs your decision'], ['warn', 'Please check'], ['fixed', 'Fixed automatically'], ['info', 'For your information'], ['done', 'Decided by you']];
   const open = N.filter(n => n.sev === 'decide' || n.sev === 'warn').length;
   $('notesSub').textContent = N.length ? `${plural(open, 'item')} to look at · ${plural(N.filter(n => n.sev === 'fixed').length, 'automatic fix', 'automatic fixes')}` : '';
-  if (!N.length) { $('notesBody').innerHTML = emptyCard('Nothing to report', state.ctx || state.attFiles.length ? 'Every check passed.' : 'Drop the exports and the attendance files on Import. Every file is checked, and anything odd shows up here.'); return; }
-  const free = rosterRows().slice().sort((a, b) => a.name.localeCompare(b.name));
-  const item = n => {
+  if (!N.length) { $('notesBody').innerHTML = emptyCard('Nothing to report', state.ctx || state.attFiles.length ? 'Every check passed.' : 'Drop the exports and the attendance files on Import. Every file is checked, and anything odd shows up here.'); if (checksShown()) renderChecks(); return; }
+  const item = n => noteItemHtml(n);
+  $('notesBody').innerHTML = groups.map(([sev, label]) => { const L = N.filter(n => n.sev === sev); return L.length ? `<section class="sec"><h3>${esc(label)} <span class="badge ${sev === 'decide' || sev === 'warn' ? 'n' : ''}">${L.length}</span></h3><ul class="notes">${L.map(item).join('')}</ul></section>` : ''; }).join('');
+  if (checksShown()) renderChecks();
+}
+let freeMemo = null;
+/** one check, with its actions: the same in the bell's drawer and in Review › Checks */
+function noteItemHtml(n, opts = {}) {
+  const R = state.attRes;
+  if (!freeMemo || freeMemo.v !== state.ver || freeMemo.n !== state.roster.length) freeMemo = { v: state.ver, n: state.roster.length, L: rosterRows().slice().sort((a, b) => a.name.localeCompare(b.name)) };
+  const free = freeMemo.L;
+  {
     let acts = '';
     if (n.pick) {
       const cl = n.pick, tardy = cl.kind === 'tardy';
-      acts = `<div class="picks" role="group" aria-label="Choose the value">${cl.options.map(o => { const on = String(o.v) === String(cl.current); return `<button class="btn sm ${on ? 'primary' : ''}" aria-pressed="${on}" data-pick="${esc(cl.key)}" data-v="${esc(JSON.stringify(o.v))}"><b>${esc(optLabel(o.v, tardy))}</b><span class="subtle">${esc(o.src)}</span></button>`; }).join('')}${cl.chosen !== undefined ? `<button class="linkbtn" data-unpick="${esc(cl.key)}">Clear my choice</button>` : ''}</div>`;
+      acts = `<div class="picks" role="group" aria-label="Choose the value">${cl.options.map(o => { const on = String(o.v) === String(cl.current); return `<button class="btn sm ${on ? 'primary' : ''}" aria-pressed="${on}" data-pick="${esc(cl.key)}" data-v="${esc(JSON.stringify(o.v))}"><b>${esc(optLabel(o.v, tardy))}</b><span class="subtle">${esc(o.src)}</span></button>`; }).join('')}${cl.chosen !== undefined ? `<button class="linkbtn" data-unpick="${esc(cl.key)}">Change</button>` : ''}</div>`;
     }
     if (n.undo) acts = `<button class="btn sm ghost" data-undo="${esc(n.undo)}">Undo</button>`;
     if (n.redo) acts = `<button class="btn sm ghost" data-redo="${esc(n.redo)}">Redo the fix</button>`;
@@ -1212,9 +1236,9 @@ function renderNotes() {
     if (n.idsUndo) acts = `<button class="btn sm ghost" data-idsundo="${esc(n.idsUndo)}">Undo</button>`;
     if (n.idsAct) acts = `<div class="acts">${n.idsAct.map(([a, x, v, l], i) => `<button class="btn sm ${i ? 'ghost' : ''}" data-ida="${a}" data-idx="${esc(x)}" data-idv="${esc(v)}">${esc(l)}</button>`).join('')}</div>`;
     const list = n.list && n.list.length ? `<details><summary>${plural(n.list.length, 'line')}</summary><ul>${n.list.slice(0, 200).map(t => `<li dir="auto">${esc(t)}</li>`).join('')}${n.list.length > 200 ? `<li class="subtle">and ${n.list.length - 200} more</li>` : ''}</ul></details>` : '';
+    if (opts.row) return checkRowHtml(n, acts, list);
     return `<li class="note ${n.sev}"><div class="nt"><span class="tag">${esc(n.group || '')}</span><b dir="auto">${esc(n.title)}</b>${n.body ? `<span class="hint">${esc(n.body)}</span>` : ''}${list}</div>${acts ? `<div class="na">${acts}</div>` : ''}</li>`;
-  };
-  $('notesBody').innerHTML = groups.map(([sev, label]) => { const L = N.filter(n => n.sev === sev); return L.length ? `<section class="sec"><h3>${esc(label)} <span class="badge ${sev === 'decide' || sev === 'warn' ? 'n' : ''}">${L.length}</span></h3><ul class="notes">${L.map(item).join('')}</ul></section>` : ''; }).join('');
+  }
 }
 
 
@@ -1935,7 +1959,7 @@ function renderBrand() {
   const L = state.logo, d = $('blDark'), l = $('blLight'); if (!d || !l) return;
   const on = !!(L || BRAND);
   d.src = L && !L.builtin ? L.dataUrl : BRAND ? BRAND.dark : ''; l.src = L && !L.builtin ? L.dataUrl : BRAND ? BRAND.light : '';
-  document.querySelector('.appbar .brand').classList.toggle('has-logo', on);
+  document.querySelector('.sidebar .brand').classList.toggle('has-logo', on);
 }
 let xlLogoMemo = null;
 /** the logo as PNG bytes for the Excel files */
@@ -3173,18 +3197,18 @@ function reveal(root) {
 // ---------------------------------------------------------------- navigation, drawers, toast, tooltip
 function setStep(step) {
   if (!isBuilder()) return;
-  if (['people', 'issues', 'preview', 'kpi', 'history'].includes(step)) { state.tab = step; step = 'review'; }
+  if (REVIEW_TABS.includes(step)) { state.tab = step; step = 'review'; }
   leaveWs();
-  if (step === 'settings') { openDrawer('dSettings'); return; }
+  if (step === 'settings') { openDrawer('dSettings'); $('month').focus(); return; }
   commitActive();
   if (step === 'email') mountMail(false);
-  const changed = state.step !== step;
+  const from = state.step, changed = from !== step;
   state.step = step;
   for (const s of STEPS) $('v-' + s).hidden = s !== step;
   hidePop();
   if (step === 'review') setTab(state.tab, false);
   render();
-  if (changed) animIn($('v-' + step));
+  if (changed && STEPS.includes(from)) stepMoment(from, step); else if (changed) animIn($('v-' + step));
   window.scrollTo({ top: 0 });
   const h = $('h-' + step); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
 }
@@ -3193,7 +3217,7 @@ function setTab(tab, focus) {
   state.tab = tab;
   document.querySelectorAll('.tab').forEach(t => { const on = t.dataset.tab === tab; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; if (on && focus) t.focus(); });
   const changed = $('p-' + tab).hidden;
-  for (const t of ['people', 'issues', 'preview', 'kpi', 'history']) $('p-' + t).hidden = t !== tab;
+  for (const t of REVIEW_TABS) $('p-' + t).hidden = t !== tab;
   hidePop();
   render({ table: true });
   moveThumb(document.querySelector('.tabs'), '.tab[aria-selected="true"]');
@@ -3268,12 +3292,12 @@ $('slots').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.hasAttribute('data-pick')) $('picker').click();
   const k = b.getAttribute('data-unslot');
-  if (k) { const old = state.slots[k]; delete state.slots[k]; refresh(); toast(`Removed ${old.name}`, { label: 'Undo', fn: () => { state.slots[k] = old; refresh(); } }); }
+  if (k) { const old = state.slots[k]; delete state.slots[k]; impLogAdd('removed', `Removed ${KIND_BY[k].title}: ${old.name}`); refresh(); toast(`Removed ${old.name}`, { label: 'Undo', fn: () => { state.slots[k] = old; impLogAdd('read', `Put back ${KIND_BY[k].title}: ${old.name}`); refresh(); } }); }
 });
 $('others').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   const rm = b.getAttribute('data-unother'), ro = b.getAttribute('data-roster-other');
-  if (rm != null) { state.others.splice(+rm, 1); renderOthers(); }
+  if (rm != null) { const o = state.others[+rm]; state.others.splice(+rm, 1); if (o) impLogAdd('removed', `Removed ${o.name}`); renderOthers(); renderImpSide(); }
   if (ro != null) { const o = state.others[+ro]; prepareMerge(o.det.data, o.name); }
 });
 $('toReview').addEventListener('click', () => setStep('review'));
@@ -3283,16 +3307,17 @@ $('monthBtn').addEventListener('click', () => { openDrawer('dSettings'); $('mont
 $('setBtn').addEventListener('click', () => openDrawer('dSettings'));
 $('helpBtn').addEventListener('click', () => openDrawer('dHelp'));
 $('siteFoot').addEventListener('click', e => { const b = e.target.closest('[data-foot]'); if (!b) return; const a = b.dataset.foot; if (a === 'find') findOpen(); else if (a === 'help') openDrawer('dHelp'); else window.scrollTo({ top: 0, behavior: RM() ? 'auto' : 'smooth' }); });
-$('buildTop').addEventListener('click', build); $('build').addEventListener('click', build);
-$('v-export').addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) setStep(g.dataset.go); if (e.target.closest('#buildAgain')) build(); });
+$('buildTop').addEventListener('click', e => askBuild(e.currentTarget)); $('build').addEventListener('click', e => askBuild(e.currentTarget));
+$('v-export').addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) setStep(g.dataset.go); const a = e.target.closest('#buildAgain'); if (a) askBuild(a); });
+for (const id of ['v-review', 'v-import']) $(id).addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g && !e.target.closest('#p-checks .note')) setStep(g.dataset.go); });
 
 // tabs
 const tabsEl = document.querySelector('.tabs');
 tabsEl.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) setTab(t.dataset.tab, true); });
 tabsEl.addEventListener('keydown', e => {
-  const order = ['people', 'issues', 'preview', 'kpi', 'history'], i = order.indexOf(state.tab);
+  const order = REVIEW_TABS, i = order.indexOf(state.tab);
   if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); setTab(order[(i + (e.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length], true); }
-  if (e.key === 'Home') { e.preventDefault(); setTab('people', true); } if (e.key === 'End') { e.preventDefault(); setTab('history', true); }
+  if (e.key === 'Home') { e.preventDefault(); setTab('checks', true); } if (e.key === 'End') { e.preventDefault(); setTab('history', true); }
 });
 
 // people
@@ -3405,7 +3430,7 @@ for (const [id, key, div, lo, hi] of [['target', 'target', 100, 0, 100], ['floor
 }
 for (const [id, key] of [['dedBrands', 'dedBrands'], ['dedTeams', 'dedTeams']]) $(id).addEventListener('change', () => { state.settings[key] = [...$(id).querySelectorAll('input:checked')].map(i => i.value); refresh(); persistSettings(); });
 $('resetSet').addEventListener('click', () => { state.settings = clone(DEFAULTS); if (state.monthManual) { state.monthManual = false; const g = Core.guessMonth(allDets()); state.y = g.y; state.m = g.m; } fillSettings(); refresh(); persistSettings(); toast('Settings reset to the defaults'); });
-$('theme').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; try { localStorage.setItem('mc-theme', f); } catch (_) {} applyTheme(f); setSeg($('theme'), f); });
+$('theme').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; setTheme(f); });
 
 
 // email
@@ -3472,9 +3497,10 @@ $('emlBtn').addEventListener('click', async () => {
   if (c === 'ok') { markSent(); toast(`Saved ${fn}. Open it to get a ready-to-send Outlook draft.`); } else toast(saveMsg(c, fn));
 });
 
-// notifications
+// notifications: the bell's drawer and Review › Checks show the same checks, with the same actions
+const noteOn = (type, fn) => ['notesBody', 'checksBody'].forEach(id => $(id).addEventListener(type, fn));
 $('bell').addEventListener('click', openNotes);
-$('notesBody').addEventListener('click', e => {
+noteOn('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.pick) { state.attPicks.set(b.dataset.pick, JSON.parse(b.dataset.v)); persistAtt(); refresh(); renderNotes(); return; }
   if (b.dataset.unpick) { state.attPicks.delete(b.dataset.unpick); persistAtt(); refresh(); renderNotes(); return; }
@@ -3488,7 +3514,7 @@ $('notesBody').addEventListener('click', e => {
   }
   if (b.dataset.gonote) { closeDrawer(); if (b.dataset.gonote === 'history' || b.dataset.gonote === 'kpi') { setStep('review'); setTab(b.dataset.gonote, false); } else setStep(b.dataset.gonote); }
 });
-$('notesBody').addEventListener('change', e => {
+noteOn('change', e => {
   const s = e.target.closest('[data-attlink]'); if (!s || !s.value || !state.attRes) return;
   const u = state.attRes.unmatched[+s.dataset.attlink], p = state.roster.find(q => q._id === s.value); if (!u || !p) return;
   state.attLinks.set(normName(u.name), p._id); persistLinks(); refresh(); renderNotes();
@@ -3498,7 +3524,7 @@ $('notesBody').addEventListener('change', e => {
 // attendance card on Import
 $('attCard').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.unatt) { const f = state.attFiles.find(x => x.name === b.dataset.unatt); state.attFiles = state.attFiles.filter(x => x !== f); refresh(); if (f) toast(`Removed ${f.name}`, { label: 'Undo', fn: () => { state.attFiles.push(f); refresh(); } }); }
+  if (b.dataset.unatt) { const f = state.attFiles.find(x => x.name === b.dataset.unatt); state.attFiles = state.attFiles.filter(x => x !== f); if (f) impLogAdd('removed', `Removed attendance sheet: ${f.name}`); refresh(); if (f) toast(`Removed ${f.name}`, { label: 'Undo', fn: () => { state.attFiles.push(f); impLogAdd('read', `Put back attendance sheet: ${f.name}`); refresh(); } }); }
   if (b.id === 'attNotes') openNotes();
   if (b.id === 'attPick') $('picker').click();
 });
@@ -3508,7 +3534,7 @@ $('idsCard').addEventListener('click', e => {
   if (e.target.closest('#idsNotes')) openNotes();
   if (e.target.closest('#idsRemove')) { const old = state.idsFile; state.idsFile = null; persistIds(); refresh(); toast('IDs file removed. The IDs already added to the roster stay.', { label: 'Undo', fn: () => { state.idsFile = old; persistIds(); refresh(); } }); }
 });
-$('notesBody').addEventListener('click', e => {
+noteOn('click', e => {
   const u = e.target.closest('[data-idsundo]');
   if (u) { const pid = u.dataset.idsundo, l = state.idsLog.find(x => x.pid === pid); if (!l) return; state.idsUndo.add(pid); keepIds('nofill:' + pid); state.idsLog = state.idsLog.filter(x => x !== l); updatePerson(pid, { nid: l.prev }, { quiet: true }); refresh(); renderNotes(); toast('ID removed again'); return; }
   const b = e.target.closest('[data-ida]'); if (!b) return;
@@ -3708,7 +3734,7 @@ $('preview').addEventListener('toggle', e => { if (!e.target.matches) return; if
 $('personBody').addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details[data-wfdays]')) state.wfDaysOpen = e.target.open; }, true);
 
 // notifications: undo an automatic Genesys link
-$('notesBody').addEventListener('click', e => { const b = e.target.closest('[data-unlink]'); if (b) { undoAutoLink(b.dataset.unlink); renderNotes(); } });
+noteOn('click', e => { const b = e.target.closest('[data-unlink]'); if (b) { undoAutoLink(b.dataset.unlink); renderNotes(); } });
 
 // hover profile
 document.addEventListener('mousemove', e => { mouseXY = [e.clientX, e.clientY]; }, { passive: true });
@@ -3742,5 +3768,5 @@ renderBrand();
 render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
-window.__mc = { state, renderWs, setWs, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, handChanges, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, rb: () => RB };   // for testing
+window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, handChanges, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, rb: () => RB };   // for testing
 })();

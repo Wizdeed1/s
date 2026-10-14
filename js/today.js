@@ -148,9 +148,9 @@ function todayGo(go) {
   if (kind === 'dmail') { state.wfmTab = 'dmail'; state.dmSel = x; setWs('wfm'); renderWs(); return; }
   if (kind === 'wfm') { state.wfmTab = x; if (x === 'mail' && mk) { state.mailKind = 'ded'; state.mailStage = 'final'; } setWs('wfm'); renderWs(); return; }
   if (kind === 'obj') { openObj(x); return; }
-  if (kind === 'objcard') { here('team'); scrollTo_('#objCard'); return; }
-  if (kind === 'board') { here('team'); scrollTo_('#teamBody .board'); return; }
-  if (kind === 'approvals') { here('team'); scrollTo_('#teamBody .approvals'); return; }
+  if (kind === 'objcard') { state.teamTab = 'obj'; here('team'); renderWs(); scrollTo_('#objCard'); return; }
+  if (kind === 'board') { state.teamTab = 'one'; here('team'); renderWs(); scrollTo_('#teamBody .board'); return; }
+  if (kind === 'approvals') { state.teamTab = 'wait'; here('team'); renderWs(); scrollTo_('#teamBody .approvals'); return; }
   if (kind === 'finish') { here('team'); setTimeout(() => { const b = document.querySelector('#teamBar [data-spvdone]'); if (b) { b.focus(); b.scrollIntoView({ block: 'center' }); } }, 60); return; }
   if (kind === 'cal') { here('cycle'); scrollTo_('#calCard'); return; }
   if (kind === 'qnames') { here('quality'); scrollTo_('#qualityBody .qnames'); return; }

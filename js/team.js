@@ -445,7 +445,7 @@ function attGridHtml(items, k, canEdit) {
   const y = +k.slice(0, 4), m = +k.slice(5), ND = Core.daysIn(y, m), edits = attEditsOf(k) || new Map();
   const head = Array.from({ length: ND }, (_, i) => `<th class="dh${['Fri', 'Sat'].includes(Core.weekday(y, m, i + 1).slice(0, 3)) ? ' we' : ''}" title="${esc(Core.weekday(y, m, i + 1))}">${i + 1}<small>${esc(Core.weekday(y, m, i + 1).slice(0, 2))}</small></th>`).join('');
   const rows = L.sort(byExp).map(x => {
-    const days = daysOfRow(x.r, ND), ed = edits.get(x.p._id), t = attTotals(days);
+    const days = daysOfRow(x.r, ND), ed = edits.get(x.p._id), t = attTotals(days, k);   // as the incentive counts them (the month's rules)
     const cells = days.map((v, i) => {
       const e = ed && ed.days && ed.days[i + 1], tip = `${i + 1} ${MON[m - 1]}: ${v == null ? 'nothing yet' : typeof v === 'number' ? `late ${v} min` : v}${e ? ` · changed by ${e.by || 'the supervisor'}${e.note ? ': ' + e.note : ''}` : ''}`;
       return `<td>${canEdit ? `<button class="ad ${ATT_CLS(v)}${e ? ' ed' : ''}" data-ad="${esc(x.p._id)}|${i + 1}" title="${esc(tip)}" aria-label="${esc(x.exp)}, ${esc(tip)}">${esc(ATT_SHORT(v))}</button>` : `<span class="ad ${ATT_CLS(v)}${e ? ' ed' : ''}" title="${esc(tip)}">${esc(ATT_SHORT(v))}</span>`}</td>`;

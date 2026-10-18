@@ -7,14 +7,24 @@
 Object.assign(state, { rules: {}, rulesVer: 0, ruleEdit: null, chgArea: '' });
 const ELIG0 = { minFinal: 0.8, minDays: 5 };
 const canRules = () => ['senior', 'admin'].includes(roleNow());
-/** the sets of rules, oldest first: [{ from: 'YYYY-MM', cards: {base, bases, teams}, elig, at, by, log }] */
+/** the sets of rules, oldest first: [{ from: 'YYYY-MM', cards: {base, bases, teams, people}, elig, count, at, by, log }]. cards.people = a
+    person's own base for the months of the set ({pid: {base, src, at, by}}); count = how days, rankings and the incentive are counted */
 function ruleVersions() { return Object.values(state.rules || {}).filter(v => v && /^\d{4}-\d{2}$/.test(v.from || '') && v.cards && v.cards.teams).sort((a, b) => a.from.localeCompare(b.from)); }
 /** the rules a month is scored with: the newest set that starts on or before it; before the first set, the first rules */
 function rulesFor(k) {
   let v = null; for (const x of ruleVersions()) if (!k || x.from <= k) v = x;
-  if (v) return { from: v.from, cards: v.cards, elig: { ...ELIG0, ...(v.elig || {}) }, v };
-  return { from: '', cards: state.cards, elig: { ...ELIG0, ...((state.cards && state.cards.elig) || {}) }, v: null };
+  if (v) return { from: v.from, cards: v.cards, elig: { ...ELIG0, ...(v.elig || {}) }, count: countOf(v.count), v };
+  return { from: '', cards: state.cards, elig: { ...ELIG0, ...((state.cards && state.cards.elig) || {}) }, count: countOf(state.cards && state.cards.count), v: null };
 }
+/** a set's 'count' section, made whole once per saved object (an edit always puts a new object in its place) */
+const countMemo = new WeakMap(), COUNT_DEF = Object.freeze(Kpi.normCount(null)), KDR0 = Kpi.dayRulesKey(COUNT_DEF);
+function countOf(c) {
+  if (!c || typeof c !== 'object') return COUNT_DEF;
+  let n = countMemo.get(c); if (!n) { n = Kpi.normCount(c); countMemo.set(c, n); }
+  return n;
+}
+/** how a month is counted (the defaults count as the tool always did) */
+function countFor(k) { return rulesFor(k === undefined ? rulesK() : k).count; }
 /** the month the page is looking at (its rules are the ones shown) */
 function rulesK() {
   const w = state.ws;
@@ -34,6 +44,9 @@ function ruleEditKey() {
 }
 function ruleCards() { const k = ruleEditKey(); return k && state.rules[k] ? state.rules[k].cards : state.cards; }
 function ruleElig() { const k = ruleEditKey(); return { ...ELIG0, ...((k && state.rules[k] ? state.rules[k].elig : state.cards.elig) || {}) }; }
+/** the set being looked at (its doc, or the first rules) and its 'count' section */
+function ruleSet() { const k = ruleEditKey(); return k && state.rules[k] ? state.rules[k] : state.cards; }
+function ruleCount() { return countOf(ruleSet().count); }
 /** the months a set is in force for, as words */
 function ruleRange(from) {
   const L = ruleVersions(), next = L.find(v => v.from > (from || ''));
@@ -66,7 +79,8 @@ async function startRules(from) {
   if (state.rules[from]) { state.ruleEdit = from; renderScore(); return; }
   if (monthLocked(from)) { toast(`${ymLabel(from)} is final: start the new rules from a later month.`); return; }
   const base = rulesFor(from), at = new Date().toISOString(), by = whoNow();
-  const v = { from, cards: JSON.parse(JSON.stringify({ base: base.cards.base ?? 1000, bases: base.cards.bases || {}, teams: base.cards.teams })), elig: { ...base.elig }, at, by,
+  const v = { from, cards: JSON.parse(JSON.stringify({ base: base.cards.base ?? 1000, bases: base.cards.bases || {}, teams: base.cards.teams, ...(base.cards.people ? { people: base.cards.people } : {}) })), elig: { ...base.elig },
+    ...((base.v ? base.v.count : state.cards.count) ? { count: JSON.parse(JSON.stringify(base.v ? base.v.count : state.cards.count)) } : {}), at, by,
     log: [{ at, by, what: `New rules from ${ymLabel(from)}, copied from ${base.from ? `the rules from ${ymLabel(base.from)}` : 'the first rules'}` }] };
   state.rules[from] = v; state.ruleEdit = from; state.rulesVer++; state.incModelCache = null;
   if (state.db) { try { await queueWrite('rules/' + from, () => state.db.doc('rules/' + from).set(JSON.parse(JSON.stringify(v)))); } catch (e) { toast(`Not saved (${(e && e.code) || 'error'}).`); } }

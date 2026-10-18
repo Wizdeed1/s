@@ -45,7 +45,7 @@ const AR = {
   // this month so far
   'This month so far': 'هذا الشهر حتى الآن', 'Projected final': 'النسبة النهائية المتوقعة', 'Projected incentive': 'الحافز المتوقع', 'if it stays like this': 'إذا استمر الأداء هكذا', 'Weakest KPI': 'أضعف مؤشر',
   'Based on {n} days up to {d}.': 'بناءً على {n} يومًا حتى {d}.', 'Based on 1 day up to {d}.': 'بناءً على يوم واحد حتى {d}.', '{n} of your objections were answered': 'تم الرد على {n} من اعتراضاتك', "Last month's {list} until this month's arrive.": 'تُستخدم قيم الشهر الماضي لـ {list} حتى تصل قيم هذا الشهر.', 'At risk: {why}': 'قد لا تستحق الحافز: {why}',
-  'Work on {kpi} first: ranked {r} of 5 (target {t}).': 'ابدأ بتحسين {kpi}: تصنيفه {r} من 5 (المستهدف {t}).', 'Every KPI is in the top band so far.': 'كل مؤشراتك في أعلى تصنيف حتى الآن.', 'final {v} is under {t}': 'النسبة النهائية {v} أقل من {t}', 'not eligible (senior manager)': 'غير مستحق (قرار المدير الأول)', '{n} days attended': '{n} أيام حضور', 'attitude critical error': 'خطأ جسيم في السلوك',
+  'Work on {kpi} first: ranked {r} of 5 (target {t}).': 'ابدأ بتحسين {kpi}: تصنيفه {r} من 5 (المستهدف {t}).', 'Every KPI is in the top band so far.': 'كل مؤشراتك في أعلى تصنيف حتى الآن.', 'final {v} is under {t}': 'النسبة النهائية {v} أقل من {t}', 'not eligible (senior manager)': 'غير مستحق (قرار المدير الأول)', '{n} days attended': '{n} أيام حضور', '{n} days counted': '{n} أيام محتسبة', '{c} of them count after the absence rule.': 'يُحتسب منها {c} بعد قاعدة الغياب.', 'attitude critical error': 'خطأ جسيم في السلوك',
   // objections
   'blank': 'فارغ', 'late {n} min': 'تأخير {n} دقيقة', 'Present': 'حاضر', 'Annual leave': 'إجازة سنوية', 'Sick leave': 'إجازة مرضية', 'Day off': 'يوم راحة', 'Absent': 'غائب', 'Another leave': 'إجازة أخرى',
   'Objections for {m} closed on {d}.': 'أُغلق باب الاعتراض على {m} في {d}.', 'Objections are closed for this month.': 'باب الاعتراض مغلق لهذا الشهر.', 'Raise an objection': 'تقديم اعتراض', 'your supervisor answers it': 'يرد عليه مشرفك',
@@ -80,7 +80,7 @@ const langNow = () => (roleNow() === 'agent' && state.lang === 'ar' ? 'ar' : 'en
 /** a number or a target kept left to right inside Arabic (so "≥ 95%" is not turned round) */
 const ltr = s => `<bdi dir="ltr">${esc(s)}</bdi>`;
 /** the reasons someone is not eligible, in the agent's language */
-const whyTr = L => (L || []).map(w => String(w).replace(/^final (\S+) is under (\S+)$/, (m, a, b) => T('final {v} is under {t}', { v: a, t: b })).replace(/^(\d+) days attended$/, (m, n) => T('{n} days attended', { n })).replace(/^attitude critical error$/, () => T('attitude critical error')).replace(/^not eligible \(senior manager\)$/, () => T('not eligible (senior manager)'))).join(', ');
+const whyTr = L => (L || []).map(w => String(w).replace(/^final (\S+) is under (\S+)$/, (m, a, b) => T('final {v} is under {t}', { v: a, t: b })).replace(/^(\d+) days attended$/, (m, n) => T('{n} days attended', { n })).replace(/^(\d+) days counted$/, (m, n) => T('{n} days counted', { n })).replace(/^attitude critical error$/, () => T('attitude critical error')).replace(/^not eligible \(senior manager\)$/, () => T('not eligible (senior manager)'))).join(', ');
 /** the words in the agent's language: T('Updated {when}', { when }) */
 function T(en, vars) {
   let s = langNow() === 'ar' && AR[en] != null ? AR[en] : en;

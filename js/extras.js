@@ -24,21 +24,44 @@ function publishSupervisors() {
 const BASES0 = { Virgin: 1000, Friendi: 500, 'Friendi Pay': 500 };
 /** the bases in force for a month (the month looked at, when none is given) */
 function basesNow(k) { const C = curCards(k); return { ...BASES0, ...((C && C.bases) || {}) }; }
+/** a person's base for a month: their own base for the months of the rules (cards.people), their own base in the roster, the brand's */
+function monthBase(p, k) { const C = curCards(k), x = p && C && C.people ? C.people[p._id] : null, b = x && Number(x.base); return b > 0 ? { base: b, x } : null; }
 function baseOf(p, r, k) {
+  const mb = monthBase(p, k); if (mb) return mb.base;
   const own = p && Number(p.base); if (own > 0) return own;
   const b = normBrand((p && p.brand) || (r && r.brand)), B = basesNow(k);
   return B[b] != null ? B[b] : (curCards(k) && curCards(k).base) || 1000;
 }
+/** where the base comes from, in words: { kind: 'month' | 'own' | 'brand' | 'default', text } */
+function baseWhy(p, r, k) {
+  const mb = monthBase(p, k), R = rulesFor(k === undefined ? rulesK() : k), set = R.from ? `the rules from ${ymLabel(R.from)}` : 'the first rules';
+  if (mb) return { kind: 'month', text: `this person's own base in ${set}${mb.x.src ? ` (${mb.x.src})` : ''}` };
+  if (p && Number(p.base) > 0) return { kind: 'own', text: 'this person\'s own base in the roster' };
+  const b = normBrand((p && p.brand) || (r && r.brand)), B = basesNow(k);
+  return B[b] != null ? { kind: 'brand', text: `the ${b} base` } : { kind: 'default', text: 'the default base' };
+}
 /** the eligibility barriers of the month looked at (each month has its own, with its rules) */
 const ELIG = { get minFinal() { return rulesFor(rulesK()).elig.minFinal; }, get minDays() { return rulesFor(rulesK()).elig.minDays; } };
 const ATTITUDE = /attitude|abuse|hr action/i;
+/** the critical error types that stop the incentive in a month (its rules; none when the list is empty) */
+function attitudeRe(k) { const a = countFor(k).attitude; if (!a) return null; if (a === COUNT_DEF.attitude) return ATTITUDE; try { return new RegExp(a, 'i'); } catch (e) { return ATTITUDE; } }
+/** who earns the incentive, in words, from the month's rules ('final under 80%, an attitude critical error, under 5 days attended') */
+function eligText(k, form) {
+  const R = rulesFor(k === undefined ? rulesK() : k), E = R.elig, att = R.count.attitude ? 'an attitude critical error' : '', dw = R.count.eligDays === 'counted' ? 'counted' : 'attended';
+  if (form === 'long') return `a final % under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}or fewer than ${E.minDays} days ${dw}`;
+  if (form === 'help') return `a final under ${pct1(E.minFinal)}, ${att ? att + ' ' : ''}or fewer than ${E.minDays} days ${dw}`.replace(', or', ' or');
+  if (form === 'short') return `Final under ${pct1(E.minFinal)}, ${att ? 'an attitude error ' : ''}or too few days`.replace(', or', ' or');
+  return `final under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}under ${E.minDays} days ${dw}`;
+}
 /** the quality sheet's barriers: final under 80%, an attitude critical error, fewer than 5 days attended (the month's rules can
-    change the numbers). adj.elig = the senior manager's decision */
+    change the numbers, the critical error types and whether the days are those attended or those counted after an absence
+    penalty). adj.elig = the senior manager's decision */
 function eligibility(res, q, adj, k) {
-  const why = [], E = rulesFor(k === undefined ? rulesK() : k).elig;
+  const why = [], R = rulesFor(k === undefined ? rulesK() : k), E = R.elig, AT = attitudeRe(k);
   if (res && res.finalPct != null && res.finalPct < E.minFinal - 1e-9) why.push(`final ${pct1(res.finalPct)} is under ${pct1(E.minFinal)}`);
-  if (q && (q.crit || []).some(c => ATTITUDE.test(c.type || ''))) why.push('attitude critical error');
-  if (res && res.actual != null && res.sched != null && res.actual < E.minDays) why.push(`${res.actual} days attended`);
+  if (AT && q && (q.crit || []).some(c => AT.test(c.type || ''))) why.push('attitude critical error');
+  const cnt = R.count.eligDays === 'counted', days = res ? (cnt || res.attended === undefined ? res.actual : res.attended) : null;
+  if (res && days != null && res.sched != null && days < E.minDays) why.push(cnt ? `${days} days counted` : `${days} days attended`);
   if (adj && adj.elig === true) return { ok: true, why, forced: true };
   if (adj && adj.elig === false) return { ok: false, why: why.length ? why : ['not eligible (senior manager)'], forced: true };
   return { ok: !why.length, why };
@@ -61,11 +84,19 @@ function fileValues(card, k, p, r) {
   }
   return out;
 }
-/** a saved month's row scored again with today's inputs (quality numbers, KPI file, the supervisor's attendance corrections, bases) */
+/** a saved month's row scored again with today's inputs (quality numbers, KPI file, the supervisor's attendance corrections, bases)
+    and the month's rules. r.kat = days attended (r.ka on rows saved before the absence rules); the days are counted again only when
+    the month's rules count other codes than the row was counted with */
 function scoreLive(r, p, k) {
   const card = cardFor((p && p.team) || r.team, k); if (!card) return null;
-  const vals = { adh: r.adh ?? null, adhUnder: r.adhUnder ?? null, aht: r.aht ?? null, tardy: r.tardy ?? null, file: fileValues(card, k, p, r) };
-  const res = Kpi.score(card, vals, r.ks != null ? { sched: r.ks, actual: r.ka } : null, baseOf(p, r, k));
+  const cfg = countFor(k), vals = { adh: r.adh ?? null, adhUnder: r.adhUnder ?? null, aht: r.aht ?? null, tardy: r.tardy ?? null, file: fileValues(card, k, p, r) };
+  let att = r.ks != null ? { sched: r.ks, attended: r.kat ?? r.ka, absent: r.absent, runs: r.kr } : null;
+  const hasDays = !!(r.d || r.dx), again = hasDays && Kpi.dayRulesKey(cfg) !== (r.kdr || KDR0);
+  if (again || (att && att.runs == null && hasDays && cfg.absentPer === 'run' && cfg.absentExtra > 0 && r.absent > 0)) {
+    const t = Kpi.countDays(daysOfRow(r, Core.daysIn(+k.slice(0, 4), +k.slice(5))), cfg);
+    if (again) att = r.ks != null || t.sched > 0 ? { sched: t.sched, attended: t.attended, absent: t.absent, runs: t.runs } : null; else att.runs = t.runs;
+  }
+  const res = Kpi.score(card, vals, att, baseOf(p, r, k), cfg);
   return { card, res };
 }
 
@@ -76,29 +107,25 @@ function daysOfRow(r, ND) {
   const d = String(r.d || ''), dx = r.dx || {};
   return Array.from({ length: ND }, (_, i) => { const x = dx[i + 1]; if (x != null) return x; const c = d[i]; return !c || c === '-' ? null : LET[c] || null; });
 }
-const COUNTED = v => ['AL', 'SL', 'Absent', 'Unpaid', 'ML'].includes(v) || /^(national day|compassionate|eid)/i.test(String(v));
-/** the totals a row should have once the corrections are in: worked, absent, tardy, scheduled and actual days for the incentive */
-function attTotals(days) {
-  let attend = 0, sched = 0, absent = 0, tardy = 0, al = 0, sl = 0, off = 0, other = 0, worked = 0;
-  for (const v of days) {
-    if (v == null) continue;
-    if (typeof v === 'number') { worked++; attend++; sched++; if (v > 0) tardy += v; continue; }
-    if (v === 'Attend') { worked++; attend++; sched++; continue; }
-    if (v === 'OFF') { off++; continue; }
-    if (v === 'Absent') absent++; else if (v === 'AL') al++; else if (v === 'SL') sl++; else other++;
-    if (COUNTED(v)) sched++;
-  }
-  return { attend, sched, absent, tardy, al, sl, off, leave: other, worked };
+/** the totals a row should have once the corrections are in: worked, absent, tardy, scheduled and actual days for the incentive,
+    counted with the month's rules (Kpi.countDays: the same count as the Build month and the incentive workbook) */
+function attTotals(days, k) {
+  const c = Kpi.countDays(days, countFor(k)); let al = 0, sl = 0, other = 0;
+  for (const v of days) { if (v == null || typeof v === 'number' || v === 'Attend' || v === 'OFF' || v === 'Absent') continue; if (v === 'AL') al++; else if (v === 'SL') sl++; else other++; }
+  return { attend: c.attended, sched: c.sched, absent: c.absent, tardy: c.tardy, al, sl, off: c.off, leave: other, worked: c.attended, runs: c.runs, counted: c.counted, extra: c.extra, byCode: c.byCode };
 }
+/** the day rules a row was counted with, kept on the row only when they are not the defaults */
+const kdrOf = k => { const x = Kpi.dayRulesKey(countFor(k)); return x === KDR0 ? {} : { kdr: x }; };
 const DAYCH = v => (v == null ? '-' : typeof v === 'number' || v === 'Attend' ? 'A' : v === 'OFF' ? 'O' : v === 'AL' ? 'L' : v === 'SL' ? 'S' : v === 'Absent' ? 'X' : 'V');
-/** a saved row with the supervisor's corrections applied (draft months only) */
-function withEdits(r, edits, ND) {
+/** a saved row with the supervisor's corrections applied (draft months only), counted with the month's rules */
+function withEdits(r, edits, ND, k) {
   if (!edits || !edits.days || !Object.keys(edits.days).length) return r;
   const days = daysOfRow(r, ND);
   for (const [d, e] of Object.entries(edits.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = e.v === '' ? null : e.v; }
-  const t = attTotals(days), dx = {};
+  const t = attTotals(days, k), dx = {};
   days.forEach((v, i) => { if (v != null && (typeof v === 'number' || !['Attend', 'OFF', 'AL', 'SL', 'Absent'].includes(v))) dx[i + 1] = v; });
-  return { ...r, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, _edited: Object.keys(edits.days).length };
+  const { kdr, ...rest } = r;
+  return { ...rest, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, kat: t.attend, kr: t.runs, ...kdrOf(k), _edited: Object.keys(edits.days).length };
 }
 function leaveCode(c) {
   const s = String(c || '');

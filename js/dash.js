@@ -115,7 +115,7 @@ function dashAttention(k) {
   const toRes = W.includes('results') ? 'ws:results' : 'ws:team';
   const G = [
     { t: 'Below the adherence target', s: `Monthly adherence under ${pct(set.target, 0)}`, n: R.filter(r => r.adh != null && r.adh < set.target).length, go: 'dash:agents-adh', btn: 'Lowest first' },
-    { t: 'Not eligible by the rules', s: 'Final under 80%, an attitude error or too few days', n: R.filter(r => r._el && !r._el.ok).length, go: toRes + '@' + k, btn: W.includes('results') ? 'Results' : 'Team' },
+    { t: 'Not eligible by the rules', s: eligText(k, 'short'), n: R.filter(r => r._el && !r._el.ok).length, go: toRes + '@' + k, btn: W.includes('results') ? 'Results' : 'Team' },
     { t: 'Five or more exceptions', s: 'Late, no sign-on, short of shift, low adherence', n: R.filter(r => (r.wfExc || 0) >= 5).length, go: 'dash:agents-exc', btn: 'Most first' },
     { t: 'Absent two days or more', s: 'Days marked Absent this month', n: R.filter(r => (r.absent || 0) >= 2).length, go: 'dash:team-absent', btn: 'Team' },
   ];

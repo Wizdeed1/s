@@ -1,17 +1,16 @@
 /* MC incentive data workbook: "MC_all_team_incentive _data -YYYY-MM.xlsx" (same 4 tabs as the file sent to the champions) */
 'use strict';
-const WriterInc = ((C, W) => {
+const WriterInc = ((C, W, K) => {
 const { normSpace, normName } = C;
 const MON = C.MON;
 const fileName = (y, m) => `MC_all_team_incentive _data -${y}-${String(m).padStart(2, '0')}.xlsx`;
 const idText = nid => { const id = C.cleanId(nid); return id || normSpace(nid) || ''; };
 const byName = (a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' });
-// Counted columns of the Attendance Report, in order (header, COUNTIF criterion, model test)
-const COUNTS = [
-  ['AL leave', 'AL', v => v === 'AL'], ['SL leaves', 'SL', v => v === 'SL'], ['National Day', 'National Day*', v => /^national day/i.test(v)],
-  ['Compassionate Leave', 'Compassionate*', v => /^compassionate/i.test(v)], ['EID', 'Eid', v => /^eid$/i.test(v)], ['ML', 'ML', v => v === 'ML'],
-  ['Unpaid', 'Unpaid', v => v === 'Unpaid'], ['Absent', 'Absent', v => v === 'Absent'],
-];
+// Counted columns of the Attendance Report by default, in order (header, COUNTIF criterion, model test). The month's rules
+// (Kpi 'count': which codes make a scheduled day, the absence penalty) choose the columns; the defaults give exactly these.
+const COUNTS = K.DAY_CODES.map(d => [d.head, d.crit, d.test]);
+// column widths by header (other leave columns get 12)
+const TWD = { Tardy: 10.44, 'AL leave': 13.22, 'SL leaves': 14, 'National Day': 18.89, 'Compassionate Leave': 25.22, EID: 8.44, ML: 8, Unpaid: 11.66, Absent: 11.55, Attend: 11.22, 'Scheduled days': 19.55, 'Actual days': 15.55, 'Review Notes': 17.44 };
 
 /** Everything in the incentive file, as plain data (also used for the email, the checks and the review snapshot). */
 function model(ctx, opt = {}) {
@@ -20,17 +19,15 @@ function model(ctx, opt = {}) {
   const shown = people.filter(p => p.shown);
   const mark = p => (p.status === 'Inactive' ? '⛔ ' : '');
   const fullTeams = (set.incFullAdhTeams || []).map(normSpace);
-  // Attendance Report: everyone in the reports, roster order
+  const CNT = K.normCount(opt.count);
+  // Attendance Report: everyone in the reports, roster order. A day late by more than the rules' limit shows as Absent.
   const att = shown.map(p => {
-    const src = people[p.attRow - 1] || p, days = Array.from({ length: ND }, (_, i) => {
-      const v = src.attDays ? src.attDays[i] : null;
-      return v == null || v === '' ? '' : typeof v === 'number' ? 'Attend' : String(v);
-    });
+    const src = people[p.attRow - 1] || p, raw = Array.from({ length: ND }, (_, i) => (src.attDays ? src.attDays[i] : null)), days = raw.map(v => (
+      v == null || v === '' ? '' : typeof v === 'number' ? (CNT.lateOver > 0 && v > CNT.lateOver ? 'Absent' : 'Attend') : String(v)));
     const has = days.some(v => v !== '');
-    const counts = COUNTS.map(([, , t]) => days.filter(v => v && t(v)).length);
-    const attend = days.filter(v => v === 'Attend').length;
+    const cd = K.countDays(raw, CNT), counts = CNT.sched.map(c => cd.byCode[c]), attend = cd.attended;
     return { pid: p._id, key: p.key, id: idText(p.nid), name: normSpace(p.name), mark: mark(p) || (has ? '' : '⚠ '), brand: normSpace(p.brand), team: normSpace(p.team),
-      days, tardy: src.att ? src.att.tardyMin : 0, counts, attend, sched: counts.reduce((a, b) => a + b, 0) + attend, has };
+      days, tardy: src.att ? src.att.tardyMin : 0, counts, attend, sched: cd.sched, has, attended: cd.attended, absent: cd.absent, runs: cd.runs, extra: cd.extra, counted: cd.counted, byCode: cd.byCode };
   });
   // Adherence -In Detail: people with Genesys adherence, by name
   const det = shown.filter(p => p.hasAdh).map(p => {
@@ -54,7 +51,7 @@ function model(ctx, opt = {}) {
     if ((ids.get(r.id) > 1) || nms.get(normName(r.name)) > 1) r.dup = '⚠ Duplicate – keep one';
     else if (r.alt.length > 1) r.dup = `⚠ ${r.alt.length} rows in the export (${r.alt.map(x => x.media || '?').join(', ')}) – kept ${(r.alt.find(x => x.sec === r.sec) || {}).media || 'the first'}`;
   });
-  return { y: ctx.year, m: ctx.month, nd: ND, att, det, adh, aht, full, set };
+  return { y: ctx.year, m: ctx.month, nd: ND, att, det, adh, aht, full, set, count: CNT };
 }
 
 async function build(ctx, opt = {}) {
@@ -95,9 +92,10 @@ async function build(ctx, opt = {}) {
   const dHead = S.get({ font: A({ sz: 9, b: true, color: WHITE }), fill: GREY, border: thin, align: { h: 'center', v: 'center' }, numFmt: 'dd\\-mmm' });
   for (let d = 1; d <= ND; d++) { AR.set(2, 4 + d, ymd(d), dHead); AR.width(4 + d, 11); }
   const T0 = 5 + ND;   // Tardy column
-  const TH = ['Tardy', ...COUNTS.map(c => c[0]), 'Attend', 'Scheduled days', 'Actual days', 'Review Notes'];
-  const TW = [10.44, 13.22, 14, 18.89, 25.22, 8.44, 8, 11.66, 11.55, 11.22, 19.55, 15.55, 17.44];
-  TH.forEach((h, j) => { AR.set(2, T0 + j, h, st.hd(h === 'Review Notes' ? BLUE : GREY)); AR.width(T0 + j, TW[j]); });
+  const CNT = md.count || K.COUNT0(), CODES = CNT.sched.map(K.dayCode), iAbs = CNT.sched.indexOf('Absent');
+  const PEN = CNT.absentExtra > 0 || CNT.absentFlat > 0;   // an absence penalty: Actual days = Attend less the days taken off
+  const TH = ['Tardy', ...CODES.map(c => c.head), 'Attend', 'Scheduled days', 'Actual days', 'Review Notes'];
+  TH.forEach((h, j) => { AR.set(2, T0 + j, h, st.hd(h === 'Review Notes' ? BLUE : GREY)); AR.width(T0 + j, TWD[h] ?? 12); });
   [[1, 11.55], [2, 35.11], [3, 10.44], [4, 8.89]].forEach(([c, w]) => AR.width(c, w));
   const fd = C.colName(5), ld = C.colName(4 + ND);
   md.att.forEach((r, i) => {
@@ -105,11 +103,16 @@ async function build(ctx, opt = {}) {
     AR.set(R, 1, r.id, st.cell); AR.set(R, 2, r.mark + r.name, st.cell); AR.set(R, 3, r.brand, st.cell); AR.set(R, 4, r.team, st.cell);
     r.days.forEach((v, j) => AR.set(R, 5 + j, v === '' ? null : v, st.day));
     AR.set(R, T0, r.tardy || 0, st.tot);
-    COUNTS.forEach(([, crit], j) => AR.set(R, T0 + 1 + j, r.counts[j], st.tot, `COUNTIF(${rg},"${crit}")`));
-    const cA = T0 + 1 + COUNTS.length;
+    CODES.forEach((c, j) => AR.set(R, T0 + 1 + j, r.counts[j], st.tot, `COUNTIF(${rg},"${c.crit}")`));
+    const cA = T0 + 1 + CODES.length;
     AR.set(R, cA, r.attend, st.tot, `COUNTIF(${rg},"Attend")+COUNT(${rg})`);
     AR.set(R, cA + 1, r.sched, st.tot, `SUM(${C.ref(R, T0 + 1)}:${C.ref(R, cA)})`);
-    AR.set(R, cA + 2, r.attend, st.tot, C.ref(R, cA));
+    if (!PEN) AR.set(R, cA + 2, r.attend, st.tot, C.ref(R, cA));
+    else {   // Actual days = MIN(Attend, MAX(fewest, Attend - days off)); per run of absent days the days off are written as a number
+      const a = C.ref(R, cA), x = iAbs >= 0 && CNT.absentPer === 'day' ? C.ref(R, T0 + 1 + iAbs) : null;
+      const off = x ? [CNT.absentExtra ? `${CNT.absentExtra}*${x}` : '', CNT.absentFlat ? `IF(${x}>0,${CNT.absentFlat},0)` : ''].filter(Boolean).join('+') : String(r.extra || 0);
+      AR.set(R, cA + 2, r.counted ?? r.attend, st.tot, `MIN(${a},MAX(${CNT.countedMin},${a}-(${off})))`);
+    }
     AR.set(R, cA + 3, null, st.tot);
   });
   const lastA = Math.max(502, md.att.length + 2), lastCol = T0 + TH.length - 1;
@@ -181,5 +184,5 @@ async function build(ctx, opt = {}) {
 }
 
 return { build, model, fileName, COUNTS };
-})(typeof Core !== 'undefined' ? Core : require('./core.js'), typeof Writer2 !== 'undefined' ? Writer2 : require('./writer2.js'));
+})(typeof Core !== 'undefined' ? Core : require('./core.js'), typeof Writer2 !== 'undefined' ? Writer2 : require('./writer2.js'), typeof Kpi !== 'undefined' ? Kpi : require('./kpi.js'));
 if (typeof module !== 'undefined') module.exports = WriterInc;

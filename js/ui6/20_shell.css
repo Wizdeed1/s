@@ -223,7 +223,8 @@ body:has(#lock:not([hidden])) .sitefoot { display: none; }
 .appbar.scrolled { box-shadow: 0 8px 24px rgba(0, 0, 0, .14); }
 
 /* ------------------------------------------------------------------------------------------------------------- phone: the workspaces in a tab bar at the bottom; More opens a sheet */
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-bar); display: none; height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--nav); border-top: 1px solid var(--nav-line); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-bar); display: none; height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: color-mix(in srgb, var(--nav) 86%, transparent); -webkit-backdrop-filter: saturate(1.6) blur(20px); backdrop-filter: saturate(1.6) blur(20px); border-top: 1px solid var(--nav-line); }   /* a frosted bar: the page moves under it */
 .tabbar button { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; background: none; color: var(--nav-muted); font: 500 11px/1 var(--text); cursor: pointer; min-height: 52px; }
 .tabbar button svg { width: 22px; height: 22px; }
 .tabbar button span:not(.wsdot) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }

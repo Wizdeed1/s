@@ -24,7 +24,7 @@ Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC D
 | Team | A filter bar (brand, team, supervisor, search) with removable chips, Clear all and a line saying what the filters affect; tabs that keep the filters (Agents, One-to-ones, Attendance, Objections, Calls, Team KPIs, Waiting for approval); a sortable agents table with eligibility and one-to-one badges, 25 per page (D11); a row opens the agent's panel and Esc returns to the row. Team KPIs show only the scorecard's KPIs. |
 | Results, Supervisors | Finalize goes through a dialog that says what locks. The Supervisors page has a local list of its sections. |
 | Everywhere | Option C tokens (layered dark surfaces, orange only for the main action, the current place, step and progress; contrast-checked text), corners 4/6/10/14 px (D3), Poppins 600 titles and Inter with tabular figures, quieter status lines, "Not one of your pages" for links to a page the role cannot use, a leave-page warning only while a file is read or a save is in flight (D14), and "Try again" on a failed save. |
-| Motion (D9) | Still for everyday work; three moments only: the dashboard's first load of a visit (its numbers count up), a Build step change, a finished build. The mouse wheel glides on the page (Lenis); on a phone a drawer swipes away to the right and the More sheet down, from where the finger lets go (GSAP). Reduced motion turns movement into 120 ms fades and stops the loops and the glide. |
+| Motion (D9) | Still for everyday work; three moments only: the dashboard's first load of a visit (its numbers count up), a Build step change, a finished build. The mouse wheel glides on the page (Lenis); on a phone a drawer swipes away to the right and the More sheet down, from where the finger lets go and at its speed: a flick closes from anywhere, a slow pull past half closes, anything less goes back (GSAP, Apple's momentum projection). Progress bars (the Supervisors card, the dashboard's month close) grow from where they were last shown, from empty the first time; a redraw with the same numbers stays still. Reduced motion turns movement into 120 ms fades and stops the loops and the glide. |
 
 ## October 2026 additions
 
@@ -85,7 +85,7 @@ node test/shots.cjs  "final/MC Monthly Report Builder.html" test/shots          
 node test/exports.cjs /tmp/exports                                                # synthetic September 2026 Genesys exports
 node test/buildflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # Import → Checks → Link → Build → Email
 node test/overlays.cjs "final/MC Monthly Report Builder.html" test/shots          # menus, search, More sheet, blocked page, sign-in
-node test/motion.cjs "final/MC Monthly Report Builder.html" test/shots            # the dashboard moment, Team table speed
+node test/motion.cjs "final/MC Monthly Report Builder.html" test/shots            # the dashboard moment, KPI rows level, Supervisors bars, the More sheet swipe, Team table speed
 node test/quality.cjs "final/MC Monthly Report Builder.html" test/shots           # Final EVAL template, DRC-CSAT box, scorecards
 node test/signin.cjs "final/MC Monthly Report Builder.html" test/shots            # sign-in, lock and unlock
 node test/agent.cjs "final/MC Monthly Report Builder.html" test/shots             # the agent's page and its month box, English and Arabic

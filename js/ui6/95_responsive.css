@@ -8,6 +8,7 @@
   .appbar .findbtn .fl, .appbar .findbtn .kbd { display: none; }
   .appbar .findbtn { width: var(--ctl); padding: 0 !important; justify-content: center; margin-inline-end: 0; }
   .qacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qacts > .qa:last-child:nth-child(odd) { grid-column: 1 / -1; }   /* three quick actions: the last one takes the row, no hole beside it */
   .chktiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ehead, .egrid > .ecard { grid-template-columns: [rk] var(--rkw, 26px) [who] minmax(190px, 2.6fr) [big] minmax(76px, .8fr) [s1] minmax(170px, 2fr) [s2] minmax(170px, 2fr) [st] minmax(116px, 1.2fr); column-gap: 14px; }
 }

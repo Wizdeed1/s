@@ -69,7 +69,9 @@ body.scrolled .appbar { border-bottom-color: var(--line); box-shadow: 0 10px 24p
 @media (prefers-reduced-motion: reduce) { #dashBody .kpi::after, #dashBody .qa::after, .spot::after { display: none; } }
 /* translucency and contrast, as the system asks */
 @media (prefers-reduced-transparency: reduce) {
-  .appbar, .tabbar { background: var(--bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .appbar { background: var(--bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .tabbar { background: var(--nav) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }   /* near-black like the sidebar: its words are light */
+  .dropall { background: color-mix(in srgb, var(--bg) 90%, transparent) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 }
 @media (prefers-contrast: more) {
   :root { --line: var(--line-3); --line-2: var(--ctl-line); }

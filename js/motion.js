@@ -36,6 +36,9 @@ window.addEventListener('scroll', scrolledSync, { passive: true }); scrolledSync
 
 // ---- swipe a drawer (to the right) or the More sheet (down) away on a phone, as far and as fast as the finger went
 const rubber = (o, dim, c = 0.55) => (o * dim * c) / (dim + c * Math.abs(o));
+/** where a flick of v px/s comes to rest, as a scroll slows down (Apple's projection, deceleration 0.998) */
+const project = (v, d = 0.998) => (v / 1000) * d / (1 - d);
+const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 function swipeStart(e, el, axis) {
   if (e.pointerType === 'mouse' || MOT.drag || !e.isPrimary) return;
   const t = e.target;
@@ -65,16 +68,19 @@ function swipeMove(e) {
 function swipeEnd(e) {
   const D = MOT.drag; if (!D || e.pointerId !== D.id) return; MOT.drag = null;
   if (!D.on) return;
-  const a = D.hist[0], b = D.hist[D.hist.length - 1], vel = (b.v - a.v) / Math.max(1, b.t - a.t), pos = b.v;   // px per ms
-  const close = pos > D.size * 0.3 || (vel > 0.11 && pos > 8), g = window.gsap, s = $('scrim'), prop = D.axis === 'x' ? 'x' : 'y';
+  const a = D.hist[0], b = D.hist[D.hist.length - 1], pos = b.v;
+  const v = e.timeStamp - b.t > 90 ? 0 : (b.v - a.v) / Math.max(1, b.t - a.t) * 1000;   // px per s at the release; a finger that stopped first has none
+  // closes when the panel would come to rest past its middle: a slow pull past half, or a flick from anywhere
+  const close = pos > 8 && pos + project(v) > D.size / 2, g = window.gsap, s = $('scrim'), prop = D.axis === 'x' ? 'x' : 'y';
   const done = () => { D.el.style.transform = ''; D.el.style.animation = ''; D.el.style.transition = ''; if (s) s.style.opacity = ''; };
+  // the panel leaves at the finger's own speed: an ease-out starts at (slope × distance ÷ duration), power2 has slope 2, power3 slope 3
   if (close) {
     const fin = () => { D.el.dataset.swiped = '1'; if (D.el.id === 'moreSheet') moreClose(); else closeDrawer(); };
-    if (g) g.fromTo(D.el, { [prop]: pos }, { [prop]: D.size, duration: Math.min(0.24, Math.max(0.12, (D.size - pos) / Math.max(1.2, vel * 1000) )), ease: 'power2.out', onComplete: fin, overwrite: true });
+    if (g) g.fromTo(D.el, { [prop]: pos }, { [prop]: D.size, duration: v > 0 ? clamp(2 * (D.size - pos) / v, 0.14, 0.32) : 0.26, ease: 'power2.out', onComplete: fin, overwrite: true });
     else fin();
     if (s && g) g.to(s, { opacity: 0, duration: 0.18, ease: 'power2.out', overwrite: true });
   } else if (g) {
-    g.fromTo(D.el, { [prop]: pos }, { [prop]: 0, duration: 0.28, ease: 'power3.out', overwrite: true, onComplete: () => { g.set(D.el, { clearProps: 'transform' }); done(); } });
+    g.fromTo(D.el, { [prop]: pos }, { [prop]: 0, duration: v < 0 && pos > 0 ? clamp(3 * pos / -v, 0.2, 0.42) : 0.3, ease: 'power3.out', overwrite: true, onComplete: () => { g.set(D.el, { clearProps: 'transform' }); done(); } });
     if (s) g.to(s, { opacity: 1, duration: 0.2, overwrite: true, onComplete: () => { s.style.opacity = ''; } });
   } else done();
 }
@@ -105,7 +111,21 @@ function countUp(root) {
     g.to(o, { v: p.n, duration: 0.9, delay: i * 0.04, ease: 'power3.out', onUpdate: () => { el.textContent = countFmt(p, o.v); }, onComplete: () => { el.textContent = txt; } });
   });
 }
-try { const db = $('dashBody'); if (db) new MutationObserver(() => { if (db.classList.contains('intro') && !db.dataset.counted) { db.dataset.counted = '1'; countUp(db); } else if (!db.classList.contains('intro')) delete db.dataset.counted; }).observe(db, { attributes: true, attributeFilter: ['class'] }); } catch (e) { /* none */ }
+try { const db = $('dashBody'); if (db) new MutationObserver(() => { if (db.classList.contains('intro') && !db.dataset.counted) { db.dataset.counted = '1'; countUp(db); fillBars(db.querySelector('.dclose-mini'), 'dash'); } else if (!db.classList.contains('intro')) delete db.dataset.counted; }).observe(db, { attributes: true, attributeFilter: ['class'] }); } catch (e) { /* none */ }
+
+// ---- progress that moves only when it changes: the Supervisors card's bars (each month) and the dashboard's month close grow
+// from where they were last shown (from empty the first time) to where they stand now; a redraw with the same numbers stays still.
+// The bar is drawn at its real width and GSAP only plays the way there, so with reduced motion (or no GSAP) it is simply there.
+// Transform (scaleX from the old share of the new width), never width.
+const barsAt = new Map();   // the width each bar was last shown at, by month and supervisor
+function fillBars(root, key) {
+  if (!root || !root.getClientRects().length) return;
+  const g = gsapOk(), L = [...root.querySelectorAll('.pbar i')].map((i, j) => { const li = i.closest('li'), b = li && li.querySelector('[data-spv]'); return { i, id: `${key}:${b ? b.dataset.spv : j}`, now: parseFloat(i.style.width) || 0 }; });
+  const moves = L.filter(x => x.now > 0 && (barsAt.get(x.id) || 0) !== x.now).map(x => ({ ...x, was: barsAt.get(x.id) || 0 }));
+  L.forEach(x => barsAt.set(x.id, x.now));
+  if (g) moves.forEach((x, n) => g.fromTo(x.i, { scaleX: x.was / x.now }, { scaleX: 1, transformOrigin: '0% 50%', duration: 0.7, delay: n * 0.03, ease: 'power3.out', clearProps: 'transform' }));
+}
+try { const cb = $('cycleBody'); if (cb) new MutationObserver(() => { const c = $('spvDone'); if (c) fillBars(c, 'spv:' + wsMonthNow()); }).observe(cb, { childList: true }); } catch (e) { /* none */ }
 
 // ---- a soft light that follows the pointer on the dashboard's cards (a fine pointer only; decoration, nothing more)
 let spotEl = null, spotRaf = 0, spotXY = [0, 0];

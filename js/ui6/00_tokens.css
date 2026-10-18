@@ -26,6 +26,8 @@
   --bad: #c0242a; --bad-bg: #fcecec; --bad-line: #f0b0b2;
   --info: #0b6aa8; --info-bg: #e7f0f8; --info-line: #a9cbe5;
   --focus: #e05a17; --toast-act: #ff9a63;
+  /* the message at the bottom: dark on a light page; on a dark page a raised dark surface, never a white block (no flash of light) */
+  --toast-bg: var(--ink); --toast-ink: var(--inverse); --toast-line: transparent;
   /* attendance codes */
   --at: #e7f4ec; --at-ink: #0f6b3d; --off: #ecece8; --off-ink: #62625d; --al: #dcf0e2; --al-ink: #0e5e34; --sl: #fbf0cf; --sl-ink: #7f5000;
   --abs: #fbe1e2; --abs-ink: #a8161c; --tardy: #a84a00; --ot: #ece6f4; --ot-ink: #573877;
@@ -80,7 +82,7 @@
   --warn: #f2b24d; --warn-bg: rgba(242, 178, 77, .11); --warn-line: rgba(242, 178, 77, .34);
   --bad: #ff7373; --bad-bg: rgba(255, 115, 115, .11); --bad-line: rgba(255, 115, 115, .36);
   --info: #62aef0; --info-bg: rgba(98, 174, 240, .11); --info-line: rgba(98, 174, 240, .34);
-  --focus: #ff8a4c; --toast-act: #b3441a;
+  --focus: #ff8a4c; --toast-act: #ff9a63; --toast-bg: var(--overlay); --toast-ink: var(--ink); --toast-line: var(--line-2);
   --at: rgba(79, 197, 141, .14); --at-ink: #7fd8a8; --off: #1f1f22; --off-ink: #8a8a84; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
   --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;
   --c1: #3987e5; --c2: #e0652c; --c3: #9d7be6; --c4: #1ea877; --c5: #d55181; --c6: #8f9e2e; --heat: #3987e5; --bar: #3987e5;
@@ -105,7 +107,7 @@
     --warn: #f2b24d; --warn-bg: rgba(242, 178, 77, .11); --warn-line: rgba(242, 178, 77, .34);
     --bad: #ff7373; --bad-bg: rgba(255, 115, 115, .11); --bad-line: rgba(255, 115, 115, .36);
     --info: #62aef0; --info-bg: rgba(98, 174, 240, .11); --info-line: rgba(98, 174, 240, .34);
-    --focus: #ff8a4c; --toast-act: #b3441a;
+    --focus: #ff8a4c; --toast-act: #ff9a63; --toast-bg: var(--overlay); --toast-ink: var(--ink); --toast-line: var(--line-2);
     --at: rgba(79, 197, 141, .14); --at-ink: #7fd8a8; --off: #1f1f22; --off-ink: #8a8a84; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
     --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;
     --c1: #3987e5; --c2: #e0652c; --c3: #9d7be6; --c4: #1ea877; --c5: #d55181; --c6: #8f9e2e; --heat: #3987e5; --bar: #3987e5;

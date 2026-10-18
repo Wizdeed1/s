@@ -95,6 +95,8 @@
   --bad: #c0242a; --bad-bg: #fcecec; --bad-line: #f0b0b2;
   --info: #0b6aa8; --info-bg: #e7f0f8; --info-line: #a9cbe5;
   --focus: #e05a17; --toast-act: #ff9a63;
+  /* the message at the bottom: dark on a light page; on a dark page a raised dark surface, never a white block (no flash of light) */
+  --toast-bg: var(--ink); --toast-ink: var(--inverse); --toast-line: transparent;
   /* attendance codes */
   --at: #e7f4ec; --at-ink: #0f6b3d; --off: #ecece8; --off-ink: #62625d; --al: #dcf0e2; --al-ink: #0e5e34; --sl: #fbf0cf; --sl-ink: #7f5000;
   --abs: #fbe1e2; --abs-ink: #a8161c; --tardy: #a84a00; --ot: #ece6f4; --ot-ink: #573877;
@@ -149,7 +151,7 @@
   --warn: #f2b24d; --warn-bg: rgba(242, 178, 77, .11); --warn-line: rgba(242, 178, 77, .34);
   --bad: #ff7373; --bad-bg: rgba(255, 115, 115, .11); --bad-line: rgba(255, 115, 115, .36);
   --info: #62aef0; --info-bg: rgba(98, 174, 240, .11); --info-line: rgba(98, 174, 240, .34);
-  --focus: #ff8a4c; --toast-act: #b3441a;
+  --focus: #ff8a4c; --toast-act: #ff9a63; --toast-bg: var(--overlay); --toast-ink: var(--ink); --toast-line: var(--line-2);
   --at: rgba(79, 197, 141, .14); --at-ink: #7fd8a8; --off: #1f1f22; --off-ink: #8a8a84; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
   --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;
   --c1: #3987e5; --c2: #e0652c; --c3: #9d7be6; --c4: #1ea877; --c5: #d55181; --c6: #8f9e2e; --heat: #3987e5; --bar: #3987e5;
@@ -174,7 +176,7 @@
     --warn: #f2b24d; --warn-bg: rgba(242, 178, 77, .11); --warn-line: rgba(242, 178, 77, .34);
     --bad: #ff7373; --bad-bg: rgba(255, 115, 115, .11); --bad-line: rgba(255, 115, 115, .36);
     --info: #62aef0; --info-bg: rgba(98, 174, 240, .11); --info-line: rgba(98, 174, 240, .34);
-    --focus: #ff8a4c; --toast-act: #b3441a;
+    --focus: #ff8a4c; --toast-act: #ff9a63; --toast-bg: var(--overlay); --toast-ink: var(--ink); --toast-line: var(--line-2);
     --at: rgba(79, 197, 141, .14); --at-ink: #7fd8a8; --off: #1f1f22; --off-ink: #8a8a84; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
     --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;
     --c1: #3987e5; --c2: #e0652c; --c3: #9d7be6; --c4: #1ea877; --c5: #d55181; --c6: #8f9e2e; --heat: #3987e5; --bar: #3987e5;
@@ -469,7 +471,8 @@ body:has(#lock:not([hidden])) .sitefoot { display: none; }
 .appbar.scrolled { box-shadow: 0 8px 24px rgba(0, 0, 0, .14); }
 
 /* ------------------------------------------------------------------------------------------------------------- phone: the workspaces in a tab bar at the bottom; More opens a sheet */
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-bar); display: none; height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--nav); border-top: 1px solid var(--nav-line); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-bar); display: none; height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: color-mix(in srgb, var(--nav) 86%, transparent); -webkit-backdrop-filter: saturate(1.6) blur(20px); backdrop-filter: saturate(1.6) blur(20px); border-top: 1px solid var(--nav-line); }   /* a frosted bar: the page moves under it */
 .tabbar button { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; background: none; color: var(--nav-muted); font: 500 11px/1 var(--text); cursor: pointer; min-height: 52px; }
 .tabbar button svg { width: 22px; height: 22px; }
 .tabbar button span:not(.wsdot) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
@@ -913,7 +916,7 @@ table input.cell, table select.cell, table textarea.cell { border-color: transpa
 .tt { position: fixed; z-index: var(--z-tt); pointer-events: none; max-width: 320px; background: var(--ink); color: var(--inverse); border-radius: var(--r-ctl); padding: 6px 9px; font-size: 12px; line-height: 1.4; font-weight: 500; box-shadow: var(--shadow-pop); }
 /* a message at the bottom, with its undo */
 .toast { position: fixed; left: calc(50% + var(--side-cur) / 2); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: var(--z-toast); display: flex; gap: 14px; align-items: center; width: max-content; max-width: min(560px, calc(100vw - 32px));
-  padding: 11px 12px 11px 16px; border-radius: var(--r-card); background: var(--ink); color: var(--inverse); font-size: 13.5px; line-height: 1.45; box-shadow: var(--shadow-pop); }
+  padding: 10px 11px 10px 15px; border: 1px solid var(--toast-line); border-radius: var(--r-card); background: var(--toast-bg); color: var(--toast-ink); font-size: 13.5px; line-height: 1.45; box-shadow: var(--shadow-pop); }
 .toast:not([hidden]) { animation: toastIn var(--t-small) var(--ease-out) both; }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px); } to { transform: translate(-50%, 0); } }
 .toast button { border: 0; background: none; color: var(--toast-act); font: 600 13px/1 var(--text); cursor: pointer; padding: 6px 6px; white-space: nowrap; }
@@ -2091,13 +2094,16 @@ p.prange { padding-top: 12px; }
 .qa svg { width: 18px; height: 18px; flex: none; color: var(--accent-text); }
 .qa span { display: grid; gap: 2px; min-width: 0; }
 .qa b { font: 600 13px/1.25 var(--text); }
-.qa small { font-size: 11.5px; color: var(--muted); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qa small { font-size: 11.5px; color: var(--muted); line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-wrap: balance; }   /* two even lines, not a cut-off one */
 .qa:active { transform: scale(.97); }
 .qa:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* six KPI cards: label, value, change in words, the last six months */
 .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
 .kpi { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; align-content: start; padding: 14px 16px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-card); min-width: 0;
   transition: box-shadow var(--t-hover) ease; }
+/* the cards of a row share their lines: a label on two lines moves every value of the row down with it, so the numbers, the changes
+   and the lines underneath stay level (label, value, change, line, months) */
+@supports (grid-template-rows: subgrid) { .kpi:not(.sk-card) { grid-row: span 5; grid-template-rows: subgrid; } }
 .khead { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 24px; }
 .kl { font: 600 12px/16px var(--text); color: var(--ink-2); }
 .kval { font: 600 30px/36px var(--text); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
@@ -2428,7 +2434,9 @@ body.scrolled .appbar { border-bottom-color: var(--line); box-shadow: 0 10px 24p
 @media (prefers-reduced-motion: reduce) { #dashBody .kpi::after, #dashBody .qa::after, .spot::after { display: none; } }
 /* translucency and contrast, as the system asks */
 @media (prefers-reduced-transparency: reduce) {
-  .appbar, .tabbar { background: var(--bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .appbar { background: var(--bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .tabbar { background: var(--nav) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }   /* near-black like the sidebar: its words are light */
+  .dropall { background: color-mix(in srgb, var(--bg) 90%, transparent) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 }
 @media (prefers-contrast: more) {
   :root { --line: var(--line-3); --line-2: var(--ctl-line); }
@@ -2445,6 +2453,7 @@ body.scrolled .appbar { border-bottom-color: var(--line); box-shadow: 0 10px 24p
   .appbar .findbtn .fl, .appbar .findbtn .kbd { display: none; }
   .appbar .findbtn { width: var(--ctl); padding: 0 !important; justify-content: center; margin-inline-end: 0; }
   .qacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qacts > .qa:last-child:nth-child(odd) { grid-column: 1 / -1; }   /* three quick actions: the last one takes the row, no hole beside it */
   .chktiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ehead, .egrid > .ecard { grid-template-columns: [rk] var(--rkw, 26px) [who] minmax(190px, 2.6fr) [big] minmax(76px, .8fr) [s1] minmax(170px, 2fr) [s2] minmax(170px, 2fr) [st] minmax(116px, 1.2fr); column-gap: 14px; }
 }
@@ -24717,6 +24726,9 @@ window.addEventListener('scroll', scrolledSync, { passive: true }); scrolledSync
 
 // ---- swipe a drawer (to the right) or the More sheet (down) away on a phone, as far and as fast as the finger went
 const rubber = (o, dim, c = 0.55) => (o * dim * c) / (dim + c * Math.abs(o));
+/** where a flick of v px/s comes to rest, as a scroll slows down (Apple's projection, deceleration 0.998) */
+const project = (v, d = 0.998) => (v / 1000) * d / (1 - d);
+const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 function swipeStart(e, el, axis) {
   if (e.pointerType === 'mouse' || MOT.drag || !e.isPrimary) return;
   const t = e.target;
@@ -24746,16 +24758,19 @@ function swipeMove(e) {
 function swipeEnd(e) {
   const D = MOT.drag; if (!D || e.pointerId !== D.id) return; MOT.drag = null;
   if (!D.on) return;
-  const a = D.hist[0], b = D.hist[D.hist.length - 1], vel = (b.v - a.v) / Math.max(1, b.t - a.t), pos = b.v;   // px per ms
-  const close = pos > D.size * 0.3 || (vel > 0.11 && pos > 8), g = window.gsap, s = $('scrim'), prop = D.axis === 'x' ? 'x' : 'y';
+  const a = D.hist[0], b = D.hist[D.hist.length - 1], pos = b.v;
+  const v = e.timeStamp - b.t > 90 ? 0 : (b.v - a.v) / Math.max(1, b.t - a.t) * 1000;   // px per s at the release; a finger that stopped first has none
+  // closes when the panel would come to rest past its middle: a slow pull past half, or a flick from anywhere
+  const close = pos > 8 && pos + project(v) > D.size / 2, g = window.gsap, s = $('scrim'), prop = D.axis === 'x' ? 'x' : 'y';
   const done = () => { D.el.style.transform = ''; D.el.style.animation = ''; D.el.style.transition = ''; if (s) s.style.opacity = ''; };
+  // the panel leaves at the finger's own speed: an ease-out starts at (slope × distance ÷ duration), power2 has slope 2, power3 slope 3
   if (close) {
     const fin = () => { D.el.dataset.swiped = '1'; if (D.el.id === 'moreSheet') moreClose(); else closeDrawer(); };
-    if (g) g.fromTo(D.el, { [prop]: pos }, { [prop]: D.size, duration: Math.min(0.24, Math.max(0.12, (D.size - pos) / Math.max(1.2, vel * 1000) )), ease: 'power2.out', onComplete: fin, overwrite: true });
+    if (g) g.fromTo(D.el, { [prop]: pos }, { [prop]: D.size, duration: v > 0 ? clamp(2 * (D.size - pos) / v, 0.14, 0.32) : 0.26, ease: 'power2.out', onComplete: fin, overwrite: true });
     else fin();
     if (s && g) g.to(s, { opacity: 0, duration: 0.18, ease: 'power2.out', overwrite: true });
   } else if (g) {
-    g.fromTo(D.el, { [prop]: pos }, { [prop]: 0, duration: 0.28, ease: 'power3.out', overwrite: true, onComplete: () => { g.set(D.el, { clearProps: 'transform' }); done(); } });
+    g.fromTo(D.el, { [prop]: pos }, { [prop]: 0, duration: v < 0 && pos > 0 ? clamp(3 * pos / -v, 0.2, 0.42) : 0.3, ease: 'power3.out', overwrite: true, onComplete: () => { g.set(D.el, { clearProps: 'transform' }); done(); } });
     if (s) g.to(s, { opacity: 1, duration: 0.2, overwrite: true, onComplete: () => { s.style.opacity = ''; } });
   } else done();
 }
@@ -24786,7 +24801,21 @@ function countUp(root) {
     g.to(o, { v: p.n, duration: 0.9, delay: i * 0.04, ease: 'power3.out', onUpdate: () => { el.textContent = countFmt(p, o.v); }, onComplete: () => { el.textContent = txt; } });
   });
 }
-try { const db = $('dashBody'); if (db) new MutationObserver(() => { if (db.classList.contains('intro') && !db.dataset.counted) { db.dataset.counted = '1'; countUp(db); } else if (!db.classList.contains('intro')) delete db.dataset.counted; }).observe(db, { attributes: true, attributeFilter: ['class'] }); } catch (e) { /* none */ }
+try { const db = $('dashBody'); if (db) new MutationObserver(() => { if (db.classList.contains('intro') && !db.dataset.counted) { db.dataset.counted = '1'; countUp(db); fillBars(db.querySelector('.dclose-mini'), 'dash'); } else if (!db.classList.contains('intro')) delete db.dataset.counted; }).observe(db, { attributes: true, attributeFilter: ['class'] }); } catch (e) { /* none */ }
+
+// ---- progress that moves only when it changes: the Supervisors card's bars (each month) and the dashboard's month close grow
+// from where they were last shown (from empty the first time) to where they stand now; a redraw with the same numbers stays still.
+// The bar is drawn at its real width and GSAP only plays the way there, so with reduced motion (or no GSAP) it is simply there.
+// Transform (scaleX from the old share of the new width), never width.
+const barsAt = new Map();   // the width each bar was last shown at, by month and supervisor
+function fillBars(root, key) {
+  if (!root || !root.getClientRects().length) return;
+  const g = gsapOk(), L = [...root.querySelectorAll('.pbar i')].map((i, j) => { const li = i.closest('li'), b = li && li.querySelector('[data-spv]'); return { i, id: `${key}:${b ? b.dataset.spv : j}`, now: parseFloat(i.style.width) || 0 }; });
+  const moves = L.filter(x => x.now > 0 && (barsAt.get(x.id) || 0) !== x.now).map(x => ({ ...x, was: barsAt.get(x.id) || 0 }));
+  L.forEach(x => barsAt.set(x.id, x.now));
+  if (g) moves.forEach((x, n) => g.fromTo(x.i, { scaleX: x.was / x.now }, { scaleX: 1, transformOrigin: '0% 50%', duration: 0.7, delay: n * 0.03, ease: 'power3.out', clearProps: 'transform' }));
+}
+try { const cb = $('cycleBody'); if (cb) new MutationObserver(() => { const c = $('spvDone'); if (c) fillBars(c, 'spv:' + wsMonthNow()); }).observe(cb, { childList: true }); } catch (e) { /* none */ }
 
 // ---- a soft light that follows the pointer on the dashboard's cards (a fine pointer only; decoration, nothing more)
 let spotEl = null, spotRaf = 0, spotXY = [0, 0];

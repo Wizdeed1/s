@@ -1810,6 +1810,7 @@ function renderScore() {
     <fieldset class="formlock rulesfs"${can ? '' : ' disabled'}>
     <div class="field"><span class="lbl">Incentive base (SR)</span><div class="basegrid">${BRANDS.map(b => `<label><span>${esc(b)}</span><input type="number" min="0" step="1" data-base="${esc(b)}" value="${B[b]}" aria-label="Incentive base for ${esc(b)}"></label>`).join('')}</div><small>Incentive target = base × actual days %. Earned = target × final %. A person's own base in the roster (for team leads and specialists) wins.</small></div>
     ${eligEditHtml()}
+    ${countEditHtml()}
     <div class="field"><label for="scTitle">Scorecard name</label><input id="scTitle" value="${esc(card.title)}"></div>
     <div class="tablewrap formtab sctab"><table><thead><tr><th>KPI</th><th>From</th><th>Entered by</th><th class="r">Weight %</th><th>Better</th><th class="r">5</th><th class="r">4</th><th class="r">3</th><th class="r">2</th><th></th></tr></thead><tbody>
     ${card.kpis.map((k, i) => `<tr data-ki="${i}"><td><input class="cell" data-sf="name" value="${esc(k.name)}" aria-label="KPI name"></td>
@@ -3612,6 +3613,7 @@ $('scoreBody').addEventListener('click', e => {
   const tb = e.target.closest('#scTeams button'); if (tb) { state.scoreTeam = tb.dataset.f; renderScore(); return; }
   if (e.target.closest('#ruleNew')) { startRules($('ruleFrom').value); return; }
   const rd = e.target.closest('#ruleDel'); if (rd) { if (!rd.dataset.confirm) { rd.dataset.confirm = '1'; rd.textContent = 'Click again to remove'; return; } dropRules(ruleEditKey()); return; }
+  if (countClick(e)) return;   // How it is counted (rules.js)
   if (!canRules()) return;
   const C = ruleCards(), card = C.teams[state.scoreTeam], T = state.scoreTeam;
   if (e.target.closest('#scAdd')) { const t = $('scAddTeam').value; C.teams[t] = { title: `${DEP_NAMES[t] || t} scorecard`, kpis: JSON.parse(JSON.stringify(C.teams.CC ? C.teams.CC.kpis : [])) }; state.scoreTeam = t; scoreChanged(`Added a ${t} scorecard, copied from CC`); toast(`Added a ${t} scorecard, copied from CC. Change the KPIs to match.`); return; }
@@ -3625,6 +3627,7 @@ $('scoreBody').addEventListener('change', e => {
   if (el.id === 'ruleSel') { state.ruleEdit = el.value; renderScore(); return; }
   if (el.id === 'ruleFrom') return;
   if (!canRules()) { renderScore(); return; }
+  if (el.dataset.cnt) { countChange(el); return; }   // How it is counted (rules.js)
   const C = ruleCards(), card = C.teams[state.scoreTeam], T = state.scoreTeam;
   if (el.dataset.base) { const v = parseFloat(el.value), b = el.dataset.base, old = { ...BASES0, ...(C.bases || {}) }[b]; if (!(Number.isFinite(v) && v >= 0)) { renderScore(); return; } C.bases = { ...(C.bases || {}), [b]: v }; if (b === 'Virgin') C.base = v; scoreChanged(`Incentive base for ${b}: ${old} → ${v} SR`); return; }
   if (el.dataset.eligf) {

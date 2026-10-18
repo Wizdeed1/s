@@ -85,6 +85,7 @@ node test/overlays.cjs "final/MC Monthly Report Builder.html" test/shots        
 node test/motion.cjs "final/MC Monthly Report Builder.html" test/shots            # the dashboard moment, Team table speed
 node test/quality.cjs "final/MC Monthly Report Builder.html" test/shots           # Final EVAL template, DRC-CSAT box, scorecards
 node test/signin.cjs "final/MC Monthly Report Builder.html" test/shots            # sign-in, lock and unlock
+node test/agent.cjs "final/MC Monthly Report Builder.html" test/shots             # the agent's page and its month box, English and Arabic
 npm test                                                                          # unit checks and the counting rules against v33 (test/ref)
 ```
 

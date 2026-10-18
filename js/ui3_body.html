@@ -397,7 +397,9 @@
           <button class="btn primary" id="copyMail">Copy for Outlook</button>
           <button class="btn" id="emlBtn"><svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>Download .eml</button>
           <button class="btn ghost" id="attBtn"><svg width="16" height="16" aria-hidden="true"><use href="#i-file"/></svg>Save attachment</button>
+          <label class="check mailedit"><input type="checkbox" id="mEdit"> Edit the text in the preview</label>
         </div>
+        <p class="hint" id="mEditNote" hidden>You are editing the email itself: Copy and Download use your text as it is. Turn editing off to rebuild it from the fields (your changes in the preview are then replaced).</p>
         <ul class="warns" id="mailWarns"></ul>
         <div class="mailhead" id="mailHead"></div>
         <iframe id="mailFrame" title="Email preview" sandbox="allow-same-origin"></iframe>
@@ -422,7 +424,7 @@
   </section>
   <section class="view ws" id="v-wfm" aria-labelledby="h-wfm" hidden>
     <div class="viewhead"><div><div class="eyebrow" id="wfmEyebrow">Workforce</div><h1 id="h-wfm">Workforce</h1><p id="wfmLead">Every department and month from the shared history: trends, comparisons, distributions and where the data comes from.</p></div><div class="wsbar" id="wfmBar"></div></div>
-    <div class="seg wftabs" id="wfmTabs" role="group" aria-label="WFM pages"><button data-wt="analytics" aria-pressed="true">Analytics</button><button data-wt="agents" aria-pressed="false">Agents</button><button data-wt="daily" aria-pressed="false">Daily</button><button data-wt="builder" aria-pressed="false" hidden>Report builder</button><button data-wt="dmail" aria-pressed="false" hidden>Daily emails</button><button data-wt="inter" aria-pressed="false">Interactions</button><button data-wt="mail" aria-pressed="false">Emails</button></div>
+    <div class="seg wftabs" id="wfmTabs" role="group" aria-label="WFM pages"><button data-wt="analytics" aria-pressed="true">Analytics</button><button data-wt="agents" aria-pressed="false">Agents</button><button data-wt="daily" aria-pressed="false">Daily</button><button data-wt="builder" aria-pressed="false" hidden>Report builder</button><button data-wt="inter" aria-pressed="false">Interactions</button><button data-wt="emails" aria-pressed="false" hidden>Emails</button></div>
     <p class="rohint" id="wfmRo" hidden><svg width="14" height="14" aria-hidden="true"><use href="#i-lock"/></svg><span>View only.</span></p>
     <div id="wfmBody"></div>
     <div id="wfmRb" class="rb" hidden></div>

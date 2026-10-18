@@ -9,7 +9,7 @@ Object.assign(state, { dhist: null, dhistAt: '', dhistBy: '', daily: {}, dailyVe
 /** the WFM analysts make the day's emails (the admin can stand in) */
 const canDailyTool = () => ['admin', 'user'].includes(roleNow());
 /** the WFM manager sends the four brand emails (the admin can stand in) */
-const canDailyMail = () => ['admin', 'wfm'].includes(roleNow());
+const canDailyMail = () => ['admin', 'wfm', 'user'].includes(roleNow());   // the WFM manager and the analysts share the daily emails: both edit and send them
 /** who writes the daily data: the analysts building, the manager choosing an ASA */
 const canDailySave = () => ['admin', 'user', 'wfm'].includes(roleNow());
 

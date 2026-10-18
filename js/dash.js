@@ -165,8 +165,8 @@ function dashData() {
 }
 // ---- the greeting and the role's quick actions
 const DASH_ACTS = {
-  wfm: [['Daily emails', 'Read, add the SLA insight, send', 'wfm:dmail', 'i-mail'], ['Interactions', 'Add this week\'s export', 'wfm:inter', 'i-chart'], ['Deduction email', 'Review or final, from the shared month', 'wfm:mail', 'i-mail'], ['Every team', 'Agents ranked, one-to-ones', 'ws:team', 'i-team']],
-  user: [['Import this month\'s files', 'Exports, attendance, IDs, KPI file', 'step:import', 'i-up'], ['Review the checks', 'Names, attendance, decisions', 'step:checks', 'i-check'], ['Report builder', 'MC Leaders and the WFM Daily Review', 'wfm:builder', 'i-file'], ['Daily data', 'Every stored day', 'wfm:daily', 'i-day']],
+  wfm: [['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Interactions', 'Add this week\'s export', 'wfm:inter', 'i-chart'], ['Every team', 'Agents ranked, one-to-ones', 'ws:team', 'i-team']],
+  user: [['Import this month\'s files', 'Exports, attendance, IDs, KPI file', 'step:import', 'i-up'], ['Review the checks', 'Names, attendance, decisions', 'step:checks', 'i-check'], ['Report builder', 'MC Leaders and the WFM Daily Review', 'wfm:builder', 'i-file'], ['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Daily data', 'Every stored day', 'wfm:daily', 'i-day']],
   senior: [['Supervisors and month close', 'Deadline, scorecards, the four emails', 'ws:cycle', 'i-clock'], ['Results', 'Eligibility, finalize the month', 'ws:results', 'i-check'], ['Every team', 'Where each one-to-one stands', 'ws:team', 'i-team'], ['Analytics', 'Every department and month', 'wfm:analytics', 'i-chart']],
   admin: [['Build the month', 'Import, review, export, email', 'step:import', 'i-up'], ['Manage accounts', 'Roles, access, resets', 'accounts', 'i-user'], ['Supervisors', 'The senior manager\'s page', 'ws:cycle', 'i-clock'], ['Results', 'Every agent for the month', 'ws:results', 'i-check']],
 };

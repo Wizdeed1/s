@@ -2519,6 +2519,9 @@ function markSent(how) {
 }
 function renderEmail() {
   if (mailShared() && state.mailKind !== 'ded') state.mailKind = 'ded';
+  const eSig = `${state.mailKind}|${state.mailStage}|${state.mailSrc || ''}|${state.mailSrc ? wsMonthNow() : monthKey()}`;   // another email: editing the old preview stops
+  if (state.mailEditOn && state.mailEditSig !== eSig) { state.mailEditOn = false; state.mailEditDirty = false; $('mEdit').checked = false; $('mEditNote').hidden = true; }
+  state.mailEditSig = eSig;
   const cm = curMail(), md = cm.md, inc = cm.inc, fin = cm.stage === 'final', cfg = mailCfg();
   setSeg($('mKind'), state.mailKind); setSeg($('mStage'), state.mailStage);
   $('mKind').hidden = mailShared(); $('wbDrop').hidden = mailShared();
@@ -2561,9 +2564,22 @@ function renderEmail() {
     <div><span>Subject</span><span><b>${esc(md.subject)}</b></span></div>${md.attach && cfg.attach ? `<div><span>Attached</span><span class="att"><svg width="12" height="12" aria-hidden="true"><use href="#i-file"/></svg>${esc(md.attach.name)}${md.attach.size ? ' · ' + fmtSize(md.attach.size) : ''}</span></div>` : ''}
     <div><span>Rows</span><span>${rowsInfo}</span></div>`;
   const html = cm.html(state.logo ? state.logo.dataUrl : null, true);
-  if (html !== lastMailHtml) { lastMailHtml = html; $('mailFrame').srcdoc = html; }
+  if (html !== lastMailHtml && !state.mailEditOn) { lastMailHtml = html; $('mailFrame').srcdoc = html; }   // while someone edits the preview, it is theirs
 }
 $('mailFrame').addEventListener('load', () => { try { const f = $('mailFrame'), d = f.contentDocument; f.style.height = '420px'; f.style.height = Math.max(420, d.documentElement.scrollHeight + 4) + 'px'; } catch (e) { /* preview only */ } });
+/** the month email, edited by hand in the preview: { html, text } of what is there now, or null when nobody edited it */
+function mailEdited() {
+  if (!state.mailEditOn || !state.mailEditDirty) return null;
+  try { const d = $('mailFrame').contentDocument; return d && d.body ? { html: '<!doctype html>' + d.documentElement.outerHTML.replace(/ contenteditable="true"/g, '').replace(/outline: 2px dashed[^;"]*;?/g, ''), text: d.body.innerText } : null; } catch (e) { return null; }
+}
+function mailEditMode(on) {
+  let d = null; try { d = $('mailFrame').contentDocument; } catch (e) { d = null; }
+  if (on && (!d || !d.body)) { $('mEdit').checked = false; toast('Editing in the preview is not available in this view.'); return; }
+  state.mailEditOn = !!on; $('mEditNote').hidden = !on;
+  if (d && d.body) { d.body.contentEditable = on ? 'true' : 'false'; d.body.style.outline = on ? '2px dashed #9aa' : 'none'; if (on) { d.body.addEventListener('input', () => { state.mailEditDirty = true; }); d.body.focus(); } }
+  if (!on) { state.mailEditDirty = false; lastMailHtml = ''; renderEmail(); }
+}
+$('mEdit').addEventListener('change', e => mailEditMode(e.target.checked));
 
 // ================================================================ UI 4: agent cards, hover profile, agent history chart, employees preview, daily tool, motion
 const gname = p => normSpace(p ? (normSpace(p.sys) ? p.sys : p.name) : '');
@@ -3476,8 +3492,8 @@ document.querySelector('.mailform').addEventListener('click', async e => {
   toast(await copyRich(null, txt) ? 'Copied' : 'Copy is blocked here. Select the text and press Ctrl+C.');
 });
 $('copyMail').addEventListener('click', async () => {
-  const cm = curMail();
-  if (await copyRich(cm.html(state.logo ? state.logo.dataUrl : null, false), cm.text)) {
+  const cm = curMail(), ed = mailEdited();
+  if (await copyRich(ed ? ed.html : cm.html(state.logo ? state.logo.dataUrl : null, false), ed ? ed.text : cm.text)) {
     markSent('Copied');
     toast(`Copied, nothing was sent. In Outlook, start a new email and paste into the body.${cm.md.attach && mailCfg().attach ? ' Use Save attachment to get the file to attach.' : ''}`);
   } else toast('Copy is blocked in this view. Use Download .eml instead.');
@@ -3492,7 +3508,7 @@ $('emlBtn').addEventListener('click', async () => {
   let attach = null;
   if (cm.md.attach && mailCfg().attach) { try { const bytes = await attachmentBytes(cm.inc); if (bytes) attach = { name: cm.md.attach.name, bytes }; } catch (e) { toast('Could not make the attachment: ' + (e && e.message ? e.message : e)); return; } }
   const logo = state.logo && state.mailLogo ? state.logo : null;
-  const bytes = enc8.encode(emlFile({ to: cm.to, cc: cm.cc, subject: cm.md.subject, text: cm.text, html: cm.html(logo ? 'cid:logo@mc' : null, false), attach, logo }));
+  const ed = mailEdited(), bytes = enc8.encode(emlFile({ to: cm.to, cc: cm.cc, subject: cm.md.subject, text: ed ? ed.text : cm.text, html: ed ? ed.html : cm.html(logo ? 'cid:logo@mc' : null, false), attach, logo: ed ? null : logo }));
   let c = await saveRaw(fn, new Blob([bytes], { type: 'message/rfc822' }));
   if (c === 'rejected_extension' || c === 'extension_not_enabled') {
     const zn = fn.replace(/\.eml$/, '.zip');

@@ -143,9 +143,24 @@ function addModelKpi(rec) {
     r.kc = K.card.title; r.kpi = kpiTuples(res);
     if (res.finalRank != null) r.fr = res.finalRank; if (res.sched != null) r.ks = res.sched; if (res.actual != null) r.ka = res.actual; if (res.target != null) r.kt = res.target;
     if (res.earnedCalc != null) r.earnedCalc = res.earnedCalc; if (res.elig && !res.elig.ok) r.inelig = res.elig.why;
-    if (res.attended != null) r.kat = res.attended; if (res.sched != null) r.kr = res.runs || 0; Object.assign(r, kdrOf(monthKey())); r.kx = howLite(res);
+    Object.assign(r, countKept(res, r, monthKey())); r.kx = howLite(res);
   }
   return rec;
+}
+/** a person's KPIs as the month's rows keep them: [name, weight %, target, result, ranking, the band it reached] */
+const kpiTuples = res => res.rows.map((x, i) => [x.k.name, Math.round(x.w * 1000) / 10, Kpi.target(x.k), Kpi.fmtVal(x.k, x.v), x.r, res.how && res.how.kpis[i] ? res.how.kpis[i].band : '']);
+/** every step of a score but the KPIs (the rows carry those), kept on the rows as kx for "How this was counted" */
+function howLite(res) {
+  if (!res || !res.how) return null;
+  const { kpis, ...h } = res.how, vr = {}; kpis.forEach(x => { if (x.vr !== undefined) vr[x.id] = x.vr; });
+  return Object.keys(vr).length ? { ...h, vr } : h;
+}
+/** the days a scored row keeps for the incentive: attended (kat), runs of absence (kr), absences as the rules count them (kab, only
+    when they differ from the plain count) and the day rules (kdr, only when they are not the defaults) */
+function countKept(res, x, k) {
+  if (res.sched == null) return {};
+  const o = { kat: res.attended, kr: res.runs || 0 }; if ((res.absent || 0) !== (x.absent || 0)) o.kab = res.absent;
+  return { ...o, ...kdrOf(k) };
 }
 
 // ---------------------------------------------------------------- months, final results and who matches whom
@@ -177,9 +192,11 @@ function liveRow(r, p, k, rec) {
   const s = scoreLive(x, p, k); if (!s) return x;
   const F = state.finals[k], adj = F && F.adj ? F.adj[rowKey(r)] : null;
   const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k);
-  return { ...x, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: Object.fromEntries(res.rows.filter(z => z.v != null).map(z => [z.k.id, z.v])),
+  // ka = the days counted (after any absence penalty), kat = the days attended: kept apart so a penalty is never taken twice
+  const { kat, kr, kab, kdr, ...y } = x, kept = s.again || res.sched != null ? countKept(res, x, k) : Object.fromEntries(Object.entries({ kat, kr, kab, kdr }).filter(([, v]) => v !== undefined));
+  return { ...y, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: Object.fromEntries(res.rows.filter(z => z.v != null).map(z => [z.k.id, z.v])),
     ks: res.sched ?? x.ks, ka: res.actual ?? x.ka, kt: res.target ?? x.kt, earnedCalc: res.earned ?? null, earned: res.earned == null ? x.earned : el.ok ? res.earned : 0, base: baseOf(p, x, k), _el: el, ...(adj ? { _adj: adj } : {}),
-    kat: res.attended ?? x.kat ?? x.ka, ...(res.sched != null ? { kr: res.runs || 0 } : {}), kx: howLite(res) };
+    ...kept, kx: howLite(res) };
 }
 const matchMemo = new Map();   // month -> { sig, map }: who in the roster is which row of the month
 function rowsByPid(k) {

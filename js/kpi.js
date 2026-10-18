@@ -66,52 +66,60 @@ function rank(k, v, edge) {
 
 // ---------------------------------------------------------------- how it is counted: one section of every set of rules
 // The day codes that can make a scheduled day (besides Attend and late days), with the incentive workbook's column header and
-// COUNTIF criterion. The first eight are the tool's own columns, in their order; the others are counted only when ticked.
+// COUNTIF criterion. The first eight are the tool's own columns, in their order; the other leaves count only when the rules tick them.
 const DC = (code, head, crit, test) => ({ code, head, crit, test });
+const same = code => v => normName(v) === normName(code);
 const DAY_CODES = [
   DC('AL', 'AL leave', 'AL', v => v === 'AL'), DC('SL', 'SL leaves', 'SL', v => v === 'SL'), DC('National Day', 'National Day', 'National Day*', v => /^national day/i.test(v)),
   DC('Compassionate Leave', 'Compassionate Leave', 'Compassionate*', v => /^compassionate/i.test(v)), DC('Eid', 'EID', 'Eid', v => /^eid$/i.test(v)), DC('ML', 'ML', 'ML', v => v === 'ML'),
   DC('Unpaid', 'Unpaid', 'Unpaid', v => v === 'Unpaid'), DC('Absent', 'Absent', 'Absent', v => v === 'Absent'),
 ];
-const MORE_CODES = ['Founding Day', 'Paternity', 'Marriage', 'Exam', 'Other leave'];
-const CODE_ORDER = [...DAY_CODES.map(d => d.code), ...MORE_CODES];
-/** a code's entry: the tool's own, or a leave counted by its exact name (the workbook column takes its name) */
-const dayCode = code => DAY_CODES.find(d => d.code === code) || DC(code, code, code, v => normName(v) === normName(code));
+const MORE_CODES = [DC('Founding Day', 'Founding Day', 'Founding Day', same('Founding Day')), DC('Paternity', 'Paternity leave', 'Paternity', same('Paternity')),
+  DC('Marriage', 'Marriage leave', 'Marriage', same('Marriage')), DC('Exam', 'Exam', 'Exam', same('Exam')), DC('Other leave', 'Other leave', 'Other leave', same('Other leave'))];
+/** every code the rules can count as a scheduled day, in the workbook's column order */
+const CODES = [...DAY_CODES, ...MORE_CODES].map(d => d.code);
+/** a code's entry: the tool's own, a known leave, or any other leave counted by its name (the workbook column takes its name) */
+const dayCode = code => DAY_CODES.find(d => d.code === code) || MORE_CODES.find(d => d.code === code) || DC(code, code, code, same(code));
 // the defaults count exactly as the tool always did
 const COUNT0 = { sched: DAY_CODES.map(d => d.code), lateOver: 0, absentExtra: 0, absentPer: 'day', absentFlat: 0, countedMin: 0, eligDays: 'attended', missing: 'scale', edge: 'in',
   rankDp: 2, valDp: -1, pctOf: 'rank5', pctTable: [], pctDp: -1, daysPct: 'ratio', money: 'round', attitude: 'attitude|abuse|hr action' };
+const NORMED = new WeakSet();   // sections already made whole (they are never changed: an edit makes a new one)
 /** a saved 'count' section made whole and safe: anything missing or out of range takes the default */
 function normCount(c) {
+  if (c && NORMED.has(c)) return c;
   const o = c && typeof c === 'object' ? c : {}, D = COUNT0;
   const num = (v, lo, hi, def) => { const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? +v : NaN; return Number.isFinite(n) ? Math.round(Math.min(hi, Math.max(lo, n))) : def; };
   const one = (v, list, def) => (list.includes(v) ? v : def);
   const sched = Array.isArray(o.sched) ? [...new Set(o.sched.filter(x => typeof x === 'string').map(x => normSpace(x)).filter(x => x && !/^(attend|off)$/i.test(x)))] : D.sched.slice();
-  sched.sort((a, b) => (CODE_ORDER.indexOf(a) + 1 || 99) - (CODE_ORDER.indexOf(b) + 1 || 99));
+  sched.sort((a, b) => (CODES.indexOf(a) + 1 || 99) - (CODES.indexOf(b) + 1 || 99));
   const pctTable = (Array.isArray(o.pctTable) ? o.pctTable : []).map(x => ({ min: x && Number.isFinite(+x.min) ? Math.min(5, Math.max(0, +x.min)) : NaN, pct: x && Number.isFinite(+x.pct) ? Math.min(2, Math.max(0, +x.pct)) : NaN }))
     .filter(x => Number.isFinite(x.min) && Number.isFinite(x.pct)).sort((a, b) => b.min - a.min);
   let attitude = typeof o.attitude === 'string' ? o.attitude.trim() : D.attitude;
   try { new RegExp(attitude, 'i'); } catch (e) { attitude = D.attitude; }
-  return { sched, lateOver: num(o.lateOver, 0, 1440, 0), absentExtra: num(o.absentExtra, 0, 31, 0), absentPer: one(o.absentPer, ['day', 'run'], 'day'), absentFlat: num(o.absentFlat, 0, 31, 0),
+  const n = { sched, lateOver: num(o.lateOver, 0, 1440, 0), absentExtra: num(o.absentExtra, 0, 31, 0), absentPer: one(o.absentPer, ['day', 'run'], 'day'), absentFlat: num(o.absentFlat, 0, 31, 0),
     countedMin: num(o.countedMin, 0, 31, 0), eligDays: one(o.eligDays, ['attended', 'counted'], 'attended'), missing: one(o.missing, ['scale', 'rank1', 'none'], 'scale'), edge: one(o.edge, ['in', 'out'], 'in'),
     rankDp: num(o.rankDp, -1, 4, 2), valDp: num(o.valDp, -1, 4, -1), pctOf: one(o.pctOf, ['rank5', 'table'], 'rank5'), pctTable, pctDp: num(o.pctDp, -1, 6, -1),
     daysPct: one(o.daysPct, ['ratio', 'full'], 'ratio'), money: one(o.money, ['round', 'floor', 'ceil'], 'round'), attitude };
+  NORMED.add(n); return n;
 }
+/** the fields of a 'count' section that differ from the defaults ({} when it counts as the tool always did) */
+function countDiff(cfg) { const c = normCount(cfg), out = {}; for (const f of Object.keys(COUNT0)) if (JSON.stringify(c[f]) !== JSON.stringify(COUNT0[f])) out[f] = c[f]; return out; }
 /** which days count (the codes and the late limit): rows counted with other day rules are counted again */
 const dayRulesKey = cfg => { const c = normCount(cfg); return JSON.stringify([c.sched, c.lateOver]); };
 /** days taken off for absence, and the days that count for the incentive (never above the days attended, never below 0) */
-function penalty(attended, absent, runs, c) {
-  const extra = (c.absentExtra || 0) * (c.absentPer === 'run' ? runs || 0 : absent || 0) + (absent > 0 ? c.absentFlat || 0 : 0);
+function penalty(attended, absent, runs, cfg) {
+  const c = normCount(cfg), extra = c.absentExtra * (c.absentPer === 'run' ? runs || 0 : absent || 0) + (absent > 0 ? c.absentFlat : 0);
   if (!extra || attended == null) return { extra: 0, counted: attended };
-  return { extra, counted: Math.max(0, Math.min(attended, Math.max(c.countedMin || 0, attended - extra))) };
+  return { extra, counted: Math.max(0, Math.min(attended, Math.max(c.countedMin, attended - extra))) };
 }
 /**
  * One person's month of days: day codes, late minutes (numbers), 'Attend', 'OFF', or blank.
- * attended = Attend + late days (a day late by more than lateOver minutes is Absent, its minutes still count as tardy);
+ * attended = Attend + late days (a day late by more than lateOver minutes counts as Absent; its minutes still count as tardy);
  * sched = attended + every day whose code is in cfg.sched; runs = runs of Absent days (OFF and blank days do not break a run);
- * counted = attended less the absence penalty. With the defaults this is exactly the tool's count.
+ * counted = attended less the absence penalty. With the defaults this is exactly the count of the incentive workbook.
  */
 function countDays(days, cfg) {
-  const c = cfg && Array.isArray(cfg.sched) && cfg.money ? cfg : normCount(cfg), tests = c.sched.map(dayCode);
+  const c = normCount(cfg), tests = c.sched.map(dayCode);
   const byCode = {}, other = {}; c.sched.forEach(x => { byCode[x] = 0; });
   let attended = 0, attend = 0, late = 0, lateAbs = 0, tardy = 0, absent = 0, sched = 0, off = 0, runs = 0, inRun = false;
   for (const d of days || []) {
@@ -200,9 +208,11 @@ function score(card, vals, att, base, cfg) {
   const tgt = daysPct == null ? null : M ? M(B * daysPct) : Math.round(B * daysPct);
   // earned = base x actual-days % x final %, rounded (22 sched / 18 actual at 87% -> 712)
   const earned = daysPct == null || finalPct == null ? null : M ? M(B * daysPct * finalPct) : Math.round(B * daysPct * finalPct + 1e-9);
-  const how = { rr: fr, ws: wHave, wt: wSum, mm: c.missing, fr: finalRank, rd: c.rankDp, fp: finalPct, tr: tRow, pd: c.pctDp, s: sched, a: attended, ab: absent, ru: runs, ex: pen.extra, c: actual,
-    dp: daysPct, df: c.daysPct, b: B, t: tgt, e: earned, mo: c.money, pen: pen.extra ? { k: c.absentExtra, per: c.absentPer, flat: c.absentFlat, min: c.countedMin } : null,
-    kpis: rows.map(x => ({ id: x.k.id, name: x.k.name, v: x.v, vr: x.vr, band: bandOf(x.k, x.r, c.edge), r: x.r, w: x.w })) };
+  // every step in short keys (kept on the month's rows as kx, without the KPIs, which the rows carry already)
+  const how = { rr: fr, ws: wHave, wt: wSum, mm: c.missing, rd: c.rankDp, fr: finalRank, po: c.pctOf, tr: tRow ? { min: tRow.min, pct: tRow.pct } : null, pd: c.pctDp, fp: finalPct, vd: c.valDp, ed: c.edge,
+    s: sched, a: attended, ab: absent, ru: runs, ex: pen.extra, pen: pen.extra ? { k: c.absentExtra, per: c.absentPer, flat: c.absentFlat, min: c.countedMin } : null, c: actual,
+    df: c.daysPct, dp: daysPct, b: B, mo: c.money, t: tgt, e: earned,
+    kpis: rows.map(x => ({ id: x.k.id, name: x.k.name, v: x.v, ...(x.vr !== undefined ? { vr: x.vr } : {}), band: bandOf(x.k, x.r, c.edge), r: x.r, w: x.w })) };
   return { rows, finalRank, finalPct, sched, actual, daysPct, target: tgt, earned, missing, complete: !missing.length, weightsOk: Math.abs(wSum - 1) < 0.001,
     attended, absent, runs, extra: pen.extra, how };
 }
@@ -252,6 +262,6 @@ function validate(cards) {
   return issues;
 }
 return { DEFAULTS: () => clone(DEFAULTS), SRC, rank, score, normValue, fmtVal, bandText, target, readFile, fileValue, key, validate,
-  COUNT0: () => clone(COUNT0), normCount, countDays, penalty, dayRulesKey, DAY_CODES, MORE_CODES, dayCode, bandOf, bandVal };
+  COUNT0: () => clone(COUNT0), normCount, countDiff, countDays, penalty, dayRulesKey, DAY_CODES, CODES, dayCode, bandOf, bandVal };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Kpi;

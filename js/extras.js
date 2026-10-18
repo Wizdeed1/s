@@ -90,14 +90,17 @@ function fileValues(card, k, p, r) {
 function scoreLive(r, p, k) {
   const card = cardFor((p && p.team) || r.team, k); if (!card) return null;
   const cfg = countFor(k), vals = { adh: r.adh ?? null, adhUnder: r.adhUnder ?? null, aht: r.aht ?? null, tardy: r.tardy ?? null, file: fileValues(card, k, p, r) };
-  let att = r.ks != null ? { sched: r.ks, attended: r.kat ?? r.ka, absent: r.absent, runs: r.kr } : null;
-  const hasDays = !!(r.d || r.dx), again = hasDays && Kpi.dayRulesKey(cfg) !== (r.kdr || KDR0);
-  if (again || (att && att.runs == null && hasDays && cfg.absentPer === 'run' && cfg.absentExtra > 0 && r.absent > 0)) {
+  // kat = days attended (ka on rows saved before the counting rules), kab = absences as the rules count them (when a long late
+  // day counts as one), kr = runs of absent days. Kpi.score takes the absence penalty off, so it is never taken twice.
+  let att = r.ks != null ? { sched: r.ks, attended: r.kat ?? r.ka, absent: r.kab ?? r.absent, runs: r.kr } : null, again = false;
+  const hasDays = !!(r.d || r.dx), dk = Kpi.dayRulesKey(cfg);
+  again = hasDays && dk !== (r.kdr || KDR0);
+  if (again || (att && att.runs == null && hasDays && cfg.absentPer === 'run' && cfg.absentExtra > 0 && att.absent > 0)) {
     const t = Kpi.countDays(daysOfRow(r, Core.daysIn(+k.slice(0, 4), +k.slice(5))), cfg);
     if (again) att = r.ks != null || t.sched > 0 ? { sched: t.sched, attended: t.attended, absent: t.absent, runs: t.runs } : null; else att.runs = t.runs;
   }
   const res = Kpi.score(card, vals, att, baseOf(p, r, k), cfg);
-  return { card, res };
+  return { card, res, again, dk };
 }
 
 // ---------------------------------------------------------------- attendance: what Genesys says, plus the supervisor's corrections
@@ -107,13 +110,18 @@ function daysOfRow(r, ND) {
   const d = String(r.d || ''), dx = r.dx || {};
   return Array.from({ length: ND }, (_, i) => { const x = dx[i + 1]; if (x != null) return x; const c = d[i]; return !c || c === '-' ? null : LET[c] || null; });
 }
-/** the totals a row should have once the corrections are in: worked, absent, tardy, scheduled and actual days for the incentive,
-    counted with the month's rules (Kpi.countDays: the same count as the Build month and the incentive workbook) */
+/** the totals a row should have once the corrections are in: worked, absent, tardy (as the days show them), and the scheduled and
+    attended days for the incentive counted with the month's rules (Kpi.countDays: the same count as the Build month and the
+    incentive workbook); kab = absences as the rules count them, runs = runs of absent days */
 function attTotals(days, k) {
   const c = Kpi.countDays(days, countFor(k)); let al = 0, sl = 0, other = 0;
   for (const v of days) { if (v == null || typeof v === 'number' || v === 'Attend' || v === 'OFF' || v === 'Absent') continue; if (v === 'AL') al++; else if (v === 'SL') sl++; else other++; }
-  return { attend: c.attended, sched: c.sched, absent: c.absent, tardy: c.tardy, al, sl, off: c.off, leave: other, worked: c.attended, runs: c.runs, counted: c.counted, extra: c.extra, byCode: c.byCode };
+  return { attend: c.attended, sched: c.sched, absent: c.absent - c.lateAbs, tardy: c.tardy, al, sl, off: c.off, leave: other, worked: c.attended + c.lateAbs,
+    runs: c.runs, kab: c.absent, counted: c.counted, extra: c.extra, byCode: c.byCode };
 }
+/** the fields a recounted row carries for the incentive: attended, runs of absence, and (only when they differ from the plain
+    counts and the defaults) the absences as the rules count them and the day rules it was counted with */
+const keptCount = (t, k) => ({ kat: t.attend, kr: t.runs, ...(t.kab !== t.absent ? { kab: t.kab } : {}), ...kdrOf(k) });
 /** the day rules a row was counted with, kept on the row only when they are not the defaults */
 const kdrOf = k => { const x = Kpi.dayRulesKey(countFor(k)); return x === KDR0 ? {} : { kdr: x }; };
 const DAYCH = v => (v == null ? '-' : typeof v === 'number' || v === 'Attend' ? 'A' : v === 'OFF' ? 'O' : v === 'AL' ? 'L' : v === 'SL' ? 'S' : v === 'Absent' ? 'X' : 'V');
@@ -124,8 +132,8 @@ function withEdits(r, edits, ND, k) {
   for (const [d, e] of Object.entries(edits.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = e.v === '' ? null : e.v; }
   const t = attTotals(days, k), dx = {};
   days.forEach((v, i) => { if (v != null && (typeof v === 'number' || !['Attend', 'OFF', 'AL', 'SL', 'Absent'].includes(v))) dx[i + 1] = v; });
-  const { kdr, ...rest } = r;
-  return { ...rest, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, kat: t.attend, kr: t.runs, ...kdrOf(k), _edited: Object.keys(edits.days).length };
+  const { kdr, kab, ...rest } = r;
+  return { ...rest, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, ...keptCount(t, k), _edited: Object.keys(edits.days).length };
 }
 function leaveCode(c) {
   const s = String(c || '');

@@ -1605,8 +1605,8 @@ function computeKpi() {
     if (!m.shown) continue; const card = cardFor(m.p.team, k0); if (!card) continue;
     const a = attOf(m.p._id), cnt = a ? Att.counts(a.days, a.tardyFile) : null, fr = kpiFileRowFor(m.p), file = fileValues(card, monthKey(), m.p, null);
     const vals = { adh: m.avg, adhUnder: m.adh ? m.adh.filter(v => v != null && v < target).length : null, aht: m.aht, tardy: cnt ? cnt.tardyMin : null, file };
-    const ar = attByPid.get(m.p._id);
-    const res = Kpi.score(card, vals, ar && ar.has ? { sched: ar.sched, actual: ar.attend } : null, baseOf(m.p, null, k0));
+    const ar = attByPid.get(m.p._id);   // the days as the month's rules count them (attended: the penalty for absence is taken in Kpi.score)
+    const res = Kpi.score(card, vals, ar && ar.has ? { sched: ar.sched, attended: ar.attended, absent: ar.absent, runs: ar.runs } : null, baseOf(m.p, null, k0), countFor(k0));
     res.elig = eligibility(res, qRow(k0, m.p._id), null, k0);
     if (!res.elig.ok && res.earned != null) { res.earnedCalc = res.earned; res.earned = 0; }
     out.set(m.p._id, { m, card, fileRow: fr, res });
@@ -1818,7 +1818,7 @@ function renderScore() {
 function scoreChanged(what) { if (!saveRules(what)) { renderScore(); return; } refresh(); renderScore(); if (state.ws !== 'build') renderWs(); }
 
 // ---------------------------------------------------------------- incentive data
-function incModel() { if (!state.ctx) return null; if (!state.incModelCache) state.incModelCache = WriterInc.model(state.ctx); return state.incModelCache; }
+function incModel() { if (!state.ctx) return null; if (!state.incModelCache) state.incModelCache = WriterInc.model(state.ctx, { count: countFor(monthKey()) }); return state.incModelCache; }
 const ukey = (id, name) => (/^\d{6,}$/.test(String(id || '')) ? String(id) : 'N:' + normName(name));
 const stripMark = s => normSpace(String(s ?? '').replace(/^[⛔⚠]️?\s*/, ''));
 /** incentive rows from the page (or a dropped workbook) as plain data for the email, the snapshot and the differences */
@@ -2245,17 +2245,12 @@ function formsListHtml(pid) {
   return `<section class="sec"><h3>Forms</h3>${lk ? `<p class="hint">${esc(ymLabel(mk))} is final, so its forms are read-only.</p>` : ''}${canEditForms() ? `<div class="formbtns"><button class="btn sm" data-newform="1to1">One-to-one form · ${esc(MON[+mk.slice(5) - 1])}</button><button class="btn sm" data-newform="final">Final form · ${esc(MON[+mk.slice(5) - 1])}</button></div>` : ''}
     ${L.length ? `<ul class="ilist">${L.map(f => `<li><span class="nm">${esc(FORM_TITLE[f.kind])} · ${esc(MON[f.m - 1])} ${f.y}</span><span class="sg">${formStatusChip(f)} ${sigChip(f)} ${f.kind === 'final' && f.outcome ? esc((Forms.OUTCOMES.find(o => o[0] === f.outcome) || [, ''])[1]) + ' · ' : ''}${f.savedAt ? 'saved ' + esc(fmtWhen(f.savedAt)) : f.plannedAt ? 'arranged for ' + esc(Forms.fmtDate(f.plannedAt)) : ''}${f.savedByName ? ' by ' + esc(f.savedByName) : ''}</span><span class="sp"></span><span class="acts"><button class="btn sm ghost" data-openform="${esc(f.id)}">Open</button><button class="btn sm" data-pdfform="${esc(f.id)}">PDF</button></span></li>`).join('')}</ul>` : '<p class="subtle" style="margin:6px 0 0">No forms for this person yet.</p>'}</section>`;
 }
-/** rostered days against days attended: every filled day except OFF and public holidays is a scheduled day */
 const HOLIDAY_RE = /national day|founding day|eid|holiday/i;
+/** scheduled days against days attended, as the incentive counts them with the month's rules (Attend and late days, and every day
+    whose code the rules count as scheduled); why = the scheduled days not attended */
 function attSA(days) {
-  const c = Att.counts(days, null); let sched = 0; const why = new Map();
-  for (const v of days) {
-    if (v == null || v === 'OFF' || (typeof v === 'string' && HOLIDAY_RE.test(v))) continue;
-    sched++;
-    if (typeof v === 'number' || v === 'Attend') continue;
-    const k = v === 'Absent' ? 'absent' : v; why.set(k, (why.get(k) || 0) + 1);
-  }
-  return { sched, actual: c.worked, why: [...why.entries()].map(([k, n]) => `${n} ${k}`).join(' · ') };
+  const c = Kpi.countDays(days, countFor(monthKey())), why = Object.entries(c.byCode).filter(([, n]) => n).map(([code, n]) => `${n} ${code === 'Absent' ? 'absent' : code}`);
+  return { sched: c.sched, actual: c.attended, why: why.join(' · ') };
 }
 function attStripHtml(pid) {
   const a = attOf(pid); if (!state.attFiles.length) return '';
@@ -2264,7 +2259,7 @@ function attStripHtml(pid) {
   const cls = v => (v == null ? 'na' : typeof v === 'number' ? 'td' : { Attend: 'at', OFF: 'off', AL: 'al', SL: 'sl', Absent: 'ab' }[v] || 'ot');
   const short = v => (v == null ? '' : typeof v === 'number' ? String(v) : { Attend: '✓', Absent: 'Abs', 'National Day': 'ND', 'Founding Day': 'FD', 'Compassionate Leave': 'CL', Unpaid: 'UPL', Paternity: 'PL', Marriage: 'MRL' }[v] || String(v).slice(0, 4));
   const sa = attSA(a.days);
-  return `<section class="sec"><h3>Attendance</h3><div class="minis"><div title="Scheduled days: every day except OFF and public holidays. Actual: days attended."><b>${sa.sched} / ${sa.actual}</b><span>Scheduled / Actual days${sa.sched > sa.actual && sa.why ? ` · ${esc(sa.why)}` : ''}</span></div><div><b>${cnt.tardyMin}</b><span>Tardy (min)${a.tardyFile ? ' – from the Tardy column' : ''}</span></div><div><b>${cnt.absent}</b><span>Absent</span></div><div><b>${cnt.al + cnt.sl}</b><span>AL + SL</span></div></div>
+  return `<section class="sec"><h3>Attendance</h3><div class="minis"><div title="As the incentive counts them: Attend and late days, and the leaves and absences the month's rules count as scheduled."><b>${sa.sched} / ${sa.actual}</b><span>Scheduled / Actual days${sa.sched > sa.actual && sa.why ? ` · ${esc(sa.why)}` : ''}</span></div><div><b>${cnt.tardyMin}</b><span>Tardy (min)${a.tardyFile ? ' – from the Tardy column' : ''}</span></div><div><b>${cnt.absent}</b><span>Absent</span></div><div><b>${cnt.al + cnt.sl}</b><span>AL + SL</span></div></div>
     <div class="astrip">${Array.from({ length: ND }, (_, i) => { const v = a.days[i]; return `<div class="${cls(v)}" title="${Core.weekday(state.y, state.m, i + 1)} ${i + 1} ${MON[state.m - 1]}: ${esc(v == null ? 'blank' : typeof v === 'number' ? v + ' min late' : v)}"><small>${i + 1}</small><b>${esc(short(v))}</b></div>`; }).join('')}</div>
     <p class="hint">From ${esc(a.srcs.join('; '))}</p></section>`;
 }

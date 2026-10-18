@@ -139,7 +139,7 @@ function monthFromDays(k) {
     const p = byName.get(normName(x.n)) || null, t = attTotals(x.days, k), dx = {};
     x.days.forEach((v, i) => { if (v != null && (typeof v === 'number' || !['Attend', 'OFF', 'AL', 'SL', 'Absent'].includes(v))) dx[i + 1] = v; });
     const r = { k: p && Core.cleanId(p.nid) ? Core.cleanId(p.nid) : 'N:' + normName(x.n), n: p ? gname(p) || p.name : x.n, brand: p ? p.brand : normBrand(x.t), team: p ? p.team : '',
-      worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, d: x.days.map(DAYCH).join(''), ks: t.sched, ka: t.attend, kat: t.attend, kr: t.runs, ...kdrOf(k) };
+      worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, d: x.days.map(DAYCH).join(''), ks: t.sched, ka: t.attend, ...keptCount(t, k) };
     if (p && Core.cleanId(p.nid)) r.id = Core.cleanId(p.nid);
     if (Object.keys(dx).length) r.dx = dx;
     if (x.adhW) { r.adh = Math.round(x.adhS / x.adhW * 1e4) / 1e4; r.adhUnder = x.under; r.adhDays = x.adhDays; r.ad = x.ad.map(v => (v == null ? '' : Math.round(v * 10000))).join(','); }

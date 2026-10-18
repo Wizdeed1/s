@@ -187,16 +187,26 @@ function monthData(k) {
 function liveRow(r, p, k, rec) {
   const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5));
   const E = attEditsOf(k), ed = E && p ? E.get(p._id) : null;
-  let x = withEdits(r, ed, ND, k);
-  if (!(rec && (rec.tool || rec.auto || rec.page || rec.daily))) return x;
-  const s = scoreLive(x, p, k); if (!s) return x;
   const F = state.finals[k], adj = F && F.adj ? F.adj[rowKey(r)] : null;
+  let x = withEdits(r, ed, ND, k);
+  if (adj && adj.ks != null && adj.ka != null) {   // the old Excel's day count, accepted on Results › Reconcile: scored as it is, not counted again
+    const dk = Kpi.dayRulesKey(countFor(k)), { kdr, ...z } = x;
+    x = { ...z, ks: adj.ks, ka: adj.ka, kat: adj.ka, ...(dk === KDR0 ? {} : { kdr: dk }) };
+  }
+  if (!(rec && (rec.tool || rec.auto || rec.page || rec.daily))) return withAdj(x, adj);
+  const s = scoreLive(x, p, k); if (!s) return withAdj(x, adj);
   const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k);
   // ka = the days counted (after any absence penalty), kat = the days attended: kept apart so a penalty is never taken twice
   const { kat, kr, kab, kdr, ...y } = x, kept = s.again || res.sched != null ? countKept(res, x, k) : Object.fromEntries(Object.entries({ kat, kr, kab, kdr }).filter(([, v]) => v !== undefined));
-  return { ...y, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: Object.fromEntries(res.rows.filter(z => z.v != null).map(z => [z.k.id, z.v])),
-    ks: res.sched ?? x.ks, ka: res.actual ?? x.ka, kt: res.target ?? x.kt, earnedCalc: res.earned ?? null, earned: res.earned == null ? x.earned : el.ok ? res.earned : 0, base: baseOf(p, x, k), _el: el, ...(adj ? { _adj: adj } : {}),
-    ...kept, kx: howLite(res) };
+  return withAdj({ ...y, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: Object.fromEntries(res.rows.filter(z => z.v != null).map(z => [z.k.id, z.v])),
+    ks: res.sched ?? x.ks, ka: res.actual ?? x.ka, kt: res.target ?? x.kt, earnedCalc: res.earned ?? null, earned: res.earned == null ? x.earned : el.ok ? res.earned : 0, base: baseOf(p, x, k), _el: el,
+    ...kept, kx: howLite(res) }, adj);
+}
+/** a draft month's row with the senior manager's changes: a final % or an earned SR set by hand or accepted from the old Excel wins, as
+    it does on a final month (monthData) */
+function withAdj(x, adj) {
+  if (!adj) return x;
+  return { ...x, ...(adj.fin != null ? { fin: adj.fin } : {}), ...(adj.earned != null ? { earned: adj.earned } : {}), _adj: adj };
 }
 const matchMemo = new Map();   // month -> { sig, map }: who in the roster is which row of the month
 function rowsByPid(k) {

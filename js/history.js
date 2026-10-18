@@ -14,8 +14,41 @@ const DAY_NAME = { A: 'Attend', O: 'OFF', L: 'AL', S: 'SL', X: 'Absent', V: 'Oth
 
 function headRow(S) { return S.rows.findIndex(r => r && r.some(v => normName(v) === 'id') && r.some(v => /^(name|member care champions)$/i.test(normSpace(v)))); }
 const col = (H, re) => H.findIndex(v => typeof v === 'string' && re.test(normSpace(v)));
+// kpi.js comes after this file in the page, so it is looked up when a file is read (the tool's own count of the days)
+const kpiLib = () => (typeof Kpi !== 'undefined' ? Kpi : require('./kpi.js'));
+/** the tool's days of the attended row as the incentive counts them: scheduled (ks), counted (ka), attended (kat), runs of absence (kr) */
+function keptDays(days, cfg, plain) {
+  const K = kpiLib(), t = K.countDays(days, cfg), o = { ks: t.sched, ka: t.counted, kat: t.attended, kr: t.runs };
+  if (t.absent !== plain) o.kab = t.absent;
+  const dk = K.dayRulesKey(cfg); if (dk !== K.dayRulesKey(null)) o.kdr = dk;
+  return o;
+}
+/** dx: what the day letters do not keep (tardy minutes, Unpaid, Paternity and other named leaves), by day of the month */
+function extraDays(days) { const dx = {}; days.forEach((v, i) => { if (v != null && (typeof v === 'number' || !STD_DAY.has(v))) dx[i + 1] = v; }); return Object.keys(dx).length ? dx : null; }
+/** two spellings of one name: Core.nameScore, or the letters with two of them typed the wrong way round counted as one slip */
+function osa(a, b) {
+  const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return d[m][n];
+}
+function nameClose(a, b) {
+  const s = C.nameScore(a, b), ta = normName(a).replace(/[^a-z\s]/g, '').split(' ').filter(t => t.length > 1), tb = normName(b).replace(/[^a-z\s]/g, '').split(' ').filter(t => t.length > 1);
+  if (!ta.length || !tb.length || ta[0][0] !== tb[0][0]) return s;
+  const ja = ta.join(''), jb = tb.join(''), cat = 1 - osa(ja, jb) / Math.max(ja.length, jb.length);
+  return Math.max(s, cat >= 0.8 ? cat : 0);
+}
+const MEASURED = ['adh', 'adhUnder', 'adhDays', 'aht'];
 
-/** sheets: Core.readXlsx output. Returns { y, m, rows:[{k,id,n,brand,team,adh,adhUnder,adhDays,aht,worked,absent,al,sl,off,leave,tardy,d}] } */
+/** sheets: Core.readXlsx output. Returns { y, m, rows:[{k,id,n,brand,team,adh,adhUnder,adhDays,aht,worked,absent,al,sl,off,leave,tardy,d}] }.
+    Rows also keep (when there is something to keep): dx (the day values the letters lose), ks/ka/kat/kr (the days as the tool counts
+    them, with opts.count or the default rules), xl (the workbook's own Scheduled days, Actual days, SL, AL and Absent columns),
+    codeIssues (day cells typed with extra spaces, which Excel's COUNTIF does not count), gn (the Genesys spelling of the name in the
+    adherence and AHT tabs), adhDt (the In Detail average when the Adherence tab holds another, typed value), badId (an ID cell that is
+    not a number, like '#N/A') and split (the other spelling of a person whose rows were split in two and are joined here). */
 function read(sheets, opts = {}) {
   const target = opts.target ?? 0.95, floor = opts.floor ?? 0.5;
   const by = re => sheets.find(s => re.test(normSpace(s.name)));
@@ -26,22 +59,28 @@ function read(sheets, opts = {}) {
     let p = people.get(k) || (byName.has(nk) ? people.get(byName.get(nk)) : null);
     if (!p) { p = { k, id: /^\d{6,}$/.test(id) ? id : '', n: name, brand: '', team: '' }; people.set(k, p); }
     if (!p.id && /^\d{6,}$/.test(id)) p.id = id;
+    if (id && !/^\d{6,}$/.test(id)) p.badId = [...new Set([...(p.badId ? p.badId.split(' / ') : []), id])].join(' / ');
     if (!byName.has(nk)) byName.set(nk, p.k);
     return p;
   };
+  const genesys = (p, n) => { if (normName(n) !== normName(p.n)) p.gn = n; };   // the adherence and AHT tabs carry the Genesys spelling
   let y = null, m = null;
   if (AR) {
     const h = headRow(AR), H = AR.rows[h] || [], dc = [];
     H.forEach((v, i) => { if (v instanceof Date) dc.push(i); });
     if (dc.length) { y = H[dc[0]].getUTCFullYear(); m = H[dc[0]].getUTCMonth() + 1; }
     const ni = col(H, /^name$/i), ti = col(H, /^team$/i), di = col(H, /^dep$/i), tri = col(H, /^tardy$/i);
+    const xc = [['ks', col(H, /^scheduled days$/i)], ['ka', col(H, /^actual days$/i)], ['sl', col(H, /^sl leaves?$/i)], ['al', col(H, /^al leaves?$/i)], ['absent', col(H, /^absent$/i)]].filter(([, j]) => j >= 0);
     for (const r of AR.rows.slice(h + 1)) {
       const n = strip(r && r[ni]); if (!n) continue;
       const p = get(idOf(r[0]), n);
       p.brand = normSpace(r[ti]) || p.brand; p.team = normSpace(r[di]) || p.team;
-      const days = dc.map(i => { const x = A.normCode(r[i]); return x.v == null ? null : x.v; });
-      const c = A.counts(days, null);
-      Object.assign(p, { worked: c.worked, absent: c.absent, al: c.al, sl: c.sl, off: c.off, leave: c.other, tardy: num(r[tri]) ?? c.tardyMin, d: days.map(DAY).join('') });
+      const codes = dc.map(i => A.normCode(r[i])), days = codes.map(x => (x.v == null ? null : x.v));
+      const c = A.counts(days, null), dx = extraDays(days), xl = {}, issues = [];
+      for (const [f, j] of xc) { const v = num(r[j]); if (v != null) xl[f] = v; }
+      dc.forEach((i, j) => { const raw = r[i]; if (typeof raw === 'string' && codes[j].v != null && typeof codes[j].v === 'string' && normSpace(raw) !== raw) issues.push({ day: j + 1, raw, v: codes[j].v }); });
+      Object.assign(p, { worked: c.worked, absent: c.absent, al: c.al, sl: c.sl, off: c.off, leave: c.other, tardy: num(r[tri]) ?? c.tardyMin, d: days.map(DAY).join(''),
+        ...(dx ? { dx } : {}), ...keptDays(days, opts.count, c.absent), ...(Object.keys(xl).length ? { xl } : {}), ...(issues.length ? { codeIssues: issues } : {}) });
     }
   }
   if (DT) {
@@ -52,7 +91,7 @@ function read(sheets, opts = {}) {
       const n = strip(r && r[ni]); if (!n) continue;
       const vals = dc.map(i => num(r[i])).filter(v => v != null && v >= floor);
       if (!vals.length) continue;
-      const p = get(idOf(r[0]), n);
+      const p = get(idOf(r[0]), n); genesys(p, n);
       p.adhDays = vals.length; p.adhUnder = vals.filter(v => v < target).length;
       if (p.adh == null) p.adh = vals.reduce((a, b) => a + b, 0) / vals.length;
     }
@@ -61,7 +100,9 @@ function read(sheets, opts = {}) {
     const h = headRow(AD), H = AD.rows[h] || [], ni = col(H, /^(name|member care champions)$/i), vi = col(H, /adherence/i);
     for (const r of AD.rows.slice(h + 1)) {
       const n = strip(r && r[ni]); const v = num(r && r[vi]); if (!n || v == null) continue;
-      const p = get(idOf(r[0]), n); p.adh = v;
+      const p = get(idOf(r[0]), n); genesys(p, n);
+      if (p.adh != null && p.adhDays != null && Math.abs(p.adh - v) > 5e-4) p.adhDt = p.adh;   // a value typed over the daily average
+      p.adh = v;
     }
   }
   if (AH) {
@@ -71,27 +112,54 @@ function read(sheets, opts = {}) {
       if (v instanceof Date) v = (v.getTime() - Date.UTC(1899, 11, 30)) / 1000;   // a time cell
       v = num(v); if (v == null) continue;
       if (v < 1) v = v * 86400;   // a fraction of a day
-      const p = get(idOf(r[0]), n); p.aht = Math.round(v * 1000) / 1000;
+      const p = get(idOf(r[0]), n); genesys(p, n); p.aht = Math.round(v * 1000) / 1000;
     }
   }
+  joinSplit(people);
   if ((!y || !m) && opts.name) { const x = String(opts.name).match(/(20\d\d)[-_ .]?(0[1-9]|1[0-2])/); if (x) { y = +x[1]; m = +x[2]; } }
   const rows = [...people.values()].map(p => { const o = {}; for (const [k, v] of Object.entries(p)) if (v !== '' && v != null) o[k] = typeof v === 'number' && !Number.isInteger(v) ? Math.round(v * 1e6) / 1e6 : v; return o; });
   return { y, m, rows };
 }
+/** One person in two rows: the Attendance Report under one spelling and the adherence/AHT tabs under another, with no ID to join
+    them ('#N/A', 'NA'). A row with only adherence or AHT joins the attendance-only row whose name is close enough (0.86 or more,
+    and 0.08 above any other name), when they do not carry two different IDs. */
+function joinSplit(people) {
+  const L = [...people.values()];
+  for (const x of L) {
+    if (x.d != null || !MEASURED.some(f => x[f] != null)) continue;
+    let best = null, bs = 0, second = 0;
+    for (const y of L) {
+      if (y === x || !people.has(y.k)) continue;
+      const s = nameClose(x.n, y.n);
+      if (s > bs) { second = bs; bs = s; best = y; } else if (s > second) second = s;
+    }
+    if (!best || bs < 0.86 || bs - second < 0.08) continue;
+    if (best.d == null || MEASURED.some(f => best[f] != null) || (x.id && best.id)) continue;
+    for (const [f, v] of Object.entries(x)) if (!['k', 'id', 'n', 'brand', 'team', 'gn', 'badId'].includes(f) && best[f] == null) best[f] = v;
+    if (!best.id && x.id) best.id = x.id;
+    if (x.badId) best.badId = [...new Set([...(best.badId ? best.badId.split(' / ') : []), ...x.badId.split(' / ')])].join(' / ');
+    best.gn = x.gn && normName(x.gn) !== normName(best.n) ? x.gn : x.n;
+    best.split = x.n;
+    people.delete(x.k);
+  }
+}
 
-/** the same row shape from this page's own data (incentive model + attendance) */
+/** the same row shape from this page's own data (incentive model + attendance). The adherence and AHT rows join the person's
+    attendance row by roster person (so a person with no ID and a system name stays one row), and keep the Genesys spelling (gn). */
 function fromModel(md, att) {
-  const rows = new Map();
+  const rows = new Map(), byPid = new Map();
   const get = r => { const k = ukey(r.id, r.name); if (!rows.has(k)) rows.set(k, { k, id: /^\d{6,}$/.test(r.id) ? r.id : '', n: r.name, brand: r.brand, team: r.team }); return rows.get(k); };
+  const of = r => { const p = (r.pid && byPid.get(r.pid)) || get(r); if (normName(r.name) !== normName(p.n)) p.gn = r.name; return p; };
   for (const r of md.att) {
     const p = get(r), a = att && att.get(r.pid), days = a ? a.days : r.days.map(v => v || null);
+    if (r.pid) byPid.set(r.pid, p);
     const c = A.counts(days, a ? a.tardyFile : null);
-    const dx = {}; days.forEach((v, i) => { if (v != null && (typeof v === 'number' || !STD_DAY.has(v))) dx[i + 1] = v; });   // tardy minutes and named leaves, which the letters do not keep
-    Object.assign(p, { worked: c.worked, absent: c.absent, al: c.al, sl: c.sl, off: c.off, leave: c.other, tardy: r.tardy || 0, d: days.map(DAY).join(''), ...(Object.keys(dx).length ? { dx } : {}) });
+    const dx = extraDays(days);   // tardy minutes and named leaves, which the letters do not keep
+    Object.assign(p, { worked: c.worked, absent: c.absent, al: c.al, sl: c.sl, off: c.off, leave: c.other, tardy: r.tardy || 0, d: days.map(DAY).join(''), ...(dx ? { dx } : {}) });
   }
-  for (const r of md.det) { const p = get(r); p.adh = typeof r.avg === 'number' ? r.avg : undefined; p.adhUnder = r.under; p.adhDays = r.counted; }
-  for (const r of md.adh) { const p = get(r); if (typeof r.avg === 'number') p.adh = r.avg; }
-  for (const r of md.aht) { const p = get(r); p.aht = r.sec; }
+  for (const r of md.det) { const p = of(r); p.adh = typeof r.avg === 'number' ? r.avg : undefined; p.adhUnder = r.under; p.adhDays = r.counted; }
+  for (const r of md.adh) { const p = of(r); if (typeof r.avg === 'number') p.adh = r.avg; }
+  for (const r of md.aht) { const p = of(r); p.aht = r.sec; }
   return { y: md.y, m: md.m, rows: [...rows.values()].map(p => { const o = {}; for (const [k, v] of Object.entries(p)) if (v !== '' && v != null) o[k] = v; return o; }) };
 }
 

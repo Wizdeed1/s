@@ -691,7 +691,7 @@ function rowHtml(p) {
   const nm = normSpace(p.name) || 'new person';
   return `<tr data-id="${esc(p._id)}" class="${rowCls(p)}">
     <td class="chk"><input type="checkbox" data-sel ${state.sel.has(p._id) ? 'checked' : ''} aria-label="Select ${esc(nm)}"></td>
-    <td><input class="cell" data-f="name" value="${esc(p.name)}" dir="auto" placeholder="Full name" aria-label="Name"></td>
+    <td><input class="cell" data-f="name" value="${esc(p.name)}" dir="auto" placeholder="Full name" aria-label="Name"${akaOf(p).length ? ` title="Also written: ${esc(akaOf(p).join(', '))}"` : ''}></td>
     <td><input class="cell w-id" data-f="nid" value="${esc(p.nid)}" placeholder="10 digits or NA" aria-label="National ID of ${esc(nm)}"></td>
     <td><select class="cell" data-f="brand" aria-label="Brand of ${esc(nm)}">${opts(BRANDS, p.brand)}</select></td>
     <td><select class="cell" data-f="team" aria-label="Team of ${esc(nm)}" title="${esc(DEP_NAMES[p.team] || '')}">${opts(DEP_ORDER, p.team, DEP_NAMES)}</select></td>
@@ -752,7 +752,7 @@ function syncSel() {
 /** what was typed in a Supervisor box -> { spv } (a roster person), or null when nobody has that name */
 function supPatch(v) {
   const t = normName(v); if (!t) return { spv: '' };
-  const hit = rosterRows().find(p => normName(gname(effP(p._id) || p) || p.name) === t || normName(p.name) === t || normName(p.sys || '') === t);
+  const hit = rosterRows().find(p => normName(gname(effP(p._id) || p) || p.name) === t || normName(p.name) === t || normName(p.sys || '') === t) || rosterRows().find(p => akaOf(p).some(a => normName(a) === t));
   return hit ? { spv: hit._id } : null;
 }
 function commitSup(id, v, el) {
@@ -997,6 +997,7 @@ function prepareMerge(rows, src) {
   $('h-confirm').textContent = 'Import roster';
   const byId = new Map(), byName = new Map();
   for (const p of state.roster) { const id = Core.cleanId(p.nid); if (id) byId.set(id, p); for (const n of [p.name, p.sys]) if (normSpace(n) && !byName.has(normName(n))) byName.set(normName(n), p); }
+  for (const p of state.roster) for (const n of akaOf(p)) if (!byName.has(normName(n))) byName.set(normName(n), p);
   const plan = { adds: [], updates: [], same: 0, src };
   const seen = new Set();
   for (const x of rows) {
@@ -1094,13 +1095,14 @@ function idSync() {
   const F = state.idsFile; if (!F) return null;
   const R = rosterRows(), byId = new Map(), byName = new Map(), keep = new Set(F.keep || []);
   R.forEach(p => { const id = Core.cleanId(p.nid); if (id && !byId.has(id)) byId.set(id, p); [p.name, p.sys].forEach(n => { const k = normName(n); if (k && !byName.has(k)) byName.set(k, p); }); });
+  R.forEach(p => akaOf(p).forEach(n => { const k = normName(n); if (k && !byName.has(k)) byName.set(k, p); }));   // a name the person had before still finds them
   const out = { match: 0, fills: [], fuzzy: [], clashes: [], diffs: [], notOn: [], missing: [] }, seen = new Set();
   for (const r of F.rows) {
     let p = r.id && byId.get(r.id), how = 'id';
     if (!p) { p = byName.get(normName(r.name)); how = 'name'; }
     if (!p) {
       let best = null, bs = 0, second = 0;
-      for (const q of R) { if (seen.has(q._id)) continue; const sc = Math.max(Core.nameScore(r.name, q.name), q.sys ? Core.nameScore(r.name, q.sys) : 0); if (sc > bs) { second = bs; bs = sc; best = q; } else if (sc > second) second = sc; }
+      for (const q of R) { if (seen.has(q._id)) continue; const sc = Math.max(Core.nameScore(r.name, q.name), q.sys ? Core.nameScore(r.name, q.sys) : 0, ...akaOf(q).map(a => Core.nameScore(r.name, a))); if (sc > bs) { second = bs; bs = sc; best = q; } else if (sc > second) second = sc; }
       if (best && bs >= 0.8 && bs - second >= 0.1 && !Core.cleanId(best.nid)) { p = best; how = 'fuzzy'; }
     }
     if (!p) { out.notOn.push(r); continue; }
@@ -1480,7 +1482,7 @@ function histAll() {   // [{key, rec}] oldest first, saved months plus this page
 function histPeople(months) {
   const nameToId = new Map(), idName = new Map();
   for (const { rec } of months) for (const r of rec.rows) if (r.id) { nameToId.set(normName(r.n), r.id); idName.set(r.id, r.n); }
-  for (const q of rosterRows()) { const id = Core.cleanId(q.nid); if (!id) continue; [q.name, q.sys].forEach(n => { const k = normName(n); if (k && !nameToId.has(k)) nameToId.set(k, id); }); if (!idName.has(id)) idName.set(id, q.name); }
+  for (const q of rosterRows()) { const id = Core.cleanId(q.nid); if (!id) continue; [q.name, q.sys, ...akaOf(q)].forEach(n => { const k = normName(n); if (k && !nameToId.has(k)) nameToId.set(k, id); }); if (!idName.has(id)) idName.set(id, q.name); }
   const cands = [...nameToId.entries()], fuzzyMemo = new Map();
   const fuzzy = n => {
     if (fuzzyMemo.has(n)) return fuzzyMemo.get(n);
@@ -1502,10 +1504,10 @@ function histPeople(months) {
 }
 function rosterOfHist(p) {
   const R = rosterRows();
-  return (p.id && R.find(q => Core.cleanId(q.nid) === p.id)) || R.find(q => normName(q.name) === normName(p.n) || (q.sys && normName(q.sys) === normName(p.n))) || null;
+  return (p.id && R.find(q => Core.cleanId(q.nid) === p.id)) || R.find(q => normName(q.name) === normName(p.n) || (q.sys && normName(q.sys) === normName(p.n))) || R.find(q => akaOf(q).some(a => normName(a) === normName(p.n))) || null;
 }
 function histFor(q) {   // roster person -> [{key, rec, r}] across months
-  const { months, P } = histIndex(), id = Core.cleanId(q.nid) || Core.cleanId((effP(q._id) || {}).nid), names = new Set([normName(q.name), normName(q.sys)].filter(Boolean));
+  const { months, P } = histIndex(), id = Core.cleanId(q.nid) || Core.cleanId((effP(q._id) || {}).nid), names = new Set([normName(q.name), normName(q.sys), ...akaOf(q).map(normName)].filter(Boolean));
   const me = (id && P.find(x => x.id === id)) || P.find(x => names.has(normName(x.n))) || null;
   return months.map(({ key, rec }) => ({ key, rec, r: me ? me.by[key] || null : null }));
 }
@@ -2643,7 +2645,7 @@ const RF = {
 const RF_LABEL = { all: 'All', inactive: 'Inactive', sys: 'Has system name', noid: 'Missing ID', nomatch: 'Not in exports' };
 function filtered() {
   const q = normName(state.rq), f = RF[state.rf] || RF.all;
-  return state.roster.filter(p => (!state.rteam || (p.team || '') === state.rteam) && (!q || normName(`${p.name} ${p.nid} ${p.sys} ${(effP(p._id) || p).nid}`).includes(q)) && f(p));
+  return state.roster.filter(p => (!state.rteam || (p.team || '') === state.rteam) && (!q || normName(`${p.name} ${p.nid} ${p.sys} ${(effP(p._id) || p).nid} ${akaOf(p).join(' ')}`).includes(q)) && f(p));
 }
 const teamOrder = list => [...new Set(list)].sort((a, b) => (DEP_ORDER.indexOf(a) + 1 || 99) - (DEP_ORDER.indexOf(b) + 1 || 99) || String(a).localeCompare(String(b)));
 function renderPeopleFilters() {
@@ -2692,7 +2694,7 @@ function profileHtml(p) {
     <div class="phead"><span class="av lg" aria-hidden="true"${avStyle(nm)}>${esc(initials(nm))}</span><div class="pwho"><b dir="auto">${esc(nm)}</b>${spvLine(p._id)}
       <span>${normSpace(p.sys) && normName(p.sys) !== normName(p.name) ? `Roster name: <span dir="auto">${esc(p.name)}</span> · ` : ''}${esc(DEP_NAMES[p.team] || p.team || '')}</span></div>
       <button class="sw" role="switch" aria-checked="${on}" data-psw aria-label="Status"><i></i>${on ? 'Active' : 'Inactive'}</button></div>
-    <div class="pfacts"><div><span>National ID</span><b class="num">${id ? esc(id) : '<span class="warnline">Missing</span>'}</b>${filled ? '<small>from the IDs file</small>' : ''}</div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b><small>${esc(DEP_NAMES[p.team] || '')}</small></div><div><span>Genesys name</span><b dir="auto">${esc(gname(p) || '–')}</b><small>${normSpace(p.sys) ? 'system name' : 'same as the roster'}</small></div></div>
+    <div class="pfacts"><div><span>National ID</span><b class="num">${id ? esc(id) : '<span class="warnline">Missing</span>'}</b>${filled ? '<small>from the IDs file</small>' : ''}</div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b><small>${esc(DEP_NAMES[p.team] || '')}</small></div><div><span>Genesys name</span><b dir="auto">${esc(gname(p) || '–')}</b><small dir="auto">${normSpace(p.sys) ? 'system name' : 'same as the roster'}${akaOf(p).length ? ` · also written ${esc(akaOf(p).join(', '))}` : ''}</small></div></div>
     <details class="pedit"${state.peditOpen ? ' open' : ''}><summary>Edit name, ID, brand and team</summary><div class="pfields">
       ${fld('name', 'Name', p.name, 'dir="auto" placeholder="Full name"')}${fld('nid', 'National ID', p.nid, 'inputmode="numeric" placeholder="10 digits or NA"')}
       ${sel('brand', 'Brand', BRANDS, p.brand)}${sel('team', 'Team', DEP_ORDER, p.team, DEP_NAMES)}

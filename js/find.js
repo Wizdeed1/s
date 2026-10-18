@@ -174,6 +174,9 @@ function findPages(role) {
   if (W.includes('build')) {
     add('import', 'Import the month\'s files', 'import|upload|drop files|exports|build the month', 'Build', () => setStep('import'));
     add('people', 'Review: people and names', 'review|roster|names|people list', 'Build', () => setStep('people'));
+    add('matchsys', 'Match system names: the Genesys names nobody matches yet', 'match system names|system names|genesys names|match names|link names|unmatched names|names not on the roster', 'Build', () => { setStep('people'); openMatch(null); });
+    add('dups', 'Duplicates: people entered twice, combined into one', 'duplicates|duplicate|entered twice|same person twice|combine|merge people|double names|same national id', 'Build', () => openDups());
+    add('sysasname', 'Use the Genesys names as the names', 'use system names as names|genesys names as names|rename to the genesys name|system name as name', 'Build', () => { setStep('people'); askSysNames(); });
     add('issues', 'Review: things to check', 'issues|checks|problems|to check', 'Build', () => setStep('issues'));
     add('kpitab', 'KPI results of the month', 'kpi results|kpi tab', 'Build', () => setStep('kpi'));
     add('histtab', 'History of past months', 'history|past months|previous months', 'Build', () => setStep('history'));

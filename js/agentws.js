@@ -36,7 +36,9 @@ function renderMe() {
     state.meMonth = last > c && M.months[c] && M.months[c].status !== 'final' ? c : last; }
   const k = state.meMonth, rec = k ? M.months[k] : null, r = rec ? rec.row || {} : null, set = state.settings;
   $('h-me').textContent = P.name ? T("{first}'s page", { first: P.name.split(' ')[0] }) : T('My page');
-  $('meBar').innerHTML = `${months.length ? `<label class="wsfield"><span>${esc(T('Month'))}</span><select class="cell" data-memonth aria-label="${esc(T('Month'))}">${months.slice().reverse().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(ymLabelT(x))}${M.months[x].status === 'final' ? esc(T(' · final')) : ''}</option>`).join('')}</select></label>` : ''}<div class="wsacts">${r && r.kpi ? `<button class="btn sm" data-mekpi><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>${esc(T('My KPI card (PDF)'))}</button>` : ''}${langBtn}</div>`;
+  // the month box: the agent moves between their months here (arrows or the list), on every screen size
+  const mi = months.indexOf(k), prevL = ar ? 'الشهر السابق' : 'Previous month', nextL = ar ? 'الشهر التالي' : 'Next month';
+  $('meBar').innerHTML = `${months.length ? `<div class="monthbox" role="group" aria-label="${esc(T('Month'))}"><button type="button" class="btn sm icon mbstep" data-mestep="-1" aria-label="${esc(prevL)}" title="${esc(prevL)}"${mi <= 0 ? ' disabled' : ''}><svg width="16" height="16" aria-hidden="true"><use href="#i-chevl"/></svg></button><label class="mbsel"><span class="sr">${esc(T('Month'))}</span><svg width="15" height="15" aria-hidden="true"><use href="#i-day"/></svg><select class="cell" data-memonth aria-label="${esc(T('Month'))}">${months.slice().reverse().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(ymLabelT(x))}${M.months[x].status === 'final' ? esc(T(' · final')) : ''}</option>`).join('')}</select></label><button type="button" class="btn sm icon mbstep" data-mestep="1" aria-label="${esc(nextL)}" title="${esc(nextL)}"${mi >= months.length - 1 ? ' disabled' : ''}><svg width="16" height="16" aria-hidden="true"><use href="#i-chevr"/></svg></button></div>` : ''}<div class="wsacts">${r && r.kpi ? `<button class="btn sm" data-mekpi><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>${esc(T('My KPI card (PDF)'))}</button>` : ''}${langBtn}</div>`;
   const prof = `<section class="card profile mecard"><div class="phead"><span class="av lg" aria-hidden="true"${avStyle(P.name || '')}>${esc(initials(P.name || '?'))}</span><div class="pwho"><b dir="auto">${esc(P.name || T('Your name'))}</b><span>${esc([P.brand, P.teamName || P.team].filter(Boolean).join(' · '))}</span></div></div>
     <div class="pfacts"><div><span>${esc(T('National ID'))}</span><b class="num">${esc(P.nid || '–')}</b></div><div><span>${esc(T('Brand'))}</span><b>${esc(P.brand || '–')}</b></div><div><span>${esc(T('Team'))}</span><b>${esc(P.team || '–')}</b></div><div><span>${esc(T('Supervisor'))}</span><b dir="auto">${esc(P.spvName || '–')}</b></div></div></section>`;
   if (!rec) { body.innerHTML = prof + emptyCard(T('Nothing here yet'), T('Your results show here once your supervisor or the WFM team shares the month with you.')); return; }
@@ -226,6 +228,12 @@ async function meKpiPdf() {
 
 // ---------------------------------------------------------------- events
 $('meBar').addEventListener('change', e => { if (e.target.matches('[data-memonth]')) { state.meMonth = e.target.value; renderWs(); } });
+$('meBar').addEventListener('click', e => {
+  const b = e.target.closest('[data-mestep]'); if (!b || !state.me) return;
+  const L = Object.keys(state.me.months).sort(), i = L.indexOf(state.meMonth) + +b.dataset.mestep; if (i < 0 || i >= L.length) return;
+  state.meMonth = L[i]; renderWs();
+  const nb = $('meBar').querySelector(`[data-mestep="${b.dataset.mestep}"]`); if (nb && !nb.disabled) nb.focus(); else { const s = $('meBar').querySelector('[data-memonth]'); if (s) s.focus(); }
+});
 $('meBar').addEventListener('click', e => { if (e.target.closest('[data-mekpi]')) meKpiPdf(); });
 $('meBody').addEventListener('click', e => { const b = e.target.closest('[data-meform]'); if (b) openSign(b.dataset.meform); });
 $('dSign').addEventListener('click', e => {

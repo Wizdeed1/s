@@ -449,3 +449,14 @@ p.prange { padding-top: 12px; }
   .fbar .wsfield select { min-width: 0; }
   .fscope { margin-inline-start: 0; flex-basis: 100%; }
 }
+
+/* the agent's month box: arrows either side of the month list, on every screen size */
+.monthbox { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: var(--r-card); background: var(--surface); box-shadow: var(--shadow-card); }
+.monthbox .mbstep { width: var(--ctl); height: var(--ctl); border-color: transparent; background: transparent; }
+.monthbox .mbstep:hover:not(:disabled) { background: var(--fill); }
+.monthbox .mbstep:disabled { opacity: .35; }
+.monthbox .mbsel { position: relative; display: inline-flex; align-items: center; gap: 6px; padding-inline: 8px 2px; color: var(--muted); }
+.monthbox .mbsel svg { flex: none; }
+.monthbox select.cell { min-width: 150px; min-height: var(--ctl); padding-inline: 4px 22px; font: 600 14px/1 var(--text); color: var(--ink); border: 0; background-color: transparent; cursor: pointer; }
+[dir="rtl"] .monthbox .mbstep svg, .monthbox:dir(rtl) .mbstep svg { transform: scaleX(-1); }
+@media (max-width: 767.98px) { #meBar .monthbox { width: 100%; } #meBar .monthbox .mbsel { flex: 1; } #meBar .monthbox select.cell { flex: 1; min-width: 0; } }

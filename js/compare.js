@@ -58,7 +58,7 @@ function cmpRead(sheets) {
   }
   return best;
 }
-const cmpTool = (r, m) => (m === 'tardy' ? (r.tardy == null ? null : Math.round(r.tardy)) : r[m] ?? null);
+const cmpTool = (r, m) => (m === 'tardy' ? (r.tardy == null ? null : Math.round(r.tardy)) : m === 'ka' ? r.kat ?? r.ka ?? null : r[m] ?? null);   // the old 'Actual days' is the Attend count, before any absence penalty
 function cmpWhy(r, cells, k, pid) {
   const why = [], has = m => cells.some(c => c.m === m), A = r._adj || {};
   if (A.fin != null && has('fin')) why.push('final % changed by the senior manager on Results');

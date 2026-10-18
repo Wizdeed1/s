@@ -18,10 +18,11 @@ function mtdProj(pid, k) {
     if (v != null) { file[kk.id] = v; borrowed.push(kk.name); }
   }
   const vals = { adh: r.adh ?? null, adhUnder: r.adhUnder != null ? Math.round(r.adhUnder * scale) : null, aht: r.aht ?? null, tardy: r.tardy != null ? Math.round(r.tardy * scale) : null, file };
-  const att = r.ks != null && r.ks > 0 ? { sched: Math.round(r.ks * scale), actual: Math.round((r.ka || 0) * scale) } : null;
-  const res = Kpi.score(card, vals, att, baseOf(p, r, k)), el = eligibility(res, qRow(k, pid), null, k);
+  // the days attended (not those counted after an absence penalty, which Kpi.score takes off again), absences scaled like the rest
+  const att = r.ks != null && r.ks > 0 ? { sched: Math.round(r.ks * scale), attended: Math.round((r.kat ?? r.ka ?? 0) * scale), absent: Math.round((r.absent || 0) * scale), runs: Math.round((r.kr || 0) * scale) } : null;
+  const res = Kpi.score(card, vals, att, baseOf(p, r, k), countFor(k)), el = eligibility(res, qRow(k, pid), null, k);
   const weak = res.rows.filter(x => x.r != null && x.r < 5).sort((a, b) => a.r - b.r || b.w - a.w)[0] || null;
-  return { asOf, days: days.length, ND, fin: res.finalPct, earned: res.earned == null ? null : el.ok ? res.earned : 0, calc: res.earned, ok: el.ok, why: el.why, borrowed,
+  return { asOf, days: days.length, ND, fin: res.finalPct, earned: res.earned == null ? null : el.ok ? res.earned : 0, calc: res.earned, ok: el.ok, why: el.why, borrowed, minFinal: rulesFor(k).elig.minFinal,
     weak: weak ? { name: weak.k.name, value: Kpi.fmtVal(weak.k, weak.v), target: Kpi.target(weak.k), rank: weak.r } : null, missing: res.missing };
 }
 /** the agents' pages follow the stored days (a few seconds after the month is saved from them) */
@@ -32,7 +33,7 @@ function mtdCardHtml(rec) {
   const X = rec && rec.mtd; if (!X || rec.status === 'final') return '';
   const why = whyTr(X.why);
   return `<div class="card mtdcard" id="meMtd"><div class="cardhead"><div><h2>${esc(T('This month so far'))}</h2><p class="cap">${esc(T(X.days === 1 ? 'Based on 1 day up to {d}.' : 'Based on {n} days up to {d}.', { n: X.days, d: fmtDueT(X.asOf) }))}${X.borrowed && X.borrowed.length ? ' ' + esc(T("Last month's {list} until this month's arrive.", { list: X.borrowed.join(', ') })) : ''}</p></div></div>
-    <div class="tiles wstiles"><div class="tile${X.fin != null && X.fin < 0.8 ? ' alert' : ''}"><span class="tl">${esc(T('Projected final'))}</span><b>${esc(pct1(X.fin))}</b><span class="ts">${esc(T('if it stays like this'))}</span></div>
+    <div class="tiles wstiles"><div class="tile${X.fin != null && X.fin < (X.minFinal ?? 0.8) ? ' alert' : ''}"><span class="tl">${esc(T('Projected final'))}</span><b>${esc(pct1(X.fin))}</b><span class="ts">${esc(T('if it stays like this'))}</span></div>
       <div class="tile${X.ok ? '' : ' alert'}"><span class="tl">${esc(T('Projected incentive'))}</span><b>${X.earned == null ? '–' : `${Math.round(X.earned).toLocaleString('en-US')} ${esc(T('SR'))}`}</b><span class="ts">${esc(X.ok ? T('if it stays like this') : T('At risk: {why}', { why }))}</span></div>
       <div class="tile"><span class="tl">${esc(T('Weakest KPI'))}</span><b>${esc(X.weak ? X.weak.value : '✓')}</b><span class="ts">${X.weak ? `${esc(X.weak.name)} · ${esc(T('target {t}', { t: '' }))}${ltr(X.weak.target)}` : esc(T('Every KPI is in the top band so far.'))}</span></div></div>
     ${X.weak ? `<p class="hint mtdtip">${esc(T('Work on {kpi} first: ranked {r} of 5 (target {t}).', { kpi: X.weak.name, r: X.weak.rank, t: '\u2066' + X.weak.target + '\u2069' }))}</p>` : ''}</div>`;

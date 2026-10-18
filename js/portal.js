@@ -140,11 +140,27 @@ function addModelKpi(rec) {
   for (const K of state.kpi.values()) {
     const r = find(K.m); if (!r) continue; const res = K.res;
     if (res.finalPct != null) r.fin = Math.round(res.finalPct * 10000) / 10000; if (res.earned != null) r.earned = res.earned;
-    r.kc = K.card.title; r.kpi = res.rows.map(x => [x.k.name, Math.round(x.w * 1000) / 10, Kpi.target(x.k), Kpi.fmtVal(x.k, x.v), x.r]);
+    r.kc = K.card.title; r.kpi = kpiTuples(res);
     if (res.finalRank != null) r.fr = res.finalRank; if (res.sched != null) r.ks = res.sched; if (res.actual != null) r.ka = res.actual; if (res.target != null) r.kt = res.target;
     if (res.earnedCalc != null) r.earnedCalc = res.earnedCalc; if (res.elig && !res.elig.ok) r.inelig = res.elig.why;
+    Object.assign(r, countKept(res, r, monthKey())); r.kx = howLite(res);
   }
   return rec;
+}
+/** a person's KPIs as the month's rows keep them: [name, weight %, target, result, ranking, the band it reached] */
+const kpiTuples = res => res.rows.map((x, i) => [x.k.name, Math.round(x.w * 1000) / 10, Kpi.target(x.k), Kpi.fmtVal(x.k, x.v), x.r, res.how && res.how.kpis[i] ? res.how.kpis[i].band : '']);
+/** every step of a score but the KPIs (the rows carry those), kept on the rows as kx for "How this was counted" */
+function howLite(res) {
+  if (!res || !res.how) return null;
+  const { kpis, ...h } = res.how, vr = {}; kpis.forEach(x => { if (x.vr !== undefined) vr[x.id] = x.vr; });
+  return Object.keys(vr).length ? { ...h, vr } : h;
+}
+/** the days a scored row keeps for the incentive: attended (kat), runs of absence (kr), absences as the rules count them (kab, only
+    when they differ from the plain count) and the day rules (kdr, only when they are not the defaults) */
+function countKept(res, x, k) {
+  if (res.sched == null) return {};
+  const o = { kat: res.attended, kr: res.runs || 0 }; if ((res.absent || 0) !== (x.absent || 0)) o.kab = res.absent;
+  return { ...o, ...kdrOf(k) };
 }
 
 // ---------------------------------------------------------------- months, final results and who matches whom
@@ -171,13 +187,16 @@ function monthData(k) {
 function liveRow(r, p, k, rec) {
   const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5));
   const E = attEditsOf(k), ed = E && p ? E.get(p._id) : null;
-  let x = withEdits(r, ed, ND);
+  let x = withEdits(r, ed, ND, k);
   if (!(rec && (rec.tool || rec.auto || rec.page || rec.daily))) return x;
   const s = scoreLive(x, p, k); if (!s) return x;
   const F = state.finals[k], adj = F && F.adj ? F.adj[rowKey(r)] : null;
   const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k);
-  return { ...x, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: res.rows.map(z => [z.k.name, Math.round(z.w * 1000) / 10, Kpi.target(z.k), Kpi.fmtVal(z.k, z.v), z.r]), kv: Object.fromEntries(res.rows.filter(z => z.v != null).map(z => [z.k.id, z.v])),
-    ks: res.sched ?? x.ks, ka: res.actual ?? x.ka, kt: res.target ?? x.kt, earnedCalc: res.earned ?? null, earned: res.earned == null ? x.earned : el.ok ? res.earned : 0, base: baseOf(p, x, k), _el: el, ...(adj ? { _adj: adj } : {}) };
+  // ka = the days counted (after any absence penalty), kat = the days attended: kept apart so a penalty is never taken twice
+  const { kat, kr, kab, kdr, ...y } = x, kept = s.again || res.sched != null ? countKept(res, x, k) : Object.fromEntries(Object.entries({ kat, kr, kab, kdr }).filter(([, v]) => v !== undefined));
+  return { ...y, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: Object.fromEntries(res.rows.filter(z => z.v != null).map(z => [z.k.id, z.v])),
+    ks: res.sched ?? x.ks, ka: res.actual ?? x.ka, kt: res.target ?? x.kt, earnedCalc: res.earned ?? null, earned: res.earned == null ? x.earned : el.ok ? res.earned : 0, base: baseOf(p, x, k), _el: el, ...(adj ? { _adj: adj } : {}),
+    ...kept, kx: howLite(res) };
 }
 const matchMemo = new Map();   // month -> { sig, map }: who in the roster is which row of the month
 function rowsByPid(k) {
@@ -386,7 +405,7 @@ function aggRows(L) {   // L: history rows
   return { n: L.length, adh: mean(adh), below: adh.filter(v => v < set.target).length, aht: mean(L.map(r => r.aht)), ded: sum(L.map(r => r.ded)), conf: mean(L.map(r => r.conf)),
     absent: sum(L.map(r => r.absent)), tardy: sum(L.map(r => r.tardy)), fin: mean(L.map(r => r.fin)), earned: sum(L.map(r => r.earned)), exc: sum(L.map(r => r.wfExc)), occ: mean(L.map(r => History.valOf(r, History.METRICS.find(m => m.k === 'occ')))) };
 }
-const needScore = (r, set) => !r ? 0 : (r.adh != null && r.adh < set.target ? (set.target - r.adh) * 400 : 0) + (r.wfExc || 0) * 1.5 + (r.absent || 0) * 4 + (r.fin != null && r.fin < 0.8 ? (0.8 - r.fin) * 60 : 0) + (r.tardy || 0) / 30;
+const needScore = (r, set) => !r ? 0 : (r.adh != null && r.adh < set.target ? (set.target - r.adh) * 400 : 0) + (r.wfExc || 0) * 1.5 + (r.absent || 0) * 4 + (r.fin != null && r.fin < ELIG.minFinal ? (ELIG.minFinal - r.fin) * 60 : 0) + (r.tardy || 0) / 30;
 function whyLine(r, set) {
   if (!r) return 'Not in this month\'s results';
   const x = [];
@@ -452,11 +471,11 @@ function renderResults() {
       if (canCycle()) return `<td><select class="cell elig${forced ? ' changed' : ''}" data-elig="${esc(rk)}" aria-label="Eligible: ${esc(x.exp)}" title="${esc(why ? 'The rules say: ' + why : 'The rules say eligible')}"><option value=""${forced ? '' : ' selected'}>${esc(!el ? 'By the rules' : `By the rules: ${why ? 'no' : 'yes'}`)}</option><option value="yes"${forced && r._adj.elig === true ? ' selected' : ''}>Eligible</option><option value="no"${forced && r._adj.elig === false ? ' selected' : ''}>Not eligible</option></select></td>`;
       return `<td><span class="${el && !el.ok ? 'bad' : ''}">${esc(txt)}</span></td>`;
     }
-    const v = r[c], mt = History.METRICS.find(m => m.k === c);
-    return histCell(mt, v == null ? null : v).replace('<td class="num', '<td class="r num');
+    const v = r[c], mt = History.METRICS.find(m => m.k === c), td = histCell(mt, v == null ? null : v).replace('<td class="num', '<td class="r num');
+    return c === 'fin' && (r.kpi || r.kx) ? td.replace(/<\/td>$/, ` ${howLink(x.p._id, x.exp)}</td>`) : td;
   };
   const th = ([c, l]) => `<th class="${['name', 'unit', 'spv', 'one'].includes(c) ? '' : 'r'}"><button class="linkbtn" data-ressort="${c}">${esc(l)}${sc === c ? (dir < 0 ? ' ↓' : ' ↑') : ''}</button></th>`;
-  const agentTab = `<div class="card"><div class="cardhead"><div><h2>Every agent</h2><p class="cap">${edit ? 'The month is final. You can change Final %, Earned SR and who is eligible; each change is logged with your name.' : locked ? 'The month is final.' : `Draft numbers from the shared history.${canCycle() ? ' Eligibility follows the rules (final under 80%, an attitude critical error, under 5 days attended) unless you decide otherwise here; each decision is logged.' : ''}`}</p></div>
+  const agentTab = `<div class="card"><div class="cardhead"><div><h2>Every agent</h2><p class="cap">${edit ? 'The month is final. You can change Final %, Earned SR and who is eligible; each change is logged with your name.' : locked ? 'The month is final.' : `Draft numbers from the shared history.${canCycle() ? ` Eligibility follows the rules (${esc(eligText(k))}) unless you decide otherwise here; each decision is logged.` : ''}`}</p></div>
     <div class="toolbar"><input type="search" data-resq value="${esc(state.resQ)}" placeholder="Search name or ID" aria-label="Search"><select class="cell" data-resunit aria-label="Team"><option value="">All teams</option>${units.map(u => `<option${u === U ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select><select class="cell" data-resspv aria-label="Supervisor"><option value="">All supervisors</option>${spvList().map(a => `<option value="${esc(a.pid)}"${a.pid === SP ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}<option value="-"${SP === '-' ? ' selected' : ''}>No supervisor</option></select></div></div>
     <div class="tablewrap restab"><table><thead><tr>${COLS.map(th).join('')}</tr></thead><tbody>${L.map(x => `<tr>${COLS.map(([c]) => cell(x, c)).join('')}</tr>`).join('') || `<tr><td colspan="${COLS.length}" class="empty">Nobody matches.</td></tr>`}</tbody></table></div></div>`;
   const log = D.final && (D.final.log || []).length ? `<details class="card wslog"><summary>Change log · ${plural(D.final.log.length, 'entry', 'entries')}</summary><ul class="ilist">${D.final.log.slice().reverse().map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
@@ -582,11 +601,11 @@ function renderPersonWs(p) {
   h += k ? statusBanner(k) : '';
   if (!r) h += `<div class="banner info">${k ? `Not in the ${esc(ymLabel(k))} results.` : 'No month is saved yet.'}</div>`;
   else {
-    const sa = (() => { const d = String(r.d || ''); let s = 0, a = 0; for (const c of d) { if (c === 'O' || c === '-') continue; s++; if (c === 'A') a++; } return d ? { s, a } : null; })();
+    const sa = r.ks != null ? { s: r.ks, a: r.kat ?? r.ka } : (r.d || r.dx) ? (t => (t.sched || t.attended ? { s: t.sched, a: t.attended } : null))(Kpi.countDays(daysOfRow(r, Core.daysIn(+k.slice(0, 4), +k.slice(5))), countFor(k))) : null;   // as the incentive counts them
     const mini = (b, l, cls) => `<div class="${cls || ''}"><b>${esc(b)}</b><span>${esc(l)}</span></div>`;
     h += `<section class="sec"><h3>${esc(ymLabel(k))}</h3><div class="minis wsminis">${mini(pct(r.adh), 'Adherence Avr.', r.adh != null && r.adh < set.target ? 'bad' : '')}${mini(r.adhUnder ?? '–', 'Days under target')}${mini(mss(r.aht), 'AHT')}${mini(r.ded ?? '–', 'Deduction (min)')}${mini(pct(r.conf), 'Conformance')}
       ${mini(sa ? `${sa.s} / ${sa.a}` : '–', 'Scheduled / Actual days')}${mini(r.absent ?? '–', 'Absent')}${mini(r.tardy == null ? '–' : Math.round(r.tardy), 'Tardy (min)')}${mini(pct1(r.fin), 'Final %')}${srHidden() ? mini(r._el ? (r._el.ok ? 'Yes' : 'No') : '–', 'Eligible') : mini(r.earned ?? '–', 'Earned SR')}${mini(r.wfExc ?? '–', 'Exceptions')}</div>${r._adj ? `<p class="hint">Changed by ${esc(r._adj.by || 'the senior manager')}${r._adj.note ? ': ' + esc(r._adj.note) : ''}.</p>` : ''}</section>`;
-    if (r.kpi && r.kpi.length) h += `<section class="sec"><h3>KPI results${r.kc ? ' · ' + esc(r.kc) : ''}</h3><div class="tablewrap formtab"><table><thead><tr><th>KPI</th><th class="r">Weight</th><th>Target</th><th class="r">Result</th><th class="r">Ranking</th></tr></thead><tbody>${r.kpi.map(([n, w, t, v, rk]) => `<tr><td>${esc(n)}</td><td class="r">${w}%</td><td>${esc(t)}</td><td class="r num">${esc(v)}</td><td class="r">${rankChip(rk)}</td></tr>`).join('')}<tr class="tot"><td>Final</td><td></td><td></td><td class="r num">${pct1(r.fin)}</td><td class="r">${r.fr != null ? (+r.fr).toFixed(2) : '–'}</td></tr></tbody></table></div>${r.ks != null ? `<p class="hint">Days ${r.ka ?? '–'} of ${r.ks}${srHidden() ? '' : ` · incentive target ${r.kt ?? '–'} SR · earned ${r.earned ?? '–'} SR`}.${r._el && !r._el.ok ? ` Not eligible: ${esc((r._el.why || []).join(', '))}.` : ''}</p>` : ''}</section>`;
+    if (r.kpi && r.kpi.length) h += `<section class="sec"><h3>KPI results${r.kc ? ' · ' + esc(r.kc) : ''}</h3><div class="tablewrap formtab"><table><thead><tr><th>KPI</th><th class="r">Weight</th><th>Target</th><th class="r">Result</th><th class="r">Ranking</th></tr></thead><tbody>${r.kpi.map(([n, w, t, v, rk]) => `<tr><td>${esc(n)}</td><td class="r">${w}%</td><td>${esc(t)}</td><td class="r num">${esc(v)}</td><td class="r">${rankChip(rk)}</td></tr>`).join('')}<tr class="tot"><td>Final</td><td></td><td></td><td class="r num">${pct1(r.fin)}</td><td class="r">${r.fr != null ? (+r.fr).toFixed(2) : '–'}</td></tr></tbody></table></div>${r.ks != null ? `<p class="hint">Days ${r.ka ?? '–'} of ${r.ks}${r.kat != null && r.kat !== r.ka ? ` (${r.kat} attended)` : ''}${srHidden() ? '' : ` · incentive target ${r.kt ?? '–'} SR · earned ${r.earned ?? '–'} SR`}.${r._el && !r._el.ok ? ` Not eligible: ${esc((r._el.why || []).join(', '))}.` : ''}</p>` : ''}${howDetailsHtml(r, k, p)}</section>`;
     if (r.hnd != null) h += `<section class="sec"><h3>Performance</h3><div class="pfgrid">${['ans', 'hnd', 'pAht', 'talk', 'hold', 'acw', 'heldR', 'xferR', 'out'].map(c => `<div><span>${esc(PFM[c][0])}</span><b>${esc(PFM[c][1](pfVal(r, c)))}</b></div>`).join('')}</div></section>`;
     if (r.wfShift != null) h += `<section class="sec"><h3>Workforce and exceptions</h3><div class="pfgrid wfgrid"><div><span>Shifts</span><b>${r.wfShift}</b></div><div class="${r.wfWorked < r.wfShift ? 'bad' : ''}"><span>Worked</span><b>${r.wfWorked}</b></div><div class="${r.wfAbs ? 'bad' : ''}"><span>No sign-on</span><b>${r.wfAbs}</b></div><div class="${r.wfLate ? 'bad' : ''}"><span>Late sign-ons</span><b>${r.wfLate}</b><small>${hmin(r.wfLateMin)}</small></div><div class="${r.wfShort ? 'bad' : ''}"><span>Short of shift</span><b>${r.wfShort}</b><small>${hmin(r.wfShortMin)}</small></div><div><span>Break changes</span><b>${r.wfBrk}</b></div><div><span>Signed on</span><b>${hmin(r.wfLogged)}</b></div><div class="${r.wfExc ? 'bad' : 'good'}"><span>Exceptions</span><b>${r.wfExc}</b></div></div></section>`;
     const ad = adOf(r), ND = Core.daysIn(+k.slice(0, 4), +k.slice(5));

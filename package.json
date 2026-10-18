@@ -5,7 +5,7 @@
   "description": "Member Care Monthly Report Builder: one offline HTML file built from js/ and dt/",
   "scripts": {
     "build": "mkdir -p out && cd js && python3 combine.py > ../out/combined_main.js && node --check ../out/combined_main.js && bash assemble_standalone.sh ../out/mc.html",
-    "test": "node test/unit.cjs"
+    "test": "node test/unit.cjs && node test/rules.cjs"
   },
   "license": "UNLICENSED"
 }

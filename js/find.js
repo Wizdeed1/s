@@ -530,7 +530,7 @@ function fAnsSpecial(sp, P, X, k) {
     const L = fRowsK(k, X, P).filter(o => o.r._el), F = L.filter(o => (sp === 'eligible' ? o.r._el.ok : !o.r._el.ok));
     const acts = (WS_OF[role] || []).includes('results') ? [fAct('Results page', () => { findClose(); state.wsMonth = k; setWs('results'); }, true)] : [];
     return { icon: 'check', title: sp === 'eligible' ? `${F.length} of ${L.length} eligible for the incentive` : `${F.length} of ${L.length} not eligible for the incentive`, sub: [ymLabel(k), fScopeLabel(P, X)].filter(Boolean).join(' · '),
-      note: 'Not eligible: a final % under 80%, an attitude critical error, or fewer than 5 days attended (the senior manager can change it).',
+      note: `Not eligible: ${eligText(k, 'long')} (the senior manager can change it).`,
       rows: F.slice(0, 40).map(o => fRowP(o.x, sp === 'eligible' ? (fStaffSR(role) && o.r.earned != null ? `${Math.round(o.r.earned).toLocaleString('en-US')} SR` : 'Eligible') : 'Not eligible', sp === 'eligible' ? '' : 'bad', sp === 'eligible' ? o.x.unit : (o.r._el.why || []).join(', ') || o.x.unit)), more: F.length > 40 ? `and ${F.length - 40} more` : '', acts, empty: F.length ? '' : 'Nobody.' };
   }
   if (sp === 'critical') {

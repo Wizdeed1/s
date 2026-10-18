@@ -224,6 +224,7 @@
         <button class="btn sm" id="exportRoster">Export roster</button>
         <button class="btn sm" id="distBtn" title="Set each person's supervisor from the Teams Distribution email">Supervisors…</button>
         <button class="btn sm" id="matchSys" title="Save the Genesys names from this month's exports as system names, many at once">Match system names <span class="badge" id="bMatch" hidden></span></button>
+        <button class="btn sm" id="sysAsName" title="Give everyone whose system name differs their Genesys name as their name" hidden>Use system names as names <span class="badge" id="bSysName" hidden></span></button>
         <input type="file" id="rosterPicker" accept=".xlsx,.xlsm,.csv" hidden>
         <input type="file" id="histPicker" multiple accept=".xlsx,.xlsm,.xlsb" hidden>
       </div>
@@ -508,6 +509,14 @@
     <h2 id="h-final">Finalize the month?</h2>
     <div class="dlgbody" id="finalDlgBody"></div>
     <div class="dlgfoot"><button class="btn" id="finalCancel">Cancel</button><button class="btn primary" id="finalGo">Finalize</button></div>
+  </div>
+</div>
+
+<div class="dlg" id="dNames" role="dialog" aria-modal="true" aria-labelledby="h-names" aria-describedby="namesDlgBody" hidden>
+  <div class="dlgbox">
+    <h2 id="h-names">Use the Genesys names as the names?</h2>
+    <div class="dlgbody" id="namesDlgBody"></div>
+    <div class="dlgfoot"><button class="btn" id="namesCancel">Cancel</button><button class="btn primary" id="namesGo">Use the Genesys names</button></div>
   </div>
 </div>
 

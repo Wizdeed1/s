@@ -1,0 +1,89 @@
+/* ------------------------------------------------------------------------------------------------------------- People: the table fits its room (fixed columns; the name and the actions stay in view while the middle scrolls) */
+#rwrap .ptable { table-layout: fixed; min-width: 1180px; }
+#rwrap .ptable th, #rwrap .ptable td { padding-inline: 8px; overflow: hidden; text-overflow: ellipsis; }
+#rwrap .ptable .cell, #rwrap .ptable select.cell { min-width: 0; width: 100%; }
+.ptable col.c-chk { width: 40px; } .ptable col.c-nid { width: 120px; } .ptable col.c-brand { width: 120px; } .ptable col.c-team { width: 76px; }
+.ptable col.c-st { width: 112px; } .ptable col.c-exp { width: 160px; } .ptable col.c-act { width: 80px; }
+#rwrap .ptable th:first-child, #rwrap .ptable td:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
+#rwrap .ptable th:nth-child(2), #rwrap .ptable td:nth-child(2) { position: sticky; left: 40px; z-index: 1; background: var(--surface); box-shadow: inset -1px 0 0 var(--line); }
+#rwrap .ptable th:last-child, #rwrap .ptable td:last-child { position: sticky; right: 0; z-index: 1; background: var(--surface); box-shadow: inset 1px 0 0 var(--line); text-align: end; }
+#rwrap .ptable thead th { z-index: 2; }
+#rwrap .ptable thead th:first-child, #rwrap .ptable thead th:nth-child(2), #rwrap .ptable thead th:last-child { z-index: 3; background: var(--raised); }
+#rwrap .ptable tr.vspace td { position: static; box-shadow: none; background: none; }
+#rwrap .ptable td.empty { position: static; text-align: center; white-space: normal; box-shadow: none; }
+#rwrap .ptable tr.dup td:nth-child(2) { box-shadow: inset 3px 0 0 var(--warn), inset -1px 0 0 var(--line); }
+@media (hover: hover) and (pointer: fine) { #rwrap .ptable tbody tr:hover td { background: var(--fill); } }
+.stcell { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.pill.ico { width: 22px; min-width: 22px; padding: 0; justify-content: center; flex: none; }
+.pill.ico svg { width: 13px; height: 13px; }
+td[data-c="badges"] .dupmk { margin-inline-start: 6px; vertical-align: middle; }
+.rowbtn.icon { width: 30px; height: 30px; padding: 0; display: inline-grid; place-items: center; border-radius: var(--r-ctl); vertical-align: middle; }
+.rowbtn.icon svg { width: 16px; height: 16px; }
+.rowbtn.icon:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+@media (max-width: 767.98px) {   /* a phone: only the tick box and the actions stay put */
+  #rwrap .ptable th:nth-child(2), #rwrap .ptable td:nth-child(2) { left: auto; box-shadow: none; }
+  #rwrap .ptable td:nth-child(2) { position: static; }
+}
+
+/* ------------------------------------------------------------------------------------------------------------- Match system names: one line per Genesys name */
+.mtop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--fill); }
+.mtop .check { font-weight: 600; }
+.mtop .hint { margin: 0; }
+.mlist { list-style: none; margin: 0; padding: 0; display: grid; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); }
+.mlist > li { display: grid; grid-template-columns: 20px minmax(150px, 1.15fr) 16px minmax(170px, 1fr) minmax(130px, .9fr) auto; gap: 8px 12px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); min-width: 0; }
+.mlist > li:first-child { border-top: 0; }
+.mlist > li.on { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+.mlist > li.cf { box-shadow: inset 3px 0 0 var(--warn); }
+.mname { display: grid; gap: 4px; min-width: 0; }
+.mname b { font-weight: 600; overflow-wrap: anywhere; }
+.mname small { color: var(--muted); font-size: 12px; }
+.marr { width: 14px; height: 14px; color: var(--muted); }
+.mlist select.cell { width: 100%; min-width: 0; border-color: var(--line-2); background: var(--sunk); }
+.mconf { display: grid; gap: 3px; justify-items: start; min-width: 0; }
+.mwhy { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.macts { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.mcf { grid-column: 2 / -1; margin: 0; font-size: 12.5px; color: var(--warn); }
+.mlist > li.mfree { grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.2fr) auto; }
+.mlist > li.mfree input.cell { border-color: var(--line-2); background: var(--sunk); min-width: 0; }
+.msec .hint { margin: 0; }
+@media (max-width: 860px) {
+  .mlist > li { grid-template-columns: 20px minmax(0, 1fr) auto; }
+  .mlist > li .marr { display: none; }
+  .mlist > li select.cell, .mlist > li .mconf, .mlist > li .mcf { grid-column: 2 / -1; }
+  .mlist > li .macts { grid-column: 2 / -1; justify-content: flex-start; }
+  .mlist > li.mfree { grid-template-columns: minmax(0, 1fr) auto; }
+  .mlist > li.mfree .mname { grid-column: 1 / -1; }
+}
+
+/* ------------------------------------------------------------------------------------------------------------- People › Duplicates: a card per group, a card per person in it */
+.dups { display: grid; gap: 12px; }
+.dupgrp, .dupall { display: grid; gap: 12px; }
+.dgh { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.dgh h3 { margin: 0; font: 600 15px/1.35 var(--text); overflow-wrap: anywhere; }
+.dupgrp > .cap, .dupall .cap { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 90ch; }
+.dupcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 10px; }
+.dupp { display: grid; gap: 10px; align-content: start; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--sunk); min-width: 0; }
+.dupp.kept { border-color: var(--good-line); }
+.dpt { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.dpt b { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.dpt .av { width: 30px; height: 30px; font-size: 11.5px; }
+.dpf { display: grid; gap: 8px; }
+.dpf .pf { display: grid; gap: 4px; }
+.dpf .pf > span { font: 600 11.5px/14px var(--text); color: var(--muted); }
+.dpx { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; }
+.dpx div { min-width: 0; }
+.dpx dt { font-size: 11px; color: var(--muted); }
+.dpx dd { margin: 2px 0 0; font-size: 12.5px; overflow-wrap: anywhere; }
+.dpa { display: flex; flex-wrap: wrap; gap: 6px; }
+.dgf { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.dgf .hint { margin: 0; flex: 1 1 260px; min-width: 0; }
+.dgf .spacer { flex: 1; }
+.dah { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 16px; }
+.dah h3 { margin: 0; font: 600 15px/1.35 var(--text); }
+.dah > div { flex: 1 1 320px; min-width: 0; display: grid; gap: 4px; }
+.dalist { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 320px; overflow: auto; }
+.dalist li { padding: 6px 4px; border-top: 1px solid var(--line); }
+.dalist li:first-child { border-top: 0; }
+.dalist .check { align-items: flex-start; }
+.dalist .check input { margin-top: 2px; }
+.daf { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }

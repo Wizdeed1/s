@@ -232,6 +232,7 @@ async function loadData(db) {
   } catch (e) { /* defaults stay */ }
   try { const snap = await db.doc('config/logo').get(); if (snap.exists) { const d = snap.data() || {}; if (typeof d.dataUrl === 'string' && d.dataUrl.startsWith('data:image/')) { state.logo = { dataUrl: d.dataUrl, w: d.w, h: d.h }; logoPx = null; renderBrand(); render(); } } } catch (e) { /* none */ }
   try { const snap = await db.doc('config/attLinks').get(); if (snap.exists) { const d = snap.data() || {}; state.attLinks = new Map((d.links || []).filter(x => x && x.n && x.pid).map(x => [x.n, x.pid])); if (state.attFiles.length) refresh(); } } catch (e) { /* none */ }
+  try { const snap = await db.doc('config/nameLinks').get(); if (snap.exists) { loadNameMemo(snap.data()); refresh(); } } catch (e) { /* none */ }
   try { const snap = await db.doc('config/ids').get(); if (snap.exists) { const d = snap.data() || {}; if (Array.isArray(d.rows)) { state.idsFile = { name: d.name || 'IDs file', at: d.at || '', rows: d.rows, keep: Array.isArray(d.keep) ? d.keep : [] }; state.idsAuto = true; refresh(); } } } catch (e) { /* none */ }
   if (!state.logo && Auth.team() && Auth.team().logo) { state.logo = Auth.team().logo; render(); }
   watchShared(db);   // history, final results and accounts stay live, so every role sees the same data
@@ -258,6 +259,7 @@ function applySettings(d) {
   if (Array.isArray(d.incFullAdhTeams)) s.incFullAdhTeams = d.incFullAdhTeams.filter(x => typeof x === 'string');
   if (typeof d.manager === 'string' && d.manager.trim()) s.manager = d.manager;
   if (typeof d.managerTitle === 'string' && d.managerTitle.trim()) s.managerTitle = d.managerTitle;
+  if (Array.isArray(d.noAutoLink)) s.noAutoLink = d.noAutoLink.filter(x => typeof x === 'string');
 }
 let setTimer = null;
 function persistSettings() {
@@ -479,6 +481,7 @@ function refresh(o = {}) {
   if (!o.noAuto && autoLinkNames()) { refresh({ ...o, noAuto: true }); toast(`${plural(state.autoLinks.length, 'roster name')} matched to the Genesys name automatically`, { label: 'See', fn: openNotes }); return; }
   state.idSync = state.rosterReady ? idSync() : null;
   if (state.idSync && state.idsAuto && rosterRows().length) { state.idsAuto = false; if (applyIdFills(state.idSync)) { setTimeout(() => refresh(), 0); } }
+  state.dups = dupGroups(); state.dupIds = new Set(state.dups.flatMap(g => g.pids));
   state.notes = computeNotes();
   state.ver++;
   render(o);
@@ -551,13 +554,16 @@ function computeModel(ctx) {
   });
 }
 function suggestFor(name, where) {
-  let best = null, bs = 0;
+  const k = normName(name), own = (state.model || []).find(m => normName(m.p.name) === k && normSpace(m.p.sys) && normName(m.p.sys) !== k);
+  if (own) return { p: own.p, alias: true };   // the export name is this person's roster name: their system name points elsewhere
+  let best = null, bs = 0, second = null, ss = 0;
   for (const m of state.model || []) {
     if (where.some(w => m.found[w])) continue;    // already matched in that export
     const s = Math.max(Core.nameScore(name, m.p.name), normSpace(m.p.sys) ? Core.nameScore(name, m.p.sys) : 0);
-    if (s > bs) { bs = s; best = m.p; }
+    if (s > bs) { second = best; ss = bs; bs = s; best = m.p; } else if (s > ss) { ss = s; second = m.p; }
   }
-  return bs >= 0.6 ? best : null;
+  if (bs < 0.6) return null;
+  return bs - ss > 0.04 ? { p: best } : { several: [best, second].filter(Boolean) };   // two people fit (almost) as well: no one-click link
 }
 function computeIssues() {
   const c = state.ctx; if (!c) return [];
@@ -565,7 +571,7 @@ function computeIssues() {
   const add = (list, w) => { for (const n of list) { const k = normName(n); if (state.ignored.has(k)) continue; if (!g.has(k)) g.set(k, { name: n, key: k, where: [] }); if (!g.get(k).where.includes(w)) g.get(k).where.push(w); } };
   add(c.checks.adh, 'adh'); add(c.checks.aht, 'aht'); add(c.checks.sched, 'sch');
   const list = [...g.values()].sort((a, b) => a.name.localeCompare(b.name));
-  list.forEach(x => { x.sugg = suggestFor(x.name, x.where); });
+  list.forEach(x => { const g = suggestFor(x.name, x.where); x.sugg = g && g.p ? g.p : null; x.alias = !!(g && g.alias); x.several = g && g.several ? g.several : null; });
   return list;
 }
 
@@ -578,7 +584,8 @@ function render(o = {}) {
   if (state.step === 'review') {
     renderBadges();
     if (state.tab === 'people') {
-      if (state.pview === 'cards') renderPeopleCards();
+      if (state.rf === 'dup') renderDupPanel();
+      else if (state.pview === 'cards') renderPeopleCards();
       else if (o.table === false && o.row) renderRow(o.row); else if (o.table !== false && !tableHasFocus()) renderRoster(); else if (o.table !== false) state.pendingRender = true;
       renderPeopleFilters(); renderPeopleMeta();
     }
@@ -672,28 +679,29 @@ function renderImportNote() {
 const opts = (vals, cur, titles) => vals.map(v => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}${titles ? ` title="${esc(titles[v] || '')}"` : ''}>${esc(v)}</option>`).join('') + (cur && !vals.includes(cur) ? `<option selected>${esc(cur)}</option>` : '');
 function statusCell(p) {
   const m = state.byId.get(p._id), on = p.status !== 'Inactive', nm = normSpace(p.name) || 'new person';
-  const hid = m && !m.shown ? `<span class="pill warn" title="Inactive with ${m.attended} attended days (limit ${state.settings.inactiveMin}), so left out of the reports">Hidden</span>` : '';
-  return `<span style="display:inline-flex;gap:6px;align-items:center"><button class="sw" role="switch" aria-checked="${on}" data-sw aria-label="Status of ${esc(nm)}"><i></i>${on ? 'Active' : 'Inactive'}</button>${hid}</span>`;
+  const hid = m && !m.shown ? `<span class="pill warn ico" role="img" title="Hidden: inactive with ${m.attended} attended days (limit ${state.settings.inactiveMin}), so left out of the reports" aria-label="Hidden from the reports"><svg aria-hidden="true"><use href="#i-eyeoff"/></svg></span>` : '';
+  return `<span class="stcell"><button class="sw" role="switch" aria-checked="${on}" data-sw aria-label="Status of ${esc(nm)}"><i></i>${on ? 'Active' : 'Inactive'}</button>${hid}</span>`;
 }
 function badgesCell(p) {
   const m = state.byId.get(p._id);
   return `<span class="mb">${KINDS.map(k => { const w = { adhGenesys: 'adh', aht: 'aht', schedule: 'sch', timeline: 'tl' }[k.kind]; const on = m && m.found[w]; return `<span class="${on ? 'on' : ''}" title="${on ? 'Found in' : 'Not found in'} ${esc(k.title)}">${k.short}</span>`; }).join('')}</span>`;
 }
+const rowCls = p => [p.status === 'Inactive' ? 'inactive' : '', state.dupIds && state.dupIds.has(p._id) ? 'dup' : ''].filter(Boolean).join(' ');
 function rowHtml(p) {
   const nm = normSpace(p.name) || 'new person';
-  return `<tr data-id="${esc(p._id)}" class="${p.status === 'Inactive' ? 'inactive' : ''}">
+  return `<tr data-id="${esc(p._id)}" class="${rowCls(p)}">
     <td class="chk"><input type="checkbox" data-sel ${state.sel.has(p._id) ? 'checked' : ''} aria-label="Select ${esc(nm)}"></td>
     <td><input class="cell" data-f="name" value="${esc(p.name)}" dir="auto" placeholder="Full name" aria-label="Name"></td>
     <td><input class="cell w-id" data-f="nid" value="${esc(p.nid)}" placeholder="10 digits or NA" aria-label="National ID of ${esc(nm)}"></td>
     <td><select class="cell" data-f="brand" aria-label="Brand of ${esc(nm)}">${opts(BRANDS, p.brand)}</select></td>
     <td><select class="cell" data-f="team" aria-label="Team of ${esc(nm)}" title="${esc(DEP_NAMES[p.team] || '')}">${opts(DEP_ORDER, p.team, DEP_NAMES)}</select></td>
-    <td><input class="cell" data-f="sys" value="${esc(p.sys)}" dir="auto" placeholder="Same as name" aria-label="System name of ${esc(nm)}"></td>
+    <td><input class="cell" data-f="sys" value="${esc(p.sys)}" dir="auto" list="sysNames" autocomplete="off" placeholder="Same as name" aria-label="System name of ${esc(nm)}"></td>
     <td><input class="cell w-sup" data-f="spvName" list="supNames" value="${esc(supName(p.spv))}" dir="auto" placeholder="–" aria-label="Supervisor of ${esc(nm)}"></td>
     <td data-c="status">${statusCell(p)}</td>
-    <td data-c="badges">${badgesCell(p)}</td>
-    <td style="text-align:end"><button class="rowbtn" data-open data-agent="${esc(p._id)}">Details</button><button class="rowbtn danger" data-del aria-label="Remove ${esc(nm)}">Remove</button></td></tr>`;
+    <td data-c="badges">${badgesCell(p)}${dupMark(p)}</td>
+    <td class="acts"><button class="rowbtn icon" data-open data-agent="${esc(p._id)}" aria-label="Details of ${esc(nm)}" title="Details"><svg aria-hidden="true"><use href="#i-user"/></svg></button><button class="rowbtn icon danger" data-del aria-label="Remove ${esc(nm)}" title="Remove"><svg aria-hidden="true"><use href="#i-x"/></svg></button></td></tr>`;
 }
-const ROWH = 38, VTHRESH = 150;
+const ROWH = 48, VTHRESH = 150;   // the rows are var(--row) tall
 function renderRoster() {
   state.pendingRender = false;
   const tb = $('roster');
@@ -714,16 +722,16 @@ function renderWindow(force) {
   const s = Math.max(0, Math.floor(top / ROWH) - 12), e = Math.min(rows.length, Math.ceil((top + h) / ROWH) + 12);
   if (!force && state.vrange && state.vrange[0] === s && state.vrange[1] === e) return;
   state.vrange = [s, e];
-  $('roster').innerHTML = (s ? `<tr class="vspace" style="height:${s * ROWH}px" aria-hidden="true"><td colspan="9"></td></tr>` : '') + rows.slice(s, e).map(rowHtml).join('') +
-    (e < rows.length ? `<tr class="vspace" style="height:${(rows.length - e) * ROWH}px" aria-hidden="true"><td colspan="9"></td></tr>` : '');
+  $('roster').innerHTML = (s ? `<tr class="vspace" style="height:${s * ROWH}px" aria-hidden="true"><td colspan="10"></td></tr>` : '') + rows.slice(s, e).map(rowHtml).join('') +
+    (e < rows.length ? `<tr class="vspace" style="height:${(rows.length - e) * ROWH}px" aria-hidden="true"><td colspan="10"></td></tr>` : '');
 }
 function renderRow(id) {
   const tr = $('roster').querySelector(`tr[data-id="${CSS.escape(id)}"]`); const p = state.roster.find(x => x._id === id);
   if (!tr || !p) return;
-  tr.className = p.status === 'Inactive' ? 'inactive' : '';
+  tr.className = rowCls(p);
   const hadFocus = tr.querySelector('[data-c="status"]').contains(document.activeElement);
   tr.querySelector('[data-c="status"]').innerHTML = statusCell(p);
-  tr.querySelector('[data-c="badges"]').innerHTML = badgesCell(p);
+  tr.querySelector('[data-c="badges"]').innerHTML = badgesCell(p) + dupMark(p);
   const t = tr.querySelector('select[data-f="team"]'); if (t) t.title = DEP_NAMES[p.team] || '';
   if (hadFocus) tr.querySelector('[data-sw]').focus();
 }
@@ -733,7 +741,8 @@ function renderPeopleMeta() {
   $('rosterState').textContent = state.rosterReady && state.roster.length
     ? `${plural(R.length, 'person', 'people')} · ${inact} inactive${state.ctx ? ` (${hidden} hidden from the reports)` : ''} · ${sys} with a system name. ${state.db ? savedWhere() + ', so changes carry over to next month.' : ''}`
     : '';
-  const b = $('bulk'); b.hidden = !state.sel.size || state.pview === 'cards'; $('bulkN').textContent = `${state.sel.size} selected`;
+  const b = $('bulk'); b.hidden = !state.sel.size || state.pview === 'cards' || state.rf === 'dup'; $('bulkN').textContent = `${state.sel.size} selected`;
+  renderMatchBadge();
 }
 function syncSel() {
   const vis = (state.vrows || []).map(p => p._id), n = vis.filter(id => state.sel.has(id)).length;
@@ -771,12 +780,12 @@ function renderIssues() {
   const free = R.filter(p => { const m = state.byId.get(p._id); return !m || !m.any; }), taken = R.filter(p => { const m = state.byId.get(p._id); return m && m.any; });
   const optList = L => L.map(p => `<option value="${esc(p._id)}">${esc(p.name)}</option>`).join('');
   const linkSel = (x) => `<select class="cell" data-linkto="${esc(x.key)}" aria-label="Link ${esc(x.name)} to a person"><option value="">Link to another person…</option>${free.length ? `<optgroup label="Not found in any export">${optList(free)}</optgroup>` : ''}<optgroup label="Already matched (their own name would become unmatched)">${optList(taken)}</optgroup></select>`;
-  const unmatched = `<div class="card issue"><h3><span class="badge ${list.length ? 'n' : ''}">${list.length}</span>Names in the exports that are not on the roster</h3>
+  const unmatched = `<div class="card issue"><h3><span class="badge ${list.length ? 'n' : ''}">${list.length}</span>Names in the exports that are not on the roster${list.length && isBuilder() ? '<span class="spacer"></span><button class="btn sm" data-matchall>Match all…</button>' : ''}</h3>
     <p>People are matched by their system name, or their name when it is empty. Unmatched names are left out of the reports.</p>
     ${list.length ? `<ul class="ilist">${list.map(x => `<li data-key="${esc(x.key)}">
       <span class="nm" dir="auto">${esc(x.name)}</span>
       <span class="mb">${['adh', 'aht', 'sch'].map(w => `<span class="${x.where.includes(w) ? 'on' : ''}" title="${x.where.includes(w) ? 'In' : 'Not in'} the ${WHERE[w]} export">${w === 'adh' ? 'Adh' : w === 'aht' ? 'AHT' : 'Sch'}</span>`).join('')}</span>
-      ${x.sugg ? `<span class="sg">Looks like <b dir="auto">${esc(x.sugg.name)}</b></span>` : '<span class="sg">No close match on the roster</span>'}
+      ${x.sugg ? `<span class="sg">${x.alias ? 'The roster name of' : 'Looks like'} <b dir="auto">${esc(x.sugg.name)}</b>${x.alias ? ', whose system name is another name' : ''}</span>` : x.several ? `<span class="sg">Several people fit: ${x.several.map(p => `<b dir="auto">${esc(p.name)}</b>`).join(', ')}</span>` : '<span class="sg">No close match on the roster</span>'}
       <span class="sp"></span>
       <span class="acts">${x.sugg ? `<button class="btn sm primary" data-link="${esc(x.sugg._id)}">Link as system name</button>` : ''}${linkSel(x)}
       <button class="btn sm" data-addnew>Add as new person</button><button class="btn sm ghost" data-ignore title="Hide this name until the page is reloaded">Not needed</button></span></li>`).join('')}</ul>`
@@ -1171,16 +1180,15 @@ function computeNotes() {
   }
   if (state.ghistNotes && state.ghistNotes.length) add({ id: 'ghist', sev: 'info', group: 'History', title: 'Genesys exports added to the history', body: 'Deduction is only kept for agents whose schedule covers the whole month.', list: state.ghistNotes, go: 'history' });
   kpiNotes(add);
+  dupNotes(add);   // the same person twice, two people on one Genesys name or National ID: with or without exports
   if (c) {
     for (const a of state.autoLinks) add({ id: 'alink:' + a.pid, sev: 'fixed', group: 'Genesys', title: `${a.roster} is "${a.name}" in Genesys`, body: 'Saved as the system name, so the exports match.', unlink: a.pid });
-    if (state.issues.length) add({ id: 'gen-unm', sev: 'warn', group: 'Genesys', title: `${plural(state.issues.length, 'name')} in the Genesys exports ${state.issues.length === 1 ? 'is' : 'are'} not on the roster`, body: 'They are left out of the reports.', go: 'issues', list: state.issues.map(x => x.name + (x.sugg ? ` – looks like ${x.sugg.name}` : '')) });
+    sysLinkNotes(add);
+    if (state.issues.length) add({ id: 'gen-unm', sev: 'warn', group: 'Genesys', title: `${plural(state.issues.length, 'name')} in the Genesys exports ${state.issues.length === 1 ? 'is' : 'are'} not on the roster`, body: 'They are left out of the reports.', go: 'issues', list: state.issues.map(x => x.name + (x.sugg ? ` – looks like ${x.sugg.name}` : x.several ? ' – several people fit' : '')) });
     if (state.slots.schedule && state.slots.timeline && c.checks.noTimeline.length) add({ id: 'notl', sev: 'warn', group: 'Genesys', title: `${plural(c.checks.noTimeline.length, 'scheduled agent')} with no status timeline`, body: 'Their Actual is 0, so their deduction is 0 every day.', list: c.checks.noTimeline });
     const multi = c.rawAht.filter(x => (x.alt || []).length > 1);
     if (multi.length) add({ id: 'ahtmulti', sev: 'info', group: 'Genesys', title: `${plural(multi.length, 'agent')} with more than one AHT row (one per media type)`, body: 'The voice AHT is used. They are marked in the incentive AHT tab.', list: multi.map(x => `${x.name}: ${x.alt.map(a => `${a.media || '?'} ${mss(a.sec)}`).join(', ')}`) });
-    const ids = new Map();
-    for (const p of c.roster) { const id = Core.cleanId(p.nid); if (id && id.length >= 8) ids.set(id, [...(ids.get(id) || []), p.name]); }
-    const dups = [...ids].filter(([, v]) => v.length > 1);
-    if (dups.length) add({ id: 'dupid', sev: 'warn', group: 'Roster', title: `${plural(dups.length, 'National ID')} used by more than one person`, list: dups.map(([id, v]) => `${id}: ${v.join(', ')}`) });
+    expDupNotes(c, add);   // one display name twice inside an export
     const inc = incModel();
     if (inc && inc.full.length) add({ id: 'incfull', sev: 'info', group: 'Incentive', title: `${plural(inc.full.length, 'person', 'people')} in the incentive Adherence tab at 100%`, body: `Team${set.incFullAdhTeams.length > 1 ? 's' : ''} ${set.incFullAdhTeams.join(', ')} ${set.incFullAdhTeams.length > 1 ? 'have' : 'has'} no Genesys adherence. Change this in Settings.`, list: inc.full.map(r => r.name) });
     const noId = inc ? inc.att.filter(r => !/^\d{6,}$/.test(r.id)).map(r => r.name) : [];
@@ -1236,7 +1244,7 @@ function noteItemHtml(n, opts = {}) {
       const u = R.unmatched[n.unm];
       acts = `<div class="acts"><button class="btn sm" data-attadd="${n.unm}">Add to the roster</button><select class="cell" data-attlink="${n.unm}" aria-label="Link ${esc(u.name)} to a person"><option value="">Same person as…</option>${free.map(p => `<option value="${esc(p._id)}">${esc(p.name)}</option>`).join('')}</select></div>`;
     }
-    if (n.go) acts = `<button class="btn sm" data-gonote="${esc(n.go)}">${n.go === 'history' ? 'Open the history' : n.go === 'kpi' ? 'Open the KPI results' : 'Review'}</button>`;
+    if (n.go) acts = `<button class="btn sm" data-gonote="${esc(n.go)}">${n.go === 'history' ? 'Open the history' : n.go === 'kpi' ? 'Open the KPI results' : n.go === 'dups' ? 'Review duplicates' : 'Review'}</button>`;
     if (n.unlink) acts = `<button class="btn sm ghost" data-unlink="${esc(n.unlink)}">Undo</button>`;
     if (n.idsUndo) acts = `<button class="btn sm ghost" data-idsundo="${esc(n.idsUndo)}">Undo</button>`;
     if (n.idsAct) acts = `<div class="acts">${n.idsAct.map(([a, x, v, l], i) => `<button class="btn sm ${i ? 'ghost' : ''}" data-ida="${a}" data-idx="${esc(x)}" data-idv="${esc(v)}">${esc(l)}</button>`).join('')}</div>`;
@@ -2586,12 +2594,12 @@ const belowB = (v, txt) => `<b class="bad" title="Below the target"><svg class="
 // ---- Genesys names: a roster person nobody found in the exports, whose name is clearly one export name, gets that name as the system name
 function autoLinkNames() {
   if (!state.ctx || !state.model || !state.issues.length || !state.rosterReady) return 0;
-  const skip = new Set(state.settings.noAutoLink || []), cand = [];
+  const skip = new Set(state.settings.noAutoLink || []), cand = [], NO = (state.nameMemo && state.nameMemo.no) || {};
   for (const x of state.issues) {
     if (skip.has(x.key) || state.autoTried.has(x.key)) continue;
-    let best = null, bs = 0, second = 0;
+    let best = null, bs = 0, second = 0; const no = NO[qKey(x.name)] || [];
     for (const m of state.model) {
-      if (m.any || !normSpace(m.p.name)) continue;
+      if (m.any || !normSpace(m.p.name) || no.includes(m.p._id)) continue;
       const s = Math.max(Core.nameScore(x.name, m.p.name), normSpace(m.p.sys) ? Core.nameScore(x.name, m.p.sys) : 0);
       if (s > bs) { second = bs; bs = s; best = m.p; } else if (s > second) second = s;
     }
@@ -2603,7 +2611,7 @@ function autoLinkNames() {
   if (rest.length) {
     const free = new Set(state.model.filter(m => !m.any && normSpace(m.p.name)).map(m => m.p._id));
     try {
-      const res = NameLink.link(rest.map(x => ({ name: x.name, kind: 'agent' })), linkPeople().filter(q => free.has(q.id)), {}, {});
+      const res = NameLink.link(rest.map(x => ({ name: x.name, kind: 'agent' })), linkPeople().filter(q => free.has(q.id)), {}, NO);
       res.forEach((r, i) => { if (r.id && r.auto) { const p = state.roster.find(q => q._id === r.id); if (p) cand.push({ x: rest[i], p }); } });
     } catch (e) { /* the suggestions on Review stay */ }
   }
@@ -2617,7 +2625,7 @@ function autoLinkNames() {
   return ok.length;
 }
 function undoAutoLink(pid) {
-  const a = state.autoLinks.find(x => x.pid === pid); if (!a) return;
+  const a = state.autoLinks.find(x => x.pid === pid); if (!a) { undoSysLink(pid); return; }
   state.autoLinks = state.autoLinks.filter(x => x !== a);
   state.settings.noAutoLink = [...new Set([...(state.settings.noAutoLink || []), a.key])]; persistSettings();
   updatePerson(pid, { sys: a.prev });
@@ -2640,12 +2648,12 @@ function filtered() {
 const teamOrder = list => [...new Set(list)].sort((a, b) => (DEP_ORDER.indexOf(a) + 1 || 99) - (DEP_ORDER.indexOf(b) + 1 || 99) || String(a).localeCompare(String(b)));
 function renderPeopleFilters() {
   const base = state.roster.filter(p => !state.rteam || (p.team || '') === state.rteam);
-  $('rseg').querySelectorAll('button').forEach(b => { const f = b.dataset.f; b.innerHTML = `${esc(RF_LABEL[f])} <span class="cnt">${base.filter(RF[f]).length}</span>`; });
+  $('rseg').querySelectorAll('button').forEach(b => { const f = b.dataset.f, n = base.filter(RF[f]).length; b.innerHTML = `${esc(RF_LABEL[f])} <span class="cnt${f === 'dup' && n ? ' warn' : ''}">${n}</span>`; });
   const teams = teamOrder(state.roster.map(p => p.team || ''));
   $('rteams').innerHTML = ['', ...teams].map(t => `<button data-team="${esc(t)}" aria-pressed="${state.rteam === t}" title="${esc(t ? DEP_NAMES[t] || t : 'Every team')}">${esc(t === '' ? 'All teams' : t || 'No team')}</button>`).join('');
   setSeg($('pView'), state.pview);
-  const cards = state.pview === 'cards';
-  $('pgrid').hidden = !cards; $('rwrap').hidden = cards;
+  const cards = state.pview === 'cards', dup = state.rf === 'dup';
+  $('pgrid').hidden = !cards || dup; $('rwrap').hidden = cards || dup; $('dupPanel').hidden = !dup;
 }
 function tileHtml(p) {
   const pp = effP(p._id) || p, nm = gname(pp) || 'New person', id = Core.cleanId(pp.nid), on = p.status !== 'Inactive';
@@ -2655,6 +2663,7 @@ function tileHtml(p) {
   if (!id) flags.push('<span class="pill warn">No National ID</span>');
   if (state.ctx && normSpace(p.name) && (!m || !m.any)) flags.push('<span class="pill warn">Not in the exports</span>');
   if (m && !m.shown) flags.push('<span class="pill">Hidden</span>');
+  if (state.dupIds && state.dupIds.has(p._id)) flags.push('<span class="pill warn">Duplicate</span>');
   const adh = !m || m.avg == null ? '<b>–</b>' : m.avg < set.target ? belowB(m.avg, pct(m.avg, 1)) : `<b>${pct(m.avg, 1)}</b>`;
   const st = !m ? '' : `<span class="astats"><span>${adh}<i>Adherence</i></span><span><b>${mss(m.aht)}</b><i>AHT</i></span>${K ? `<span><b>${pct1(K.res.finalPct)}</b><i>Final</i></span>` : m.inDed ? `<span><b>${m.ded ?? '–'}</b><i>Ded. min</i></span>` : `<span><b>${m.days || '–'}</b><i>Days</i></span>`}</span>`;
   return `<button class="atile${on ? '' : ' off'}" data-open="${esc(p._id)}" data-agent="${esc(p._id)}" aria-label="${esc(nm)}, open the profile">
@@ -2672,7 +2681,7 @@ function renderPeopleCards() {
     <div class="tgrid">${L.slice().sort((a, b) => (gname(a) || '~').localeCompare(gname(b) || '~')).map(tileHtml).join('')}</div></section>`).join('');
   reveal(el);
 }
-function renderPeople() { if (state.pview === 'cards') renderPeopleCards(); else renderRoster(); renderPeopleFilters(); }
+function renderPeople() { if (state.rf === 'dup') renderDupPanel(); else if (state.pview === 'cards') renderPeopleCards(); else renderRoster(); renderPeopleFilters(); }
 
 // ---- the person's page: who they are, editable in place
 function profileHtml(p) {
@@ -2687,7 +2696,7 @@ function profileHtml(p) {
     <details class="pedit"${state.peditOpen ? ' open' : ''}><summary>Edit name, ID, brand and team</summary><div class="pfields">
       ${fld('name', 'Name', p.name, 'dir="auto" placeholder="Full name"')}${fld('nid', 'National ID', p.nid, 'inputmode="numeric" placeholder="10 digits or NA"')}
       ${sel('brand', 'Brand', BRANDS, p.brand)}${sel('team', 'Team', DEP_ORDER, p.team, DEP_NAMES)}
-      ${fld('sys', 'System name (Genesys)', p.sys, 'dir="auto" placeholder="Same as the name"')}
+      ${fld('sys', 'System name (Genesys)', p.sys, 'dir="auto" list="sysNames" autocomplete="off" placeholder="Same as the name"')}
       ${fld('spvName', 'Supervisor', supName(p.spv), 'list="supNames" dir="auto" placeholder="–"')}${fld('email', 'Work email', p.email || '', 'type="email" placeholder="name@company.com" spellcheck="false"')}
       ${fld('base', 'Incentive base (SR)', p.base || '', `inputmode="numeric" placeholder="${basesNow()[normBrand(p.brand)] ?? 1000} (the brand's)"`)}
       <div class="pfoot"><span class="hint">Saved as you leave each field. The Genesys name is what the exports are matched on.</span><button class="btn sm ghost danger" data-premove>Remove from the roster</button></div></div></details></section>`;
@@ -3363,7 +3372,9 @@ tbody.addEventListener('change', e => {
   const v = f === 'brand' || f === 'team' ? e.target.value : normSpace(e.target.value);
   if (f !== 'brand' && f !== 'team') e.target.value = v;
   if (f === 'spvName') { commitSup(id, v, e.target); refresh({ table: false }); return; }
+  const p = state.roster.find(x => x._id === id), prev = p ? p.sys || '' : '';
   updatePerson(id, { [f]: v });
+  if (f === 'sys' && p) afterSysEdit(p, prev, v);
 });
 tbody.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input.cell')) { e.preventDefault(); e.target.blur(); e.target.focus(); } });
 tbody.addEventListener('click', e => {
@@ -3380,6 +3391,7 @@ $('selAll').addEventListener('change', e => { for (const p of state.vrows || [])
 $('bulk').addEventListener('click', e => {
   const v = e.target.closest('button')?.dataset.bulk; if (!v) return;
   if (v === 'clear') { state.sel.clear(); renderRoster(); return; }
+  if (v === 'match') { openMatch([...state.sel], e.target.closest('button')); return; }
   const ids = [...state.sel].filter(id => { const p = state.roster.find(x => x._id === id); return p && (p.status === 'Inactive' ? 'Inactive' : 'Active') !== v; });
   const before = ids.map(id => [id, state.roster.find(x => x._id === id).status || 'Active']);
   ids.forEach(id => updatePerson(id, { status: v }, { quiet: true }));
@@ -3391,6 +3403,7 @@ $('bulk').addEventListener('click', e => {
 $('issues').addEventListener('click', e => {
   const li = e.target.closest('li[data-key]');
   if (e.target.id === 'unignore') { state.ignored.clear(); refresh(); return; }
+  if (e.target.closest('[data-matchall]')) { openMatch(null, e.target.closest('button')); return; }
   if (!li) return; const x = state.issues.find(i => i.key === li.dataset.key); if (!x) return;
   const link = e.target.closest('[data-link]');
   if (link) { const id = link.dataset.link, p = state.roster.find(q => q._id === id), prev = p.sys; updatePerson(id, { sys: x.name }); toast(`${x.name} linked to ${p.name}`, { label: 'Undo', fn: () => updatePerson(id, { sys: prev || '' }) }); return; }
@@ -3517,7 +3530,7 @@ noteOn('click', e => {
     const id = addPerson({ name: normSpace(u.name), nid: Core.cleanId(u.idRaw) || '', brand, team });
     renderNotes(); toast(`Added ${u.name} (${brand} · ${team}). Check them in People.`, { label: 'Undo', fn: () => { removePeople([id]); renderNotes(); } }); return;
   }
-  if (b.dataset.gonote) { closeDrawer(); if (b.dataset.gonote === 'history' || b.dataset.gonote === 'kpi') { setStep('review'); setTab(b.dataset.gonote, false); } else setStep(b.dataset.gonote); }
+  if (b.dataset.gonote) { closeDrawer(); if (b.dataset.gonote === 'dups') openDups(); else if (b.dataset.gonote === 'history' || b.dataset.gonote === 'kpi') { setStep('review'); setTab(b.dataset.gonote, false); } else setStep(b.dataset.gonote); }
 });
 noteOn('change', e => {
   const s = e.target.closest('[data-attlink]'); if (!s || !s.value || !state.attRes) return;
@@ -3680,7 +3693,8 @@ $('personBody').addEventListener('change', e => {
   const p = state.roster.find(x => x._id === state.personId); if (!p || (p[f] ?? '') === v) return;
   const prev = p[f] ?? '';
   updatePerson(p._id, { [f]: v });
-  if (f === 'sys' || f === 'name') toast(`Saved. ${f === 'sys' ? 'Genesys name' : 'Name'}: ${v || '(empty)'}`, { label: 'Undo', fn: () => updatePerson(p._id, { [f]: prev }) });
+  if (f === 'sys') afterSysEdit(p, prev, v);
+  else if (f === 'name') toast(`Saved. Name: ${v || '(empty)'}`, { label: 'Undo', fn: () => updatePerson(p._id, { [f]: prev }) });
 });
 $('personBody').addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('pedit')) state.peditOpen = e.target.open; }, true);
 $('personBody').addEventListener('click', e => {
@@ -3774,4 +3788,5 @@ render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
 window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, handChanges, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, rb: () => RB };   // for testing
+Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, dupGroups, mergePeople, genesysNames, idRegistry, fillSysList, openDups, addPerson, updatePerson, removePeople });   // names: for testing
 })();

@@ -34,6 +34,7 @@
   <symbol id="i-side" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><path d="M12 7.6v.2"/></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H12"/></symbol>
+  <symbol id="i-eyeoff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12s3-6 8.5-6c1.6 0 3 .5 4.2 1.2M20.5 12s-3 6-8.5 6c-1.6 0-3-.5-4.2-1.2"/><path d="M9.9 14.1a3 3 0 0 1 4.2-4.2"/><path d="m4 20 16-16"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
   <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></symbol>
@@ -222,6 +223,7 @@
         <button class="btn sm" id="importRoster">Import roster</button>
         <button class="btn sm" id="exportRoster">Export roster</button>
         <button class="btn sm" id="distBtn" title="Set each person's supervisor from the Teams Distribution email">Supervisors…</button>
+        <button class="btn sm" id="matchSys" title="Save the Genesys names from this month's exports as system names, many at once">Match system names <span class="badge" id="bMatch" hidden></span></button>
         <input type="file" id="rosterPicker" accept=".xlsx,.xlsm,.csv" hidden>
         <input type="file" id="histPicker" multiple accept=".xlsx,.xlsm,.xlsb" hidden>
       </div>
@@ -234,16 +236,20 @@
           <button data-f="sys" aria-pressed="false">Has system name</button>
           <button data-f="noid" aria-pressed="false">Missing ID</button>
           <button data-f="nomatch" aria-pressed="false">Not in exports</button>
+          <button data-f="dup" aria-pressed="false">Duplicates</button>
         </div>
       </div>
+      <div class="dups" id="dupPanel" hidden></div>
       <div class="bulk" id="bulk" hidden>
         <span id="bulkN">0 selected</span>
         <button class="btn sm" data-bulk="Inactive">Set Inactive</button>
         <button class="btn sm" data-bulk="Active">Set Active</button>
+        <button class="btn sm" data-bulk="match">Match system names</button>
         <button class="btn sm ghost" data-bulk="clear">Clear selection</button>
       </div>
       <div class="tablewrap" id="rwrap">
-        <table>
+        <table class="ptable">
+          <colgroup><col class="c-chk"><col class="c-name"><col class="c-nid"><col class="c-brand"><col class="c-team"><col class="c-sys"><col class="c-sup"><col class="c-st"><col class="c-exp"><col class="c-act"></colgroup>
           <thead><tr>
             <th class="chk"><input type="checkbox" id="selAll" aria-label="Select all shown"></th>
             <th>Name</th><th>National ID</th><th>Brand</th><th>Team</th><th>System name (Genesys)</th><th>Supervisor</th><th>Status</th>
@@ -254,6 +260,7 @@
       </div>
       <div class="pgrid" id="pgrid" hidden></div>
       <datalist id="supNames"></datalist>
+      <datalist id="sysNames"></datalist>
       <p class="hint" id="rosterState"></p>
     </div>
 
@@ -507,6 +514,12 @@
 <aside class="drawer panel" id="dLink" role="dialog" aria-modal="true" aria-labelledby="h-link" hidden>
   <header><div><h2 id="h-link">Link a name</h2><div class="sub" id="linkSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
   <div class="body" id="linkBody"></div>
+</aside>
+
+<aside class="drawer xwide" id="dMatch" role="dialog" aria-modal="true" aria-labelledby="h-match" hidden>
+  <header><div><h2 id="h-match">Match system names</h2><div class="sub" id="matchSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="matchBody"></div>
+  <footer><button class="btn" data-close>Cancel</button><span class="spacer"></span><button class="btn" id="matchReady">Apply all ready</button><button class="btn primary" id="matchGo">Apply selected</button></footer>
 </aside>
 
 <aside class="drawer" id="dConfirm" role="dialog" aria-modal="true" aria-labelledby="h-confirm" hidden>

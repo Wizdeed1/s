@@ -33,6 +33,9 @@ bash assemble_standalone.sh "../final/MC Monthly Report Builder.html"           
 bash assemble3.sh ../out/mc-report-builder.html                                         # the online page
 ```
 
+Or from the top folder: `npm run build` (the same three steps into `out/mc.html`) and `npm test` (checks that need only Node;
+GitHub Actions runs both on every push, see `.github/workflows/node.js.yml`).
+
 `tools/build_fonts.py` rebuilds `js/fonts.css` (Inter and Poppins, SIL Open Font License) from `MC_INTER` and
 `MC_POPPINS` (defaults: the system Inter and `tools/fontsrc/`). It needs `pip install fonttools brotli`.
 

@@ -75,6 +75,8 @@ const CHK_GROUPS = [['decide', 'Needs your decision', 'i-bang'], ['warn', 'Pleas
 /** why a check matters, and what the tool does until someone acts: said in words, per kind */
 function chkWhy(n) {
   const g = n.group || '';
+  if (/^dup:/.test(n.id)) return DUP_WHY[n.id.split(':')[1]] || DUP_WHY.exp;
+  if (/^expdup:/.test(n.id)) return ['Two Genesys users with one display name cannot be told apart in the exports.', 'Only the first row with that name is used.'];
   if (n.sev === 'decide') return ['Both values cannot be right, and the workbook and the incentive use one of them.', n.pick ? (n.pick.kind === 'tardy' ? 'The day cells are used.' : 'The value from the file where this person has the most days is used.') : 'Nothing is changed.'];
   if (n.sev === 'fixed') return ['The tool tidied this so the files match; it can be undone.', 'The fix stays in place.'];
   if (n.sev === 'done') return ['You chose this earlier; it can be changed.', 'Your choice is used.'];
@@ -82,7 +84,7 @@ function chkWhy(n) {
   if (/^unm:/.test(n.id)) return ['Attendance for someone not on the roster cannot be counted.', 'Their attendance is left out.'];
   if (n.id === 'cross') return ['The supervisors\' sheets and Genesys say different things about these days.', 'Nothing was changed; the attendance sheets are used.'];
   if (n.id === 'notl') return ['Without a status timeline the Actual is 0, so the deduction is 0 every day.', 'Their deduction shows as 0.'];
-  if (n.id === 'noid' || n.id === 'dupid') return ['The emails and the incentive file match people by National ID.', 'They are listed without an ID.'];
+  if (n.id === 'noid') return ['The emails and the incentive file match people by National ID.', 'They are listed without an ID.'];
   if (/^IDs/.test(g)) return ['The IDs file and the roster disagree.', 'The roster is used.'];
   if (/^Attendance/.test(g)) return ['It changes the attendance and tardy minutes in the workbook.', 'The file\'s own value is used.'];
   return ['For information; nothing is wrong.', 'Nothing changes.'];
@@ -90,7 +92,7 @@ function chkWhy(n) {
 /** Genesys names not on the roster: one check each, so each one can be linked in place */
 function checkNotes() {
   const N = state.notes.filter(n => n.id !== 'gen-unm'), gen = state.notes.find(n => n.id === 'gen-unm');
-  if (gen) for (const x of state.issues) N.push({ id: 'gen:' + x.key, sev: 'warn', group: 'Genesys', title: `Not on the roster: ${x.name}`, body: `In the ${x.where.map(w => WHERE[w]).join(', ')} export${x.where.length > 1 ? 's' : ''}.${x.sugg ? ` Looks like ${x.sugg.name.replace(/\.$/, '')}.` : ' No close match on the roster.'}`, issue: x.key });
+  if (gen) for (const x of state.issues) N.push({ id: 'gen:' + x.key, sev: 'warn', group: 'Genesys', title: `Not on the roster: ${x.name}`, body: `In the ${x.where.map(w => WHERE[w]).join(', ')} export${x.where.length > 1 ? 's' : ''}.${x.sugg ? (x.alias ? ` It is the roster name of ${x.sugg.name.replace(/\.$/, '')}, whose system name is another name.` : ` Looks like ${x.sugg.name.replace(/\.$/, '')}.`) : x.several ? ` Several people fit: ${x.several.map(p => p.name).join(', ')}.` : ' No close match on the roster.'}`, issue: x.key });
   return N;
 }
 function checkRowHtml(n, acts, list) {
@@ -109,7 +111,7 @@ function readinessHtml() {
     <p class="rstate ${ready ? 'ok' : 'no'}"><svg aria-hidden="true"><use href="#${ready ? 'i-check' : 'i-lock'}"/></svg><b>${ready ? 'Ready to build' : 'Cannot build yet'}</b></p>
     <p class="cap">${ready ? (wr.length || left ? 'The workbook can be built now; the warnings below say what it would leave out.' : 'Nothing is left out.') : esc(buildBlocker()) + '.'}</p>
     <h3>What would block it</h3><ul class="checklist">${items.filter(x => x.block).map(x => `<li><span class="ck ${x.ok ? 'ok' : 'no'}" aria-hidden="true"><svg width="12" height="12"><use href="#${x.ok ? 'i-check' : 'i-dash'}"/></svg></span><span>${esc(x.t)}</span></li>`).join('')}</ul>
-    ${wr.length || left ? `<h3>What it would leave out</h3><ul class="checklist">${left ? `<li><span class="ck wa" aria-hidden="true"><svg width="12" height="12"><use href="#i-bang"/></svg></span><span>${plural(left, 'name')} in the exports not on the roster</span></li>` : ''}${wr.map(x => `<li><span class="ck wa" aria-hidden="true"><svg width="12" height="12"><use href="#i-bang"/></svg></span><span>${esc(x.t)}</span></li>`).join('')}</ul>` : ''}
+    ${wr.length || left ? `<h3>What it would leave out</h3><ul class="checklist">${left ? `<li><span class="ck wa" aria-hidden="true"><svg width="12" height="12"><use href="#i-bang"/></svg></span><span>${plural(left, 'name')} in the exports not on the roster${isBuilder() ? ' <button class="linkbtn" data-go="match">Match names…</button>' : ''}</span></li>` : ''}${wr.map(x => `<li><span class="ck wa" aria-hidden="true"><svg width="12" height="12"><use href="#i-bang"/></svg></span><span>${esc(x.t)}</span></li>`).join('')}</ul>` : ''}
     <button class="btn primary" data-go="export"${ready ? '' : ' disabled'}>Continue to Export</button>`;
 }
 function renderChecks() {
@@ -134,7 +136,7 @@ $('checksBody').addEventListener('click', e => {
   const ad = e.target.closest('[data-iadd]'); if (ad) { const x = state.issues.find(i => i.key === ad.dataset.iadd); if (x) { const id = addPerson({ name: x.name }); toast(`Added ${x.name}. Set the brand, team and ID in People.`, { label: 'Undo', fn: () => removePeople([id]) }); } }
   const g = e.target.closest('[data-gonote]'); if (g) e.stopPropagation();
 });
-$('readyCard').addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) setStep(g.dataset.go); });
+$('readyCard').addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (!g) return; if (g.dataset.go === 'match') { e.stopPropagation(); openMatch(null, g); return; } setStep(g.dataset.go); });
 function linkIssue(x, p) {
   const prev = p.sys; updatePerson(p._id, { sys: x.name });
   toast(`${x.name} linked to ${p.name}`, { label: 'Undo', fn: () => updatePerson(p._id, { sys: prev || '' }) });

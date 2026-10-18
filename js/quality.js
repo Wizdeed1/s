@@ -77,7 +77,7 @@ function linkPeople() {
   const seen = new Map(), add = (pid, n) => { if (!pid || !normSpace(n)) return; const S = seen.get(pid) || new Set(); S.add(normSpace(n)); seen.set(pid, S); };
   for (const H of Object.values(state.history || {})) for (const r of H.rows || []) { const id = Core.cleanId(r.id); if (id && byId.has(id)) add(byId.get(id), r.n); }
   for (const F of Object.values(state.kpiFiles || {})) for (const r of F.rows || []) { const id = Core.cleanId(r.id); if (id && byId.has(id)) add(byId.get(id), r.name); }
-  return R.map(p => { const pp = effP(p._id) || p; return { id: p._id, nid: Core.cleanId(pp.nid) || '', name: gname(pp) || p.name, names: [p.name, p.sys, gname(pp)].filter(Boolean), seen: [...(seen.get(p._id) || [])], email: normSpace(p.email || ''), brand: p.brand || '', team: p.team || '', lead: lead.has(p._id) || p.team === 'MG', off: p.status === 'Inactive' }; });
+  return R.map(p => { const pp = effP(p._id) || p; return { id: p._id, nid: Core.cleanId(pp.nid) || '', name: gname(pp) || p.name, names: [p.name, p.sys, gname(pp), ...(Array.isArray(p.aka) ? p.aka : [])].filter(Boolean), seen: [...(seen.get(p._id) || [])], email: normSpace(p.email || ''), brand: p.brand || '', team: p.team || '', lead: lead.has(p._id) || p.team === 'MG', off: p.status === 'Inactive' }; });
 }
 /** the links made in every month so far (the newest wins), and the ones someone said were wrong */
 function qSaved() {

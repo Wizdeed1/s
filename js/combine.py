@@ -3,7 +3,7 @@ import sys, os
 here = os.path.dirname(os.path.abspath(__file__))
 src = open(os.path.join(here, 'ui3.js'), encoding='utf-8').read()
 PARTS = [('/*@@STORE@@*/', ['store.js']), ('/*@@AUTH@@*/', ['auth.js']),
-         ('/*@@PORTAL@@*/', ['namelink.js', 'rules.js', 'portal.js', 'extras.js', 'quality.js', 'team.js', 'senior.js', 'agentws.js', 'dailyx.js', 'rbx.js', 'inter.js', 'wfmx.js', 'find.js', 'calendar.js', 'objections.js', 'followup.js', 'mtd.js', 'today.js', 'compare.js', 'i18n.js', 'shell.js', 'motion.js', 'checks.js', 'dash.js'])]
+         ('/*@@PORTAL@@*/', ['namelink.js', 'rules.js', 'portal.js', 'extras.js', 'quality.js', 'team.js', 'senior.js', 'agentws.js', 'dailyx.js', 'rbx.js', 'inter.js', 'wfmx.js', 'find.js', 'calendar.js', 'objections.js', 'followup.js', 'mtd.js', 'today.js', 'compare.js', 'i18n.js', 'shell.js', 'motion.js', 'checks.js', 'sysnames.js', 'dash.js'])]
 for mk, files in PARTS:
     assert src.count(mk) == 1, mk
     body = '\n'.join(open(os.path.join(here, f), encoding='utf-8').read() for f in files if os.path.exists(os.path.join(here, f)))

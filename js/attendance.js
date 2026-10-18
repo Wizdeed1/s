@@ -40,12 +40,14 @@ function normCode(raw) {
 }
 
 // ---------------------------------------------------------------- matching people to the roster
+const akaList = p => (Array.isArray(p.aka) ? p.aka.filter(x => typeof x === 'string' && x) : []);   // the other spellings kept on a person (the name they had before)
 function rosterIndex(roster) {
   const byNid = new Map(), byName = new Map();
   for (const p of roster) {
     const id = C.cleanId(p.nid); if (id && !byNid.has(id)) byNid.set(id, p);
     for (const n of [p.name, p.sys]) { const k = normName(n); if (k && !byName.has(k)) byName.set(k, p); }
   }
+  for (const p of roster) for (const n of akaList(p)) { const k = normName(n); if (k && !byName.has(k)) byName.set(k, p); }   // spellings the person had before: after every current name
   return { byNid, byName, list: roster };
 }
 function matchPerson(row, ix, opts) {
@@ -64,7 +66,7 @@ function matchPerson(row, ix, opts) {
   if (!k) return null;
   let best = null, bs = 0, second = 0;
   for (const p of ix.list) {
-    const sc = Math.max(C.nameScore(row.name, p.name), p.sys ? C.nameScore(row.name, p.sys) : 0, looseScore(row.name, p.name));
+    const sc = Math.max(C.nameScore(row.name, p.name), p.sys ? C.nameScore(row.name, p.sys) : 0, looseScore(row.name, p.name), ...akaList(p).map(a => C.nameScore(row.name, a)));
     if (sc > bs) { second = bs; bs = sc; best = p; } else if (sc > second) second = sc;
   }
   if (best && bs >= 0.75 && bs - second >= 0.1) return { p: best, how: 'fuzzy', score: bs };

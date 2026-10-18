@@ -88,7 +88,8 @@
   .kpi { padding: 12px; }
   .kval { font-size: 24px; line-height: 30px; }
   .kd .vs { display: none; }
-  .ktip { width: 200px; }
+  #dashBody .kpi { position: relative; } #dashBody .kpi .kinfo { position: static; }
+  #dashBody .kpi .ktip { inset-inline: 8px; width: auto; top: 46px; }   /* the card's width: never past the screen's edge */
   .clist:not(.all) .cs.done, .clist:not(.all) .cs.past { display: none; }
   .actl:not(.all) li:nth-child(n+4) { display: none; }
   .lowl li:nth-child(n+4) { display: none; }
@@ -173,7 +174,7 @@
 
 /* ------------------------------------------------------------------------------------------------------------- print */
 @media print {
-  .appbar, .sidebar, .tabbar, .buildbar, .pop, .sitefoot, .toast, .tt, .scrim, .drawer, .dlg, .find, .fresh, .todaywrap { display: none !important; }
+  .appbar, .sidebar, .tabbar, .buildbar, .pop, .sitefoot, .toast, .tt, .scrim, .drawer, .dlg, .find, .fresh, .todaywrap, .skip, .sheet-more, .railtip { display: none !important; }
   main { margin: 0 !important; }
   .cvauto { content-visibility: visible; }
   body { background: #fff; color: #000; }

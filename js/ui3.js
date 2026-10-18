@@ -6,18 +6,18 @@ const SRC = (() => {   // the page's own source, for the team copy
     const me = document.currentScript && document.currentScript.textContent.includes('const Auth = (() =>') ? document.currentScript : [...document.scripts].find(x => x.textContent.includes('const Auth = (() =>'));
     const style = [...document.querySelectorAll('style')].find(x => x.textContent.includes('.lockcard'));
     const head = [document.querySelector('title'), ...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]'), style].filter(Boolean).map(e => e.outerHTML).join('\n');
-    const body = [...document.querySelectorAll('svg, #lock, a#skipLink, nav#sidebar, header.appbar, main#main, footer.sitefoot, nav#tabBar, #moreSheet, #scrim, div.dlg, aside.drawer, #toast, #tt, #pop, script#rb-data, script#rb-code, script#brand-assets')]
+    const body = [...document.querySelectorAll('svg, #lock, a#skipLink, nav#sidebar, header.appbar, main#main, footer.sitefoot, nav#tabBar, #moreSheet, #scrim, div.dlg, div#find, aside.drawer, #toast, #tt, #pop, script#rb-data, script#rb-code, script#brand-assets')]
       .filter(e => (e.tagName.toLowerCase() !== 'svg' || e.querySelector('symbol#i-up')) && !(e.parentElement && e.parentElement.closest('#lock, nav#sidebar, header.appbar, main#main, aside.drawer, div.dlg, #moreSheet')))
       .map(e => e.outerHTML).join('\n');
     const eng = document.getElementById('engine-src'), wg = [...document.scripts].find(x => x.textContent.includes('const Writer2'));
-    const scripts = [eng, wg, me].map(x => (x ? x.textContent : ''));
-    return { head, body, scripts, ok: !!style && scripts.every(Boolean) && body.includes('id="lock"') && body.includes('id="dAccounts"') };
+    const scripts = [eng, wg, me].map(x => (x ? x.textContent : '')), vm = document.getElementById('vendor-motion');
+    return { head, body, scripts, vendor: vm ? vm.textContent : '', ok: !!style && scripts.every(Boolean) && body.includes('id="lock"') && body.includes('id="dAccounts"') };
   } catch (e) { return { ok: false }; }
 })();
 function teamCopyHtml(team) {
   const E = '<' + '/script>', json = JSON.stringify(team).replace(/</g, '\\u003c');
   return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n' + SRC.head + '\n</head>\n<body>\n' + SRC.body +
-    '\n<script type="application/json" id="team-config">' + json + E + '\n<script id="engine-src">' + SRC.scripts[0] + E + '\n<script>' + SRC.scripts[1] + E + '\n<script>' + SRC.scripts[2] + E + '\n</body>\n</html>\n';
+    '\n<script type="application/json" id="team-config">' + json + E + '\n<script id="engine-src">' + SRC.scripts[0] + E + '\n<script>' + SRC.scripts[1] + E + (SRC.vendor ? '\n<script id="vendor-motion">' + SRC.vendor + E : '') + '\n<script>' + SRC.scripts[2] + E + '\n</body>\n</html>\n';
 }
 document.querySelectorAll('link[media="print"][href*="fonts.googleapis"]').forEach(l => { l.media = 'all'; });   // fonts load without blocking the page
 const BRAND = (() => { try { const b = JSON.parse(document.getElementById('brand-assets').textContent); return b && b.light ? b : null; } catch (e) { return null; } })();   // the company logo, built in
@@ -1221,7 +1221,7 @@ function renderNotes() {
   if ($('dNotes').hidden && openId !== 'dNotes' && !state.notesForce) { /* rendered on open */ }
   const N = state.notes, R = state.attRes;
   const groups = [['decide', 'Needs your decision'], ['warn', 'Please check'], ['fixed', 'Fixed automatically'], ['info', 'For your information'], ['done', 'Decided by you']];
-  const open = N.filter(n => n.sev === 'decide' || n.sev === 'warn').length;
+  const open = checkNotes().filter(n => n.sev === 'decide' || n.sev === 'warn').length;   // counted as the bell and Review › Checks count them
   $('notesSub').textContent = N.length ? `${plural(open, 'item')} to look at · ${plural(N.filter(n => n.sev === 'fixed').length, 'automatic fix', 'automatic fixes')}` : '';
   if (!N.length) { $('notesBody').innerHTML = emptyCard('Nothing to report', state.ctx || state.attFiles.length ? 'Every check passed.' : 'Drop the exports and the attendance files on Import. Every file is checked, and anything odd shows up here.'); if (checksShown()) renderChecks(); return; }
   const item = n => noteItemHtml(n);
@@ -3226,8 +3226,8 @@ function reveal(root) {
 function setStep(step) {
   if (!isBuilder()) return;
   if (REVIEW_TABS.includes(step)) { state.tab = step; step = 'review'; }
+  if (step === 'settings') { openDrawer('dSettings'); $('month').focus(); return; }   // a drawer over the page you are on
   leaveWs();
-  if (step === 'settings') { openDrawer('dSettings'); $('month').focus(); return; }
   commitActive();
   if (step === 'email') mountMail(false);
   const from = state.step, changed = from !== step;

@@ -162,7 +162,7 @@ function openLink(key, from) { linkKey = key; $('linkBody').innerHTML = ''; rend
 $('linkBody').addEventListener('input', e => { if (e.target.id === 'linkQ') renderLink(e.target.value); });
 $('linkBody').addEventListener('click', e => {
   const x = state.issues.find(i => i.key === linkKey); if (!x) return;
-  const c = e.target.closest('[data-lto]'); if (c) { const p = state.roster.find(q => q._id === c.dataset.lto); if (p) { closeDrawer(); linkIssue(x, p); } return; }
+  const c = e.target.closest('[data-lto]'); if (c) { const p = state.roster.find(q => q._id === c.dataset.lto); if (p) { closeDrawer(); linkIssue(x, p); setTimeout(() => { const n = document.querySelector('#checksBody [data-linkp], #checksBody .chkhead') || $('t-checks'); if (n) n.focus(); }, 0); } return; }   // the row is gone: the next check gets the focus
   if (e.target.closest('[data-ladd]')) { closeDrawer(); const id = addPerson({ name: x.name }); toast(`Added ${x.name}. Set the brand, team and ID in People.`, { label: 'Undo', fn: () => removePeople([id]) }); }
 });
 

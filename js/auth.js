@@ -193,7 +193,8 @@ const Auth = (() => {
     mode = m;
     if (m !== 'loading' && window.__mcBoot) window.__mcBoot.ok = true;   // the start guard: the first screen is here
     $('lock').hidden = m === 'open';
-    for (const n of ['.appbar', '#main', '.sidebar', '.tabbar']) { const x = document.querySelector(n); if (m === 'open') { x.removeAttribute('inert'); x.removeAttribute('aria-hidden'); } else { x.setAttribute('inert', ''); x.setAttribute('aria-hidden', 'true'); } }
+    // everything behind the lock, dialogs, sheets and the search palette too, so the keyboard cannot reach them
+    for (const n of ['.appbar', '#main', '.sidebar', '.tabbar', '.dlg', '.find', '#moreSheet', '.sitefoot', '.skip']) document.querySelectorAll(n).forEach(x => { if (m === 'open') { x.removeAttribute('inert'); x.removeAttribute('aria-hidden'); } else { x.setAttribute('inert', ''); x.setAttribute('aria-hidden', 'true'); } });
     renderUser();
     if (m === 'open') return;
     closeDrawer(); $('acctMenu').hidden = true;
@@ -714,7 +715,7 @@ const Auth = (() => {
     setMode(go.dataset.go); if (go.dataset.go === 'forgot' || go.dataset.go === 'signin') $('acEmail').value = keep;
   });
   // account menu
-  $('acctBtn').addEventListener('click', e => { e.stopPropagation(); const m = $('acctMenu'); m.hidden = !m.hidden; $('acctBtn').setAttribute('aria-expanded', String(!m.hidden)); if (!m.hidden) m.querySelector('button:not([hidden])').focus(); });
+  $('acctBtn').addEventListener('click', e => { e.stopPropagation(); if (typeof closeMenus === 'function') closeMenus(); const m = $('acctMenu'); m.hidden = !m.hidden; $('acctBtn').setAttribute('aria-expanded', String(!m.hidden)); if (!m.hidden) m.querySelector('button:not([hidden])').focus(); });
   document.addEventListener('click', e => { if (!$('acctMenu').hidden && !e.target.closest('.acct')) { $('acctMenu').hidden = true; $('acctBtn').setAttribute('aria-expanded', 'false'); } });
   $('acctMenu').addEventListener('keydown', e => {
     const items = [...$('acctMenu').querySelectorAll('button:not([hidden])')], i = items.indexOf(document.activeElement);

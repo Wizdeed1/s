@@ -343,6 +343,7 @@ function roleHeads(r) {
   $('cycLead').textContent = r === 'senior' ? 'Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month\'s four emails.'
     : 'The senior manager\'s page, which you can stand in for: the one-to-one deadline, which supervisors have finished their team, their scorecards, and the month\'s four emails.';
 }
+let hashTaken = false;
 function applyRole() {
   const r = roleNow(), L = WS_OF[r] || [];
   document.body.dataset.wsrole = r; document.body.classList.toggle('ro', !isBuilder());
@@ -352,7 +353,7 @@ function applyRole() {
   syncFindBtn();
   if (!L.length) { state.ws = 'wait'; hidePop(); showWsView('wait'); syncWsSeg(); waitText(); return; }
   const fresh = state.wsRole !== r; state.wsRole = r;   // someone else signed in, or the role changed: their own first workspace
-  const want = fresh ? hashWs() : '';   // a link to a page (#/team): opened when the role has it, else "Not one of your pages"
+  const want = fresh && !hashTaken ? hashWs() : ''; if (fresh) hashTaken = true;   // a link to a page (#/team), on the first sign-in of the visit only: opened when the role has it, else "Not one of your pages" (the next person to sign in starts on their own first page)
   if (want && want !== L[0] && !L.includes(want) && WS_LABEL[want]) { showBlocked(want); return; }
   if (want && L.includes(want)) { setWs(want); return; }
   if (fresh || !L.includes(state.ws)) setWs(L[0]); else setWs(state.ws, true);
@@ -716,7 +717,7 @@ async function exportDailyAdhHist(pid) {
 
 // ---------------------------------------------------------------- events
 $('autoNote').addEventListener('click', e => { if (e.target.closest('[data-autoreplace]')) { autoSig = ''; autoSaveMonth(true); if (!state.autoNote) toast(`${ymLabel(ymKey(state.y, state.m))} in the history now comes from this page, and is saved as you work`); } });
-$('wsSeg').addEventListener('click', e => { const b = e.target.closest('[data-ws]'); if (b) setWs(b.dataset.ws); });
+$('wsSeg').addEventListener('click', e => { const b = e.target.closest('button[data-ws]'); if (b) setWs(b.dataset.ws); });
 let wsNarrow = innerWidth < 640;   // the charts are drawn for the width: redraw when a phone turns or a window crosses the line
 window.addEventListener('resize', () => { const n = innerWidth < 640; if (n !== wsNarrow) { wsNarrow = n; if (state.ws !== 'build' && state.ws !== 'wait') renderWs(); } });
 for (const id of ['teamBar', 'resultsBar', 'wfmBar', 'cycleBar']) $(id).addEventListener('change', e => {

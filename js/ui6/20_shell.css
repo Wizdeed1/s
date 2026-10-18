@@ -136,7 +136,7 @@ html.rail .brand.has-logo .bl { height: 20px; }
 .acctmenu #acctTheme { color: var(--muted); }
 
 /* the page: up to 1,440 px beside the sidebar; one soft orange glow behind its top */
-main { position: relative; isolation: isolate; margin-inline-start: var(--side-cur); padding: var(--s6) var(--gutter) 72px; min-height: calc(100vh - var(--head-h) - 80px); transition: margin var(--t-panel) var(--ease-drawer); }
+main { position: relative; isolation: isolate; overflow-x: clip; margin-inline-start: var(--side-cur); padding: var(--s6) var(--gutter) 72px; min-height: calc(100vh - var(--head-h) - 80px); transition: margin var(--t-panel) var(--ease-drawer); }
 main::before { content: ""; position: absolute; inset: 0 0 auto; height: 360px; background: var(--glow); z-index: -1; pointer-events: none; }
 main > * { max-width: var(--maxw); margin-inline: auto; }
 main:focus { outline: none; }

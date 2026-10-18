@@ -1,6 +1,6 @@
 /* ------------------------------------------------------------------------------------------------------------- the WFM Dashboard (D2, D6) */
 #dashBody { position: relative; display: grid; gap: var(--s6); }
-.dglow { position: absolute; inset: -24px -32px auto; height: 300px; background: var(--glow); pointer-events: none; z-index: -1; }
+.dglow { position: absolute; inset: -24px 0 auto; height: 300px; background: var(--glow); pointer-events: none; z-index: -1; }
 .dhead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; }
 .greet { position: relative; min-width: 0; overflow: hidden; }
 .greet .gt { font: 600 24px/30px var(--display); letter-spacing: -0.018em; }

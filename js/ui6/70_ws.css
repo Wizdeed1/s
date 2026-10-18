@@ -400,7 +400,7 @@ tr.fromagrow td { background: var(--panel-2); }
 .finwrap { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dwhy { color: var(--muted); font-size: 12px; }
 .tagents .cardhead { align-items: flex-end; }
-.tteamwrap { margin: 0 -20px; border-top: 1px solid var(--line); }
+.tteamwrap { margin: 0 -20px; border-top: 1px solid var(--line); overflow-x: auto; overscroll-behavior-x: contain; }   /* a narrow screen scrolls the table, never the page */
 .tteam { font-size: 13px; }
 .tteam thead th { position: sticky; top: var(--head-h); z-index: 2; height: var(--row-h); background: var(--raised); padding: 0 12px; }
 .tteam th.trk, .tteam td.trk { width: 44px; text-align: right; color: var(--muted); padding-inline: 12px 4px; }

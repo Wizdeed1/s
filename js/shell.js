@@ -61,16 +61,23 @@ function syncHead() {
   renderPeriod();
 }
 // ---- the reporting period (D13): every page except Build, where the month comes from the exports
+/** WFM › Interactions and WFM › Daily keep their own months (the months that have those files) */
+const wfmOwnTab = () => (state.ws === 'wfm' && (state.wfmTab === 'inter' || state.wfmTab === 'daily') ? state.wfmTab : '');
+function dailyKs() { try { const H = state.dhist || {}, hk = new Set(); for (const secs of Object.values(H)) for (const r of ((secs.voice || {}).daily || [])) hk.add(r.date.slice(0, 7)); return [...new Set([...dailyMonths(), ...hk])].sort(); } catch (e) { return []; } }
 function periodList() {
-  const r = roleNow();
+  const r = roleNow(), own = wfmOwnTab();
   if (r === 'agent') { const M = state.me; return M && M.months ? Object.keys(M.months).sort() : []; }
   if (state.ws === 'quality') return typeof qMonths === 'function' ? qMonths() : [];
+  if (own === 'inter') return Object.keys(state.inter || {}).sort();
+  if (own === 'daily') return dailyKs();
   return wsMonths();
 }
 function periodNow() {
-  const r = roleNow();
+  const r = roleNow(), own = wfmOwnTab();
   if (r === 'agent') return state.meMonth || '';
   if (state.ws === 'quality') return typeof qMonthNow === 'function' ? qMonthNow() : '';
+  if (own === 'inter') return state.interK || '';
+  if (own === 'daily') return state.dailyK || '';
   return wsMonthNow();
 }
 function periodFinal(k) { if (roleNow() === 'agent') { const M = state.me, x = M && M.months && M.months[k]; return !!(x && x.status === 'final'); } return monthLocked(k); }
@@ -94,13 +101,18 @@ function periodMenuHtml() {
 function setPeriod(k) {
   const r = roleNow();
   if (r === 'agent') state.meMonth = k;
-  else { if (wsMonths().includes(k)) state.wsMonth = k; if (typeof qMonths === 'function' && qMonths().includes(k)) state.qMonth = k; }
+  else {
+    if (wsMonths().includes(k)) state.wsMonth = k; if (typeof qMonths === 'function' && qMonths().includes(k)) state.qMonth = k;
+    if (Object.keys(state.inter || {}).includes(k)) state.interK = k;   // the same month on every page that has it
+    if (dailyKs().includes(k)) { state.dailyK = k; state.dailyKPicked = true; }
+  }
   renderWs();
 }
 // ---- menus in the header (period, theme): open below their button, arrows move, Escape closes and returns the focus
 let menuOpen = null;
 function openMenu(btn, menu, html) {
   closeMenus();
+  const am = $('acctMenu'); if (am && !am.hidden) { am.hidden = true; $('acctBtn').setAttribute('aria-expanded', 'false'); }   // one menu at a time
   if (html != null) menu.innerHTML = html;
   menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); menuOpen = { btn, menu };
   const on = menu.querySelector('[aria-checked="true"]') || menu.querySelector('button'); if (on) on.focus();
@@ -147,7 +159,7 @@ try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () =
 // ---------------------------------------------------------------- the phone tab bar and its More sheet
 function navList() { return (WS_OF[roleNow()] || []).filter(w => WS_LABEL[w]); }
 function tabBarHtml() {
-  const L = navList(), main = L.length > 5 ? L.slice(0, 4) : L, more = L.length > 5;
+  const L = navList(), main = L.length > 4 ? L.slice(0, 4) : L, more = L.length > 4;   // at most four pages and More (which always holds the tools)
   const dot = w => { const d = $('wsSeg').querySelector(`[data-ws="${w}"] .wsdot`); return d ? `<span class="wsdot">${esc(d.textContent)}</span>` : ''; };
   const inMore = more && !main.includes(state.ws) && L.includes(state.ws);
   return main.map(w => `<button data-ws="${w}"${w === state.ws ? ' aria-current="page"' : ''}><svg aria-hidden="true"><use href="#${WS_ICON[w]}"/></svg><span>${esc(WS_LABEL[w])}</span>${dot(w)}</button>`).join('')
@@ -159,7 +171,7 @@ function renderTabBar() {
   bar.innerHTML = L.length ? tabBarHtml() : '';
 }
 function moreHtml(focus) {
-  const L = navList(), main = L.length > 5 ? L.slice(0, 4) : L, rest = L.filter(w => !main.includes(w)), u = Auth.user(), t = themeNow();
+  const L = navList(), main = L.length > 4 ? L.slice(0, 4) : L, rest = L.filter(w => !main.includes(w)), u = Auth.user(), t = themeNow();
   const ws = rest.map(w => `<button class="msitem" data-ws="${w}"${w === state.ws ? ' aria-current="page"' : ''}><svg aria-hidden="true"><use href="#${WS_ICON[w]}"/></svg><span>${esc(WS_LABEL[w])}</span></button>`).join('');
   return `${ws ? `<div class="msgrp"><small>Workspaces</small>${ws}</div>` : ''}
     <div class="msgrp"><small>Tools</small><button class="msitem" data-mact="find"><svg aria-hidden="true"><use href="#i-search"/></svg><span>Search</span></button><button class="msitem" data-mact="help"><svg aria-hidden="true"><use href="#i-help"/></svg><span>How to use</span></button>${isBuilder() ? '<button class="msitem" data-mact="settings"><svg aria-hidden="true"><use href="#i-gear"/></svg><span>Settings</span></button>' : ''}</div>
@@ -179,11 +191,11 @@ function moreClose() {
 }
 $('tabBar').addEventListener('click', e => {
   const m = e.target.closest('[data-tabmore]'); if (m) { moreOpen(); return; }
-  const b = e.target.closest('[data-ws]'); if (b) setWs(b.dataset.ws);
+  const b = e.target.closest('button[data-ws]'); if (b) setWs(b.dataset.ws);
 });
 $('moreSheet').addEventListener('click', e => {
   if (e.target.closest('[data-moreclose]')) { moreClose(); return; }
-  const w = e.target.closest('[data-ws]'); if (w) { moreClose(); setWs(w.dataset.ws); return; }
+  const w = e.target.closest('button[data-ws]'); if (w) { moreClose(); setWs(w.dataset.ws); return; }
   const t = e.target.closest('[data-theme-set]'); if (t) { setTheme(t.dataset.themeSet); setSeg($('moreBody').querySelector('.mstheme'), ''); $('moreBody').querySelectorAll('.mstheme button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.themeSet === t.dataset.themeSet))); return; }
   const a = e.target.closest('[data-mact]'); if (!a) return; const act = a.dataset.mact; moreClose();
   if (act === 'find') findOpen(); else if (act === 'help') openDrawer('dHelp'); else if (act === 'settings') openDrawer('dSettings');
@@ -221,7 +233,7 @@ function showBlocked(w) {
   $('blockedBack').textContent = L.length ? `Go to ${WS_LABEL[L[0]]}` : 'Back';
   syncNav();
 }
-$('blockedBack').addEventListener('click', () => { const L = WS_OF[roleNow()] || []; if (L.length) setWs(L[0]); });
+$('blockedBack').addEventListener('click', () => { const L = WS_OF[roleNow()] || []; if (!L.length) return; setWs(L[0]); const h = $('h-' + L[0]) || $('pageTitle'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } else $('main').focus(); });   // the button went with the page: the focus goes to the new one
 window.addEventListener('hashchange', () => {
   const w = hashWs(); if (!w || w === state.ws || !Auth.user() && !window.__NOLOCK__) return;
   const L = WS_OF[roleNow()] || []; if (!L.length) return;

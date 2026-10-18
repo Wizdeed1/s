@@ -209,7 +209,7 @@ $('dashBody').addEventListener('click', e => {
   const o = t.closest('[data-open]'); if (o) { openPerson(o.dataset.open); }
 });
 $('dashBody').addEventListener('mouseover', e => { const h = e.target.closest('[data-dpt]'); if (h && +h.dataset.dpt !== state.dashPt) { state.dashPt = +h.dataset.dpt; dashChartOnly(); } });
-$('dashBody').addEventListener('mouseleave', () => { if (state.dashPt >= 0 && !$('dashBody').querySelector('[data-dchart]:focus')) { state.dashPt = -1; dashChartOnly(); } }, true);
+$('dashBody').addEventListener('mouseleave', e => { if (!e.target.classList || !e.target.classList.contains('dchart')) return; if (state.dashPt >= 0 && !$('dashBody').querySelector('[data-dchart]:focus')) { state.dashPt = -1; dashChartOnly(); } }, true);   // leaving the chart itself, not one of its parts
 $('dashBody').addEventListener('keydown', e => {
   const c = e.target.closest('[data-dchart]'); if (!c) return;
   const n = Math.min(12, wsMonths().length); if (!n) return;
@@ -219,14 +219,26 @@ $('dashBody').addEventListener('keydown', e => {
     dashChartOnly(true);
   }
 });
-$('dashBody').addEventListener('focusout', e => { if (e.target.closest && e.target.closest('[data-dchart]') && state.dashPt >= 0) { state.dashPt = -1; dashChartOnly(); } });
+$('dashBody').addEventListener('focusout', e => {
+  if (dashRedraw || !(e.target.closest && e.target.closest('[data-dchart]')) || state.dashPt < 0) return;   // a redraw moves the focus itself
+  const card = e.target.closest('.dtrend'); if (card && e.relatedTarget && card.contains(e.relatedTarget)) return;
+  state.dashPt = -1; dashChartOnly();
+});
+/** the measure the trend shows: the one chosen if any month has it, else the first that has data (as the card draws it) */
+function dashMetricNow(months) {
+  const avail = DASH_METRICS.map(k => History.METRICS.find(m => m.k === k)).filter(m => m && months.some(x => { const a = dashAgg(x); return a && a.rows.some(r => History.valOf(r, m) != null); }));
+  return avail.find(m => m.k === state.dashMetric) || avail[0] || null;
+}
+let dashRedraw = false;
 /** only the chart is drawn again (the readout and the crosshair), so nothing else on the page moves */
 function dashChartOnly(focus) {
+  if (dashRedraw) return;
   const card = $('dashBody').querySelector('.dtrend'); if (!card || state.dashTable) return;
-  const months = wsMonths().slice(-12), avail = DASH_METRICS.map(x => History.METRICS.find(m => m.k === x)).filter(Boolean), mt = avail.find(m => m.k === state.dashMetric) || History.METRICS.find(m => m.k === 'adh');
+  const months = wsMonths().slice(-12), mt = dashMetricNow(months); if (!mt) return;
   const box = card.querySelector('.dchart'), rd = card.querySelector('.dread'); if (!box) return;
   const tmp = document.createElement('div'); tmp.innerHTML = dashChartHtml(months, mt, innerWidth < 640);
-  box.replaceWith(tmp.querySelector('.dchart')); if (rd) rd.replaceWith(tmp.querySelector('.dread'));
+  dashRedraw = true;
+  try { box.replaceWith(tmp.querySelector('.dchart')); if (rd) rd.replaceWith(tmp.querySelector('.dread')); } finally { dashRedraw = false; }
   if (focus) { const s = card.querySelector('[data-dchart]'); if (s) s.focus({ preventScroll: true }); }
 }
 // quick actions and needs-attention links that open a list already sorted
@@ -235,7 +247,7 @@ todayGo = function (go) {
   const g = String(go || '');
   if (g === 'dash:agents-adh') { state.wfmTab = 'agents'; state.agSort = 'adh'; state.agDir = 'asc'; setWs('wfm'); renderWs(); return; }
   if (g === 'dash:agents-exc') { state.wfmTab = 'agents'; state.agSort = 'wfExc'; state.agDir = 'desc'; setWs('wfm'); renderWs(); return; }
-  if (g === 'dash:team-absent') { state.teamSort = 'absent'; setWs('team'); renderWs(); return; }
+  if (g === 'dash:team-absent') { state.teamTab = 'agents'; state.teamSort = 'absent'; state.teamDir = 'desc'; state.teamPage = 0; setWs('team'); renderWs(); return; }   // most absent first
   if (g === 'step:checks') { setWs('build'); setStep('checks'); return; }
   return todayGo0(go);
 };

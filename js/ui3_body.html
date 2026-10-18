@@ -151,7 +151,7 @@
     <div class="viewhead">
       <div>
         <h1 id="h-import">Import this month's files</h1>
-        <p>Drop the four Genesys exports and the supervisors' attendance sheets, together or one at a time. Each file is recognised by its columns, not its name, and checked against the others.</p>
+        <p>Drop all the month's files at once: the four Genesys exports, the supervisors' attendance sheets, the IDs file, the KPI file, the quality team's Final EVAL, even the old Excel. Each file is recognised by its sheets and columns, not its name, and goes to its place; anything unclear is asked about.</p>
       </div>
       <span class="privacy"><svg aria-hidden="true"><use href="#i-lock"/></svg>Files stay in your browser; only the month's results are shared</span>
     </div>
@@ -160,9 +160,9 @@
     <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
       <svg aria-hidden="true"><use href="#i-up"/></svg>
       <strong>Drop files here, or click to choose</strong>
-      <span id="dropHelp">.csv, .xlsx or .xlsb, several at once: the Genesys exports, the attendance sheets and the IDs file (ID, Name, Team, Dep). A new export replaces the old one of the same type; attendance files add up.</span>
+      <span id="dropHelp">.csv, .xlsx or .xlsb, as many as you have: Genesys exports and attendance sheets fill this month; the Final EVAL goes to Quality, the KPI file to KPI results, the old final result, incentive data and deduction workbooks to Results › Reconcile. A new export replaces the old one of the same type; attendance files add up.</span>
     </div>
-    <input type="file" id="picker" multiple accept=".csv,.txt,.xlsx,.xlsm,.xlsb" hidden>
+    <input type="file" id="picker" multiple accept=".csv,.txt,.xlsx,.xlsm,.xlsb,.xls,.msg" hidden>
     <ul class="pending" id="pending" aria-live="polite"></ul>
     <div class="slots" id="slots"></div>
     <article class="slot attcard" id="attCard" aria-label="Supervisors' attendance"></article>
@@ -227,7 +227,7 @@
         <button class="btn sm" id="matchSys" title="Save the Genesys names from this month's exports as system names, many at once">Match system names <span class="badge" id="bMatch" hidden></span></button>
         <button class="btn sm" id="sysAsName" title="Give everyone whose system name differs their Genesys name as their name" hidden>Use system names as names <span class="badge" id="bSysName" hidden></span></button>
         <input type="file" id="rosterPicker" accept=".xlsx,.xlsm,.csv" hidden>
-        <input type="file" id="histPicker" multiple accept=".xlsx,.xlsm,.xlsb" hidden>
+        <input type="file" id="histPicker" multiple accept=".csv,.xlsx,.xlsm,.xlsb" hidden>
       </div>
       <div class="toolbar prow2">
         <div class="teamchips" id="rteams" role="group" aria-label="Team"></div>
@@ -578,6 +578,13 @@
   <header><div><h2 id="h-how">How this was counted</h2><div class="sub" id="howSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
   <div class="body" id="howBody"></div>
 </aside>
+
+<aside class="drawer wide" id="dRecog" role="dialog" aria-modal="true" aria-labelledby="h-recog" hidden>
+  <header><div><h2 id="h-recog">Recognise files</h2><div class="sub" id="recogSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="recogBody"></div>
+  <footer><button class="btn" data-recogpick>Recognise another file…</button><span class="spacer"></span><button class="btn primary" data-close>Not now</button></footer>
+</aside>
+<div class="dropall" id="dropAll" hidden aria-hidden="true"><div class="dropallbox"><svg width="28" height="28" aria-hidden="true"><use href="#i-up"/></svg><b id="dropAllText">Drop to recognise · nothing leaves this computer</b><small>Recognised on this computer from the sheet names, columns and dates</small></div></div>
 
 <aside class="drawer wide" id="dSign" role="dialog" aria-modal="true" aria-labelledby="h-sign" hidden>
   <header><div><h2 id="h-sign">Form</h2><div class="sub" id="signSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>

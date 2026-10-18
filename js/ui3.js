@@ -343,47 +343,82 @@ function localDb() {
 
 // ---------------------------------------------------------------- files
 let fseq = 0;
-async function addFiles(list) {
-  const rest = [];
+/** Build › Import takes every file of the month in one drop. The Genesys exports, the attendance sheets and the IDs file fill
+    their places as before; every other file is recognised (js/recog.js) and goes where it belongs: the Final EVAL to Quality for its
+    month, the KPI file to KPI results, the old Excel of a month to Results › Reconcile, the incentive data of an open past month to
+    the history. A file that could do harm where it lands (the incentive data of a final month, the old deduction workbook as this
+    month's attendance, the old final result as the IDs file) or that the tool is not sure of opens the Recognise files panel.
+    opts: { recog: a verdict already made, force: the route was chosen in the panel }. */
+async function addFiles(list, opts = {}) {
+  const rest = [], later = [];
   for (const f of list) {
     if (/\.msg$/i.test(f.name)) { importDistributionMsg(f); continue; }
     if (await isInterFile(f)) { importInteractions(f); continue; }
+    if (!opts.force && (/^image\//.test(f.type || '') || /\.(png|jpe?g|gif|webp|json|xls)$/i.test(f.name))) { later.push(f); continue; }   // an image, a backup, an old .xls: what is it?
     rest.push(f);
   }
   list = rest;
+  if (later.length) recogFiles(later, 'import');
   const items = [...list].map(f => ({ fid: ++fseq, name: f.name, size: f.size, file: f, t0: Date.now() }));
   if (!items.length) return;
   const snap0 = impSnap(); items.forEach(it => impLogAdd('wait', `Reading ${it.name} (${fmtSize(it.size)})`));
   state.pending.push(...items); renderPending(); renderSteps(); renderImpSide();
   const notes = [];
+  if (!opts.force) await loadRecogLearned();
   const parsed = await Promise.all(items.map(async it => {
-    let dets;
-    try { dets = await parse(it.name, await it.file.arrayBuffer()); }
-    catch (e) { dets = [{ kind: 'error', sheet: it.name, msg: 'Could not read this file. Save it as .csv or .xlsx and try again.' }]; }
+    let dets, rec = opts.recog || null;
+    try {
+      const buf = await it.file.arrayBuffer(); dets = await parse(it.name, buf);
+      // a file that fills no Genesys slot is recognised too (one more read of a small file): the EVAL, the KPI file, the old Excel, a roster…
+      if (!rec && !dets.some(d => KIND_BY[d.kind] && d.data)) { try { const r = await parse(it.name, buf, true, 'recog', recogOpts()); rec = (r && r.rec) || null; } catch (e) { rec = null; } }
+    } catch (e) { dets = [{ kind: 'error', sheet: it.name, msg: 'Could not read this file. Save it as .csv or .xlsx and try again.' }]; }
     state.pending = state.pending.filter(p => p.fid !== it.fid); renderPending();
-    return { it, dets, inc: History.isIncentive(dets.map(d => d.sheet || '')) };
+    return { it, dets, rec, inc: History.isIncentive(dets.map(d => d.sheet || '')) || !!(rec && rec.kind === 'incentiveData' && !opts.force) };
   }));
   const route = routeHistory(parsed);   // Genesys exports of other months go to the history, not to this month's slots
+  const old = [], ask = [], ASK = ['toolReport', 'roster', 'scorecard', 'distribution', 'logo', 'rbHistory', 'dailyCalls', 'dailySm', 'dailyQueue', 'tickets', 'wfmDaily', 'inter'];
   for (const x of parsed) {
-    const { it } = x;
-    if (x.inc) { await addHistoryFile(it, notes); continue; }
+    const { it } = x, R = x.rec, k = R && R.month ? ymKey(R.month.y, R.month.m) : '';
+    if (x.inc) {
+      // the incentive data of a final month, of a month the tool built, or of the month being built would replace it: you choose
+      if (!opts.force && k && (monthLocked(k) || k === monthKey() || (state.history[k] && (state.history[k].tool || state.history[k].auto)))) { ask.push(x); continue; }
+      await addHistoryFile(it, notes); continue;
+    }
     if (x.routed && !x.dets.length) continue;
+    if (R && !opts.force) {
+      const K = Recog.KINDS[R.kind];
+      if (K && K.old) { old.push(x); continue; }   // the old Excel of a month: Results › Reconcile with the old Excel
+      if (R.kind === 'evalBook') { if (await tryEvalFile(it, notes, k || undefined)) continue; }
+      else if (R.kind === 'kpiFile') { if (await tryKpiFile(it, notes)) continue; }
+      else if (ASK.includes(R.kind) || (R.level === 'unsure' && R.kind !== 'unknown' && !x.dets.some(d => (d.kind === 'attendance' && d.data) || (d.kind === 'roster' && d.data && looksLikeIds(d))))) { ask.push(x); continue; }   // a file it does not know stays in Other files, with What is it?
+    }
     if (/\.(xlsx|xlsm)$/i.test(it.name) && !x.dets.some(d => KIND_BY[d.kind] || (d.kind === 'attendance' && d.data)) && await tryEvalFile(it, notes)) continue;
     if (/\.(xlsx|xlsm|csv)$/i.test(it.name) && !x.dets.some(d => KIND_BY[d.kind] || (d.kind === 'attendance' && d.data)) && await tryKpiFile(it, notes)) continue;
-    place(it, x.dets, notes);
+    place(it, x.dets, notes, R);
     if (!state.monthManual) { const g = Core.guessMonth(allDets()); state.y = g.y; state.m = g.m; }
   }
+  const canCmp = RC_ROUTE.compare.can();
+  for (const x of old) notes.push({ routed: x.it.name, text: `${x.it.name}: ${x.rec.label}${x.rec.month ? ` of ${ymLabel(ymKey(x.rec.month.y, x.rec.month.m))}` : ''} → ${canCmp ? 'Results › Reconcile with the old Excel' : 'you choose where it goes'}` });
+  for (const x of ask) notes.push({ routed: x.it.name, kind: 'info', text: `${x.it.name}: ${x.rec ? x.rec.label : 'not recognised'} → you choose where it goes` });
   const gh = route.hist.length ? applyGenesysHistory(route.hist, route.W) : null;
   refresh(); impLogAfter(items, snap0, notes);
   const bad = notes.filter(n => n.bad).length, replaced = notes.filter(n => n.replaced).map(n => n.replaced), sum = notesSummary();
-  const kpiN = notes.filter(n => n.kpi).map(n => n.kpi), idsN = notes.filter(n => n.ids).length, histK = [...new Set(notes.filter(n => n.hist).map(n => n.hist))].sort();
-  const head = (replaced.length ? `Replaced ${replaced.join(', ')}` : bad ? `${plural(items.length - bad, 'file')} read, ${bad} not recognised` : `${plural(items.length, 'file')} read`) + (idsN && state.idsLog.length ? `. ${plural(state.idsLog.length, 'National ID')} added to the roster from the IDs file` : '') + (histK.length ? `. Added ${histK.map(ymLabel).join(', ')} to the history (Review › History)` : '') + (gh ? '. ' + ghistText(gh) : '') + (kpiN.length ? `. KPI file for ${MONTH_LONG[state.m - 1]}: ${kpiN.join('; ')}` : '');
-  toast(sum ? `${head}. Checked: ${sum}.` : `${head}.`, sum ? { label: 'Open', fn: openNotes } : null);
+  const kpiN = notes.filter(n => n.kpi).map(n => n.kpi), evN = notes.filter(n => n.evalK).map(n => n.evalK), idsN = notes.filter(n => n.ids).length, histK = [...new Set(notes.filter(n => n.hist).map(n => n.hist))].sort();
+  // one line for a drop of every kind: '9 files: 4 Genesys exports, 2 attendance sheets, the Final EVAL for Sep 2026 → Quality, 2 old Excel files → Results'
+  const gen = items.filter(it => Object.values(state.slots).some(v => v && v.fid === it.fid)).length, att = items.filter(it => state.attFiles.some(f => f.name === it.name)).length;
+  const kinds = [gen && plural(gen, 'Genesys export'), att && plural(att, 'attendance sheet'), idsN && 'the IDs file', kpiN.length && 'the KPI file', ...evN.map(k => `the Final EVAL for ${ymLabel(k)} → Quality`), histK.length && `${histK.map(ymLabel).join(', ')} → the history`, old.length && `${plural(old.length, 'old Excel file')} → ${canCmp ? 'Results' : 'for you to place'}`, ask.length && `${plural(ask.length, 'file')} for you to place`].filter(Boolean);
+  const head = kinds.length > 1 || old.length || ask.length || evN.length ? `${plural(items.length, 'file')}: ${kinds.join(', ')}${bad ? `, ${bad} not recognised` : ''}${replaced.length ? `. Replaced ${replaced.join(', ')}` : ''}${gh ? '. ' + ghistText(gh) : ''}`
+    : (replaced.length ? `Replaced ${replaced.join(', ')}` : bad ? `${plural(items.length - bad, 'file')} read, ${bad} not recognised` : `${plural(items.length, 'file')} read`) + (idsN && state.idsLog.length ? `. ${plural(state.idsLog.length, 'National ID')} added to the roster from the IDs file` : '') + (histK.length ? `. Added ${histK.map(ymLabel).join(', ')} to the history (Review › History)` : '') + (gh ? '. ' + ghistText(gh) : '') + (kpiN.length ? `. KPI file for ${MONTH_LONG[state.m - 1]}: ${kpiN.join('; ')}` : '');
+  toast(sum ? `${head}. Checked: ${sum}.` : `${head}.`, sum ? { label: 'Open', fn: openNotes } : old.length && canCmp ? { label: 'Open Results', fn: () => { if (state.reconGo && wsMonths().includes(state.reconGo)) state.wsMonth = state.reconGo; setWs('results'); setTimeout(() => { const el = $('reconCard'); if (el) el.scrollIntoView({ block: 'start' }); }, 80); } } : null);
+  if (old.length) { if (canCmp) cmpFiles(old.map(x => x.it.file), '', { stay: true }); else recogOpen(old.map(x => ({ file: x.it.file, v: x.rec })), 'import'); }
+  if (ask.length) recogOpen(ask.map(x => ({ file: x.it.file, v: x.rec || Recog.verdictOf(x.it.name, 'unknown', { level: 'unsure', confidence: 0, reasons: ['Its columns match none of the files the tool reads'] }) })), 'import');
 }
-function place(it, dets, notes) {
+function place(it, dets, notes, rec) {
   const mine = {};
+  if (rec && rec.kind === 'oldDeductionBook') dets = dets.filter(d => d.kind !== 'attendance');   // never this month's attendance unless chosen in the panel
   if (placeAttendance(it, dets)) { dets = dets.filter(d => d.kind !== 'attendance' || !d.data); state.others = state.others.filter(o => o.name !== it.name); if (!dets.length) return; }
-  const idd = dets.find(d => d.kind === 'roster' && d.data && looksLikeIds(d));
+  const idOk = !rec || ['ids', 'roster', 'unknown'].includes(rec.kind) || rec.level === 'unsure';   // the old final result is never the IDs file
+  const idd = idOk ? dets.find(d => d.kind === 'roster' && d.data && looksLikeIds(d)) : null;
   if (idd && !dets.some(d => KIND_BY[d.kind])) { placeIds(it, idd); notes.push({ ids: it.name }); state.others = state.others.filter(o => o.name !== it.name); return; }
   for (const d of dets) {
     if (KIND_BY[d.kind] && d.data) {
@@ -395,7 +430,7 @@ function place(it, dets, notes) {
     } else {
       const bad = d.kind === 'error' || d.kind === 'unknown';
       if (bad) notes.push({ bad: true });
-      state.others.push({ fid: it.fid, name: it.name, kind: d.kind, sheet: d.sheet, msg: d.msg || '', det: d });
+      state.others.push({ fid: it.fid, name: it.name, kind: d.kind, sheet: d.sheet, msg: d.msg || '', det: d, file: it.file });
     }
   }
   for (const k of Object.keys(mine)) mine[k].info = slotScan(k, mine[k].dets);
@@ -668,7 +703,7 @@ function renderOthers() {
       : o.kind === 'adhGrid' ? 'Looks like a finished adherence sheet. Drop the Genesys Monthly Adherence export instead.'
       : o.kind === 'unknown' ? 'The columns do not match any of the four Genesys exports.' : o.msg;
     return `<li><b>${esc(o.name)}</b><span class="pill ${cls}">${esc(OTHER[o.kind] || o.kind)}</span><span class="subtle">${esc(msg)}</span><span class="spacer"></span>
-      ${o.kind === 'roster' ? `<button class="btn sm" data-roster-other="${i}">Import as roster</button>` : ''}<button class="btn sm ghost" data-unother="${i}">Remove</button></li>`;
+      ${o.kind === 'roster' ? `<button class="btn sm" data-roster-other="${i}">Import as roster</button>` : ''}${o.file && o.kind !== 'roster' ? `<button class="btn sm" data-recog-other="${i}">What is it?</button>` : ''}<button class="btn sm ghost" data-unother="${i}">Remove</button></li>`;
   }).join('');
 }
 function renderImportNote() {
@@ -987,12 +1022,16 @@ function rosterCsv() {
   const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || ''])];
   return '﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
-async function importRosterFile(file) {
+async function importRosterFile(file, o = {}) {
   toast(`Reading ${file.name}…`);
-  let dets;
-  try { dets = await parse(file.name, await file.arrayBuffer()); } catch (e) { toast(`Could not read ${file.name}.`); return; }
+  let dets, buf;
+  try { buf = await file.arrayBuffer(); dets = await parse(file.name, buf); } catch (e) { toast(`Could not read ${file.name}.`, { label: 'What is it?', fn: () => recogFiles([file], 'roster') }); return; }
   const r = dets.find(d => d.kind === 'roster');
-  if (!r || !r.data.length) { toast(`No roster found in ${file.name}. It needs a header row with Name and National ID.`); return; }
+  if (!r || !r.data.length) { toast(`No roster found in ${file.name}. It needs a header row with Name and National ID.`, { label: 'What is it?', fn: () => recogFiles([file], 'roster') }); return; }
+  if (!o.recog) {   // the old final result or the incentive data has Name and ID too: importing it would add its people as staff
+    let v = null; try { const x = await parse(file.name, buf, true, 'recog', recogOpts()); v = x && x.rec; } catch (e) { v = null; }
+    if (v && v.level !== 'unsure' && !['roster', 'ids', 'distribution'].includes(v.kind)) { toast(`${file.name} looks like ${v.label}, not a roster: importing it would add ${plural(r.data.length, 'person', 'people')} as Virgin · CC.`); recogOpen([{ file, v }], 'roster'); return; }
+  }
   prepareMerge(r.data, file.name);
 }
 let mergePlan = null;
@@ -1425,7 +1464,8 @@ async function addHistoryFiles(list) {
   refresh();
   const histK = [...new Set(notes.filter(n => n.hist).map(n => n.hist))].sort();
   const parts = [histK.length && `Added ${histK.map(ymLabel).join(', ')} from the incentive files`, r && ghistText(r), other.length && `${plural(other.length, 'file')} not used here (${other.slice(0, 3).join(', ')}${other.length > 3 ? '…' : ''}): drop this month's files on Import`].filter(Boolean);
-  toast(parts.join('. ') + '.', r && r.notes.length ? { label: 'Details', fn: () => toast(r.notes.join(' · ')) } : null);
+  const otherF = items.filter(it => other.includes(it.name)).map(it => it.file);
+  toast(parts.join('. ') + '.', r && r.notes.length ? { label: 'Details', fn: () => toast(r.notes.join(' · ')) } : otherF.length ? { label: 'What is it?', fn: () => recogFiles(otherF, 'history') } : null);
 }
 function dropHistory(k) {
   const old = state.history[k]; delete state.history[k]; state.histVer++;
@@ -1847,7 +1887,7 @@ function incRowsFromModel(md) {
 function readIncentive(sheets) {
   const by = re => sheets.find(s => re.test(normSpace(s.name)));
   const AR = by(/^attendance report$/i), AD = by(/^adherence$/i), AH = by(/^aht$/i);
-  if (!AR && !AD && !AH) return { error: 'This is not an incentive data workbook. It needs the Attendance Report, Adherence and AHT tabs.' };
+  if ((!AR && !AD && !AH) || !History.isIncentive(sheets.map(x => x.name))) return { error: sheets.some(x => /monthly deduction/i.test(normSpace(x.name))) ? 'This is the old Monthly Deduction workbook, not the incentive data workbook.' : 'This is not an incentive data workbook. It needs the Attendance Report, Adherence and AHT tabs.' };
   const head = S => { const i = S.rows.findIndex(r => r && r.some(v => normName(v) === 'id') && r.some(v => /^(name|member care champions)$/i.test(normSpace(v)))); return i; };
   const col = (H, re) => H.findIndex(v => re.test(normSpace(v)));
   const num = v => (typeof v === 'number' ? v : (v != null && v !== '' && Number.isFinite(+v) ? +v : null));
@@ -2346,7 +2386,7 @@ async function readDropped(file) {
   if (!rep.error) return { kind: 'ded', name: file.name, size: file.size, bytes: new Uint8Array(buf), report: rep };
   const inc = readIncentive(sheets);
   if (!inc.error) return { kind: 'inc', name: file.name, size: file.size, bytes: new Uint8Array(buf), rows: inc };
-  toast('This is neither the monthly report nor the incentive data workbook.'); return null;
+  toast(inc.error && /Monthly Deduction/.test(inc.error) ? `${inc.error} Compare it on Results › Reconcile with the old Excel.` : 'This is neither the monthly report nor the incentive data workbook.', { label: 'What is it?', fn: () => recogFiles([file], 'email') }); return null;
 }
 async function loadWorkbook(file) {
   if (!file) return;
@@ -3327,7 +3367,8 @@ $('slots').addEventListener('click', e => {
 });
 $('others').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  const rm = b.getAttribute('data-unother'), ro = b.getAttribute('data-roster-other');
+  const rm = b.getAttribute('data-unother'), ro = b.getAttribute('data-roster-other'), rg = b.getAttribute('data-recog-other');
+  if (rg != null) { const o = state.others[+rg]; if (o && o.file) recogFiles([o.file], 'others'); return; }
   if (rm != null) { const o = state.others[+rm]; state.others.splice(+rm, 1); if (o) impLogAdd('removed', `Removed ${o.name}`); renderOthers(); renderImpSide(); }
   if (ro != null) { const o = state.others[+ro]; prepareMerge(o.det.data, o.name); }
 });
@@ -3808,5 +3849,6 @@ initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
 window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, handChanges, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, rb: () => RB };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
+Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing
 })();

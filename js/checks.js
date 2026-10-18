@@ -18,6 +18,7 @@ function impLogAfter(items, s0, notes) {
   // the "Reading" lines become what happened to each file
   for (let i = IMP_LOG.length - 1; i >= 0; i--) if (IMP_LOG[i].kind === 'wait' && items.some(it => IMP_LOG[i].text.startsWith(`Reading ${it.name} (`))) IMP_LOG.splice(i, 1);
   for (const it of items) {
+    const rt = notes.find(n => n.routed === it.name); if (rt) { impLogAdd(rt.kind || 'read', rt.text); continue; }   // sent to another page (Quality, Results) or to the Recognise panel
     const slots = Object.entries(state.slots).filter(([, v]) => v && v.fid === it.fid);
     for (const [k, v] of slots) {
       const sv = slotView(k), meta = sv ? sv.kv.map(([a, b]) => `${a} ${b}`).join(', ') : '';
@@ -65,7 +66,10 @@ function renderImpSide() {
     W.innerHTML = [...KINDS, ...XKINDS].map(k => `<dt>${esc(k.title)}${k.optional ? ' <small>optional</small>' : ''}</dt><dd>${esc(k.what)}. <span class="cols">${esc(k.cols)}</span>${GX && GX[k.kind] ? `<br><span class="gx">${esc(GX[k.kind])}</span>` : ''}</dd>`).join('')
       + '<dt>Supervisors\' attendance <small>optional</small></dt><dd>Each supervisor\'s sheet (.xlsx or .xlsb), as many as there are. The right month\'s tab is picked by its dates.</dd>'
       + '<dt>IDs file</dt><dd>National ID, Name, Team, Dep for everyone. Kept with the page and used every month until a newer one is dropped.</dd>'
-      + '<dt>KPI file, past incentive files, Teams Distribution (.msg)</dt><dd>The KPI file goes to Review › KPI results; past files go to the history, each to its own month; the Teams Distribution email updates who leads whom (you see who moves before anything is saved).</dd>';
+      + '<dt>KPI file, past incentive files, Teams Distribution (.msg)</dt><dd>The KPI file goes to Review › KPI results; past files go to the history, each to its own month; the Teams Distribution email updates who leads whom (you see who moves before anything is saved).</dd>'
+      + '<dt>The quality team\'s Final EVAL</dt><dd>Goes to Quality for its month (the month in its name, else the month being built); every name is linked to the roster there.</dd>'
+      + '<dt>The old Excel of a month</dt><dd>The old final result, the incentive data workbook and the old deduction workbook go to Results › Reconcile with the old Excel, which explains every difference (the incentive data of an open past month fills its history; of a final month, you choose).</dd>'
+      + '<dt>Not sure?</dt><dd><button class="linkbtn" data-recogpick>Recognise a file</button>: drop or choose anything; the tool says what it is, which month it holds and where it goes, on this computer.</dd>';
   }
 }
 

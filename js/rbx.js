@@ -776,7 +776,7 @@ function rbFieldIn(t) {   // MC Leaders' fields (the analyst's own email): the p
   rbLater(host, () => rbFrame(host.querySelector('iframe.rbprev'), rbHtml(RB.models.leaders, 'leaders')), 300);
 }
 ['dragenter', 'dragover'].forEach(ev => $('wfmRb').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-rbdrop]'); if (z) { e.preventDefault(); z.classList.add('over'); } }));
-['dragleave', 'drop'].forEach(ev => $('wfmRb').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-rbdrop]'); if (z) { e.preventDefault(); z.classList.remove('over'); if (ev === 'drop' && e.dataTransfer && e.dataTransfer.files.length) rbAddFiles([...e.dataTransfer.files]); } }));
+['dragleave', 'drop'].forEach(ev => $('wfmRb').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-rbdrop]'); if (z) { e.preventDefault(); if (ev === 'drop') e.stopPropagation(); z.classList.remove('over'); if (ev === 'drop' && e.dataTransfer && e.dataTransfer.files.length) rbAddFiles([...e.dataTransfer.files]); } }));   // read once: the page's own drop handler does not see it
 
 // ---------------------------------------------------------------- WFM › Daily emails (the WFM manager): the four brand emails, to read, finish and send
 function dmShow() {

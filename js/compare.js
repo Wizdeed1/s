@@ -28,15 +28,16 @@ function rcEntry(name, sheets) {
   return e;
 }
 /** 1-3 old files at once (Results, a drop anywhere on the page, the Recognise panel) */
-async function cmpFiles(files) {
+async function cmpFiles(files, month, o = {}) {
   const got = [];
   for (const f of [...files].slice(0, 6)) {
     let sheets; try { const buf = await f.arrayBuffer(); sheets = await (typeof parseRaw === 'function' ? parseRaw(f.name, buf) : parse(f.name, buf, true)); } catch (e) { toast(`${f.name}: could not read it.`); continue; }
     const e = rcEntry(f.name, sheets);
     if (!e.kind || e.kind === 'att' || ((e.kind === 'final' || e.kind === 'res') && !e.table)) { toast(e.kind === 'att' ? `${f.name} is an attendance report: drop it on Build › Import to use it for the month.` : `${f.name}: not an old final result, incentive data or deduction workbook (no ID or Name column with Final %, Earned SR, Adherence, AHT, Absent or Tardy next to it).`, { label: 'What is it?', fn: () => (typeof recogFiles === 'function' ? recogFiles([f], 'results') : null) }); continue; }
+    if (month && /^\d{4}-\d{2}$/.test(month) && e.month !== month) { e.month = month; e.src = 'chosen'; e.conflict = null; }   // the month chosen in the Recognise panel
     got.push(e);
   }
-  rcAdd(got);
+  rcAdd(got, o);
 }
 async function cmpFile(file) { return cmpFiles([file]); }
 /** the results table pasted from the email (tabs between the cells, as Outlook and Excel copy a table) */
@@ -48,13 +49,16 @@ function rcPasted(text) {
   if (t) { e.month = t; e.src = 'title'; }
   return e.table ? e : null;
 }
-function rcAdd(got) {
+/** o.stay: from Build › Import, which stays where it is (its toast opens Results on the files' month) */
+function rcAdd(got, o = {}) {
   if (!got.length) return;
   const R = state.recon || { files: [] }, cur = wsMonthNow(), have = new Set(wsMonths());
   for (const e of got) if (!e.month) { e.month = cur; e.src = 'page'; }
   state.recon = { files: [...R.files.filter(x => !got.some(g => g.name === x.name)), ...got], at: new Date().toISOString(), by: whoNow() };   // a file dropped again replaces itself
-  let k = cur; const ms = [...new Set(got.map(e => e.month))];
-  if (!ms.includes(cur)) { const m = ms.find(x => have.has(x)); if (m) { state.wsMonth = m; k = m; toast(`${got.find(e => e.month === m).name} holds ${ymLabel(m)}: showing ${ymLabel(m)}.`); } }
+  let k = cur; const ms = [...new Set(got.map(e => e.month))], m = ms.includes(cur) ? cur : ms.find(x => have.has(x));
+  state.reconGo = m || cur;
+  if (o.stay) { for (const x of ms.filter(y => have.has(y))) rcSave(x); return; }
+  if (m && m !== cur) { state.wsMonth = m; k = m; toast(`${got.find(e => e.month === m).name} holds ${ymLabel(m)}: showing ${ymLabel(m)}.`); }
   rcSave(k);
   if (state.ws !== 'results') setWs('results'); else renderWs();
   setTimeout(() => { const el = $('reconCard'); if (el) el.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); }, 80);

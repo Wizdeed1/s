@@ -180,7 +180,7 @@ async function tryEvalFile(it, notes, kForce) {
   const k = (ev.month ? ymKey(ev.month.y, ev.month.m) : '') || kForce || (state.ws === 'quality' ? qMonthNow() : monthKey());   // the month in the file's name wins
   await importEval(ev, k, it.name);
   state.qMonth = k;
-  if (notes) notes.push({ kpi: `${it.name}: Final EVAL for ${ymLabel(k)}` });
+  if (notes) notes.push({ evalK: k, routed: it.name, text: `${it.name}: the Final EVAL for ${ymLabel(k)} → Quality` });
   return true;
 }
 async function importEval(ev, k, fileName) {

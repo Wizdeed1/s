@@ -44,3 +44,34 @@ details[open] > :not(summary) { animation: openIn var(--t-small) var(--ease-out)
   .seg > .sthumb, .steps > .thumb, .tabs > .thumb, .sidebar, .appbar, main, .sitefoot { transition-duration: 1ms !important; }
   .sbnav button[aria-current="page"]::before { animation: none; }
 }
+
+/* ---------------------------------------------------------------- the motion layer (js/motion.js: Lenis and GSAP, built in) */
+/* Lenis: the wheel glides on the page; anything laid over it stops the page underneath */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: clip; }
+/* the header's edge appears once the page moves under it, instead of a line that is always there */
+.appbar { border-bottom-color: transparent; }
+body.scrolled .appbar { border-bottom-color: var(--line); box-shadow: 0 10px 24px -18px rgba(0, 0, 0, .45); }
+/* a panel swiped away leaves from where the finger let go */
+.drawer[data-swiped].out, .sheet-more[data-swiped] { animation: none !important; }
+.drawer, .sheet-more { touch-action: pan-y; }
+.sheet-more::before { content: ""; display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--line-2); margin: 0 auto 10px; }
+.drawer.out { animation-timing-function: var(--ease-out); }
+/* a soft light under the pointer on the dashboard's cards (a fine pointer only) */
+@media (hover: hover) and (pointer: fine) {
+  #dashBody .kpi, #dashBody .qa, .spot { position: relative; }
+  #dashBody .kpi::after, #dashBody .qa::after, .spot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+    background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--accent) 10%, transparent), transparent 65%); transition: opacity var(--t-hover) ease; }
+  #dashBody .kpi.lit::after, #dashBody .qa.lit::after, .spot.lit::after { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { #dashBody .kpi::after, #dashBody .qa::after, .spot::after { display: none; } }
+/* translucency and contrast, as the system asks */
+@media (prefers-reduced-transparency: reduce) {
+  .appbar, .tabbar { background: var(--bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}
+@media (prefers-contrast: more) {
+  :root { --line: var(--line-3); --line-2: var(--ctl-line); }
+  .card, .kpi, .tablewrap, .drawer, .menu { border-color: var(--line-3); }
+}

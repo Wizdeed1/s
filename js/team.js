@@ -303,8 +303,13 @@ function renderTeam() {
     : (wait || emptyCard('Nobody is waiting', 'Agents who make an account and choose you show here for your approval.'));
   const fbar = teamFilterHtml(all, spvSel, items.length);
   body.innerHTML = `${statusBanner(k)}${deadlineBanner(k, cur, spv)}${fbar}<div class="tiles wstiles">${tiles}</div>${tabsHtml}<div class="tpanel" role="tabpanel" id="tp-${tab}" aria-labelledby="tt-${tab}">${panel}</div>`;
-  reveal(body);
+  reveal(body); fitScrollx(body);
 }
+/** a table wider than its card scrolls sideways inside the card (never the page); one that fits keeps its heading under the
+    page header while the page scrolls (a box that scrolls would hold the heading instead) */
+function fitScrollx(root) { (root || document).querySelectorAll('.tteamwrap').forEach(w => { w.classList.remove('scrollx'); w.classList.toggle('scrollx', w.scrollWidth > w.clientWidth + 1); }); }
+let fitRaf = 0;
+try { new ResizeObserver(() => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(() => fitScrollx($('teamBody'))); }).observe($('teamBody')); } catch (e) { /* older browsers: decided at each render */ }
 /** how the Agents cards are ranked: the lowest first, as asked; ties by name */
 const teamNl = (v, d) => (v == null ? d : v);
 const TEAM_SORTS = [

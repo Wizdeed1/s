@@ -45,6 +45,18 @@ for (const [role, ws] of [['wfm', 'dash'], ['wfm', 'team'], ['user', 'build'], [
     }, s.ws);
     await p.waitForTimeout(700);
     await p.screenshot({ path: path.join(out, s.name + '.png'), fullPage: false });
+    // the layout: the page never wider than the screen, and no table heading over its first row (a sticky heading in a box that scrolls)
+    errs.push(...await p.evaluate(() => {
+      const o = [], over = document.documentElement.scrollWidth - innerWidth;
+      if (over > 1) o.push(`layout: the page is ${over}px wider than the screen`);
+      for (const t of document.querySelectorAll('main table')) {
+        const th = t.tHead && t.tHead.querySelector('th'), r = t.tBodies[0] && t.tBodies[0].rows[0];   // the cell: a sticky heading moves its cells, not the thead
+        if (!th || !r || !th.offsetParent || getComputedStyle(t.tHead).display === 'none') continue;
+        const a = th.getBoundingClientRect(), z = r.getBoundingClientRect();
+        if (a.height && z.height && a.bottom > z.top + 1) o.push(`layout: a table heading covers its first row (${t.className || 'table'})`);
+      }
+      return o;
+    }));
     if (errs.length) { bad++; console.log(`✗ ${s.name}\n  ${errs.slice(0, 5).join('\n  ')}`); } else console.log(`✓ ${s.name}`);
     await ctx.close();
   }

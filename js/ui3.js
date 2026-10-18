@@ -591,7 +591,7 @@ function render(o = {}) {
   if (state.step === 'export') renderExport();
   if (state.step === 'email') renderEmail();
   if (!$('dPerson').hidden && state.personId) renderPerson();
-  setSave(); renderToday();
+  setSave(); renderToday(); renderCsat();
 }
 function renderHeader() {
   $('monthBtn').textContent = monthLabel();

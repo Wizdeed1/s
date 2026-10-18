@@ -1,0 +1,23 @@
+/* Quality: the DRC-CSAT box (one score for every agent) and the Final EVAL tables in the quality team's template */
+.csatslot:not([hidden]) { display: block; }
+.csatbox { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: var(--s2) var(--s4); padding: var(--s3) var(--s4); border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); box-shadow: var(--shadow-card); }
+.csatbox.empty { border-style: dashed; border-color: var(--line-2); }
+.csatbox label { display: grid; gap: 2px; min-width: 0; }
+.csatbox label b { font: 600 15px/1.25 var(--display); color: var(--ink); }
+.csatbox label span { font-size: 12px; color: var(--muted); }
+.csatin { display: inline-flex; align-items: center; gap: var(--s2); color: var(--muted); font-weight: 600; }
+.csatin input { width: 88px; height: var(--ctl-lg); text-align: end; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.csatbox > b.num { font: 600 20px/1 var(--text); font-variant-numeric: tabular-nums; }
+.csatbox small { font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+#qualityBar .csatbox { flex: 1 1 420px; padding: var(--s2) var(--s3); box-shadow: none; }
+@media (max-width: 768px) { .csatbox { grid-template-columns: minmax(0, 1fr) auto; } .csatbox small { grid-column: 1 / -1; } }
+
+.qteam + .qteam { margin-top: var(--s5); }
+.qteam > h3.sub { display: flex; align-items: baseline; gap: var(--s2); margin: var(--s1) 0 var(--s2); }
+.qtab th { white-space: normal; vertical-align: bottom; max-width: 150px; line-height: 1.3; }
+.qtab th:first-child { min-width: 150px; }
+.qtab td { padding-inline: 8px; }
+.qtab td.qstatus { text-align: center; }
+.qtab td.qstatus .pill { min-width: 140px; justify-content: center; }
+.qtab .qv { min-width: 0; width: 64px; text-align: end; font-variant-numeric: tabular-nums; }
+.qtab .qc { min-width: 120px; width: 100%; }

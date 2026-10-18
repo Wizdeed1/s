@@ -45,7 +45,7 @@ function eligibility(res, q, adj, k) {
 }
 
 // ---------------------------------------------------------------- KPI values: the quality team's numbers, then the KPI file
-const QUALITY_OWNED = ['qobs', 'fcr', 'csat'];
+const QUALITY_OWNED = ['qobs', 'fcr', 'csat', 'emp', 'qa'];   // the Final EVAL's columns: Final Score, CR, Ticket QA (= Empowerment Utilization), CT's Evaluation score; DRC-CSAT is one number for everyone
 function ownerOf(k) { return k.owner || (QUALITY_OWNED.includes(k.id) ? 'quality' : 'file'); }
 function qRow(k, pid) { const Q = state.quality[k]; return Q && Q.rows ? Q.rows[pid] || null : null; }
 function kpiFileRowK(k, p, r) {
@@ -53,9 +53,12 @@ function kpiFileRowK(k, p, r) {
   const pp = p ? effP(p._id) || p : null, id = Core.cleanId(pp ? pp.nid : r && r.id), names = new Set([pp && normName(pp.name), pp && normName(pp.sys), r && normName(r.n)].filter(Boolean));
   return (id && F.rows.find(x => x.id === id)) || F.rows.find(x => names.has(normName(x.name))) || null;
 }
+/** DRC-CSAT is the same for every agent: one number per month, typed once (null when nobody typed it) */
+function csatAll(k) { const Q = k ? state.quality[k] : null, v = Q ? Q.csat : null; return typeof v === 'number' && Number.isFinite(v) ? v : null; }
 function fileValues(card, k, p, r) {
-  const fr = kpiFileRowK(k, p, r), q = p ? qRow(k, p._id) : null, out = {};
+  const fr = kpiFileRowK(k, p, r), q = p ? qRow(k, p._id) : null, out = {}, csat = csatAll(k);
   for (const kk of card.kpis) if (kk.src === 'file') {
+    if (kk.id === 'csat' && csat != null) { out.csat = csat; continue; }
     const fromQ = q && q.kpi ? q.kpi[kk.id] : null, fromF = Kpi.fileValue(kk, fr && fr.cols);
     out[kk.id] = ownerOf(kk) === 'quality' ? (fromQ != null ? fromQ : fromF) : (fromF != null ? fromF : fromQ);
   }

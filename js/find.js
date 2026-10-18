@@ -212,7 +212,7 @@ function findPages(role) {
     add('meobj', 'My objections', 'objection|objections|complaint|dispute|wrong number|not right|اعتراض', 'My page', () => { setWs('me'); scrollTo_('#meObj'); });
     add('memtd', 'This month so far', 'this month|month to date|so far|projection|projected|forecast|mtd', 'My page', () => { setWs('me'); scrollTo_('#meMtd'); });
   }
-  add('today', 'Today: what is mine to do', 'today|to do|todo|my tasks|what to do|tasks', 'Today', () => { const u = Auth.user(); if (u) lsSet('mc-today-hide:' + u.id, ''); const h = todayHome(); if (h) { if (state.ws !== h) setWs(h); else if (h === 'build') setStep('import'); } renderToday(); scrollTo_('#today'); });
+  add('today', 'Notifications: what is mine to do, and the deadlines', 'today|to do|todo|my tasks|what to do|tasks|deadlines|due|late|notifications|bell', 'Today', () => openBell());
   add('help', 'How to use', 'help|how to|guide|manual|instructions', 'Help', () => openDrawer('dHelp'));
   if (Auth.isAdmin && Auth.isAdmin()) add('accounts', 'Manage accounts', 'accounts|users|roles|passwords|reset password|approve accounts', 'Admin', () => Auth.openAccounts());
   if (Auth.user()) add('password', 'Change my password', 'change password|password|new password', 'Account', () => Auth.change());

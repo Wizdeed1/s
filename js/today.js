@@ -112,23 +112,46 @@ function tickWelcome() {
   el.textContent = `${date} · ${time}`; el.dateTime = d.toISOString();
 }
 setInterval(() => { if (!document.hidden) tickWelcome(); }, 1000);
-function renderToday() { try { renderTodayNow(); } catch (e) { const el = $('today'); if (el) { el.hidden = true; el.innerHTML = ''; } try { console.error('[MC] Today:', e); } catch (x) { /* none */ } } }
-function renderTodayNow() {
-  const el = $('today'); if (!el) return;
-  const u = Auth.user(), r = roleNow(), home = todayHome();
-  const show = !!u && r !== 'pending' && state.ws === home && (home !== 'build' || state.step === 'import') && (r === 'agent' ? !!(state.me && state.me.months) : state.rosterReady);
-  if (!show) { el.hidden = true; el.innerHTML = ''; return; }
-  let L = []; try { L = todayItems(); } catch (e) { L = []; }
-  langApply();
-  const n = L.length, cnt = n === 1 ? T('1 thing') : T('{n} things', { n }), late = L.filter(x => x.cls === 'late').length;
-  const d = new Date(), dt = langNow() === 'ar' ? `${AR_DAY[Core.weekday(d.getFullYear(), d.getMonth() + 1, d.getDate())] || ''} ${d.getDate()} ${AR_MON[d.getMonth()]}` : `${Core.weekday(d.getFullYear(), d.getMonth() + 1, d.getDate())} ${d.getDate()} ${MONTH_LONG[d.getMonth()]}`;
-  el.hidden = false;
-  if (todayHidden()) { el.innerHTML = `<div class="todaymini"><b>${esc(T('Today'))}</b><span>${esc(n ? cnt : T('Nothing for you today.'))}${late ? ` · <span class="bad">${late} late</span>` : ''}</span><button class="linkbtn" data-today="show">${esc(T('Show'))}</button></div>`; return; }
-  el.innerHTML = `<section class="card todaycard" aria-labelledby="h-today"><div class="cardhead"><div><h2 id="h-today">${esc(T('Today'))} <span class="tdate">· ${esc(dt)}</span></h2><p class="cap">${esc(n ? cnt : T('Nothing for you today.'))}${late ? ` · <span class="bad">${late} late</span>` : ''}</p></div>${n ? `<button class="btn sm ghost" data-today="hide">${esc(T('Hide for today'))}</button>` : ''}</div>
-    ${n ? `<ul class="tlist">${L.slice(0, 9).map(x => `<li class="${x.cls}"><span class="tdot" aria-hidden="true"></span><span class="tli"><b>${esc(x.t)}</b>${x.s ? `<small dir="auto">${esc(x.s)}</small>` : ''}</span>${x.go ? `<button class="btn sm${x.cls === 'late' ? ' primary' : ''}" data-tgo="${esc(x.go)}">${esc(x.btn || T('Open'))}</button>` : ''}</li>`).join('')}</ul>${n > 9 ? `<p class="hint">${n - 9} more…</p>` : ''}` : ''}</section>`;
-  // once a day: a reminder of what is late
-  if (late && u && lsGet('mc-today-toast:' + u.id) !== todayIso()) { lsSet('mc-today-toast:' + u.id, todayIso()); const f = L.find(x => x.cls === 'late'); setTimeout(() => toast(`${plural(late, 'thing')} late: ${f.t}`, f.go ? { label: 'Open', fn: () => todayGo(f.go) } : undefined), 600); }
+function renderToday() { try { renderTodayNow(); } catch (e) { try { console.error('[MC] Today:', e); } catch (x) { /* none */ } } }
+/** what is mine to do, and when (late, soon, to do, for information): the bell's list, never a card on the page */
+function todoNow() { try { return todayItems(); } catch (e) { return []; } }
+const todoOn = () => { const u = Auth.user(), r = roleNow(); return !!u && r !== 'pending' && (r === 'agent' ? !!(state.me && state.me.months) : state.rosterReady); };
+/** the bell: shown to everyone signed in; its number is what is late or due soon, plus the checks waiting for a builder */
+function bellSync() {
+  const bell = $('bell'), u = Auth.user(); if (!bell) return [];
+  bell.hidden = !u || roleNow() === 'pending';
+  if (!todoOn()) return [];
+  const L = todoNow(), due = L.filter(x => x.cls === 'late' || x.cls === 'soon').length;
+  let checks = 0; if (isBuilder()) try { checks = checkNotes().filter(n => n.sev === 'decide' || n.sev === 'warn').length; } catch (e) { checks = 0; }
+  const n = due + checks, b = $('bellN'); if (b) { b.textContent = n; b.hidden = !n; }
+  const ar = roleNow() === 'agent' && langNow() === 'ar';
+  bell.setAttribute('aria-label', ar ? (n ? `الإشعارات: ${n}` : 'الإشعارات') : n ? `Notifications: ${plural(n, 'thing')} to look at` : 'Notifications');
+  bell.classList.toggle('late', L.some(x => x.cls === 'late'));
+  return L;
 }
+function renderTodayNow() {
+  const el = $('today'); if (el) { el.hidden = true; el.innerHTML = ''; }   // deadlines are notifications now: no card on any page
+  const L = bellSync(), u = Auth.user();
+  if (!$('dNotes').hidden && openId === 'dNotes') renderBellTodo(L);
+  // once a day: a reminder of what is late
+  const late = L.filter(x => x.cls === 'late');
+  if (late.length && u && lsGet('mc-today-toast:' + u.id) !== todayIso()) { lsSet('mc-today-toast:' + u.id, todayIso()); const f = late[0]; setTimeout(() => toast(`${plural(late.length, 'thing')} late: ${f.t}`, f.go ? { label: 'Open', fn: () => todayGo(f.go) } : { label: 'See all', fn: openBell }), 600); }
+}
+/** the bell's drawer: "To do" first (everyone), then the builders' checks */
+function renderBellTodo(L0) {
+  const box = $('notesTodo'); if (!box) return;
+  const L = L0 || todoNow(), r = roleNow(), ar = r === 'agent' && langNow() === 'ar', b = isBuilder();
+  const d = new Date(), dt = ar ? `${AR_DAY[Core.weekday(d.getFullYear(), d.getMonth() + 1, d.getDate())] || ''} ${d.getDate()} ${AR_MON[d.getMonth()]}` : `${Core.weekday(d.getFullYear(), d.getMonth() + 1, d.getDate())} ${d.getDate()} ${MONTH_LONG[d.getMonth()]}`;
+  const late = L.filter(x => x.cls === 'late').length, soon = L.filter(x => x.cls === 'soon').length;
+  $('dNotes').dir = ar ? 'rtl' : 'ltr'; $('dNotes').lang = ar ? 'ar' : 'en';
+  $('h-notes').textContent = ar ? 'الإشعارات' : b ? 'Notifications and checks' : 'Notifications';
+  $('notesBody').hidden = !b;
+  const sum = !L.length ? (ar ? 'لا شيء مطلوب منك اليوم.' : T('Nothing for you today.')) : [`${L.length === 1 ? T('1 thing') : T('{n} things', { n: L.length })}`, late ? (ar ? `${late} متأخر` : `${late} late`) : '', soon ? (ar ? `${soon} قريب` : `${soon} due soon`) : ''].filter(Boolean).join(' · ');
+  if (!b) $('notesSub').textContent = sum;
+  box.innerHTML = `<section class="sec todosec" aria-labelledby="h-todo"><h3 id="h-todo">${esc(ar ? 'المطلوب منك' : 'To do')} <span class="tdate">· ${esc(dt)}</span>${L.length ? ` <span class="badge${late || soon ? ' n' : ''}">${L.length}</span>` : ''}</h3>
+    ${L.length ? `<ul class="tlist">${L.slice(0, 30).map(x => `<li class="${x.cls}"><span class="tdot" aria-hidden="true"></span><span class="tli"><b dir="auto">${esc(x.t)}</b>${x.s ? `<small dir="auto">${esc(x.s)}</small>` : ''}</span>${x.go ? `<button class="btn sm${x.cls === 'late' ? ' primary' : ''}" data-tgo="${esc(x.go)}">${esc(T(x.btn || 'Open'))}</button>` : ''}</li>`).join('')}</ul>` : `<p class="subtle">${esc(sum)}</p>`}</section>`;
+}
+function openBell() { openNotes(); renderBellTodo(); }
 const scrollTo_ = sel => setTimeout(() => { const el = document.querySelector(sel); if (el) { el.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); if (el.animate && !RM()) el.animate([{ boxShadow: '0 0 0 3px var(--focus)' }, { boxShadow: '0 0 0 0 transparent' }], { duration: 1400 }); } }, 120);
 /** the month a line is about, chosen on the page before going there; true when it changed */
 function todayMonth(k) {
@@ -161,6 +184,7 @@ function todayGo(go) {
 }
 document.addEventListener('click', e => {
   const t = e.target; if (!t.closest) return;
-  const g = t.closest('[data-tgo]'); if (g) { todayGo(g.dataset.tgo); return; }
+  const g = t.closest('[data-tgo]'); if (g) { if (g.closest('#dNotes')) closeDrawer(); todayGo(g.dataset.tgo); return; }
   const h = t.closest('[data-today]'); if (h) { const u = Auth.user(); if (u) lsSet('mc-today-hide:' + u.id, h.dataset.today === 'hide' ? todayIso() : ''); renderToday(); }
 });
+$('bell').addEventListener('click', () => setTimeout(() => renderBellTodo(), 0));   // openNotes (ui3.js) opens the drawer; the list goes in once it is open

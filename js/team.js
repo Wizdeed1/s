@@ -408,7 +408,7 @@ function deadlineBanner(k, spvPid, mine) {
   const C = state.cycles[k] || {}, dl = C.deadline; if (!dl && !spvPid) return '';
   const done = spvPid ? state.spvDone[`${k}_${spvPid}`] : null;
   if (done) return `<div class="wsstatus final"><span class="dot"></span><div><b>${mine ? 'You finished your team' : `${esc(done.name || supName(spvPid))} finished the team`}</b> · ${esc(fmtWhen(done.at))}, ${done.held}/${done.n} one-to-ones held${done.signed != null ? `, ${done.signed} signed by the agent` : ''}.${mine ? ' The senior manager can see it.' : ''}</div></div>`;
-  if (!dl) return '';
+  return '';   // the due date itself is a notification (the bell), not a banner on the page
   const days = Math.ceil((new Date(dl + 'T23:59:59') - Date.now()) / 86400000), over = days < 0;
   return `<div class="wsstatus ${over ? 'late' : days <= 2 ? 'soon' : 'draft'}"><span class="dot"></span><div><b>One-to-ones due ${esc(Forms.fmtDate(dl))}</b> · ${over ? `${plural(-days, 'day')} late` : days === 0 ? 'today' : `${plural(days, 'day')} left`}. ${mine ? 'Finish my team opens when every agent\'s one-to-one is done (for an agent with an account, when you sent them the final); the senior manager is then told.' : 'Set by the senior manager.'}</div></div>`;
 }

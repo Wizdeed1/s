@@ -182,15 +182,14 @@ function renderDash() {
   if ($('today').closest('#dashBody')) $('main').prepend($('today'));   // Today lives in the dashboard's side column; kept safe while it is drawn again
   if (!state.rosterReady) { el.innerHTML = `<div class="dglow" aria-hidden="true"></div>${head}<div class="kpis">${DASH_KPIS.map(K => `<div class="kpi sk-card"><span class="kl">${esc(K.label)}</span><span class="sk w40"></span><span class="sk w70"></span></div>`).join('')}</div><div class="card"><span class="sk tall"></span></div>`; return; }
   if (!months.length || !k) {
-    el.innerHTML = `<div class="dglow" aria-hidden="true"></div>${head}<div class="dgrid"><div class="dmain"><div class="card empty"><b>No months yet</b>${isBuilder() ? 'Build the month on Build › Import: it is saved to the shared history as you work, and every number here comes from it.' : 'The WFM analysts build the month from the Genesys exports; it appears here as soon as they start.'}${isBuilder() ? '<div class="acts" style="justify-content:center;margin-top:14px"><button class="btn primary" data-tgo="step:import">Go to Import</button></div>' : ''}</div></div><aside class="dside"><div id="dashToday"></div>${dashData()}</aside></div>`;
-    $('dashToday').appendChild($('today')); return;
+    el.innerHTML = `<div class="dglow" aria-hidden="true"></div>${head}<div class="dgrid"><div class="dmain"><div class="card empty"><b>No months yet</b>${isBuilder() ? 'Build the month on Build › Import: it is saved to the shared history as you work, and every number here comes from it.' : 'The WFM analysts build the month from the Genesys exports; it appears here as soon as they start.'}${isBuilder() ? '<div class="acts" style="justify-content:center;margin-top:14px"><button class="btn primary" data-tgo="step:import">Go to Import</button></div>' : ''}</div></div><aside class="dside">${dashData()}</aside></div>`;
+    return;
   }
   const intro = !dashPlayed && !RM(); dashPlayed = true;
   el.innerHTML = `<div class="dglow" aria-hidden="true"></div>${head}
     <div class="kpis" role="list" aria-label="${esc(ymLabel(k))} at a glance">${dashKpisHtml(k, months)}</div>
     <div class="dgrid"><div class="dmain">${safeHtml(dashTrendCard, months)}${safeHtml(dashAttention, k)}${safeHtml(dashActivity, k)}</div>
-    <aside class="dside" aria-label="Today and the month"><div id="dashToday"></div>${safeHtml(dashClose, k)}${safeHtml(dashData)}</aside></div>`;
-  $('dashToday').appendChild($('today'));
+    <aside class="dside" aria-label="The month">${safeHtml(dashClose, k)}${safeHtml(dashData)}</aside></div>`;
   el.querySelectorAll('.kpi').forEach(x => x.setAttribute('role', 'listitem'));
   if (intro) { el.classList.add('intro'); clearTimeout(dashIntroT); dashIntroT = setTimeout(() => el.classList.remove('intro'), 1500); }
 }

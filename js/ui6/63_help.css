@@ -1,0 +1,11 @@
+/* How to use: each department's steps */
+.deptguide { display: grid; gap: var(--s3); }
+.depttabs { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; padding: 4px; border-radius: var(--r-card); }
+.depttabs button { flex: 0 0 auto; min-height: 32px; }
+.depttabs button small { margin-inline-start: 4px; padding: 0 5px; border-radius: var(--r-chip); background: var(--accent-soft); color: var(--accent-text); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.deptsteps { display: grid; gap: var(--s2); margin: 0; padding-inline-start: 22px; counter-reset: none; }
+.deptsteps li { padding-inline-start: 4px; line-height: 1.55; }
+.deptsteps li::marker { color: var(--accent-text); font-weight: 600; }
+.deptsteps[dir="rtl"] { font-size: 15px; line-height: 1.75; }
+.deptar { margin-top: var(--s2); }
+.deptar summary { cursor: pointer; color: var(--muted); font-weight: 600; }

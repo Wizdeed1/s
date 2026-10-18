@@ -53,6 +53,7 @@ function pageTitleNow() {
   const h = $('h-' + w); return (h && normSpace(h.textContent)) || WS_LABEL[w] || '';
 }
 function syncHead() {
+  try { renderDeptGuide(); } catch (e) { /* the guide is drawn once the page has started */ }
   const t = pageTitleNow(), r = roleNow(), u = Auth.user();
   $('pageTitle').textContent = t;
   const tag = $('roleTag'); tag.hidden = !u || r === 'pending'; tag.textContent = ROLE_NAME[r] || '';
@@ -252,3 +253,74 @@ document.addEventListener('click', e => {
   el.scrollIntoView({ block: 'start', behavior: RM() ? 'auto' : 'smooth' });
   const f = el.querySelector('h2, summary'); if (f) { f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
 });
+
+// ---------------------------------------------------------------- How to use: each department's steps, the signed-in role first
+const DEPT = [
+  ['user', 'WFM analyst', [
+    'Every morning, <b>WFM › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM › Emails</b>.',
+    '<b>WFM › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
+    'At month end, <b>Build › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' attendance sheets, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
+    'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
+    '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
+    '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook; the incentive data workbook is made too.',
+    '<b>Email</b>: send the deduction for review, then the final after the review deadline (it lists what changed).',
+    'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
+  ['wfm', 'WFM manager', [
+    'Every morning, <b>WFM › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them.',
+    '<b>WFM › Interactions</b>: add the week\'s interactions export.',
+    '<b>WFM › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
+    '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
+    'The <b>Dashboard</b> and <b>WFM › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
+  ['senior', 'Senior manager', [
+    '<b>Supervisors</b>: set the one-to-ones deadline and the month close days, and keep the <b>incentive rules</b>: the scorecards, the bases, who is eligible and how the days and KPIs are counted.',
+    '<b>Results</b>: decide on eligibility where the rules say otherwise, adjust a result where needed (every change is logged), and <b>Finalize</b> the month.',
+    '<b>Results › Reconcile with the old Excel</b>: drop the old final result (and the incentive or deduction workbook). The tool lines up every person and says why each number differs: an own base, an absence rule, a typing error in the old file. Each has a fix.',
+    'Send the four emails from Supervisors: one-to-ones are ready, results for review to the VP, and the final result form.',
+    'The <b>bell</b> lists what is late or due soon.']],
+  ['spv', 'Supervisor', [
+    '<b>Team</b> shows your own agents with their numbers for the month; the header\'s month picker changes the month.',
+    '<b>One-to-ones</b>: hold each one, fill in the form and send it to the agent; they add their part and sign the final.',
+    '<b>Attendance</b>: correct a day when Genesys is wrong (only an agent\'s supervisor can).',
+    '<b>Objections</b>: answer your agents\' objections before the deadline, and correct the accepted ones.',
+    '<b>Waiting for approval</b>: approve new agent accounts and link each one to their name.',
+    'When every one-to-one is done, <b>Finish your team</b>: the senior manager is told straight away. The <b>bell</b> lists what is due.']],
+  ['quality', 'Quality team', [
+    '<b>Quality</b>: drop the month\'s Final EVAL in your template: Agent Name, Call QA, Ticket QA / Empowerment Utilization, Call Reason &amp; FCR Accuracy, Final Score, Critical Error and Number of Critical Errors (CT: Evaluation score). The analysts can also drop it on Build › Import with everything else.',
+    'Ticket QA counts as Empowerment Utilization, CR as Call Reason &amp; FCR Accuracy and the Final Score as Quality Observations (CT\'s Evaluation score as QA Evaluation).',
+    'Check the names the tool linked and link the ones left; the answers are remembered next month.',
+    'Type <b>DRC-CSAT</b> once for the month: it counts for every agent.',
+    'Correct any score in the table (logged). An Attitude critical error stops the incentive.',
+    '<b>EVAL template with IDs</b> gives you a workbook in your template with every agent\'s National ID, so each row links by its ID.']],
+  ['agent', 'Agent', [
+    '<b>My page</b> shows your adherence, KPI results, attendance and one-to-ones. Change the month with the <b>month box</b> at the top (the arrows, or the list).',
+    'One-to-ones: fill in your part and send it to your supervisor; sign the final when it arrives.',
+    'If a number is not right, <b>object</b> within the window shown on the page.',
+    'The <b>bell</b> tells you what you need to do (sign, answer).',
+    'The <b>العربية</b> button shows your page in Arabic.'], [
+    '<b>صفحتي</b> تعرض التزامك بالجدول ونتائج مؤشرات الأداء والحضور والاجتماعات الفردية. غيّر الشهر من <b>مربع الشهر</b> في الأعلى (الأسهم أو القائمة).',
+    'الاجتماعات الفردية: املأ جزأك وأرسله إلى مشرفك، ثم وقّع على القرار النهائي عند وصوله.',
+    'إذا كان هناك رقم غير صحيح، <b>اعترض</b> خلال المدة الظاهرة في الصفحة.',
+    '<b>الجرس</b> يخبرك بما عليك فعله (توقيع أو رد).',
+    'زر <b>English</b> يعرض صفحتك بالإنجليزية.']],
+  ['admin', 'Admin', [
+    '<b>Manage accounts</b> (the account menu): give each person a role, link supervisors to their names and choose their agents, reset passwords and open access again.',
+    '<b>Settings</b>: targets, the deduction scope, the logo, the sign-in lock time, and the scorecards.',
+    'Admins can do everything the analysts do on Build and see every page.',
+    'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome.']],
+];
+let deptSel = '', deptRole = '';
+function renderDeptGuide(force) {
+  const tabs = $('deptTabs'), body = $('deptBody'); if (!tabs || !body) return;
+  const r = roleNow(); if (!force && deptRole === r && tabs.childElementCount) return;
+  if (deptRole !== r) { deptRole = r; deptSel = DEPT.some(d => d[0] === r) ? r : 'user'; }
+  const D = DEPT.find(d => d[0] === deptSel) || DEPT[0], ar = deptSel === 'agent' && langNow() === 'ar' && D[3];
+  tabs.innerHTML = DEPT.map(([id, l]) => `<button type="button" role="tab" data-dept="${id}" aria-selected="${id === deptSel}" aria-pressed="${id === deptSel}"${id === deptSel ? '' : ' tabindex="-1"'}>${esc(l)}${id === r ? ' <small>you</small>' : ''}</button>`).join('');
+  body.innerHTML = `<ol class="deptsteps"${ar ? ' dir="rtl" lang="ar"' : ''}>${(ar ? D[3] : D[2]).map(t => `<li>${t}</li>`).join('')}</ol>${D[3] && !ar ? `<details class="deptar"><summary>بالعربية</summary><ol class="deptsteps" dir="rtl" lang="ar">${D[3].map(t => `<li>${t}</li>`).join('')}</ol></details>` : ''}`;
+}
+$('deptTabs').addEventListener('click', e => { const b = e.target.closest('[data-dept]'); if (!b) return; deptSel = b.dataset.dept; renderDeptGuide(true); const n = $('deptTabs').querySelector(`[data-dept="${deptSel}"]`); if (n) n.focus(); });
+$('deptTabs').addEventListener('keydown', e => {
+  if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(e.key)) return; e.preventDefault();
+  const i = DEPT.findIndex(d => d[0] === deptSel), n = DEPT.length, j = e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + n) % n;
+  deptSel = DEPT[j][0]; renderDeptGuide(true); const b = $('deptTabs').querySelector(`[data-dept="${deptSel}"]`); if (b) b.focus();
+});
+renderDeptGuide(true);

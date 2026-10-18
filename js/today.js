@@ -175,7 +175,7 @@ function todayGo(go) {
   if (kind === 'board') { state.teamTab = 'one'; here('team'); renderWs(); scrollTo_('#teamBody .board'); return; }
   if (kind === 'approvals') { state.teamTab = 'wait'; here('team'); renderWs(); scrollTo_('#teamBody .approvals'); return; }
   if (kind === 'finish') { here('team'); setTimeout(() => { const b = document.querySelector('#teamBar [data-spvdone]'); if (b) { b.focus(); b.scrollIntoView({ block: 'center' }); } }, 60); return; }
-  if (kind === 'cal') { here('cycle'); scrollTo_('#calCard'); return; }
+  if (kind === 'cal') { state.calOpen = true; here('cycle'); if (state.ws === 'cycle') renderWs(); scrollTo_('#calCard'); return; }   // the steps, unfolded
   if (kind === 'qnames') { here('quality'); scrollTo_('#qualityBody .qnames'); return; }
   if (kind === 'accounts') { Auth.openAccounts(); return; }
   if (kind === 'sign') { openSign(x); return; }

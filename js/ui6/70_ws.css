@@ -246,7 +246,20 @@ textarea.cell[data-signers] { width: 100%; min-height: 86px; resize: vertical; p
 .spvcard .bigpct span { font-size: 12px; color: var(--muted); font-weight: 500; }
 .spvcard tr.muted td { color: var(--muted); }
 .approvals { border-color: var(--info-line) !important; background: color-mix(in srgb, var(--info-bg) 50%, var(--panel)); }
-/* the month close */
+/* the top of the Supervisors page: each supervisor and how many agents are finished */
+.sdlist { list-style: none; margin: 0; padding: 0; display: grid; }
+.sdlist li { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(80px, 2fr) minmax(150px, auto); align-items: center; gap: var(--s4); padding: 10px 0; border-top: 1px solid var(--line); }
+.sdlist li:first-child { border-top: 0; }
+.sdlist .nm { justify-self: start; font-weight: 600; }
+.sdlist .pbar { display: block; width: 100%; height: 6px; border-radius: 3px; }
+.sdlist .sdn { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: end; }
+.sdlist .sdn b { color: var(--ink); }
+.sdlist li.all .pbar i { background: var(--good); }
+.sdlist li.all .sdn, .sdlist li.all .sdn b { color: var(--good); }
+@media (max-width: 640px) { .sdlist li { grid-template-columns: minmax(0, 1fr) auto; gap: 6px var(--s3); } .sdlist .pbar { grid-column: 1 / -1; grid-row: 2; } }
+/* the month close (folded on the Supervisors page) */
+details.calcard > summary { font-weight: 600; }
+details.calcard > .cap { margin: var(--s3) 0; }
 .calsum { font-size: 13.5px; color: var(--ink-2); } .calsum b { font: 600 22px/1 var(--text); font-variant-numeric: tabular-nums; }
 .calbar { display: flex; gap: 2px; margin: -4px 0 14px; } .calbar i { flex: 1; height: 4px; border-radius: 2px; background: var(--fill-2); }
 .calbar i.done { background: var(--good); } .calbar i.late { background: var(--bad); } .calbar i.soon { background: var(--warn); } .calbar i.past { opacity: .45; }

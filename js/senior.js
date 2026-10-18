@@ -66,7 +66,7 @@ function renderCycle() {
   // progress and scorecards
   const card = spvCardNow(), its = card.items, base = +card.base || 0;
   const manual = its.filter(it => it.src === 'manual');
-  const prog = `<div class="card"><div class="cardhead"><div><h2>Supervisors · ${esc(ymLabel(k))}</h2><p class="cap">One-to-ones held and signed per team, whether the supervisor pressed Finish, and their scorecard.${manual.length && can ? ' Type the values of the items you score yourself.' : ''}</p></div></div>
+  const prog = `<div class="card"><div class="cardhead"><div><h2>Supervisor results · ${esc(ymLabel(k))}</h2><p class="cap">One-to-ones held and signed per team, whether the supervisor pressed Finish, and their scorecard.${manual.length && can ? ' Type the values of the items you score yourself.' : ''}</p></div></div>
     <div class="tablewrap restab"><table><thead><tr><th>Supervisor</th><th class="r">Agents</th><th class="r">One-to-ones</th><th class="r">Signed</th><th>Finished</th>${its.map(it => `<th class="r" title="${esc(it.name)} · ${+(it.weight * 100).toFixed(1)}%">${esc(it.name.length > 18 ? it.name.slice(0, 17) + '…' : it.name)}</th>`).join('')}<th class="r">Final</th>${base ? '<th class="r">Earned SR</th>' : ''}</tr></thead><tbody>
     ${R.map(r => `<tr><td><button class="linkbtn nm" data-cyc="team" data-spv="${esc(r.pid)}">${esc(r.name)}</button>${r.email ? '' : ' <span class="pill warn" title="No email in the roster">no email</span>'}</td><td class="r">${r.team.length}</td><td class="r">${progress(r.held, r.team.length)}</td><td class="r num">${r.signed}</td>
       <td>${r.done ? `<span class="pill good">${esc(fmtWhen(r.done.at))}</span>` : `<span class="pill${dl && days < 0 ? ' bad' : ''}">Not yet</span>`}</td>
@@ -92,7 +92,7 @@ function renderCycle() {
   // activity
   const log = Object.values(state.cycleLog || {}).filter(x => x && x.k === k).sort((a, b) => String(b.at).localeCompare(String(a.at)));
   const act = log.length ? `<details class="card wslog"><summary>Activity · ${plural(log.length, 'entry', 'entries')}</summary><ul class="ilist">${log.slice(0, 200).map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
-  body.innerHTML = `${statusBanner(k)}${safeHtml(calCardHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${editor}${contacts}${can ? safeHtml(handChangesHtml, k) : ''}${act}`;
+  body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${safeHtml(calCardHtml, k)}${editor}${contacts}${can ? safeHtml(handChangesHtml, k) : ''}${act}`;
   if (canCycle() && unseenDone().length && state.ws === 'cycle') { lsSet(seenKey(), new Date().toISOString()); cycleBadge(); }
   reveal(body);
 }

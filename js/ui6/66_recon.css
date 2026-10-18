@@ -1,0 +1,42 @@
+/* Results › Reconcile with the old Excel: the files, the causes in groups, the fixes */
+.cmpdrop.slim { min-height: 0; padding: 10px 12px; }
+.rpaste { margin-top: var(--s3); }
+.rpaste > summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--accent-text); width: fit-content; }
+.rpaste textarea { width: 100%; min-height: 96px; margin-top: var(--s2); font: 400 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 18; resize: vertical; }
+.rchips { list-style: none; margin: var(--s4) 0 0; padding: 0; display: grid; gap: var(--s2); }
+.rchip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--sunk); }
+.rchip.warn { border-color: var(--warn-line, var(--line-2)); background: color-mix(in srgb, var(--warn-bg, var(--sunk)) 55%, var(--sunk)); }
+.rchip > svg { flex: none; color: var(--muted); }
+.rchip .rcf { display: grid; gap: 1px; min-width: 0; flex: 1 1 240px; }
+.rchip .rcf b { font-weight: 600; overflow-wrap: anywhere; }
+.rchip .rcf small { color: var(--muted); font-size: 12.5px; }
+.rchip .rowbtn { margin-inline-start: auto; }
+.cmpcard .cmptiles { margin-top: var(--s4); }
+.rgroup { margin-top: var(--s4); border: 1px solid var(--line); border-radius: var(--r-card); padding: 0 var(--s4); background: var(--surface); }
+.rgroup > summary { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) 0; cursor: pointer; list-style: none; font-weight: 600; }
+.rgroup > summary::-webkit-details-marker { display: none; }
+.rgroup > summary::after { content: ""; margin-inline-start: auto; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform var(--t-small) var(--ease-out); }
+.rgroup[open] > summary::after { transform: rotate(-135deg); }
+.rgroup > summary .cnt { font: 600 12px/1 var(--text); padding: 3px 7px; border-radius: 999px; background: var(--fill-2); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.rgroup > .hint { margin: 0 0 var(--s3); max-width: 78ch; }
+.rgroup .tablewrap { margin: 0 calc(-1 * var(--s4)); border-top: 1px solid var(--line); }
+.rgroup:not([open]) { padding-bottom: 0; }
+.rgroup[open] { padding-bottom: var(--s4); }
+.rgroup .restab th.rck, .rgroup .restab td.rck { width: 40px; min-width: 0; padding-inline: 16px 0; }   /* the tick column stays narrow (the table's first column is wide elsewhere) */
+.rgroup .restab td.rck + td { white-space: normal; min-width: 160px; }
+.rgroup td.rck input, .rgroup th.rck input { accent-color: var(--accent); width: 16px; height: 16px; }
+.ractions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s3); }
+.ractions small { margin-inline-start: var(--s2); }
+.rfits { border: 0; padding: 0; margin: var(--s4) 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.rfits legend { font-weight: 600; font-size: 13px; margin-bottom: var(--s2); padding: 0; }
+.rfits label.chip { gap: 6px; cursor: pointer; font: 500 12.5px/1.2 var(--text); }
+.rfits label.chip input { accent-color: var(--accent); }
+.rfits small { flex-basis: 100%; color: var(--muted); font-size: 12.5px; line-height: 1.45; margin-top: 2px; }
+.rprev { margin-top: var(--s3); }
+.rprev > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent-text); width: fit-content; }
+.rprev .tablewrap { margin-top: var(--s2); }
+@media (max-width: 640px) {
+  .rgroup { padding: 0 var(--s3); }
+  .rgroup .tablewrap { margin: 0 calc(-1 * var(--s3)); }
+  .ractions .btn { flex: 1 1 auto; }
+}

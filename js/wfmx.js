@@ -156,15 +156,16 @@ $('wfmBody').addEventListener('click', e => {
 ['dragleave', 'drop'].forEach(ev => $('wfmBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-interdrop]'); if (z) z.classList.remove('over'); }));
 /** files dropped on a workspace page (not Build): the page that wants them takes them */
 async function wsDrop(files) {
-  const L = [...files], rb = [];
+  const L = [...files], rb = [], old = [];
   for (const f of L) {
     // on the WFM page the WFM analysts' daily exports go to Report builder (on its tab, every export, the interactions one too)
     if (state.ws === 'wfm' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name) && (state.wfmTab === 'builder' || !(canInter() && await isInterFile(f)))) { rb.push(f); continue; }
     if (await isInterFile(f)) { if (canInter()) importInteractions(f); else toast('The WFM manager adds the interactions export.'); continue; }
-    if (state.ws === 'results' && /\.(xlsx|xlsm|xlsb|csv)$/i.test(f.name)) { cmpFile(f); continue; }
+    if (state.ws === 'results' && /\.(xlsx|xlsm|xlsb|xls|csv)$/i.test(f.name)) { old.push(f); continue; }
     if (state.ws === 'quality' && /\.(xlsx|xlsm)$/i.test(f.name)) { const ok = await tryEvalFile({ name: f.name, file: f }, null, qMonthNow()); if (!ok) toast(`${f.name} does not look like the Final EVAL.`); continue; }
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     toast(state.ws === 'wfm' ? `${f.name}: drop the interactions export here; the WFM analysts drop the daily exports in Report builder.` : `${f.name} is not something this page takes.`);
   }
   if (rb.length) { if (state.wfmTab !== 'builder') { state.wfmTab = 'builder'; renderWs(); } rbAddFiles(rb); }
+  if (old.length) cmpFiles(old);   // the old Excel files of a month together, on Results › Reconcile
 }

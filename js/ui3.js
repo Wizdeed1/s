@@ -3807,5 +3807,6 @@ render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
 window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, handChanges, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, rb: () => RB };   // for testing
+Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing
 })();

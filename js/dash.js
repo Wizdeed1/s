@@ -137,10 +137,15 @@ function dashClose(k) {
   const stTxt = s => s.st === 'done' ? `Done${s.done && s.done.at ? ' ' + fmtWhen(s.done.at) : ''}` : s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.st === 'soon' ? (s.days === 0 ? 'Due today' : s.days === 1 ? 'Due tomorrow' : `Due in ${s.days} days`) : s.st === 'past' ? 'Not recorded' : 'Open';
   const ico = s => (s.st === 'done' ? 'i-check' : s.st === 'late' ? 'i-alert' : s.st === 'soon' ? 'i-clock' : 'i-dash');
   const row = s => `<li class="cs ${s.st}${s.roles.includes(r) ? ' mine' : ''}"><span class="cd">${esc(fmtDue(s.due))}</span><span class="cl"><b>${esc(s.label)}</b><small>${esc(s.who)}${s.roles.includes(r) ? ' · yours' : ''}${s.note ? ' · ' + esc(s.note) : ''}</small></span><span class="cst"><svg aria-hidden="true"><use href="#${ico(s)}"/></svg>${esc(stTxt(s))}</span>${s.roles.includes(r) && s.st !== 'done' && go(s.go, true) ? `<button class="btn sm ghost" data-tgo="${esc(s.go + '@' + k)}">Open</button>` : ''}</li>`;
-  const doneN = S.length - open.length;
-  return `<section class="card dclose" aria-labelledby="h-dclose"><div class="cardhead"><div><h2 id="h-dclose">Month close · ${esc(ymLabel(k))}</h2><p class="cap">${doneN} of ${S.length} steps done${open.filter(s => s.st === 'late').length ? ` · <span class="bad">${open.filter(s => s.st === 'late').length} late</span>` : ''}</p></div><span class="prog"><span class="bar"><i style="width:${Math.round(doneN / S.length * 100)}%"></i></span><span class="pv">${doneN}/${S.length}</span></span></div>
-    <ol class="clist${all ? ' all' : ''}">${S.map(row).join('')}</ol>${open.length < S.length ? `<button class="btn sm ghost cmore" data-dall="close" aria-expanded="${all}">${all ? 'Show open steps only' : `Show all ${S.length} steps`}</button>` : ''}</section>`;
+  const doneN = S.length - open.length, late = open.filter(s => s.st === 'late').length, soon = open.filter(s => s.st === 'soon').length, mine = open.filter(s => s.roles.includes(r));
+  // the deadlines themselves are notifications (the bell): here only how far the month close is, in one line
+  const nextMine = mine.find(s => s.st === 'late') || mine.find(s => s.st === 'soon') || mine[0];
+  return `<section class="card dclose dclose-mini" aria-labelledby="h-dclose"><div class="dcm-head"><h2 id="h-dclose">Month close · ${esc(ymLabel(k))}</h2><b class="num">${doneN}/${S.length}</b></div>
+    <span class="pbar" role="progressbar" aria-label="${doneN} of ${S.length} steps done" aria-valuenow="${doneN}" aria-valuemin="0" aria-valuemax="${S.length}"><i style="width:${Math.round(doneN / S.length * 100)}%"></i></span>
+    <p class="cap">${doneN} of ${S.length} steps done${late ? ` · <span class="bad">${late} late</span>` : ''}${soon ? ` · ${soon} due soon` : ''}${nextMine ? ` · yours next: <b>${esc(nextMine.label)}</b>` : ''}</p>
+    <div class="acts"><button class="btn sm" data-dopenbell>Deadlines in the bell</button>${(WS_OF[r] || []).includes('cycle') ? '<button class="btn sm ghost" data-tgo="cal">Every step</button>' : ''}</div></section>`;
 }
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-dopenbell]')) openBell(); });
 // ---- recent activity: records the role can already read (the cycle log, changes by hand, when data came in)
 function dashActivity(k) {
   const L = [];

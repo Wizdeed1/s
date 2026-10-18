@@ -82,23 +82,26 @@ let worker = null, wseq = 0; const waiting = new Map();
 function getWorker() {
   if (worker !== null) return worker;
   try {
-    const src = $('engine-src').textContent + '\nself.onmessage = async e => { const { id, name, buf, raw } = e.data; try { const dets = raw ? await Core.readXlsx(new Uint8Array(buf)) : await Core.analyzeFile(name, new Uint8Array(buf)); self.postMessage({ id, dets }); } catch (err) { self.postMessage({ id, error: String((err && err.message) || err) }); } };';
+    const src = $('engine-src').textContent + '\nself.onmessage = async e => { const { id, name, buf, raw, op, opts } = e.data; try { const u8 = new Uint8Array(buf); const dets = op ? await Recog.run(op, name, u8, opts || {}) : raw ? await Core.readXlsx(u8) : await Core.analyzeFile(name, u8); self.postMessage({ id, dets }); } catch (err) { self.postMessage({ id, error: String((err && err.message) || err) }); } };';
     worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
     worker.onmessage = e => { const w = waiting.get(e.data.id); if (!w) return; waiting.delete(e.data.id); if (e.data.error) w.reject(new Error(e.data.error)); else w.resolve(e.data.dets); };
     worker.onerror = e => { if (e && e.preventDefault) e.preventDefault(); const list = [...waiting.values()]; waiting.clear(); try { worker.terminate(); } catch (_) {} worker = false; list.forEach(w => w.fallback()); };
   } catch (e) { worker = false; }
   return worker;
 }
-function parse(name, buf, raw) {
-  const onMain = () => (raw ? Core.readXlsx(new Uint8Array(buf)) : Core.analyzeFile(name, new Uint8Array(buf)));
+/** op 'recog': {dets, rec} in one read (the detections and the recogniser's verdict); op 'tables': every sheet as it is */
+function parse(name, buf, raw, op, opts) {
+  const onMain = () => (op ? Recog.run(op, name, new Uint8Array(buf), opts || {}) : raw ? Core.readXlsx(new Uint8Array(buf)) : Core.analyzeFile(name, new Uint8Array(buf)));
   const w = getWorker();
   if (!w) return onMain();
   return new Promise((resolve, reject) => {
     const id = ++wseq;
     waiting.set(id, { resolve, reject, fallback: () => onMain().then(resolve, reject) });
-    try { w.postMessage({ id, name, buf, raw: !!raw }); } catch (e) { waiting.delete(id); onMain().then(resolve, reject); }
+    try { w.postMessage({ id, name, buf, raw: !!raw, op: op || '', opts: opts || null }); } catch (e) { waiting.delete(id); onMain().then(resolve, reject); }
   });
 }
+/** the sheets of a file as they are, whatever it is: a CSV or text file, an .xlsb, else an .xlsx -> [{name, rows}] */
+function parseRaw(name, buf) { return parse(name, buf, true, 'tables'); }
 
 // ---------------------------------------------------------------- storage: roster + settings (saved with the page)
 const chains = new Map(); let inflight = 0, active = 0, lastErr = null; const slotsQ = [];
@@ -1303,7 +1306,7 @@ const ymKey = (y, m) => `${y}-${String(m).padStart(2, '0')}`;
 const ymLabel = k => { const [y, m] = k.split('-').map(Number); return `${MON[m - 1]} ${y}`; };
 async function addHistoryFile(it, notes) {
   try {
-    const sheets = await parse(it.name, await it.file.arrayBuffer(), true);
+    const sheets = await parseRaw(it.name, await it.file.arrayBuffer());
     const rec = History.read(sheets, { name: it.name, target: state.settings.target, floor: state.settings.floor });
     if (!rec.y || !rec.m || !rec.rows.length) { notes.push({ bad: true }); state.others.push({ fid: it.fid, name: it.name, kind: 'error', msg: 'An incentive file, but its month or rows could not be read.' }); return; }
     putHistory({ ...rec, src: it.name, at: new Date().toISOString() });
@@ -1659,7 +1662,7 @@ function kpiNotes(add) {
 }
 async function tryKpiFile(it, notes) {
   try {
-    const sheets = await parse(it.name, await it.file.arrayBuffer(), true);
+    const sheets = await parseRaw(it.name, await it.file.arrayBuffer());
     const f = Kpi.readFile(sheets, curCards(monthKey())); if (!f.rows.length) return false;
     const rec = { name: it.name, at: new Date().toISOString(), rows: f.rows.map(r => ({ id: r.id, name: r.name, cols: r.cols })), cols: [...new Set(f.sheets.flatMap(s => s.cols))] };
     state.kpiFiles[monthKey()] = rec;

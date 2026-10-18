@@ -763,19 +763,26 @@ function reviewMonth(days, T, perf) {
   return s;
 }
 
+/* Read one file into tables: every sheet with its state (hidden ones too), a CSV as one visible table. null: not a file the engine reads */
+async function readTables(name, buf) {
+  const lower = name.toLowerCase();
+  if (/\.(csv|txt)$/.test(lower)) return [{ name, rows: parseCSV(new TextDecoder().decode(buf)), state: 'visible' }];
+  if (/\.(xlsx|xlsm)$/.test(lower)) return readXlsx(buf);
+  if (/\.xlsb$/.test(lower)) return readXlsb(buf);
+  return null;
+}
 /* Analyse one file -> list of detections {kind, sheet, data, rows} */
-async function analyzeFile(name, buf) {
+async function analyzeFile(name, buf) { return analyzeTables(name, await readTables(name, buf)); }
+/* The detections from tables readTables gave: a Roster sheet alone when an .xlsx has one, else the visible sheets */
+function analyzeTables(name, all) {
   const lower = name.toLowerCase();
   let tables = [];
-  if (/\.(csv|txt)$/.test(lower)) tables = [{ name, rows: parseCSV(new TextDecoder().decode(buf)) }];
+  if (all == null) return /\.xls$/.test(lower) ? [{ kind: 'error', sheet: name, msg: 'Old .xls format - open it in Excel and save as .xlsx' }] : [{ kind: 'error', sheet: name, msg: 'Not a spreadsheet (use .xlsx or .csv)' }];
+  if (/\.(csv|txt)$/.test(lower)) tables = all;
   else if (/\.(xlsx|xlsm)$/.test(lower)) {
-    const sheets = await readXlsx(buf);
-    const roster = sheets.find(s => /^roster$/i.test(normSpace(s.name)));
-    tables = roster ? [roster] : sheets.filter(s => s.state === 'visible');
-  } else if (/\.xlsb$/.test(lower)) {
-    tables = (await readXlsb(buf)).filter(s => s.state === 'visible');
-  } else if (/\.xls$/.test(lower)) return [{ kind: 'error', sheet: name, msg: 'Old .xls format - open it in Excel and save as .xlsx' }];
-  else return [{ kind: 'error', sheet: name, msg: 'Not a spreadsheet (use .xlsx or .csv)' }];
+    const roster = all.find(s => /^roster$/i.test(normSpace(s.name)));
+    tables = roster ? [roster] : all.filter(s => s.state === 'visible');
+  } else tables = all.filter(s => s.state === 'visible');
   const out = [];
   for (const t of tables) {
     const rows = t.rows || [];
@@ -932,6 +939,6 @@ function buildModel(dets, settings, overrides = {}) {
 
 return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, daysIn, ymdSerial, weekday, colName, ref, round6,
   readZip, writeZip, crc32, readXlsx, readXlsb, parseCSV, parseHeaderDate, adhVal, ahtSeconds, normAtt, attCat, normDep, normTeam, normStatus,
-  analyzeFile, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
+  analyzeFile, readTables, analyzeTables, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
 })();
 if (typeof module !== 'undefined') module.exports = Core;

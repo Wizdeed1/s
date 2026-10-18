@@ -174,7 +174,7 @@ async function qMove(from, to, sure) {
 const canQuality = () => ['quality', 'admin', 'user'].includes(roleNow());
 /** read a dropped workbook as the Final EVAL; true when it was one */
 async function tryEvalFile(it, notes, kForce) {
-  let sheets; try { sheets = await parse(it.name, await it.file.arrayBuffer(), true); } catch (e) { return false; }
+  let sheets; try { sheets = await parseRaw(it.name, await it.file.arrayBuffer()); } catch (e) { return false; }
   const ev = parseEval(sheets, it.name); if (!ev) return false;
   if (!canQuality()) { notes && notes.push({ bad: true }); toast('This is the quality team\'s Final EVAL. The quality team (or an analyst) drops it.'); return true; }
   const k = (ev.month ? ymKey(ev.month.y, ev.month.m) : '') || kForce || (state.ws === 'quality' ? qMonthNow() : monthKey());   // the month in the file's name wins
@@ -357,7 +357,7 @@ async function exportQuality() {
 $('qualityBar').addEventListener('change', e => { if (e.target.matches('[data-qmonth]')) { state.qMonth = e.target.value; renderWs(); } });
 $('qualityBody').addEventListener('change', e => { if (e.target.matches('[data-qmove]')) qMoveTo = e.target.value; });
 $('qualityBody').addEventListener('click', e => { if (e.target.closest('[data-qmovego]')) { const s = $('qualityBody').querySelector('[data-qmove]'); qMove(qMonthNow(), (s && s.value) || qMoveTo); } });
-const qPicker = Object.assign(document.createElement('input'), { type: 'file', accept: '.xlsx,.xlsm', hidden: true, id: 'qPicker' }); document.body.appendChild(qPicker);
+const qPicker = Object.assign(document.createElement('input'), { type: 'file', accept: '.xlsx,.xlsm,.xlsb', hidden: true, id: 'qPicker' }); document.body.appendChild(qPicker);
 qPicker.addEventListener('change', async () => { const f = qPicker.files[0]; qPicker.value = ''; if (!f) return; const ok = await tryEvalFile({ name: f.name, file: f }, null, qMonthNow()); if (!ok) toast(`${f.name} does not look like the Final EVAL (no "Agent Name" with Call QA or Final Score).`); });
 $('v-quality').addEventListener('click', e => {
   if (e.target.closest('[data-qdrop], [data-qdropzone]')) { qPicker.click(); return; }

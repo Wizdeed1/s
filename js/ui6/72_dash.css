@@ -1,56 +1,96 @@
-/* ------------------------------------------------------------------------------------------------------------- the WFM Dashboard (D2, D6) */
-#dashBody { position: relative; display: grid; gap: var(--s6); }
-.dglow { position: absolute; inset: -24px 0 auto; height: 300px; background: var(--glow); pointer-events: none; z-index: -1; }
-.dhead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; }
-.greet { position: relative; min-width: 0; overflow: hidden; }
-.greet .gt { font: 600 24px/30px var(--display); letter-spacing: -0.018em; }
-.greet .gs { margin: 4px 0 0; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; color: var(--muted); font-size: 13px; }
+/* ------------------------------------------------------------------------------------------------------------- the Dashboard (Option A)
+   The greeting as the large title, quick actions, then three rows: six KPI widgets beside the month close rings; the trend beside
+   the data's freshness; what needs attention, the lowest adherence and the recent activity. Widgets on soft white panels. */
+#dashBody { position: relative; display: grid; gap: var(--s5); }
+.dhead { display: grid; gap: var(--s4); }
+.greet { position: relative; min-width: 0; }
+.greet .gt { font: 700 30px/36px var(--display); letter-spacing: -0.022em; }
+.greet .gs { margin: 4px 0 0; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; color: var(--muted); font-size: 14px; }
 .greet .gs .pill { margin-inline-start: 4px; vertical-align: 1px; }
-.qacts { display: grid; grid-template-columns: repeat(4, minmax(0, 210px)); gap: 8px; }
-.qa { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 52px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-card);
-  transition: border-color var(--t-hover) ease, box-shadow var(--t-hover) ease, transform var(--t-press) var(--ease-out); }
-.qa svg { width: 18px; height: 18px; flex: none; color: var(--accent-text); }
-.qa span { display: grid; gap: 2px; min-width: 0; }
-.qa b { font: 600 13px/1.25 var(--text); }
-.qa small { font-size: 11.5px; color: var(--muted); line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-wrap: balance; }   /* two even lines, not a cut-off one */
-.qa:active { transform: scale(.97); }
+/* quick actions: an icon on a tinted square, two lines, a chevron */
+.qacts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px; }
+.qa { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 60px; background: var(--surface); border: 1px solid var(--card-line); border-radius: var(--r-card); box-shadow: var(--shadow-card);
+  transition: box-shadow var(--t-hover) ease, transform var(--t-press) var(--ease-out); }
+.qa svg { width: 36px; height: 36px; padding: 9px; box-sizing: border-box; flex: none; border-radius: 10px; background: var(--accent-soft); color: var(--accent-text); }
+.qa span { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.qa b { font: 600 14px/1.25 var(--display); letter-spacing: -0.005em; }
+.qa small { font-size: 12.5px; color: var(--muted); line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-wrap: balance; }   /* two even lines, not a cut-off one */
+.qa::after { content: ""; flex: none; width: 7px; height: 7px; margin-inline-end: 4px; border-right: 2px solid var(--line-3); border-top: 2px solid var(--line-3); transform: rotate(45deg); }
+.qa:active { transform: scale(.98); }
 .qa:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-/* six KPI cards: label, value, change in words, the last six months */
-.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
-.kpi { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; align-content: start; padding: 14px 16px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-card); min-width: 0;
+/* the rows */
+.drow { display: flex; flex-wrap: wrap; gap: var(--s4); align-items: stretch; }
+.drow > * { min-width: 0; }
+.r1 > .kpis { flex: 3 1 600px; }
+.r1 > .dclose { flex: 1 1 300px; }
+.r2 > .dtrend { flex: 3 1 600px; }
+.r2 > .ddata { flex: 1 1 300px; }
+.r3 > .dattn { flex: 2 1 520px; }
+.r3 > .dlow, .r3 > .dact { flex: 1 1 260px; }
+/* six KPI widgets: label, value, the change in a tinted chip, the last six months under a soft area */
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(min(200px, 100%), calc((100% - 2 * var(--s4)) / 3)), 1fr)); gap: var(--s4); align-content: start; }   /* three to a row at most: 3 + 3, never 4 + 2 */
+.kpi { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; align-content: start; padding: 16px 18px 14px; background: var(--surface); border: 1px solid var(--card-line); border-radius: var(--r-widget); box-shadow: var(--shadow-card); min-width: 0;
   transition: box-shadow var(--t-hover) ease; }
 /* the cards of a row share their lines: a label on two lines moves every value of the row down with it, so the numbers, the changes
    and the lines underneath stay level (label, value, change, line, months) */
-@supports (grid-template-rows: subgrid) { .kpi:not(.sk-card) { grid-row: span 5; grid-template-rows: subgrid; } }
-.khead { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 24px; }
-.kl { font: 600 12px/16px var(--text); color: var(--ink-2); }
-.kval { font: 600 30px/36px var(--text); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+@supports (grid-template-rows: subgrid) { .kpis > .kpi:not(.sk-card) { grid-row: span 5; grid-template-rows: subgrid; } }
+.khead { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 22px; }
+.kl { font: 600 13px/18px var(--text); color: var(--muted); }
+.kval { font: 600 32px/38px var(--display); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
 .kpi.un .kval { color: var(--faint); }
-.kd { display: block; font: 500 12px/16px var(--text); color: var(--muted); min-height: 16px; }
-.kd svg { display: inline-block; width: 11px; height: 11px; vertical-align: -1px; margin-inline-end: 4px; }
+.kd { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font: 500 12.5px/18px var(--text); color: var(--muted); min-height: 20px; }
+.kdc { display: inline-flex; align-items: center; gap: 3px; min-height: 20px; padding: 0 8px; border-radius: var(--r-pill); background: var(--fill); color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.kd svg { display: inline-block; width: 11px; height: 11px; }
 .kd.up svg { transform: rotate(180deg); }
-.kd.good { color: var(--good); } .kd.bad { color: var(--bad); } .kd.same svg, .kd.none svg { display: none; }
+.kd.good .kdc { background: var(--good-bg); color: var(--good); } .kd.bad .kdc { background: var(--bad-bg); color: var(--bad); } .kd.same svg, .kd.none svg { display: none; }
 .kd .vs { color: var(--muted); font-weight: 400; }
-.ksp { width: 100%; height: 28px; margin-top: 6px; overflow: visible; }
-.ksp polyline { fill: none; stroke: var(--accent); stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.ksp circle { fill: var(--accent); stroke: var(--surface); stroke-width: 1.5; }
-.ksp.none { display: block; height: 28px; }
-.kspl { font-size: 11px; color: var(--muted); }
+.ksp { width: 100%; height: 36px; margin-top: 6px; overflow: visible; }
+.ksp polyline { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.ksp .ksa { fill: color-mix(in srgb, var(--accent) 12%, transparent); stroke: none; }
+.ksp.none { display: block; height: 36px; }
+.kspl { font-size: 11.5px; color: var(--muted); }
 .kinfo { position: relative; }
-.kinfo .btn { color: var(--muted); border-radius: 50%; }
-.ktip { position: absolute; inset-inline-end: -6px; top: calc(100% + 6px); z-index: var(--z-tt); width: 248px; padding: 9px 11px; border-radius: var(--r-ctl); background: var(--ink); color: var(--inverse); font-size: 12px; line-height: 1.45; box-shadow: var(--shadow-pop);
+.kinfo .btn { color: var(--faint); border-radius: 50%; background: transparent; }
+.ktip { position: absolute; inset-inline-end: -6px; top: calc(100% + 6px); z-index: var(--z-tt); width: 248px; padding: 9px 11px; border-radius: 10px; background: var(--tt-bg); color: var(--tt-ink); border: 1px solid var(--tt-line); font-size: 12px; line-height: 1.45; box-shadow: var(--shadow-pop);
   opacity: 0; visibility: hidden; transform: translateY(-2px); transition: opacity var(--t-hover) ease, visibility 0s linear var(--t-hover), transform var(--t-hover) ease; pointer-events: none; }
 .kinfo:hover .ktip { opacity: 1; visibility: visible; transform: none; transition-delay: 300ms, 300ms, 300ms; }
 .kinfo .btn:focus-visible + .ktip { opacity: 1; visibility: visible; transform: none; transition: none; }
 .sk-card { gap: 10px; }
-/* two columns: the work on the left, Today and the month on the right */
-.dgrid { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: var(--s6); align-items: start; }
-.dmain, .dside { display: grid; gap: var(--s6); min-width: 0; align-content: start; }
+/* the month close: concentric rings (the steps done, the agents finished), their legend, then the step that is yours next */
+.dclose { display: grid; gap: var(--s4); align-content: start; padding: 18px 20px 20px; border-radius: var(--r-widget); }
+.dch { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.dch h2 { margin: 0; }
+.dch span { font-size: 13px; color: var(--muted); }
+.dcr { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s5); }
+.rings { width: 148px; height: 148px; flex: none; transform: rotate(-90deg); }
+.rings circle { fill: none; stroke-width: 15; }
+.rings .rt.r1 { stroke: color-mix(in srgb, var(--accent) 16%, transparent); }
+.rings .rt.r2 { stroke: color-mix(in srgb, var(--good-mark) 18%, transparent); }
+.rings .rf { stroke-linecap: round; stroke-dasharray: var(--c) var(--c); stroke-dashoffset: var(--o); }
+.rings .rf.r1 { stroke: var(--accent); }
+.rings .rf.r2 { stroke: var(--good-mark); }
+.rleg { flex: 1 1 140px; list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
+.rleg li { display: grid; gap: 1px; }
+.rleg span { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.rleg i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.rleg .r1 i { background: var(--accent); } .rleg .r2 i { background: var(--good-mark); }
+.rleg b { font: 600 22px/28px var(--display); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.rleg b small { font: 500 14px/1 var(--text); color: var(--muted); letter-spacing: 0; }
+.dcn { display: flex; align-items: center; gap: var(--s3); padding: 12px 12px 12px 14px; border-radius: 14px; background: var(--fill); }
+.dcn.late { background: var(--bad-bg); } .dcn.soon { background: var(--warn-bg); }
+.dcn > span { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.dcn small { font-size: 12px; font-weight: 600; color: var(--muted); }
+.dcn.late small { color: var(--bad); } .dcn.soon small { color: var(--warn); }
+.dcn b { font: 600 14.5px/1.3 var(--display); }
+.dcn .btn { background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.dclose .cap { margin: 0; color: var(--muted); font-size: 12.5px; }
+.dclose .acts { display: flex; flex-wrap: wrap; gap: var(--s2); }
+/* the trend */
 .dtrend .cardhead { margin-bottom: 10px; }
 .dctl { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
 .dctl .wsfield select { min-width: 168px; }
 .dlegend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.lgi { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-chip); font: 500 12.5px/1 var(--text); color: var(--ink-2); transition: opacity var(--t-hover) ease, border-color var(--t-hover) ease; }
+.lgi { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 11px; border-radius: var(--r-pill); background: var(--fill); font: 500 12.5px/1 var(--text); color: var(--ink-2); transition: opacity var(--t-hover) ease, background-color var(--t-hover) ease; }
 .lgi i { width: 14px; height: 3px; border-radius: 2px; background: var(--sc); }
 .lgi small { color: var(--muted); font-size: 11px; }
 .lgi[aria-pressed="false"] { opacity: .55; text-decoration: line-through; text-decoration-color: var(--muted); }
@@ -59,7 +99,7 @@
 .dchart { position: relative; }
 .dsvg { display: block; width: 100%; height: auto; border-radius: var(--r-ctl); }
 .dsvg:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
-.dsvg .ser .dline { fill: none; stroke: var(--sc); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+.dsvg .ser .dline { fill: none; stroke: var(--sc); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
 .dsvg .ser .dpt { fill: var(--sc); stroke: var(--surface); stroke-width: 2; transition: r var(--t-micro) var(--ease-out); }
 .dsvg .ser .el { fill: var(--ink-2); font-weight: 600; font-size: 11.5px; }
 .dsvg .xh.on { stroke: var(--ink-2); stroke-width: 1; opacity: .35; }
@@ -72,70 +112,52 @@
 .dread .rd.s1 { --sc: var(--c1); } .dread .rd.s2 { --sc: var(--c2); } .dread .rd.s3 { --sc: var(--c3); } .dread .rd.s4 { --sc: var(--c4); } .dread .rd.s5 { --sc: var(--c5); } .dread .rd.s6 { --sc: var(--c6); }
 .dtab { max-height: 360px; }
 .dtab th[scope="row"] { font-weight: 600; color: var(--ink); background: none; position: static; }
-/* needs attention */
-.alist { list-style: none; margin: 0; padding: 0; display: grid; }
-.alist li { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
-.alist li:first-child { border-top: 0; padding-top: 2px; }
-.alist .an { font: 600 22px/1 var(--text); font-variant-numeric: tabular-nums; color: var(--faint); text-align: right; }
+/* needs attention: four tiles, the count large */
+.alist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 10px; }
+.alist li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "n b" "t t"; gap: 6px 10px; align-content: start; padding: 14px; border-radius: 14px; background: var(--fill); }
+.alist .an { grid-area: n; font: 600 28px/32px var(--display); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; color: var(--faint); }
 .alist li.on .an { color: var(--ink); }
-.alist .at { display: grid; gap: 2px; min-width: 0; }
-.alist .at b { font-weight: 600; font-size: 13.5px; }
-.alist .at small { color: var(--muted); font-size: 12px; }
-.lowl { margin: 6px 0 0; padding: 0; list-style: none; counter-reset: lw; display: grid; }
-.lowl li { counter-increment: lw; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
-.lowl li::before { content: counter(lw); color: var(--muted); font-size: 11.5px; text-align: right; font-variant-numeric: tabular-nums; }
-.lowl small { color: var(--muted); font-size: 12px; white-space: nowrap; }
-.lowl b { font-variant-numeric: tabular-nums; }
-.dattn h3.sub { margin-top: 16px; }
-/* the month close */
-.dclose .cardhead { align-items: center; }
-.clist { list-style: none; margin: 0; padding: 0; display: grid; }
-.cs { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 9px 8px; border-top: 1px solid var(--line); font-size: 12.5px; border-radius: 0; }
-.cs:first-child { border-top: 0; }
-.cs .cd { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
-.cs .cl { display: grid; gap: 1px; min-width: 0; }
-.cs .cl b { font-weight: 500; font-size: 12.5px; line-height: 1.35; }
-.cs .cl small { color: var(--muted); font-size: 11.5px; }
-.cs .cst { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-.cs .cst svg { width: 12px; height: 12px; }
-.cs .btn { grid-column: 2 / -1; justify-self: start; }
-.cs.done .cst { color: var(--good); } .cs.late .cst { color: var(--bad); } .cs.soon .cst { color: var(--warn); }
-.cs.done .cl b { color: var(--muted); }
-.cs.mine { background: var(--accent-soft); border-radius: var(--r-ctl); border-top-color: transparent; }
-.cs.mine + .cs { border-top-color: transparent; }
+.alist .at { grid-area: t; display: grid; gap: 2px; min-width: 0; }
+.alist .at b { font-weight: 600; font-size: 14px; }
+.alist .at small { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.alist .btn, .alist .pill { grid-area: b; justify-self: end; align-self: start; }
+.alist .btn { background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+/* the lowest adherence: initials, the name and team, the value */
+.lowl { margin: 0; padding: 0; list-style: none; display: grid; }
+.lowl li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 48px; border-top: 1px solid var(--line); font-size: 13.5px; }
+.lowl li:first-child { border-top: 0; }
+.lav { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--c1) 14%, transparent); color: var(--c1); font: 700 11.5px/1 var(--display); }
+.lnm { display: grid; gap: 1px; min-width: 0; }
+.lnm small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lowl b { font-variant-numeric: tabular-nums; font-weight: 600; }
 .cmore, .amore { margin-top: 8px; }
-/* recent activity and data status */
+/* recent activity and the data's freshness */
 .actl, .dsl { list-style: none; margin: 0; padding: 0; display: grid; }
-.actl li { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.actl li { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
 .actl li:first-child { border-top: 0; }
-.actl time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.actl span { display: grid; gap: 1px; min-width: 0; }
+.actl li::before { content: ""; grid-row: 1 / span 2; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--accent); }
+.actl time { grid-column: 2; grid-row: 2; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.actl span { grid-column: 2; grid-row: 1; display: grid; gap: 1px; min-width: 0; }
 .actl b { font-weight: 500; overflow-wrap: anywhere; }
-.actl small { color: var(--muted); font-size: 11.5px; }
-.ds { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+.actl small { color: var(--muted); font-size: 12px; }
+.ds { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 52px; border-top: 1px solid var(--line); }
 .ds:first-child { border-top: 0; }
-.dsd { width: 8px; height: 8px; border-radius: 50%; background: var(--line-3); }
-.ds.ok .dsd { background: var(--good); } .ds.mid .dsd { background: var(--warn); } .ds.old .dsd { background: var(--bad); }
+.dsd { width: 30px; height: 30px; border-radius: 8px; background: var(--fill); position: relative; }
+.dsd::after { content: ""; position: absolute; left: 11px; top: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--line-3); }
+.ds.ok .dsd::after { background: var(--good-mark); } .ds.mid .dsd::after { background: var(--warn-mark); } .ds.old .dsd::after { background: var(--bad-mark); }
 .ds .dl { display: grid; gap: 1px; min-width: 0; }
-.ds .dl b { font-weight: 600; font-size: 13px; }
-.ds .dl small { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ds .dw { display: grid; justify-items: end; font-size: 12px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
-.ds .dw small { font-weight: 400; color: var(--muted); font-size: 11px; }
+.ds .dl b { font-weight: 500; font-size: 14px; }
+.ds .dl small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds .dw { display: grid; justify-items: end; gap: 2px; font-size: 12px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+.ds .dw small { font-weight: 400; color: var(--muted); font-size: 11.5px; }
 .ds.ok .dw { color: var(--good); } .ds.old .dw { color: var(--bad); } .ds.none .dw { color: var(--muted); font-weight: 500; }
 
-/* the dashboard's first load of the visit (about 1.3 s): light, cards, lines, one sweep. Plays once; never on return or a filter */
-#dashBody.intro .dglow { animation: fadeIn 900ms ease both; }
+/* the dashboard's first load of the visit: the widgets rise, the lines draw, the rings fill. Plays once; never on return or a filter */
 #dashBody.intro .kpi { animation: rise var(--t-ws) var(--ease-out) both; animation-delay: calc(var(--i, 0) * var(--stagger)); }
 #dashBody.intro .dline { stroke-dasharray: 1; stroke-dashoffset: 1; animation: drawLine var(--t-chart) var(--ease-out) 120ms both; }
 #dashBody.intro .dpt { animation: fadeIn var(--t-micro) ease 560ms both; }
+#dashBody.intro .rings .rf { animation: ringFill 1100ms var(--ease-out) 150ms both; }
+#dashBody.intro .rings .rf.r2 { animation-delay: 260ms; }
 @keyframes drawLine { to { stroke-dashoffset: 0; } }
-#dashBody.intro .greet::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--accent) 22%, transparent) 50%, transparent 70%); transform: translateX(-110%); animation: sweep 1100ms var(--ease-in-out) 200ms 1 both; pointer-events: none; }
-/* month close, in one line: the deadlines are in the bell */
-.dclose-mini { display: grid; gap: var(--s2); }
-.dclose-mini .dcm-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
-.dclose-mini .dcm-head h2 { margin: 0; }
-.dclose-mini .dcm-head b { font: 600 18px/1 var(--text); font-variant-numeric: tabular-nums; }
-.dclose-mini .pbar { display: block; width: 100%; height: 6px; border-radius: 3px; background: var(--fill-2); overflow: hidden; }
-.dclose-mini .pbar i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
-.dclose-mini .cap { margin: 0; }
-.dclose-mini .acts { display: flex; flex-wrap: wrap; gap: var(--s2); }
+@keyframes ringFill { from { stroke-dashoffset: var(--c); } }
+@media (prefers-reduced-motion: reduce) { #dashBody.intro .rings .rf { animation: none; } }

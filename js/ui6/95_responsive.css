@@ -43,17 +43,21 @@
 @media (max-width: 860px) {
   .mailgrid { grid-template-columns: minmax(0, 1fr); }
   .mailpreview { position: static; }
-  .viewhead h1, .t-display { font-size: 26px; }
-  .drawer, .drawer.wide, .drawer.xwide { width: 100%; }
+  .viewhead h1, .t-display { font-size: 28px; line-height: 34px; }
+  .drawer, .drawer.wide, .drawer.xwide { width: calc(100% - 16px); }
   .callist li { grid-template-columns: 8px minmax(0, 1fr) auto; }
   .callist .cdue { grid-column: 2; } .callist .clab { grid-column: 2 / -1; } .callist .cst { grid-column: 2; text-align: left; } .callist .cacts { grid-column: 3; grid-row: 1; }
   .rbbrands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .wffollow li { grid-template-columns: 28px minmax(0, 1fr) auto; } .wffollow .why { grid-column: 2 / -1; }
 }
-/* phone: the workspaces in a tab bar at the bottom (four items and More); a 56 px header; Today first */
+/* phone: the workspaces in a tab bar at the bottom (every page when five or fewer, else four and More); a 56 px toolbar; large
+   titles; menus become sheets */
 @media (max-width: 767.98px) {
   :root { --gutter: 16px; --head-h: 56px; --side-cur: 0px; }
+  .phoneonly:not([hidden]) { display: flex !important; }
+  .appbar .findbtn { display: inline-flex; }
   html.rail { --side-cur: 0px; }
+  html.notabs { --tab-h: 0px; }   /* a role with one page has no tab bar, and nothing keeps room for it */
   body { font-size: 14px; }
   .sidebar { display: none; }
   .tabbar:not([hidden]) { display: flex; }
@@ -61,14 +65,16 @@
   .sitefoot { margin-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); }
   .appbar .in { gap: 8px; }
   .ptext { font-size: 17px; line-height: 22px; }
+  body:not(.scrolled) .ptitle { opacity: 0; }
   .roletag { display: none; }
   .appbar .tools { gap: 2px; }
-  .appbar #helpBtn, .appbar #setBtn, .appbar .hpop:has(#themeBtn) { display: none; }   /* in the More sheet on a phone */
+  .appbar #helpBtn, .appbar #setBtn { display: none; }   /* in the account menu on a phone */
   .periodbtn { padding: 0 8px; }
   .periodbtn .pl, .periodbtn .pst { display: none; }
   .appbar .btn { min-width: 44px; min-height: 44px; }
   .menu { position: fixed; inset: auto 0 0 0; top: auto; max-width: none; max-height: 70vh; border-radius: var(--r-dlg) var(--r-dlg) 0 0; padding: 10px 10px calc(16px + env(safe-area-inset-bottom, 0px)); animation-name: sheetUp; z-index: var(--z-sheet); }
   .menu button { min-height: 48px; font-size: 15px; }
+  body:has(.appbar .menu:not([hidden])) .appbar { z-index: var(--z-sheet); }   /* a menu's sheet covers the tab bar */
   .toast { left: 50%; bottom: calc(var(--tab-h) + 16px + env(safe-area-inset-bottom, 0px)); }
   .buildbar { flex-wrap: wrap; gap: 8px; padding: 8px; }
   .buildbar .steps { order: 3; flex-basis: 100%; }
@@ -76,14 +82,14 @@
   .step { padding: 8px 10px; gap: 8px; }
   #buildTop span { display: none; }
   #buildTop { width: 44px; padding: 0; }
-  .drawer, .drawer.wide, .drawer.xwide, #dPerson { width: 100%; border-radius: 0; }
+  .drawer, .drawer.wide, .drawer.xwide, #dPerson { width: 100%; top: 0; right: 0; bottom: 0; border-radius: 0; }
   .dlg { align-items: end; padding: 0; }
   .dlgbox { width: 100%; border-radius: var(--r-dlg) var(--r-dlg) 0 0; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
   .dlgfoot .btn { flex: 1; min-height: 44px; }
   /* the dashboard: greeting and Today first, KPIs two per row, the chart without end labels, open month-close steps only */
   #dashBody { display: flex; flex-direction: column; }
-  .dgrid, .dmain, .dside { display: contents; }
-  .dhead { order: 1; } #dashToday { order: 2; } .kpis { order: 3; } .dtrend { order: 4; } .dattn { order: 5; } .dclose { order: 6; } .dact { order: 7; } .ddata { order: 8; }
+  .dgrid, .dmain, .dside, .drow { display: contents; }
+  .dhead { order: 1; } #dashToday { order: 2; } #dashBody .card.empty { order: 3; } .kpis { order: 3; } .dclose { order: 4; } .dtrend { order: 5; } .dattn { order: 6; } .dlow { order: 7; } .dact { order: 8; } .ddata { order: 9; }
   .qacts { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .kpi { padding: 12px; }

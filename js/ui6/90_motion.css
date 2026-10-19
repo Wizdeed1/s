@@ -1,8 +1,9 @@
-/* ------------------------------------------------------------------------------------------------------------- motion (design review §10)
-   Still for everyday work; bold in three moments only: the dashboard's first load (72_dash.css), a Build step change (below) and a
-   finished build (60_build.css). Typing, filtering, sorting and paging never animate, numbers never count up, keyboard shortcuts act
-   at once. Entrances use transform and opacity only (no layout shift); nothing animates a blur. Things leave faster than they come. */
-.view.enter { animation: viewIn var(--t-ws) var(--ease-out) both; }
+/* ------------------------------------------------------------------------------------------------------------- motion (Apple HIG, motion.md)
+   Brief, purposeful, never on an interaction that happens many times a day: changing page, changing step, typing, filtering,
+   sorting and paging act at once. Two moments only: the dashboard's first load of a visit (72_dash.css) and a finished build
+   (60_build.css); progress that changes grows to its new value (js/motion.js). Entrances use transform and opacity only; things
+   leave faster than they come; with reduced motion all of it is a short fade or nothing. */
+.view.enter { animation: none; }
 @keyframes viewIn { from { opacity: 0; transform: translateY(10px); } }
 .todaywrap:not([hidden]) > * { animation: fadeIn var(--t-small) ease both; }
 .rv, .rv.rv-in { opacity: 1; transform: none; }
@@ -11,12 +12,11 @@ details[open] > :not(summary) { animation: openIn var(--t-small) var(--ease-out)
 .chk.open .chkbody { animation: openIn var(--t-small) var(--ease-out) both; }
 .drop.over svg, .hdrop.over svg { animation: nudge 600ms var(--ease-out) infinite alternate; }
 @keyframes nudge { to { transform: translateY(-3px); } }
-/* Build, one step to the next (about 0.9 s): the page slides in 28 px from its side, the new step's number glows once, the ring pulses */
-.view.stepin { animation: stepIn var(--t-ws) var(--ease-out) both; }
-.view.stepin.back { animation-name: stepBack; }
+/* Build, one step to the next: at once (a step is changed many times while a month is built); the ring shows the progress */
+.view.stepin, .view.stepin.back { animation: none; }
 @keyframes stepIn { from { opacity: 0; transform: translateX(28px); } }
 @keyframes stepBack { from { opacity: 0; transform: translateX(-28px); } }
-.step .n.glow { animation: glow 900ms var(--ease-out) 1 both; }
+.step .n.glow { animation: none; }
 @keyframes glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 60% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent); } 100% { box-shadow: 0 0 0 3px var(--accent-soft); } }
 .bbring.pulse .rf { transition-duration: var(--t-ws); }
 /* menus, popovers and toasts leave faster than they came */
@@ -45,35 +45,23 @@ details[open] > :not(summary) { animation: openIn var(--t-small) var(--ease-out)
   .sbnav button[aria-current="page"]::before { animation: none; }
 }
 
-/* ---------------------------------------------------------------- the motion layer (js/motion.js: Lenis and GSAP, built in) */
-/* Lenis: the wheel glides on the page; anything laid over it stops the page underneath */
-html.lenis, html.lenis body { height: auto; }
-.lenis.lenis-smooth { scroll-behavior: auto !important; }
-.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
-.lenis.lenis-stopped { overflow: clip; }
-/* the header's edge appears once the page moves under it, instead of a line that is always there */
+/* ---------------------------------------------------------------- the motion layer (js/motion.js: GSAP, built in) */
+/* the toolbar's edge appears once the page moves under it (a scroll edge, not a line that is always there) */
 .appbar { border-bottom-color: transparent; }
-body.scrolled .appbar { border-bottom-color: var(--line); box-shadow: 0 10px 24px -18px rgba(0, 0, 0, .45); }
+body.scrolled .appbar { border-bottom-color: var(--nav-line); }
 /* a panel swiped away leaves from where the finger let go */
 .drawer[data-swiped].out, .sheet-more[data-swiped] { animation: none !important; }
 .drawer, .sheet-more { touch-action: pan-y; }
 .sheet-more::before { content: ""; display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--line-2); margin: 0 auto 10px; }
 .drawer.out { animation-timing-function: var(--ease-out); }
-/* a soft light under the pointer on the dashboard's cards (a fine pointer only) */
-@media (hover: hover) and (pointer: fine) {
-  #dashBody .kpi, #dashBody .qa, .spot { position: relative; }
-  #dashBody .kpi::after, #dashBody .qa::after, .spot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
-    background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--accent) 10%, transparent), transparent 65%); transition: opacity var(--t-hover) ease; }
-  #dashBody .kpi.lit::after, #dashBody .qa.lit::after, .spot.lit::after { opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) { #dashBody .kpi::after, #dashBody .qa::after, .spot::after { display: none; } }
-/* translucency and contrast, as the system asks */
+/* translucency and contrast, as the system asks: the materials become solid, the edges stronger (materials.md, accessibility.md) */
 @media (prefers-reduced-transparency: reduce) {
-  .appbar { background: var(--bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-  .tabbar { background: var(--nav) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }   /* near-black like the sidebar: its words are light */
+  .appbar::before, .tabbar { background: var(--bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .sidebar { background: var(--nav-2) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .menu, .pop, .attpop, .findbox, .secnav { background: var(--overlay) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .toast { background: var(--ink) !important; color: var(--inverse) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   .dropall { background: color-mix(in srgb, var(--bg) 90%, transparent) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 }
 @media (prefers-contrast: more) {
-  :root { --line: var(--line-3); --line-2: var(--ctl-line); }
-  .card, .kpi, .tablewrap, .drawer, .menu { border-color: var(--line-3); }
+  .card, .kpi, .tablewrap, .drawer, .menu, .tile { border-color: var(--line-2); }
 }

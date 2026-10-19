@@ -5,9 +5,9 @@ const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');
 (async () => {
   const b = await chromium.launch(); const errs = [];
   for (const [w, h, lang] of [[1440, 900, 'en'], [390, 844, 'en'], [390, 844, 'ar']]) {
-    const ctx = await b.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce' }), p = await ctx.newPage();
+    const ctx = await b.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce', colorScheme: 'dark' }), p = await ctx.newPage();
     p.on('pageerror', e => errs.push('pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-    await p.addInitScript(([fx, lang]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'a1', name: 'Lina A.', username: 'lina.a', role: 'agent', pid: 'p20' }; try { localStorage.setItem('mc-theme', 'dark'); if (lang === 'ar') localStorage.setItem('mc-lang:a1', 'ar'); } catch (e) {} }, [fixture, lang]);
+    await p.addInitScript(([fx, lang]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'a1', name: 'Lina A.', username: 'lina.a', role: 'agent', pid: 'p20' }; try { if (lang === 'ar') localStorage.setItem('mc-lang:a1', 'ar'); } catch (e) {} }, [fixture, lang]);
     await p.goto('file://' + path.resolve(page0));
     await p.waitForFunction(() => window.__mc && window.__mc.state.rosterReady);
     await p.evaluate(lang => {

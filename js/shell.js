@@ -1,7 +1,8 @@
-// ================================================================ THE SHELL (Option C): the sidebar, the header, the phone tab bar
-// The workspaces sit in a near-black sidebar (a 72 px rail on laptops, remembered in this browser); the header carries the page
-// title, Search, the bell, the reporting period, the theme and the account; Build has its own step bar. On a phone the
-// workspaces move to a tab bar at the bottom (four items and More). A page the role cannot use is not in the navigation; opened
+// ================================================================ THE SHELL (Option A): the sidebar, the toolbar, the phone tab bar
+// The workspaces sit in a frosted sidebar (a 72 px rail on laptops, remembered in this browser); the toolbar carries the page
+// title once the large title has scrolled away, the reporting period, the bell, help, settings and the account; Build has its own
+// step bar. Light and dark follow the computer. On a phone the workspaces move to a tab bar at the bottom: every page when they
+// fit (five or fewer), else four and More (Apple: avoid overflow tabs). A page the role cannot use is not in the navigation; opened
 // by a link it says "Not one of your pages" with the way back. Nothing here reads or writes any data the role could not before.
 const WS_LABEL = { dash: 'Dashboard', build: 'Build', team: 'Team', results: 'Results', cycle: 'Supervisors', wfm: 'WFM', quality: 'Quality', me: 'My page', wait: 'Waiting for access', blocked: 'Not one of your pages' };
 const WS_ICON = { dash: 'i-home', build: 'i-up', team: 'i-team', results: 'i-check', cycle: 'i-clock', wfm: 'i-chart', quality: 'i-star', me: 'i-user' };
@@ -24,7 +25,7 @@ function applyRail() {
 }
 mqLaptop.addEventListener('change', applyRail);
 $('railBtn').addEventListener('click', () => { const on = railNow(); lsSet2('mc-rail', on ? (mqLaptop.matches ? 'open' : '') : (mqLaptop.matches ? '' : 'rail')); applyRail(); requestAnimationFrame(thumbs); });
-$('sbSec').addEventListener('click', e => {
+$('sidebar').addEventListener('click', e => {   // Search at the top, How to use and Settings at the bottom
   const b = e.target.closest('[data-sb]'); if (!b) return;
   if (b.dataset.sb === 'find') findOpen(); else if (b.dataset.sb === 'help') openDrawer('dHelp'); else if (b.dataset.sb === 'settings') openDrawer('dSettings');
 });
@@ -45,7 +46,7 @@ $('sbSec').addEventListener('click', e => {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
 })();
 
-// ---------------------------------------------------------------- the header: the page title, the role, the period, the theme
+// ---------------------------------------------------------------- the toolbar: the page title, the role, the period
 function pageTitleNow() {
   const w = state.ws;
   if (w === 'build') return 'Build';
@@ -108,7 +109,7 @@ function setPeriod(k) {
   }
   renderWs();
 }
-// ---- menus in the header (period, theme): open below their button, arrows move, Escape closes and returns the focus
+// ---- menus in the toolbar (the period): open below their button, arrows move, Escape closes and returns the focus
 let menuOpen = null;
 function openMenu(btn, menu, html) {
   closeMenus();
@@ -122,7 +123,7 @@ function closeMenus(back) {
   menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); if (back) btn.focus();
 }
 document.addEventListener('click', e => { if (menuOpen && !e.target.closest('.hpop')) closeMenus(); });
-for (const id of ['periodMenu', 'themeMenu']) $(id).addEventListener('keydown', e => {
+for (const id of ['periodMenu']) $(id).addEventListener('keydown', e => {
   const items = [...$(id).querySelectorAll('button')], i = items.indexOf(document.activeElement);
   if (e.key === 'Escape') { e.preventDefault(); closeMenus(true); }
   if (e.key === 'ArrowDown') { e.preventDefault(); (items[i + 1] || items[0]).focus(); }
@@ -133,56 +134,36 @@ for (const id of ['periodMenu', 'themeMenu']) $(id).addEventListener('keydown', 
 });
 $('periodBtn').addEventListener('click', e => { e.stopPropagation(); if (menuOpen && menuOpen.menu === $('periodMenu')) { closeMenus(); return; } openMenu($('periodBtn'), $('periodMenu'), periodMenuHtml()); });
 $('periodMenu').addEventListener('click', e => { const b = e.target.closest('[data-period]'); if (!b) return; closeMenus(true); setPeriod(b.dataset.period); });
-// ---- the theme (D4): System, Light or Dark, for everyone, kept in this browser as before (mc-theme)
-const THEME_ICON = { system: 'i-monitor', light: 'i-sun', dark: 'i-moon' };
-function syncTheme() {
-  const t = themeNow();
-  $('themeIco').innerHTML = `<use href="#${THEME_ICON[t] || 'i-moon'}"/>`;
-  $('themeBtn').setAttribute('aria-label', `Theme: ${t[0].toUpperCase() + t.slice(1)}`); $('themeBtn').title = `Theme: ${t[0].toUpperCase() + t.slice(1)}`;
-  $('themeMenu').querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.themeSet === t)));
-  const a = $('acctTheme'); if (a) a.textContent = t[0].toUpperCase() + t.slice(1);
-  if ($('theme')) setSeg($('theme'), t);
-  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', '#0a0a0b');
-}
-function setTheme(t) { try { localStorage.setItem('mc-theme', t); } catch (e) { /* this browser only */ } applyTheme(t); syncTheme(); }
-$('themeBtn').addEventListener('click', e => { e.stopPropagation(); if (menuOpen && menuOpen.menu === $('themeMenu')) { closeMenus(); return; } openMenu($('themeBtn'), $('themeMenu')); });
-$('themeMenu').addEventListener('click', e => { const b = e.target.closest('[data-theme-set]'); if (!b) return; setTheme(b.dataset.themeSet); closeMenus(true); });
-$('acctMenu').addEventListener('click', e => {
-  if (!e.target.closest('[data-acct-theme]')) return;
-  $('acctMenu').hidden = true; $('acctBtn').setAttribute('aria-expanded', 'false');
-  if (mqPhone.matches) { moreOpen('theme'); return; }
-  setTimeout(() => openMenu($('themeBtn'), $('themeMenu')), 0);
-});
-// the theme that follows the device changes with it, live
-try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (themeNow() === 'system') requestAnimationFrame(thumbs); }); } catch (e) { /* older browsers */ }
+// ---- light and dark follow the computer's own setting, live (no switch in the tool: Apple HIG, dark-mode.md); the sliding
+// thumbs of the segmented controls are measured again when it changes
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => requestAnimationFrame(thumbs)); } catch (e) { /* older browsers */ }
 
 // ---------------------------------------------------------------- the phone tab bar and its More sheet
 function navList() { return (WS_OF[roleNow()] || []).filter(w => WS_LABEL[w]); }
 function tabBarHtml() {
-  const L = navList(), main = L.length > 4 ? L.slice(0, 4) : L, more = L.length > 4;   // at most four pages and More (which always holds the tools)
+  const L = navList(), more = L.length > 5, main = more ? L.slice(0, 4) : L;   // every page when five or fewer; else four and More (no overflow tab when it fits)
   const dot = w => { const d = $('wsSeg').querySelector(`[data-ws="${w}"] .wsdot`); return d ? `<span class="wsdot">${esc(d.textContent)}</span>` : ''; };
   const inMore = more && !main.includes(state.ws) && L.includes(state.ws);
   return main.map(w => `<button data-ws="${w}"${w === state.ws ? ' aria-current="page"' : ''}><svg aria-hidden="true"><use href="#${WS_ICON[w]}"/></svg><span>${esc(WS_LABEL[w])}</span>${dot(w)}</button>`).join('')
-    + `<button data-tabmore${inMore ? ' aria-current="page"' : ''} aria-haspopup="dialog" aria-controls="moreSheet"><svg aria-hidden="true"><use href="#i-more"/></svg><span>More</span></button>`;
+    + (more ? `<button data-tabmore${inMore ? ' aria-current="page"' : ''} aria-haspopup="dialog" aria-controls="moreSheet"><svg aria-hidden="true"><use href="#i-more"/></svg><span>More</span></button>` : '');
 }
 function renderTabBar() {
-  const bar = $('tabBar'), L = navList();
-  bar.hidden = !L.length;
-  bar.innerHTML = L.length ? tabBarHtml() : '';
+  const bar = $('tabBar'), L = navList(), on = L.length > 1;   // one page needs no tab bar (tab-bars.md): the agent's own page, the quality team's
+  bar.hidden = !on; document.documentElement.classList.toggle('notabs', !on);
+  bar.innerHTML = on ? tabBarHtml() : '';
 }
 function moreHtml(focus) {
-  const L = navList(), main = L.length > 4 ? L.slice(0, 4) : L, rest = L.filter(w => !main.includes(w)), u = Auth.user(), t = themeNow();
+  const L = navList(), main = L.length > 5 ? L.slice(0, 4) : L, rest = L.filter(w => !main.includes(w)), u = Auth.user();
   const ws = rest.map(w => `<button class="msitem" data-ws="${w}"${w === state.ws ? ' aria-current="page"' : ''}><svg aria-hidden="true"><use href="#${WS_ICON[w]}"/></svg><span>${esc(WS_LABEL[w])}</span></button>`).join('');
   return `${ws ? `<div class="msgrp"><small>Workspaces</small>${ws}</div>` : ''}
     <div class="msgrp"><small>Tools</small><button class="msitem" data-mact="find"><svg aria-hidden="true"><use href="#i-search"/></svg><span>Search</span></button><button class="msitem" data-mact="help"><svg aria-hidden="true"><use href="#i-help"/></svg><span>How to use</span></button>${isBuilder() ? '<button class="msitem" data-mact="settings"><svg aria-hidden="true"><use href="#i-gear"/></svg><span>Settings</span></button>' : ''}</div>
-    <div class="msgrp" id="msTheme"><small>Theme</small><div class="seg mstheme" role="group" aria-label="Theme">${['system', 'light', 'dark'].map(x => `<button data-theme-set="${x}" aria-pressed="${x === t}">${x[0].toUpperCase() + x.slice(1)}</button>`).join('')}</div></div>
     ${u ? `<div class="msgrp"><small>${esc(u.name || u.username || 'Account')}</small>${Auth.isAdmin() ? '<button class="msitem" data-mact="accounts"><svg aria-hidden="true"><use href="#i-user"/></svg><span>Manage accounts</span></button>' : ''}<button class="msitem" data-mact="pw"><svg aria-hidden="true"><use href="#i-lock"/></svg><span>Change password</span></button><button class="msitem" data-mact="lock"><svg aria-hidden="true"><use href="#i-lock"/></svg><span>Lock now</span></button><button class="msitem" data-mact="out"><svg aria-hidden="true"><use href="#i-x"/></svg><span>Sign out</span></button></div>` : ''}`;
 }
 let moreFocus = null;
 function moreOpen(focus) {
   moreFocus = document.activeElement;
   $('moreBody').innerHTML = moreHtml(); $('moreSheet').hidden = false; $('scrim').hidden = false; $('scrim').dataset.more = '1';
-  const f = focus === 'theme' ? $('moreBody').querySelector('#msTheme button[aria-pressed="true"]') : $('moreBody').querySelector('button'); if (f) f.focus();
+  const f = $('moreBody').querySelector('button'); if (f) f.focus();
 }
 function moreClose() {
   if ($('moreSheet').hidden) return;
@@ -196,7 +177,6 @@ $('tabBar').addEventListener('click', e => {
 $('moreSheet').addEventListener('click', e => {
   if (e.target.closest('[data-moreclose]')) { moreClose(); return; }
   const w = e.target.closest('button[data-ws]'); if (w) { moreClose(); setWs(w.dataset.ws); return; }
-  const t = e.target.closest('[data-theme-set]'); if (t) { setTheme(t.dataset.themeSet); setSeg($('moreBody').querySelector('.mstheme'), ''); $('moreBody').querySelectorAll('.mstheme button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.themeSet === t.dataset.themeSet))); return; }
   const a = e.target.closest('[data-mact]'); if (!a) return; const act = a.dataset.mact; moreClose();
   if (act === 'find') findOpen(); else if (act === 'help') openDrawer('dHelp'); else if (act === 'settings') openDrawer('dSettings');
   else if (act === 'accounts') Auth.openAccounts(); else if (act === 'pw') Auth.change(); else if (act === 'lock') Auth.lock(); else if (act === 'out') Auth.signOut();
@@ -217,6 +197,7 @@ function syncNav() {
     const on = b.dataset.ws === w; b.hidden = !L.includes(b.dataset.ws);
     b.setAttribute('aria-pressed', String(on)); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
+  L.forEach(x => { const b = $('wsSeg').querySelector(`:scope > [data-ws="${x}"]`); if (b) $('wsSeg').appendChild(b); });   // the role's own order, the same as its tab bar
   $('wsSeg').hidden = !L.length;
   const set = $('sbSec').querySelector('[data-sb="settings"]'); if (set) set.hidden = !isBuilder();
   $('buildBar').hidden = w !== 'build';
@@ -243,7 +224,7 @@ window.addEventListener('hashchange', () => {
 window.addEventListener('beforeunload', e => { if (state.pending.length || inflight > 0) { e.preventDefault(); e.returnValue = ''; } });
 // ---- the header's shadow once the page scrolls under it, and the skip link lands on the page
 $('skipLink').addEventListener('click', e => { e.preventDefault(); const m = $('main'); m.focus({ preventScroll: true }); m.scrollIntoView({ block: 'start' }); });
-applyRail(); syncTheme();
+applyRail();
 // ---- a long page (Supervisors) gets a local list of its sections, so each one is a click away
 function sectionNav(bodyId) {
   const body = $(bodyId); if (!body) return;

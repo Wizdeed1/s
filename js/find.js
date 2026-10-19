@@ -220,8 +220,6 @@ function findPages(role) {
   add('help', 'How to use', 'help|how to|guide|manual|instructions', 'Help', () => openDrawer('dHelp'));
   if (Auth.isAdmin && Auth.isAdmin()) add('accounts', 'Manage accounts', 'accounts|users|roles|passwords|reset password|approve accounts', 'Admin', () => Auth.openAccounts());
   if (Auth.user()) add('password', 'Change my password', 'change password|password|new password', 'Account', () => Auth.change());
-  add('dark', 'Dark look', 'dark|dark mode|night', 'Look', () => { lsSet('mc-theme', 'dark'); applyTheme('dark'); });
-  add('light', 'Light look', 'light|light mode|day mode|white', 'Look', () => { lsSet('mc-theme', 'light'); applyTheme('light'); });
   return L;
 }
 function fScrollCard(label) {

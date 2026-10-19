@@ -15,9 +15,9 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   const B = await oldBooks(), dir = path.join(out, 'oldbooks'); fs.mkdirSync(dir, { recursive: true });
   const files = ['inc', 'final', 'ded'].map(x => { const f = path.join(dir, B.names[x]); fs.writeFileSync(f, B[x]); return f; });
   const b = await chromium.launch(), errs = [];
-  const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }), p = await ctx.newPage();
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce', colorScheme: 'light' }), p = await ctx.newPage();
   p.on('pageerror', e => errs.push('pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.addInitScript(([fx]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u3', name: 'Faisal M.', username: 'faisal.m', role: 'senior' }; try { localStorage.setItem('mc-theme', 'light'); } catch (e) { /* none */ } }, [fixture]);
+  await p.addInitScript(([fx]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u3', name: 'Faisal M.', username: 'faisal.m', role: 'senior' }; }, [fixture]);
   await p.goto('file://' + page0);
   await p.waitForFunction(() => window.__mc && window.__mc.state && window.__mc.state.rosterReady);
   // August as a draft month of the tool: the old people's days as the tool counts them

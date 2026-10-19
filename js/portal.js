@@ -359,7 +359,7 @@ function applyRole() {
   document.body.dataset.wsrole = r; document.body.classList.toggle('ro', !isBuilder());
   renderWelcome(); roleHeads(r);
   if (state.db) { watchDailyMail(state.db); rbPrefsCarry(); }
-  for (const id of ['bell', 'setBtn']) { const el = $(id); if (el) el.hidden = !isBuilder(); }
+  for (const id of ['bell', 'setBtn', 'acctSet']) { const el = $(id); if (el) el.hidden = !isBuilder(); }
   syncFindBtn();
   if (!L.length) { state.ws = 'wait'; hidePop(); showWsView('wait'); syncWsSeg(); waitText(); return; }
   const fresh = state.wsRole !== r; state.wsRole = r;   // someone else signed in, or the role changed: their own first workspace

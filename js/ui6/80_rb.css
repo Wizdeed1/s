@@ -6,31 +6,31 @@
 .rbcard { display: grid; gap: 14px; }
 /* the four steps of the day: the number carries the order */
 .rbstep { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
-.rbstep .n { width: 26px; height: 26px; display: grid; place-items: center; background: var(--ink); color: var(--inverse); font: 600 13px/1 var(--text); font-variant-numeric: tabular-nums; margin-top: 1px; }
+.rbstep .n { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); font: 600 13px/1 var(--text); font-variant-numeric: tabular-nums; margin-top: 1px; }
 .rbstep h2 { margin: 2px 0 0; font-size: 15.5px !important; }
 .rbstep .cap { margin: 3px 0 0 !important; font-size: 12.5px !important; }
 .rbdate { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; }
 .rbdate input[type=date] { width: auto; min-width: 160px; }
-.rbsun { display: inline-flex; align-items: center; gap: 9px; min-height: var(--ctl); padding: 0 12px; border: 1px solid var(--line-2); cursor: pointer; font-size: 13px; transition: border-color var(--t-fast) ease, background-color var(--t-fast) ease; }
+.rbsun { display: inline-flex; align-items: center; gap: 9px; min-height: var(--ctl); padding: 0 12px; border: 0; border-radius: var(--r-ctl); background: var(--btn-fill); cursor: pointer; font-size: 13px; transition: border-color var(--t-fast) ease, background-color var(--t-fast) ease; }
 .rbsun span { display: grid; line-height: 1.25; }
 .rbsun b { font-weight: 500; font-size: 12px; color: var(--muted); }
-.rbsun.on { border-color: var(--ink); background: var(--panel-2); }
+.rbsun.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .rbsun.on b { color: var(--ink); }
 .rbdrop { padding: 26px 16px; }
 .rbdrop strong { font-size: 15px; }
 .rbdrop span { font-size: 12.5px; max-width: 46ch; }
 .rbfiles { display: grid; gap: 4px; max-height: 280px; overflow: auto; overscroll-behavior: contain; }
 .rbfiles .hint { display: flex; align-items: center; gap: 8px; }
-.rbfile { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 2px 10px; font-size: 12px; padding: 7px 10px; background: var(--panel-2); border: 1px solid var(--line); animation: itemIn 220ms var(--ease-out) both; }
+.rbfile { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 2px 10px; font-size: 12px; padding: 7px 10px; background: var(--fill); border-radius: 8px; animation: itemIn 220ms var(--ease-out) both; }
 .rbfile::before { content: ""; border-radius: 50%; width: 6px; height: 6px; flex: none; background: var(--good); margin-right: -4px; }
 .rbfile.wfm::before { background: var(--c1); }
-.rbfile.bad { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn); }
+.rbfile.bad { background: var(--warn-bg); color: var(--warn); }
 .rbfile.bad::before { background: var(--warn); }
 .rbfile .fname { flex: 1 1 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-weight: 500; color: var(--ink-2); }
 .rbfile.bad .fname { color: inherit; }
 .rbfile .ftag { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 .rbfile.bad .ftag { color: inherit; }
-.rbfile select.uday { font: inherit; font-size: 11.5px; min-height: 24px; padding: 0 4px; margin-left: 2px; border: 1px solid var(--line-2); background: var(--panel); color: var(--ink); }
+.rbfile select.uday { font: inherit; font-size: 11.5px; min-height: 24px; padding: 0 4px; margin-left: 2px; border: 1px solid var(--ctl-line); border-radius: 6px; background: var(--sunk); color: var(--ink); }
 .rbfile.bad select.uday { border-color: var(--warn); }
 @keyframes itemIn { from { opacity: 0; transform: translateY(4px); } }
 .rbcount { margin-top: 2px !important; font-size: 12px; }
@@ -41,10 +41,10 @@
 /* the four brand emails, on their way to the WFM manager */
 .rbsend .cardhead { margin-bottom: 14px; }
 .rbsend .cap { margin: 3px 0 0 !important; }
-.rbbrands { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
-.rbbrands > li { display: grid; gap: 3px; align-content: start; padding: 13px 14px 12px; background: var(--panel); min-width: 0; position: relative; }
-.rbbrands > li::before { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 2px; background: var(--line-2); }
-.rbbrands > li.ok::before { background: var(--good); } .rbbrands > li.warn::before { background: var(--warn); } .rbbrands > li.sent::before { background: var(--ink); }
+.rbbrands { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.rbbrands > li { display: grid; gap: 3px; align-content: start; padding: 13px 14px 12px; background: var(--fill); border-radius: 12px; min-width: 0; position: relative; overflow: hidden; }
+.rbbrands > li::before { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--line-2); }
+.rbbrands > li.ok::before { background: var(--good); } .rbbrands > li.warn::before { background: var(--warn); } .rbbrands > li.sent::before { background: var(--accent); }
 .rbbrands .bn { font: 600 13.5px/1.3 var(--text); }
 .rbbrands b { font: 600 15px/1.25 var(--text); }
 .rbbrands b.ok { color: var(--good); } .rbbrands b.warn { color: var(--warn); }
@@ -55,11 +55,11 @@
 /* one email: its checks, its words, its actions and the email itself */
 .rbpanel { display: grid; gap: 14px; min-width: 0; }
 .rbpanel.swap { animation: fadeIn 160ms ease both; }
-.rbwarn { background: var(--warn-bg); border: 1px solid var(--warn-line); padding: 12px 14px; font-size: 13px; color: var(--ink-2); }
+.rbwarn { background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--ink-2); }
 .rbwarn b { display: flex; align-items: center; gap: 8px; color: var(--warn); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .rbwarn ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
-.rbok { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--good-bg); border: 1px solid var(--good-line); color: var(--good); font-size: 13px; font-weight: 500; }
-.rb .editor { background: var(--panel); border: 1px solid var(--line); padding: 16px; display: grid; gap: 12px; }
+.rbok { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--good-bg); border-radius: 12px; color: var(--good); font-size: 13px; font-weight: 500; }
+.rb .editor { background: var(--surface); border: 1px solid var(--card-line); border-radius: var(--r-card); box-shadow: var(--shadow-card); padding: 16px; display: grid; gap: 12px; }
 .rb .editor > .row, .rb .editor > .row2 { margin: 0; }
 .rb .row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .rb .fld { display: grid; gap: 5px; min-width: 0; }
@@ -68,11 +68,11 @@
 .rb .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; }
 .rb .actions .sp { flex: 1 1 auto; }
 .rb .chk { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
-.rbsent { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 10px; background: var(--good-bg); border: 1px solid var(--good-line); color: var(--good); font-size: 12.5px; font-weight: 600; animation: itemIn 220ms var(--ease-out) both; }
+.rbsent { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 12px; background: var(--good-bg); border-radius: var(--r-pill); color: var(--good); font-size: 12.5px; font-weight: 600; animation: itemIn 220ms var(--ease-out) both; }
 .rbsent svg { stroke-dasharray: 24; stroke-dashoffset: 0; animation: drawCheck 360ms var(--ease-out) both 80ms; }
 @keyframes drawCheck { from { stroke-dashoffset: 24; } }
 .rbwho { margin: -4px 0 0; font-size: 12px; }
-.rb .previewWrap { position: relative; background: #fff; border: 1px solid var(--line); overflow: hidden; }
+.rb .previewWrap { position: relative; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .rb .previewWrap iframe { display: block; width: 100%; max-width: none; height: max(560px, 78vh); border: 0; background: #fff; }
 .rb .previewWrap iframe.rbprev { opacity: 0; transition: opacity 220ms ease; }
 .rb .previewWrap iframe.rbprev.in { opacity: 1; }
@@ -86,16 +86,16 @@
 .dmday .cap { margin: 0 !important; font-size: 12.5px !important; }
 .dmprog { display: flex; align-items: center; gap: 12px; }
 .dmprog .pbar { width: 160px; }
-.dmprog b { font: 600 20px/1 var(--text); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.dmprog b { font: 600 20px/1 var(--display); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .dmprog small { color: var(--muted); font-size: 12.5px; }
 .rbskel { display: grid; gap: 12px; }
 /* the WFM Daily Review, in the tool's look */
 .rb .wfm-checks { display: grid; gap: 6px; margin: 0 0 12px; }
-.rb .wfm-check { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); font-size: 12.5px; }
+.rb .wfm-check { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; background: var(--fill); border-radius: 10px; font-size: 12.5px; }
 .rb .wfm-check .badge { font-size: 10.5px; font-weight: 600; min-height: 20px; margin-top: 1px; }
-.rb .wfm-check.ok { border-color: var(--good-line); } .rb .wfm-check.ok .badge { background: var(--good-bg); color: var(--good); border-color: var(--good-line); }
-.rb .wfm-check.warn { border-color: var(--warn-line); } .rb .wfm-check.warn .badge { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
-.rb .wfm-check.bad { border-color: var(--bad-line); } .rb .wfm-check.bad .badge { background: var(--bad-bg); color: var(--bad); border-color: var(--bad-line); }
+.rb .wfm-check.ok .rb .wfm-check.ok .badge { background: var(--good-bg); color: var(--good); border-color: var(--good-line); }
+.rb .wfm-check.warn .rb .wfm-check.warn .badge { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
+.rb .wfm-check.bad .rb .wfm-check.bad .badge { background: var(--bad-bg); color: var(--bad); border-color: var(--bad-line); }
 .rb .wfm-check .detail { color: var(--muted); font-size: 12px; margin-top: 2px; }
 .rb .wfm-pass summary { cursor: pointer; font-size: 12.5px; color: var(--ink-2); padding: 4px 2px; font-weight: 500; display: flex; align-items: center; gap: 8px; list-style: none; }
 .rb .wfm-pass .wfm-check { margin-top: 6px; }
@@ -109,32 +109,32 @@
 .rb .wfm-h { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
 .rb .wfm-h span { font-weight: 400; }
 .rb .wfm-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 6px; }
-.rb .wslot { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12px; min-width: 0; list-style: none; margin: 0; }
-.rb .wslot.loaded { background: var(--panel); border-color: var(--good-line); }
-.rb .wslot.optional { background: transparent; border-style: dashed; }
-.rb .wslot.pending { background: var(--warn-bg); border-color: var(--warn-line); }
+.rb .wslot { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; background: var(--fill); border: 1px solid transparent; border-radius: 10px; font-size: 12px; min-width: 0; list-style: none; margin: 0; }
+.rb .wslot.loaded { background: var(--good-bg); }
+.rb .wslot.optional { background: transparent; border: 1px dashed var(--line-2); }
+.rb .wslot.pending { background: var(--warn-bg); }
 .rb .wslot .nm { font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
 .rb .wslot .tag { font-size: 11px; color: var(--muted); display: flex; gap: 4px; align-items: center; font-weight: 500; }
 .rb .wslot .fn { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rb .wslot .mv { display: flex; gap: 4px; flex-wrap: wrap; }
 .rb .wfm-wm { font-size: 12.5px; margin-top: 8px; }
-.rb .wfm-wm.ok { padding: 8px 11px; background: var(--good-bg); color: var(--good); }
-.rb .wfm-wm.bad { padding: 8px 11px; background: var(--bad-bg); color: var(--bad); }
+.rb .wfm-wm.ok { padding: 8px 11px; border-radius: 10px; background: var(--good-bg); color: var(--good); }
+.rb .wfm-wm.bad { padding: 8px 11px; border-radius: 10px; background: var(--bad-bg); color: var(--bad); }
 /* its plain buttons, as the tool's buttons */
-.rb .actions button:not(.btn), .rb .wfm-day, .rb .wfm-mv, .rb .wslot .x { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: var(--ctl); font: 500 13.5px/1 var(--text); padding: 0 14px; border: 1px solid var(--line-2); background: transparent; color: var(--ink); cursor: pointer;
+.rb .actions button:not(.btn), .rb .wfm-day, .rb .wfm-mv, .rb .wslot .x { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: var(--ctl); font: 500 13.5px/1 var(--text); padding: 0 14px; border: 0; border-radius: var(--r-ctl); background: var(--btn-fill); color: var(--ink); cursor: pointer;
   transition: border-color var(--t-fast) ease, background-color var(--t-fast) ease, color var(--t-fast) ease, transform var(--t-press) var(--ease-out); }
 .rb .actions button:not(.btn):active:not(:disabled), .rb .wfm-day:active, .rb .wfm-mv:active { transform: scale(.97); }
-.rb .actions button.primary:not(.btn) { background: var(--ink); border-color: var(--ink); color: var(--inverse); font-weight: 600; }
+.rb .actions button.primary:not(.btn) { background: var(--accent-fill); color: var(--on-accent); font-weight: 600; }
 .rb .actions button:disabled { opacity: .42; cursor: not-allowed; }
 .rb .wfm-day { height: var(--ctl-sm); padding: 0 11px; font-size: 12.5px; }
-.rb .wfm-day.on { background: var(--ink); color: var(--inverse); border-color: var(--ink); font-weight: 600; }
-.rb .wfm-mv { height: 22px; padding: 0 8px; font-size: 11px; }
-.rb .wslot .x { width: 20px; height: 20px; padding: 0; font-size: 12px; line-height: 1; }
+.rb .wfm-day.on { background: var(--accent-fill); color: var(--on-accent); font-weight: 600; }
+.rb .wfm-mv { height: 22px; padding: 0 8px; font-size: 11px; border-radius: 6px; }
+.rb .wslot .x { width: 20px; height: 20px; padding: 0; font-size: 12px; line-height: 1; border-radius: 50%; }
 .rb .hint { color: var(--muted); font-size: 12.5px; margin: 0; }
 .rb input[type=file] { font-size: 12.5px; }
 @media (hover: hover) and (pointer: fine) {
-  .rb .actions button:not(.btn):hover:not(:disabled), .rb .wfm-day:hover, .rb .wfm-mv:hover, .rb .wslot .x:hover { border-color: var(--line-3); background: var(--panel-2); }
-  .rb .actions button.primary:not(.btn):hover:not(:disabled) { background: var(--brand); border-color: var(--brand); color: #0a0a0a; }
-  .rb .wfm-day.on:hover { background: var(--ink); color: var(--inverse); }
-  .rbsun:hover { border-color: var(--line-3); }
+  .rb .actions button:not(.btn):hover:not(:disabled), .rb .wfm-day:hover, .rb .wfm-mv:hover, .rb .wslot .x:hover { background: var(--btn-fill-hover); }
+  .rb .actions button.primary:not(.btn):hover:not(:disabled) { background: var(--accent-fill-hover); color: var(--on-accent); }
+  .rb .wfm-day.on:hover { background: var(--accent-fill-hover); color: var(--on-accent); }
+  .rbsun:not(.on):hover { background: var(--btn-fill-hover); }
 }

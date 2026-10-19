@@ -107,12 +107,12 @@ b.bad, .astats b.bad { color: var(--bad); }
 .hbars { display: grid; gap: 4px; }
 .hb { display: grid; grid-template-columns: minmax(120px, 34%) 1fr auto; gap: 12px; align-items: center; font-size: 13px; border: 0; background: none; text-align: left; padding: 4px 6px; cursor: pointer; transition: background-color var(--t-fast) ease; }
 .hb .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hb .track { height: 8px; background: var(--panel-2); }
+.hb .track { height: 8px; border-radius: 4px; background: var(--fill-2); overflow: hidden; }
 .hb .fill { height: 100%; background: var(--bar); }
 .hb .v { font: 600 12.5px/1 var(--text); min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
-.pfstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; padding: 1px; background: none; }
-.pfstats > div { box-shadow: 0 0 0 1px var(--line); background: var(--panel); padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
-.pfstats b { font: 600 20px/1.2 var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.pfstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.pfstats > div { background: var(--fill); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.pfstats b { font: 600 20px/1.2 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .pfstats span { font-size: 12px; color: var(--ink-2); font-weight: 500; }
 .pfstats small { font-size: 11px; color: var(--muted); }
 .perfcard, .wfcard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
@@ -131,10 +131,10 @@ b.bad, .astats b.bad { color: var(--bad); }
 .pftab td.good { background: color-mix(in srgb, var(--good) 8%, transparent); }
 .pftab td.bad { background: color-mix(in srgb, var(--bad) 8%, transparent); font-weight: 600; }
 .pftab td.num.bad { color: var(--bad); font-weight: 600; }
-.pfgrid, .wfgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; padding: 1px; background: none; }
-.pfgrid > div, .wfgrid > div { box-shadow: 0 0 0 1px var(--line); background: var(--panel); padding: 8px 10px; display: grid; gap: 2px; min-width: 0; position: relative; }
-.pfgrid > div.good, .wfgrid > div.good { background: color-mix(in srgb, var(--good) 7%, var(--panel)); }
-.pfgrid > div.bad { background: color-mix(in srgb, var(--bad) 7%, var(--panel)); }
+.pfgrid, .wfgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pfgrid > div, .wfgrid > div { background: var(--fill); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; position: relative; }
+.pfgrid > div.good, .wfgrid > div.good { background: var(--good-bg); }
+.pfgrid > div.bad { background: var(--bad-bg); }
 .pfgrid span, .wfgrid span { font-size: 12px; color: var(--muted); }
 .pfgrid b, .wfgrid b { font: 600 16px/1.25 var(--text); font-variant-numeric: tabular-nums; }
 .pfgrid small, .wfgrid small { font-size: 11px; color: var(--muted); }
@@ -153,8 +153,8 @@ b.bad, .astats b.bad { color: var(--bad); }
 .kpicard { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-card); overflow: hidden; }
 .kpicard table th, .kpicard table td { padding: 7px 10px; }
 .kpicard td.num { font-size: 12.5px; }
-.kpisum { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1px; padding: 1px 0 0; background: none; }
-.kpisum > div { box-shadow: 0 0 0 1px var(--line); background: var(--panel-2); padding: 9px 11px; }
+.kpisum { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; padding: 10px; }
+.kpisum > div { background: var(--fill); border-radius: 10px; padding: 9px 11px; }
 .kpisum b { display: block; font: 600 16px/1.25 var(--text); font-variant-numeric: tabular-nums; }
 .kpisum span { font-size: 11.5px; color: var(--muted); }
 .kpisum .earned { background: var(--brand-soft); }
@@ -230,13 +230,13 @@ b.bad, .astats b.bad { color: var(--bad); }
 #v-email.inws > .viewhead h1 { font-size: 22px; }
 /* settings: the logo */
 .logostate { display: flex; align-items: center; gap: 10px; min-height: 40px; flex-wrap: wrap; }
-.logoimg { max-height: 44px; max-width: 180px; background: #fff; border: 1px solid var(--line); padding: 4px; }
+.logoimg { max-height: 44px; max-width: 180px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
 .logostate .logoimg { padding: 6px; max-height: 64px; }
 .tempbox { display: grid; gap: 8px; }
 .tempcode { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.tempcode code { font: 600 16px/1 var(--text); letter-spacing: .06em; background: var(--panel); color: var(--ink); border: 1px solid var(--line-2); padding: 7px 12px; font-variant-numeric: tabular-nums; }
+.tempcode code { font: 600 16px/1 var(--text); letter-spacing: .06em; background: var(--fill); color: var(--ink); border-radius: 8px; padding: 7px 12px; font-variant-numeric: tabular-nums; }
 /* the deduction table in the preview */
-.dedtab { overflow-x: auto; border: 1px solid var(--line); }
+.dedtab { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
 .dedtab table { font-size: 12px; }
 .dedtab th, .dedtab td { padding: 5px 8px; text-align: center; }
 .dedtab th:first-child, .dedtab td:first-child { text-align: left; position: sticky; left: 0; background: var(--panel); }

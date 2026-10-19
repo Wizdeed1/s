@@ -5,9 +5,9 @@ const fs = require('node:fs'), path = require('node:path');
 const [page0, exp, out, theme = 'dark'] = process.argv.slice(2); fs.mkdirSync(out, { recursive: true });
 const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');
 (async () => {
-  const b = await chromium.launch(), ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true, reducedMotion: 'reduce' }), p = await ctx.newPage(), errs = [];
+  const b = await chromium.launch(), ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true, reducedMotion: 'reduce', colorScheme: theme === 'dark' ? 'dark' : 'light' }), p = await ctx.newPage(), errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.addInitScript(([fx, th]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user' }; try { localStorage.setItem('mc-theme', th); } catch (e) {} }, [fixture, theme]);
+  await p.addInitScript(([fx, th]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user' }; }, [fixture, theme]);
   await p.goto('file://' + path.resolve(page0));
   await p.waitForFunction(() => window.__mc && window.__mc.state.rosterReady);
   await p.evaluate(() => { const M = window.__mc, F = window.__FIX__; M.state.history = Object.fromEntries(Object.entries(F.history).filter(([k]) => k !== '2026-09')); M.state.finals = F.finals; M.state.histVer++; M.setWs('build'); });

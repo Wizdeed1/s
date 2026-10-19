@@ -74,6 +74,9 @@
   <div class="sbtop">
     <div class="brand"><img class="bl on-dark" id="blDark" alt="Beyond One" height="28"><img class="bl on-light" id="blLight" alt="Beyond One" height="28"><span class="mark" aria-hidden="true">WF</span><b>MC Monthly<br>Report Builder</b></div>
   </div>
+  <div class="sbsearch">
+    <button class="sbitem" data-sb="find" data-tip="Search (Ctrl K)"><svg aria-hidden="true"><use href="#i-search"/></svg><span>Search</span><kbd class="kbd">Ctrl K</kbd></button>
+  </div>
   <div class="sbnav" id="wsSeg" role="group" aria-label="Workspace" hidden>
     <button data-ws="dash" aria-pressed="false" data-tip="Dashboard"><svg aria-hidden="true"><use href="#i-home"/></svg><span>Dashboard</span></button>
     <button data-ws="build" aria-pressed="false" data-tip="Build"><svg aria-hidden="true"><use href="#i-up"/></svg><span>Build</span></button>
@@ -85,7 +88,6 @@
     <button data-ws="me" aria-pressed="false" data-tip="My page"><svg aria-hidden="true"><use href="#i-user"/></svg><span>My page</span></button>
   </div>
   <div class="sbsec" id="sbSec">
-    <button class="sbitem" data-sb="find" data-tip="Search (Ctrl K)"><svg aria-hidden="true"><use href="#i-search"/></svg><span>Search</span><kbd class="kbd">Ctrl K</kbd></button>
     <button class="sbitem" data-sb="help" data-tip="How to use"><svg aria-hidden="true"><use href="#i-help"/></svg><span>How to use</span></button>
     <button class="sbitem" data-sb="settings" data-tip="Settings" hidden><svg aria-hidden="true"><use href="#i-gear"/></svg><span>Settings</span></button>
   </div>
@@ -102,14 +104,6 @@
         <div class="menu periodmenu" id="periodMenu" role="menu" aria-label="Reporting period" hidden></div>
       </div>
       <button class="btn ghost icon bell" id="bell" aria-label="Notifications" title="Checks and notifications"><svg><use href="#i-bell"/></svg><span class="bn" id="bellN" hidden>0</span></button>
-      <div class="hpop">
-        <button class="btn ghost icon" id="themeBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu" aria-label="Theme" title="Theme"><svg id="themeIco" aria-hidden="true"><use href="#i-moon"/></svg></button>
-        <div class="menu thememenu" id="themeMenu" role="menu" aria-label="Theme" hidden>
-          <button role="menuitemradio" aria-checked="false" data-theme-set="system"><svg aria-hidden="true"><use href="#i-monitor"/></svg>System<small>Follows the device</small></button>
-          <button role="menuitemradio" aria-checked="false" data-theme-set="light"><svg aria-hidden="true"><use href="#i-sun"/></svg>Light</button>
-          <button role="menuitemradio" aria-checked="false" data-theme-set="dark"><svg aria-hidden="true"><use href="#i-moon"/></svg>Dark</button>
-        </div>
-      </div>
       <button class="btn ghost icon hlp" id="helpBtn" aria-label="How to use" title="How to use"><svg><use href="#i-help"/></svg></button>
       <button class="btn ghost icon" id="setBtn" aria-label="Settings" title="Settings"><svg><use href="#i-gear"/></svg></button>
       <div class="acct">
@@ -119,7 +113,8 @@
           <button role="menuitem" data-acct="accounts" hidden>Manage accounts</button>
           <button role="menuitem" data-acct="user" id="acctUserBtn">Change username</button>
           <button role="menuitem" data-acct="pw">Change password</button>
-          <button role="menuitem" data-acct-theme>Theme: <span id="acctTheme">Dark</span></button>
+          <button role="menuitem" data-acct="help" id="acctHelp" class="phoneonly">How to use</button>
+          <button role="menuitem" data-acct="settings" id="acctSet" class="phoneonly" hidden>Settings</button>
           <button role="menuitem" data-acct="lock">Lock now</button>
           <button role="menuitem" data-acct="out">Sign out</button>
         </div>
@@ -491,7 +486,6 @@
     <div class="field"><label for="lockMins">Your sign-in</label><div class="hint" id="setWho"></div><select id="lockMins"><option value="5">After 5 minutes without activity</option><option value="15">After 15 minutes without activity</option><option value="30">After 30 minutes without activity</option><option value="60">After 60 minutes without activity</option></select>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><button class="btn sm" id="chgPw">Change password</button><button class="btn sm" id="lockNow2">Lock now</button><button class="btn sm" id="signOut2">Sign out</button></div>
       <small id="lockHelp">It also asks you to sign in when you open the tool again. Your work on the page stays while it is locked.</small></div>
-    <div class="field"><span class="lbl" id="l-th">Theme</span><div class="seg" id="theme" role="group" aria-labelledby="l-th"><button data-f="system" aria-pressed="true">System</button><button data-f="light" aria-pressed="false">Light</button><button data-f="dark" aria-pressed="false">Dark</button></div></div>
   </div>
   <footer><button class="btn" id="resetSet">Reset to defaults</button><button class="btn primary" data-close>Done</button></footer>
 </aside>
@@ -615,8 +609,9 @@
     <section>
       <h3>Getting around</h3>
       <ul>
-        <li>Your pages are in the <b>sidebar</b> on the left. On a laptop it narrows to icons (point at one for its name); the button at its foot widens it again, and this browser remembers your choice. On a phone the pages are in the bar at the bottom, and <b>More</b> holds the rest.</li>
-        <li>The <b>header</b> carries the page's title, <b>Search</b> (Ctrl K), the <b>bell</b> with your notifications: deadlines and what is yours to do (everyone), and the checks (for the people who build the month), the <b>month</b> the page shows, the <b>theme</b> (System, Light or Dark) and your account. A final month shows a lock and is read-only. On Build the month comes from the exports instead; change it in Settings › Month.</li>
+        <li>Your pages are in the <b>sidebar</b> on the left. On a laptop it narrows to icons (point at one for its name); the button at its foot widens it again, and this browser remembers your choice. On a phone the pages are in the bar at the bottom; with more than five, <b>More</b> holds the rest, and How to use and Settings are in the account menu.</li>
+        <li><b>Search</b> (Ctrl K) is at the top of the sidebar (on a phone, in the header). The <b>header</b> carries the <b>bell</b> with your notifications: deadlines and what is yours to do (everyone), and the checks (for the people who build the month), the <b>month</b> the page shows and your account. A final month shows a lock and is read-only. On Build the month comes from the exports instead; change it in Settings › Month.</li>
+        <li>The tool is light or dark as your computer is set, and changes with it (Windows: Settings › Personalization › Colors; Mac: System Settings › Appearance).</li>
         <li>The WFM roles and the senior manager start on the <b>Dashboard</b>: the month's six numbers against the month before, the trend, what needs attention, the month close, recent activity and how old each source is. Everyone else starts on their own page; what is theirs to do, with its deadline, is in the bell.</li>
         <li><b>Build</b> has its own step bar: Import, Review, Export, Email. Review opens on <b>Checks</b>, the same checks as the bell, with what each one means and what happens until you act. Only three things stop a build: an empty roster, files still being read, and no export or attendance file at all.</li>
       </ul>

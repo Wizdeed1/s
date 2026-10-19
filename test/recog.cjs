@@ -19,9 +19,9 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   const evalF = path.join(dir, 'Final EVAL - September 2026.xlsx'); fs.writeFileSync(evalF, E.bytes);
   const exports = fs.readdirSync(exp).map(f => path.join(exp, f));
   const b = await chromium.launch(), errs = [];
-  const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }), p = await ctx.newPage();
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce', colorScheme: 'light' }), p = await ctx.newPage();
   p.on('pageerror', e => errs.push('pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.addInitScript(([fx]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u0', name: 'Sara K.', username: 'sara.k', role: 'admin' }; try { localStorage.setItem('mc-theme', 'light'); const d = new Date(); localStorage.setItem('mc-today-toast:u0', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); } catch (e) { /* none */ } }, [fixture]);   // the day's late reminder already seen: the summary toast stays
+  await p.addInitScript(([fx]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u0', name: 'Sara K.', username: 'sara.k', role: 'admin' }; try { const d = new Date(); localStorage.setItem('mc-today-toast:u0', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); } catch (e) { /* none */ } }, [fixture]);   // the day's late reminder already seen: the summary toast stays
   await p.goto('file://' + page0);
   await p.waitForFunction(() => window.__mc && window.__mc.state && window.__mc.state.rosterReady);
   const aug0 = await p.evaluate(() => { const M = window.__mc, F = window.__FIX__; M.state.history = JSON.parse(JSON.stringify(F.history)); M.state.finals = JSON.parse(JSON.stringify(F.finals)); M.state.histVer++; M.state.finVer++; M.setWs('build'); M.setStep('import'); return M.state.history['2026-08'].rows.length; });

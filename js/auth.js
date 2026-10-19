@@ -727,6 +727,7 @@ const Auth = (() => {
     const a = e.target.closest('[data-acct]'); if (!a) return; $('acctMenu').hidden = true; $('acctBtn').setAttribute('aria-expanded', 'false');
     const k = a.dataset.acct;
     if (k === 'lock') lock(); if (k === 'pw') setMode('change'); if (k === 'user') setMode('username'); if (k === 'out') signOut(); if (k === 'accounts') openAccounts();
+    if (k === 'help') openDrawer('dHelp'); if (k === 'settings') openDrawer('dSettings');   // on a phone, where the header has no room for their buttons
   });
   $('signinSeg').addEventListener('click', e => { const b = e.target.closest('[data-signin]'); if (b) setSignin(b.dataset.signin === 'user'); });
   $('accList').addEventListener('submit', e => {

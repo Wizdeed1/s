@@ -18,7 +18,7 @@
 .cntctl select.cell { min-width: 0; width: auto; border: 1px solid var(--ctl-line); background-color: var(--surface); }
 .cntctl input.cell[data-cnt="attitude"] { border: 1px solid var(--ctl-line); background: var(--surface); }
 .cnttab { display: grid; gap: 6px; }
-.cntex { margin: var(--s3) 0 0; padding: var(--s3); border-radius: var(--r-ctl); background: var(--surface); border: 1px dashed var(--line-2); }
+.cntex { margin: var(--s3) 0 0; padding: var(--s3); border-radius: 10px; background: var(--fill); }
 @media (max-width: 767.98px) { .cntrow { grid-template-columns: minmax(0, 1fr); } .cntrow > .lbl { padding-top: 0; } }
 
 /* How this was counted */

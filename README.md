@@ -4,8 +4,9 @@ The Member Care Workforce Management tool: one offline HTML file that turns the 
 supervisors' attendance sheets into the monthly report, the incentive data and everything that follows (KPI results,
 one-to-ones, objections, the senior manager's review and final, the month close, the daily Member Care reports).
 
-This repository holds the v33 source restored from *MC Monthly Report Builder.md* (Part 2), with the approved
-**Option C** visual design built on top of it and the October 2026 additions below. Every calculation, output, email
+This repository holds the v33 source restored from *MC Monthly Report Builder.md* (Part 2), with the **Option A
+(Daylight)** visual design built on top of it, following Apple's Human Interface Guidelines, and the October 2026 additions
+below. Every calculation, output, email
 template, role, permission and storage format is the same as v33 **by default**: the new counting settings start at what
 v33 did (tests compare 10,000 synthetic people against the v33 code), and the only permission added on request is that the
 WFM analyst shares the Emails page with the WFM manager. The tool still sends nothing and makes no network request.
@@ -13,18 +14,27 @@ WFM analyst shares the Emails page with the WFM manager. The tool still sends no
 **The built file:** [`final/MC Monthly Report Builder.html`](final/MC%20Monthly%20Report%20Builder.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
 
-## What Option C changed
+## The design: Option A, by Apple's guidelines
+
+Option A was chosen from three samples and built by the rules of Apple's Human Interface Guidelines (as the
+[apple-design-skill](https://github.com/dickwu/apple-design-skill) reviews them). What changed, and the guideline behind it:
 
 | Area | What you see now |
 |---|---|
-| Navigation (D1) | A near-black sidebar with each role's pages; a 72 px icon rail below 1,280 px (remembered in this browser); a tab bar with four items and **More** on phones. |
-| Header | One page title with the role beside it, Search (Ctrl K), the bell (builders), the **reporting period** on every page except Build (D13; a final month shows a lock and is read-only), a **theme menu for everyone** (D4, same `mc-theme` setting) and the account menu. |
-| Dashboard (D2, D6) | The first page of the admin, WFM analyst, WFM manager and senior manager: greeting, quick actions for the role, six KPI cards (Agents, Adherence, AHT, Absent days, Deduction minutes, Final %) with the change against the month before in words and a six-month sparkline, a trend chart (measure, team or brand, legend toggles, table view, keyboard), Today, Needs attention, Month close, Recent activity and Data status. Built only from data the tool already had. |
-| Build | Its own step bar with a steps-done ring. Import shows what the workbook needs and a **session-only import log** (D7). Review opens on a **Checks** tab (D5) with five filter tiles; each check expands to what happened, why it matters and what happens until you act, and decisions are made in place (Link… opens a side panel). Build readiness lists the three real blockers. **Build the workbook** asks first (Cancel has the focus), shows honest progress, then says "Saved … at 09:21. Nothing was sent or uploaded." Email steps record "Copied" or "Downloaded" with the time; the tool still never sends. |
-| Team | A filter bar (brand, team, supervisor, search) with removable chips, Clear all and a line saying what the filters affect; tabs that keep the filters (Agents, One-to-ones, Attendance, Objections, Calls, Team KPIs, Waiting for approval); a sortable agents table with eligibility and one-to-one badges, 25 per page (D11); a row opens the agent's panel and Esc returns to the row. Team KPIs show only the scorecard's KPIs. |
-| Results, Supervisors | Finalize goes through a dialog that says what locks. The Supervisors page has a local list of its sections. |
-| Everywhere | Option C tokens (layered dark surfaces, orange only for the main action, the current place, step and progress; contrast-checked text), corners 4/6/10/14 px (D3), Poppins 600 titles and Inter with tabular figures, quieter status lines, "Not one of your pages" for links to a page the role cannot use, a leave-page warning only while a file is read or a save is in flight (D14), and "Try again" on a failed save. |
-| Motion (D9) | Still for everyday work; three moments only: the dashboard's first load of a visit (its numbers count up), a Build step change, a finished build. The mouse wheel glides on the page (Lenis); on a phone a drawer swipes away to the right and the More sheet down, from where the finger lets go and at its speed: a flick closes from anywhere, a slow pull past half closes, anything less goes back (GSAP, Apple's momentum projection). Progress bars (the Supervisors card, the dashboard's month close) grow from where they were last shown, from empty the first time; a redraw with the same numbers stays still. Reduced motion turns movement into 120 ms fades and stops the loops and the glide. |
+| Look | Light: the system grey background, white cards with 16 px corners and a soft shadow, Apple's status colours (green, orange, red, blue) for good, warning, bad and information. Orange is kept for the main action, the current place and progress; text is contrast-checked (small text close to 7:1). Titles and numbers use **Geist**, body text the system font (San Francisco on a Mac or iPhone, Geist elsewhere). |
+| Light and dark | The tool is light or dark as the computer is set and changes with it; there is no theme menu of its own (*dark-mode*: no app-specific appearance setting). Increased contrast and reduced transparency in the system are followed. |
+| Navigation (D1) | A frosted sidebar with each role's pages in the role's own order, icons in orange, Search at its top; a 72 px icon rail below 1,280 px (remembered in this browser). On a phone: a tab bar with every page when there are five or fewer (only the admin, with seven, gets **More**), no tab bar for a role with one page (the agent, the supervisor, the quality team), and How to use and Settings in the account menu (*tab-bars*: no overflow tab when everything fits). |
+| Toolbar | Frosted; the page's large title moves into it as the page scrolls under it. The bell, the **reporting period** on every page except Build (D13; a final month shows a lock and is read-only), How to use, Settings and the account menu; on a phone the account and period menus open as sheets from the bottom. |
+| Words | Buttons, menus, tabs, segmented controls, sidebar items and column headings use **title-style capitalization** ("Build the Month") on screen (`js/caps.js`); the emails, forms, files, toasts and the one-to-one forms keep their words exactly. |
+| Controls | Grey-filled buttons and one orange filled main action; segmented controls with a white thumb for tabs and choices; pop-up buttons with the system's double chevron; fields with a 3.5 px orange focus ring; capsule chips. |
+| Tables | Alternating rows instead of lines between rows (*lists-and-tables*), headings that stay on top. |
+| Materials | Blur only on the layer that floats over the content: the sidebar, the toolbar, the tab bar, menus, popovers and the toast; the content itself is solid (*materials*). |
+| Dashboard (D2, D6) | The first page of the admin, WFM analyst, WFM manager and senior manager: greeting, quick actions for the role, six KPI cards three to a row (Agents, Adherence, AHT, Absent days, Deduction minutes, Final %) with the change against the month before as a chip and a six-month sparkline, **Month close** as two rings (steps done, agents finished) with what is yours next, the trend chart (measure, team or brand, legend toggles, table view, keyboard), what needs attention, the lowest adherence, recent activity and data status. Built only from data the tool already had. |
+| Build | Its own step bar with a steps-done ring. Import shows what the workbook needs and a **session-only import log** (D7). Review opens on a **Checks** tab (D5) with five filter tiles; each check expands to what happened, why it matters and what happens until you act, and decisions are made in place (Link… opens a side panel). Build readiness lists the three real blockers. **Build the Workbook** asks first (Cancel has the focus), shows honest progress, then says "Saved … at 09:21. Nothing was sent or uploaded." Email steps record "Copied" or "Downloaded" with the time; the tool still never sends. |
+| Team | A filter bar (brand, team, supervisor, search) with removable chips, Clear all and a line saying what the filters affect; tabs that keep the filters (Agents, One-to-Ones, Attendance, Objections, Calls, Team KPIs, Waiting for approval); a sortable agents table with eligibility and one-to-one badges, 25 per page (D11); a row opens the agent's panel and Esc returns to the row. Team KPIs show only the scorecard's KPIs. |
+| Results, Supervisors, WFM | Finalize goes through a dialog that says what locks. The Supervisors page has a local list of its sections. The WFM analytics measures are tiles; the one shown below is tinted. |
+| Motion (D9) | Still for everyday work (*motion*: nothing moves on what is done many times a day; changing page or step is immediate). The dashboard's numbers count up on the first load of a visit and its rings fill; a finished build has its moment; progress bars (the Supervisors card, the month close) grow from where they were last shown, and a redraw with the same numbers stays still. On a phone a drawer swipes away to the right and the More sheet down, from where the finger lets go and at its speed: a flick closes from anywhere, a slow pull past half closes, anything less goes back (GSAP, Apple's momentum projection). Scrolling is the browser's own. Reduced motion turns movement into 120 ms fades. |
+| Kept from before | "Not one of your pages" for links to a page the role cannot use, a leave-page warning only while a file is read or a save is in flight (D14), and "Try again" on a failed save. |
 
 ## October 2026 additions
 
@@ -42,8 +52,8 @@ Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC D
 | Emails | One **Emails** tab on the WFM page for the WFM manager and the WFM analysts: the four daily brand emails and the month's deduction and absences emails, all editable (Edit in the preview) and sent the same way (copied or opened in Outlook; the tool sends nothing). |
 | How to use | A guide for each department (WFM analyst, WFM manager, senior manager, supervisor, quality, agent in English and Arabic, admin). |
 
-GSAP 3.15.0 and Lenis 1.3.27 are built into the file from `vendor/` (see `vendor/README.md` for the licences), so the page
-still works offline.
+GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
+the page still works offline.
 
 ## Building
 
@@ -57,8 +67,8 @@ bash assemble3.sh ../out/mc-report-builder.html                                 
 Or from the top folder: `npm run build` (the same three steps into `out/mc.html`) and `npm test` (checks that need only Node;
 GitHub Actions runs both on every push, see `.github/workflows/node.js.yml`).
 
-`tools/build_fonts.py` rebuilds `js/fonts.css` (Inter and Poppins, SIL Open Font License) from `MC_INTER` and
-`MC_POPPINS` (defaults: the system Inter and `tools/fontsrc/`). It needs `pip install fonttools brotli`.
+`tools/build_fonts.py` rebuilds `js/fonts.css` from `tools/fontsrc/geist-latin.woff2` (Geist, the latin subset as Google Fonts
+serves it, SIL Open Font License 1.1 in `tools/fontsrc/GEIST-OFL.txt`). It needs only Python.
 
 ### Parts the document described but did not print
 
@@ -67,7 +77,7 @@ originals from your own project folder in their place to get them back byte for 
 
 | File | Here | The original |
 |---|---|---|
-| `js/fonts.css` | Rebuilt by `tools/build_fonts.py` | Same faces and subset rules |
+| `js/fonts.css` | Geist, rebuilt by `tools/build_fonts.py` (Option A) | Inter and Poppins |
 | `js/brand_src.html` | An empty block: no company logo is built in (the neutral WF mark shows; a logo can be chosen in Settings) | The Beyond One logos |
 | `dt/templates.js` | The three daily email templates as printed, each omitted image replaced by a 1×1 placeholder | The templates with their logo images |
 | `dt/logos.js`, `dt/seed.js` | Empty | The daily emails' logos and the report builder's history seed |
@@ -81,7 +91,7 @@ The visual tests use only synthetic people (first name and initial, made-up IDs,
 
 ```bash
 export NODE_PATH=$(npm root -g)                     # Playwright
-node test/shots.cjs  "final/MC Monthly Report Builder.html" test/shots           # every role, both themes, desktop, laptop, tablet, phone
+node test/shots.cjs  "final/MC Monthly Report Builder.html" test/shots           # every role, light and dark (as the system is set), desktop, laptop, tablet, phone
 node test/exports.cjs /tmp/exports                                                # synthetic September 2026 Genesys exports
 node test/buildflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # Import → Checks → Link → Build → Email
 node test/overlays.cjs "final/MC Monthly Report Builder.html" test/shots          # menus, search, More sheet, blocked page, sign-in
@@ -91,6 +101,7 @@ node test/signin.cjs "final/MC Monthly Report Builder.html" test/shots          
 node test/agent.cjs "final/MC Monthly Report Builder.html" test/shots             # the agent's page and its month box, English and Arabic
 node test/recon.cjs "final/MC Monthly Report Builder.html" test/shots             # Results › Reconcile on synthetic old workbooks (test/oldbooks.cjs)
 node test/recog.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # nine files in one drop, the Recognise files panel
+node test/caps.cjs "final/MC Monthly Report Builder.html"                         # title-style capitalization on buttons, menus, tabs and headings
 npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser
 ```
 

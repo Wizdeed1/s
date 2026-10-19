@@ -4,9 +4,9 @@ const { chromium } = require('playwright'); const fs = require('node:fs'), path 
 const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8'), [page0, out] = process.argv.slice(2); fs.mkdirSync(out, { recursive: true });
 const U = { admin: { id: 'u0', name: 'Sara K.', username: 'sara.k', role: 'admin' }, spv: { id: 'u4', name: 'Waleed G.', username: 'spv.one', role: 'spv', pid: 'p0' } };
 async function open(b, role, vp, hash, theme = 'dark') {
-  const ctx = await b.newContext({ viewport: vp, reducedMotion: 'reduce' }), p = await ctx.newPage(); p.errs = [];
+  const ctx = await b.newContext({ viewport: vp, reducedMotion: 'reduce', colorScheme: theme === 'dark' ? 'dark' : 'light' }), p = await ctx.newPage(); p.errs = [];
   p.on('pageerror', e => p.errs.push(e.message));
-  await p.addInitScript(([fx, u, th]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = u; localStorage.setItem('mc-theme', th); }, [fixture, U[role], theme]);
+  await p.addInitScript(([fx, u, th]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = u; }, [fixture, U[role], theme]);
   await p.goto('file://' + path.resolve(page0) + (hash || ''));
   await p.waitForFunction(() => window.__mc && window.__mc.state.rosterReady);
   await p.evaluate(() => { const M = window.__mc, F = window.__FIX__; M.state.history = F.history; M.state.finals = F.finals; M.state.histVer++; M.renderWs(); });

@@ -3333,7 +3333,6 @@ function fillSettings() {
   $('target').value = +(s.target * 100).toFixed(2); $('floor').value = +(s.floor * 100).toFixed(2); $('inactiveMin').value = s.inactiveMin;
   chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES);
   $('mgrName').value = s.manager; $('mgrTitle').value = s.managerTitle; renderLogo();
-  setSeg($('theme'), themeNow());
   const u = Auth.user(); $('setSaved').textContent = state.db ? savedWhere() : 'Not saved in this view';
   $('setWho').textContent = u ? `Signed in as ${u.name} (${u.username ? 'username ' + u.username + ', ' : ''}${u.email}), ${u.role === 'admin' ? 'admin' : 'user'}` : 'Sign-in is off in this view.';
   $('lockMins').value = String(Auth.lockMins()); $('lockMins').disabled = $('chgPw').disabled = $('lockNow2').disabled = $('signOut2').disabled = !u;
@@ -3341,8 +3340,9 @@ function fillSettings() {
 function chips(el, values, key, titles) {
   el.innerHTML = values.map(v => `<label class="chip"${titles ? ` title="${esc(titles[v])}"` : ''}><input type="checkbox" value="${esc(v)}"${state.settings[key].includes(v) ? ' checked' : ''}>${esc(v)}</label>`).join('');
 }
-function themeNow() { try { return localStorage.getItem('mc-theme') || 'dark'; } catch (e) { return 'dark'; } }   // dark by default, like the company website
-function applyTheme(t) { if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); }
+// light and dark follow the computer's own setting: the tool offers no appearance switch of its own (Apple HIG, dark-mode.md)
+function themeNow() { return 'system'; }
+function applyTheme() { document.documentElement.removeAttribute('data-theme'); }
 
 // ---------------------------------------------------------------- events
 const drop = $('drop');
@@ -3506,7 +3506,6 @@ for (const [id, key, div, lo, hi] of [['target', 'target', 100, 0, 100], ['floor
 }
 for (const [id, key] of [['dedBrands', 'dedBrands'], ['dedTeams', 'dedTeams']]) $(id).addEventListener('change', () => { state.settings[key] = [...$(id).querySelectorAll('input:checked')].map(i => i.value); refresh(); persistSettings(); });
 $('resetSet').addEventListener('click', () => { state.settings = clone(DEFAULTS); if (state.monthManual) { state.monthManual = false; const g = Core.guessMonth(allDets()); state.y = g.y; state.m = g.m; } fillSettings(); refresh(); persistSettings(); toast('Settings reset to the defaults'); });
-$('theme').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; setTheme(f); });
 
 
 // email

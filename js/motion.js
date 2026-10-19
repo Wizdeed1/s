@@ -1,35 +1,12 @@
-// ================================================================ MOTION: a page that glides, and the few things that move
-// Built in from vendor/ (no network): Lenis makes the mouse wheel glide on the page (touch keeps the phone's own scrolling;
-// tables, drawers, menus and lists keep theirs). GSAP moves what follows a finger or plays once: a drawer or the More sheet
-// swiped away on a phone, from where the finger let go; the dashboard's numbers counting up on the first visit. Everyday work
-// stays still: nothing here runs on a keyboard action, and with reduced motion none of it runs at all.
-const MOT = { lenis: null, drag: null };
+// ================================================================ MOTION: the few things that move (Apple HIG, motion.md)
+// Built in from vendor/ (no network). GSAP moves what follows a finger or plays once: a drawer or the More sheet swiped away on a
+// phone, from where the finger let go and at its speed; the dashboard's numbers counting up on the first visit; a progress bar that
+// grows to its new value. Scrolling is the browser's own (motion on something done many times a day is left out), and with reduced
+// motion none of this runs at all.
+const MOT = { drag: null };
 const gsapOk = () => (window.gsap && !RM() ? window.gsap : null);
 
-// ---- smooth wheel scrolling (a fine pointer only; stopped while a drawer, dialog, menu sheet or the lock is open)
-const LENIS_SKIP = '.tablewrap, .drawer, .dlg, .menu, .find, .sheet-more, textarea, select, iframe, [data-lenis-prevent], .steps, .wftabs, .tabs, .rbpanel, .previewWrap, .secnav';
-function lenisSync() {
-  let fine = false; try { fine = matchMedia('(hover: hover) and (pointer: fine)').matches; } catch (e) { fine = false; }
-  const want = !!window.Lenis && !RM() && fine;
-  if (want && !MOT.lenis) {
-    try {
-      MOT.lenis = new window.Lenis({ lerp: 0.16, smoothWheel: true, syncTouch: false, wheelMultiplier: 1, prevent: n => !!(n && n.closest && n.closest(LENIS_SKIP)) });
-      const tick = t => { if (!MOT.lenis) return; MOT.lenis.raf(t); requestAnimationFrame(tick); };
-      requestAnimationFrame(tick); overlaySync();
-    } catch (e) { MOT.lenis = null; }
-  } else if (!want && MOT.lenis) { try { MOT.lenis.destroy(); } catch (e) { /* none */ } MOT.lenis = null; }
-}
-/** anything laid over the page stops the glide underneath it */
-function overlaySync() {
-  if (!MOT.lenis) return;
-  const over = ['scrim', 'lock', 'moreSheet'].some(id => { const el = $(id); return el && !el.hidden; }) || !!document.querySelector('.dlg:not([hidden]), .find:not([hidden])');
-  try { if (over) MOT.lenis.stop(); else MOT.lenis.start(); } catch (e) { /* none */ }
-}
-try { const mo = new MutationObserver(() => overlaySync()); ['scrim', 'lock', 'moreSheet', 'dBuild', 'dFinal', 'find'].forEach(id => { const el = $(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['hidden'] }); }); } catch (e) { /* none */ }
-try { matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', lenisSync); } catch (e) { /* older browsers: decided at start */ }
-lenisSync();
-
-// ---- the header's edge appears only once the page has moved under it (no fixed line)
+// ---- the toolbar's edge and title appear once the page has moved under it (the large title scrolls into the toolbar)
 let scrolledOn = null;
 const scrolledSync = () => { const on = window.scrollY > 4; if (on !== scrolledOn) { scrolledOn = on; document.body.classList.toggle('scrolled', on); } };
 window.addEventListener('scroll', scrolledSync, { passive: true }); scrolledSync();
@@ -48,7 +25,7 @@ function swipeStart(e, el, axis) {
     if (axis === 'x' && n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return;
     if (axis === 'y' && n.scrollHeight > n.clientHeight + 2 && n.scrollTop > 0 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) return;
   }
-  MOT.drag = { el, axis, id: e.pointerId, x0: e.clientX, y0: e.clientY, on: false, hist: [{ v: 0, t: e.timeStamp }], size: axis === 'x' ? el.offsetWidth : el.offsetHeight };
+  MOT.drag = { el, axis, id: e.pointerId, x0: e.clientX, y0: e.clientY, on: false, hist: [{ v: 0, t: e.timeStamp }], size: axis === 'x' ? el.offsetWidth + 16 : el.offsetHeight };   // a panel floats 8 px from the edge: it leaves all the way
 }
 function swipeMove(e) {
   const D = MOT.drag; if (!D || e.pointerId !== D.id) return;
@@ -126,13 +103,3 @@ function fillBars(root, key) {
   if (g) moves.forEach((x, n) => g.fromTo(x.i, { scaleX: x.was / x.now }, { scaleX: 1, transformOrigin: '0% 50%', duration: 0.7, delay: n * 0.03, ease: 'power3.out', clearProps: 'transform' }));
 }
 try { const cb = $('cycleBody'); if (cb) new MutationObserver(() => { const c = $('spvDone'); if (c) fillBars(c, 'spv:' + wsMonthNow()); }).observe(cb, { childList: true }); } catch (e) { /* none */ }
-
-// ---- a soft light that follows the pointer on the dashboard's cards (a fine pointer only; decoration, nothing more)
-let spotEl = null, spotRaf = 0, spotXY = [0, 0];
-document.addEventListener('pointermove', e => {
-  if (e.pointerType !== 'mouse' || RM()) return;
-  const el = e.target.closest && e.target.closest('#dashBody .kpi, #dashBody .qa, .spot'); if (spotEl && spotEl !== el) { spotEl.classList.remove('lit'); spotEl = null; }
-  if (!el) return; spotEl = el; spotXY = [e.clientX, e.clientY];
-  if (!spotRaf) spotRaf = requestAnimationFrame(() => { spotRaf = 0; if (!spotEl) return; const r = spotEl.getBoundingClientRect(); spotEl.style.setProperty('--mx', `${spotXY[0] - r.left}px`); spotEl.style.setProperty('--my', `${spotXY[1] - r.top}px`); spotEl.classList.add('lit'); });
-}, { passive: true });
-document.addEventListener('pointerleave', () => { if (spotEl) { spotEl.classList.remove('lit'); spotEl = null; } });

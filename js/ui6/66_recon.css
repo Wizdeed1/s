@@ -27,6 +27,7 @@
 .rgroup td.rck input, .rgroup th.rck input { accent-color: var(--accent); width: 16px; height: 16px; }
 .ractions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s3); }
 .ractions small { margin-inline-start: var(--s2); }
+.ractions .btn { max-width: 100%; height: auto; min-height: var(--ctl); padding-block: 7px; white-space: normal; line-height: 1.25; }   /* a long choice wraps inside its button, never past the panel */
 .rfits { border: 0; padding: 0; margin: var(--s4) 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .rfits legend { font-weight: 600; font-size: 13px; margin-bottom: var(--s2); padding: 0; }
 .rfits label.chip { gap: 6px; cursor: pointer; font: 500 12.5px/1.2 var(--text); }

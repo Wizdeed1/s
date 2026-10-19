@@ -26,7 +26,7 @@ for (const [role, ws] of [['wfm', 'dash'], ['wfm', 'team'], ['user', 'build'], [
   let bad = 0;
   for (const s of S) {
     if (only && !only.test(s.name)) continue;
-    const ctx = await b.newContext({ viewport: { width: s.w, height: s.h }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+    const ctx = await b.newContext({ viewport: { width: s.w, height: s.h }, deviceScaleFactor: 1, reducedMotion: 'reduce', colorScheme: s.theme === 'dark' ? 'dark' : 'light' });   // light and dark follow the computer
     const p = await ctx.newPage(), errs = [];
     p.on('pageerror', e => errs.push('pageerror: ' + e.message));
     p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
@@ -34,7 +34,6 @@ for (const [role, ws] of [['wfm', 'dash'], ['wfm', 'team'], ['user', 'build'], [
     await p.addInitScript(([fx, theme, user]) => {
       eval(fx);   // the fixture defines window.__FIX__
       window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = user;
-      try { localStorage.setItem('mc-theme', theme); } catch (e) { /* none */ }
     }, [fixture, s.theme, u.role === 'spv' ? { ...u, name: window_name(u) } : u]);
     await p.goto('file://' + page0);
     await p.waitForFunction(() => window.__mc && window.__mc.state && window.__mc.state.rosterReady, null, { timeout: 15000 });

@@ -26,18 +26,19 @@ function dashAgg(k) {
 function dashChange(K, cur, prev, prevK) {
   if (cur == null || prev == null) return `<span class="kd none">${prevK ? `No ${esc(ymLabel(prevK))} value to compare` : 'No earlier month to compare'}</span>`;
   const d = cur - prev, eps = K.k === 'adh' || K.k === 'fin' ? 0.0005 : K.k === 'aht' ? 0.5 : 0.5;
-  if (Math.abs(d) < eps) return `<span class="kd same">No change against ${esc(MON[+prevK.slice(5) - 1])}</span>`;
+  if (Math.abs(d) < eps) return `<span class="kd same"><span class="kdc">No change</span> against ${esc(MON[+prevK.slice(5) - 1])}</span>`;
   const up = d > 0, better = K.dir === 0 ? null : (K.dir > 0) === up;
   const mag = K.k === 'adh' || K.k === 'fin' ? `${Math.abs(d * 100).toFixed(1)} pts` : K.k === 'aht' ? mss(Math.abs(d)) : K.k === 'ded' ? `${Math.round(Math.abs(d)).toLocaleString('en-US')} min` : Math.round(Math.abs(d)).toLocaleString('en-US');
   const word = better == null ? (up ? 'more' : 'fewer') : better ? 'better' : 'worse';
-  return `<span class="kd ${better == null ? 'same' : better ? 'good' : 'bad'} ${up ? 'up' : 'down'}"><svg aria-hidden="true"><use href="#i-dn"/></svg><span class="sr">${up ? 'Up' : 'Down'} </span>${esc(mag)} ${word} <span class="vs">than ${esc(MON[+prevK.slice(5) - 1])}</span></span>`;
+  return `<span class="kd ${better == null ? 'same' : better ? 'good' : 'bad'} ${up ? 'up' : 'down'}"><span class="kdc"><svg aria-hidden="true"><use href="#i-dn"/></svg><span class="sr">${up ? 'Up' : 'Down'} </span>${esc(mag)}</span> ${word} <span class="vs">than ${esc(MON[+prevK.slice(5) - 1])}</span></span>`;
 }
 function sparkSvg(vals, cls) {
   const P = vals.map((v, i) => [i, v]).filter(x => x[1] != null); if (P.length < 2) return '<span class="ksp none" aria-hidden="true"></span>';
   const lo = Math.min(...P.map(x => x[1])), hi = Math.max(...P.map(x => x[1])), W = 96, H = 28, n = vals.length - 1 || 1;
   const X = i => 2 + (i / n) * (W - 4), Y = v => (hi === lo ? H / 2 : H - 3 - ((v - lo) / (hi - lo)) * (H - 6));
   const pts = P.map(([i, v]) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
-  return `<svg class="ksp ${cls || ''}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}"/></svg>`;
+  const area = `${pts} ${X(P[P.length - 1][0]).toFixed(1)},${H} ${X(P[0][0]).toFixed(1)},${H}`;
+  return `<svg class="ksp ${cls || ''}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polygon class="ksa" points="${area}"/><polyline points="${pts}"/></svg>`;
 }
 function dashKpisHtml(k, months) {
   const i = months.indexOf(k), prevK = i > 0 ? months[i - 1] : '', cur = dashAgg(k), prev = prevK ? dashAgg(prevK) : null, last6 = months.slice(Math.max(0, i - 5), i + 1);
@@ -124,26 +125,31 @@ function dashAttention(k) {
   let rec = H && H.daily ? H : null; try { if (!rec && state.daily[run]) rec = monthFromDays(run); } catch (e) { rec = null; }
   const src = rec ? rec.rows : R, low = src.filter(r => r.adh != null).sort((x, y) => x.adh - y.adh).slice(0, 5);
   const pidOf = r => { const id = Core.cleanId(r.id); const p = rosterRows().find(q => (id && Core.cleanId(q.nid) === id) || normName(q.name) === normName(r.n)); return p ? p._id : ''; };
-  const lowT = rec ? `Lowest adherence, ${ymLabel(run)} so far` : `Lowest adherence · ${ymLabel(k)}`;
-  return `<section class="card dattn" aria-labelledby="h-dattn"><div class="cardhead"><div><h2 id="h-dattn">Needs attention</h2><p class="cap">${esc(ymLabel(k))} · ${plural(R.length, 'agent')}</p></div></div>
-    <ul class="alist">${G.map(g => `<li class="${g.n ? 'on' : ''}"><span class="an">${g.n}</span><span class="at"><b>${esc(g.t)}</b><small>${esc(g.s)}</small></span>${g.n ? `<button class="btn sm" data-tgo="${esc(g.go)}">${esc(g.btn)}</button>` : '<span class="pill good"><svg width="12" height="12" aria-hidden="true"><use href="#i-check"/></svg>None</span>'}</li>`).join('')}</ul>
-    ${low.length ? `<h3 class="sub">${esc(lowT)}</h3><ol class="lowl">${low.map(r => { const pid = pidOf(r); return `<li>${pid ? `<button class="linkbtn nm" data-open="${esc(pid)}" data-agent="${esc(pid)}" dir="auto">${esc(r.n)}</button>` : `<span dir="auto">${esc(r.n)}</span>`}<small>${esc(unitOf(r))}</small><b class="${r.adh < set.target ? 'bad' : ''}">${r.adh < set.target ? belowB(r.adh, pct(r.adh, 1)) : esc(pct(r.adh, 1))}</b></li>`; }).join('')}</ol>${rec ? `<p class="hint">${esc(rec.src || '')}</p>` : ''}` : ''}</section>`;
+  const lowT = rec ? `${ymLabel(run)} so far` : ymLabel(k);
+  const ini = n => String(n || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const attn = `<section class="card dattn" aria-labelledby="h-dattn"><div class="cardhead"><div><h2 id="h-dattn">Needs attention</h2><p class="cap">${esc(ymLabel(k))} · ${plural(R.length, 'agent')}</p></div></div>
+    <ul class="alist">${G.map(g => `<li class="${g.n ? 'on' : ''}"><span class="an">${g.n}</span><span class="at"><b>${esc(g.t)}</b><small>${esc(g.s)}</small></span>${g.n ? `<button class="btn sm" data-tgo="${esc(g.go)}">${esc(g.btn)}</button>` : '<span class="pill good"><svg width="12" height="12" aria-hidden="true"><use href="#i-check"/></svg>None</span>'}</li>`).join('')}</ul></section>`;
+  const lowCard = low.length ? `<section class="card dlow" aria-labelledby="h-dlow"><div class="cardhead"><div><h2 id="h-dlow">Lowest adherence</h2><p class="cap">${esc(lowT)}</p></div></div>
+    <ol class="lowl">${low.map(r => { const pid = pidOf(r); return `<li><span class="lav" aria-hidden="true">${esc(ini(r.n))}</span><span class="lnm">${pid ? `<button class="linkbtn nm" data-open="${esc(pid)}" data-agent="${esc(pid)}" dir="auto">${esc(r.n)}</button>` : `<span dir="auto">${esc(r.n)}</span>`}<small>${esc(unitOf(r))}</small></span><b class="${r.adh < set.target ? 'bad' : ''}">${r.adh < set.target ? belowB(r.adh, pct(r.adh, 1)) : esc(pct(r.adh, 1))}</b></li>`; }).join('')}</ol>${rec ? `<p class="hint">${esc(rec.src || '')}</p>` : ''}</section>` : '';
+  return attn + lowCard;
 }
-// ---- the month close, mine highlighted; on a phone only the open steps, with Show all
+// ---- the month close: rings for how far it is (the steps done, the agents whose one-to-one is finished), then the step that is yours
+// next with the way to it. The deadlines themselves are notifications (the bell)
 function dashClose(k) {
   let S = []; try { S = calSteps(k); } catch (e) { S = []; }
   if (!S.length) return '';
-  const all = !!state.dashAll.close, open = S.filter(s => s.st !== 'done'), r = roleNow(), go = calCanGo;
-  const stTxt = s => s.st === 'done' ? `Done${s.done && s.done.at ? ' ' + fmtWhen(s.done.at) : ''}` : s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.st === 'soon' ? (s.days === 0 ? 'Due today' : s.days === 1 ? 'Due tomorrow' : `Due in ${s.days} days`) : s.st === 'past' ? 'Not recorded' : 'Open';
-  const ico = s => (s.st === 'done' ? 'i-check' : s.st === 'late' ? 'i-alert' : s.st === 'soon' ? 'i-clock' : 'i-dash');
-  const row = s => `<li class="cs ${s.st}${s.roles.includes(r) ? ' mine' : ''}"><span class="cd">${esc(fmtDue(s.due))}</span><span class="cl"><b>${esc(s.label)}</b><small>${esc(s.who)}${s.roles.includes(r) ? ' · yours' : ''}${s.note ? ' · ' + esc(s.note) : ''}</small></span><span class="cst"><svg aria-hidden="true"><use href="#${ico(s)}"/></svg>${esc(stTxt(s))}</span>${s.roles.includes(r) && s.st !== 'done' && go(s.go, true) ? `<button class="btn sm ghost" data-tgo="${esc(s.go + '@' + k)}">Open</button>` : ''}</li>`;
-  const doneN = S.length - open.length, late = open.filter(s => s.st === 'late').length, soon = open.filter(s => s.st === 'soon').length, mine = open.filter(s => s.roles.includes(r));
-  // the deadlines themselves are notifications (the bell): here only how far the month close is, in one line
-  const nextMine = mine.find(s => s.st === 'late') || mine.find(s => s.st === 'soon') || mine[0];
-  return `<section class="card dclose dclose-mini" aria-labelledby="h-dclose"><div class="dcm-head"><h2 id="h-dclose">Month close · ${esc(ymLabel(k))}</h2><b class="num">${doneN}/${S.length}</b></div>
-    <span class="pbar" role="progressbar" aria-label="${doneN} of ${S.length} steps done" aria-valuenow="${doneN}" aria-valuemin="0" aria-valuemax="${S.length}"><i style="width:${Math.round(doneN / S.length * 100)}%"></i></span>
-    <p class="cap">${doneN} of ${S.length} steps done${late ? ` · <span class="bad">${late} late</span>` : ''}${soon ? ` · ${soon} due soon` : ''}${nextMine ? ` · yours next: <b>${esc(nextMine.label)}</b>` : ''}</p>
-    <div class="acts"><button class="btn sm" data-dopenbell>Deadlines in the bell</button>${(WS_OF[r] || []).includes('cycle') ? '<button class="btn sm ghost" data-tgo="cal">Every step</button>' : ''}</div></section>`;
+  const open = S.filter(s => s.st !== 'done'), r = roleNow(), doneN = S.length - open.length, late = open.filter(s => s.st === 'late').length, soon = open.filter(s => s.st === 'soon').length;
+  const mine = open.filter(s => s.roles.includes(r)), next = mine.find(s => s.st === 'late') || mine.find(s => s.st === 'soon') || mine[0];
+  let fin = null; try { const L = spvList().map(x => teamReady(x.pid, k)), n = L.reduce((a, x) => a + x.n, 0); if (n) fin = { d: L.reduce((a, x) => a + x.done, 0), n }; } catch (e) { fin = null; }
+  const R = [{ c: 'r1', l: 'Steps done', d: doneN, n: S.length }].concat(fin ? [{ c: 'r2', l: 'Agents finished', d: fin.d, n: fin.n }] : []);
+  const ring = (x, i) => { const rad = 66 - i * 19, len = 2 * Math.PI * rad, p = x.n ? x.d / x.n : 0; return `<circle class="rt ${x.c}" cx="80" cy="80" r="${rad}"/><circle class="rf ${x.c}" cx="80" cy="80" r="${rad}" style="--c:${len.toFixed(1)};--o:${(len * (1 - p)).toFixed(1)}"/>`; };
+  const when = s => s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.st === 'soon' ? (s.days === 0 ? 'due today' : s.days === 1 ? 'due tomorrow' : `due in ${s.days} days`) : 'open';
+  return `<section class="card dclose" aria-labelledby="h-dclose"><div class="dch"><h2 id="h-dclose">Month close</h2><span>${esc(ymLabel(k))}</span></div>
+    <div class="dcr"><svg class="rings" viewBox="0 0 160 160" role="img" aria-label="${esc(R.map(x => `${x.l}: ${x.d} of ${x.n}`).join('; '))}">${R.map(ring).join('')}</svg>
+      <ul class="rleg">${R.map(x => `<li class="${x.c}"><span><i aria-hidden="true"></i>${esc(x.l)}</span><b>${x.d}<small> of ${x.n}</small></b></li>`).join('')}</ul></div>
+    ${next ? `<div class="dcn ${next.st}"><span><small>Yours next · ${esc(when(next))}</small><b>${esc(next.label)}</b></span>${calCanGo(next.go, true) ? `<button class="btn sm" data-tgo="${esc(next.go + '@' + k)}">Open</button>` : '<button class="btn sm" data-dopenbell>Deadlines</button>'}</div>` : ''}
+    <p class="cap">${doneN} of ${S.length} steps done${late ? ` · <span class="bad">${late} late</span>` : ''}${soon ? ` · ${soon} due soon` : ''}. Each deadline also arrives in the bell.</p>
+    ${(WS_OF[r] || []).includes('cycle') ? '<div class="acts"><button class="btn sm ghost" data-tgo="cal">Every step</button></div>' : ''}</section>`;
 }
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-dopenbell]')) openBell(); });
 // ---- recent activity: records the role can already read (the cycle log, changes by hand, when data came in)
@@ -185,16 +191,16 @@ function renderDash() {
   const head = `<div class="dhead"><div class="greet"><h2 class="gt">${esc(greetWord())}${first ? ', ' + esc(first) : ''}</h2><p class="gs"><span>${esc(date)}</span>${k ? `<span>Showing ${esc(ymLabel(k))} ${st}</span>` : ''}</p></div>
     ${acts.length ? `<nav class="qacts" aria-label="Quick actions">${acts.map(([t, s, go, ico]) => `<button class="qa" data-tgo="${esc(go)}"><svg aria-hidden="true"><use href="#${ico}"/></svg><span><b>${esc(t)}</b><small>${esc(s)}</small></span></button>`).join('')}</nav>` : ''}</div>`;
   if ($('today').closest('#dashBody')) $('main').prepend($('today'));   // Today lives in the dashboard's side column; kept safe while it is drawn again
-  if (!state.rosterReady) { el.innerHTML = `<div class="dglow" aria-hidden="true"></div>${head}<div class="kpis">${DASH_KPIS.map(K => `<div class="kpi sk-card"><span class="kl">${esc(K.label)}</span><span class="sk w40"></span><span class="sk w70"></span></div>`).join('')}</div><div class="card"><span class="sk tall"></span></div>`; return; }
+  if (!state.rosterReady) { el.innerHTML = `${head}<div class="kpis">${DASH_KPIS.map(K => `<div class="kpi sk-card"><span class="kl">${esc(K.label)}</span><span class="sk w40"></span><span class="sk w70"></span></div>`).join('')}</div><div class="card"><span class="sk tall"></span></div>`; return; }
   if (!months.length || !k) {
-    el.innerHTML = `<div class="dglow" aria-hidden="true"></div>${head}<div class="dgrid"><div class="dmain"><div class="card empty"><b>No months yet</b>${isBuilder() ? 'Build the month on Build › Import: it is saved to the shared history as you work, and every number here comes from it.' : 'The WFM analysts build the month from the Genesys exports; it appears here as soon as they start.'}${isBuilder() ? '<div class="acts" style="justify-content:center;margin-top:14px"><button class="btn primary" data-tgo="step:import">Go to Import</button></div>' : ''}</div></div><aside class="dside">${dashData()}</aside></div>`;
+    el.innerHTML = `${head}<div class="dgrid"><div class="dmain"><div class="card empty"><b>No months yet</b>${isBuilder() ? 'Build the month on Build › Import: it is saved to the shared history as you work, and every number here comes from it.' : 'The WFM analysts build the month from the Genesys exports; it appears here as soon as they start.'}${isBuilder() ? '<div class="acts" style="justify-content:center;margin-top:14px"><button class="btn primary" data-tgo="step:import">Go to Import</button></div>' : ''}</div></div><aside class="dside">${dashData()}</aside></div>`;
     return;
   }
   const intro = !dashPlayed && !RM(); dashPlayed = true;
-  el.innerHTML = `<div class="dglow" aria-hidden="true"></div>${head}
-    <div class="kpis" role="list" aria-label="${esc(ymLabel(k))} at a glance">${dashKpisHtml(k, months)}</div>
-    <div class="dgrid"><div class="dmain">${safeHtml(dashTrendCard, months)}${safeHtml(dashAttention, k)}${safeHtml(dashActivity, k)}</div>
-    <aside class="dside" aria-label="The month">${safeHtml(dashClose, k)}${safeHtml(dashData)}</aside></div>`;
+  el.innerHTML = `${head}
+    <div class="drow r1"><div class="kpis" role="list" aria-label="${esc(ymLabel(k))} at a glance">${dashKpisHtml(k, months)}</div>${safeHtml(dashClose, k)}</div>
+    <div class="drow r2">${safeHtml(dashTrendCard, months)}${safeHtml(dashData)}</div>
+    <div class="drow r3">${safeHtml(dashAttention, k)}${safeHtml(dashActivity, k)}</div>`;
   el.querySelectorAll('.kpi').forEach(x => x.setAttribute('role', 'listitem'));
   if (intro) { el.classList.add('intro'); clearTimeout(dashIntroT); dashIntroT = setTimeout(() => el.classList.remove('intro'), 1500); }
 }

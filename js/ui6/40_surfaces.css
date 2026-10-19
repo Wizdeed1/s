@@ -1,16 +1,17 @@
 /* ------------------------------------------------------------------------------------------------------------- page head */
 .viewhead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 32px; }
 .viewhead > div:first-child { flex: 1 1 440px; min-width: 0; display: grid; gap: 4px; }
-/* one page title, in the header: the page's own heading stays for screen readers and the focus; its line of help stays, quieter */
-.viewhead h1 { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.viewhead > div:first-child > p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 20px; max-width: 76ch; }
-.viewhead .eyebrow { display: none; }
+/* the large title: the page's own heading, 30 px bold; it collapses into the toolbar as the page scrolls (20_shell.css). Over it
+   the role in a quiet line, under it one line of help */
+.viewhead h1 { font: 700 30px/36px var(--display); letter-spacing: -0.022em; color: var(--ink); }
+.viewhead > div:first-child > p { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; max-width: 76ch; text-wrap: pretty; }
+.viewhead .eyebrow { font: 600 12.5px/1.3 var(--text); color: var(--muted); }
 .viewhead .wsbar { flex: 0 1 auto; }
 .eyebrow { font: 500 12px/1.3 var(--text); color: var(--muted); }
 #v-wait .viewhead p { max-width: 56ch; }
 
 /* ------------------------------------------------------------------------------------------------------------- panels */
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-card); padding: 20px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--card-line); border-radius: var(--r-card); box-shadow: var(--shadow-card); padding: 20px; min-width: 0; }
 .card > h2 { margin-bottom: 12px; }
 .cardhead { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; }
 .cardhead > div:first-child { min-width: 0; flex: 1 1 360px; }
@@ -23,22 +24,25 @@ h3.sub { font: 600 13px/1.4 var(--text); color: var(--ink-2); margin: 0 0 8px; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--s4); }
 .grid2.top { align-items: start; }
 .grid2.tight { gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-details.card > summary, .sced summary, .chgcard > summary, .wslog summary { cursor: pointer; font: 600 15px/1.3 var(--display); letter-spacing: -0.01em; list-style: none; display: flex; align-items: center; gap: 10px; }
+details.card > summary, .sced summary, .chgcard > summary, .wslog summary { cursor: pointer; font: 600 17px/1.3 var(--display); letter-spacing: -0.012em; list-style: none; display: flex; align-items: center; gap: 10px; }
 details.card > summary::-webkit-details-marker, details > summary::-webkit-details-marker { display: none; }
 details.card > summary::before, .sced summary::before, .chgcard > summary::before, .wslog summary::before, .caldays summary::before, .pfall > summary::before, .objdone summary::before, .meobj summary::before,
 .rulelog summary::before, .cmpmore summary::before, .inclist summary::before, .rbhelp summary::before, .rb .acc summary::before, .rb .wfm-pass summary::before, .rbbrands details summary::before, .htable summary::before, .wfdd summary::before, .note details summary::before {
   content: ""; width: 7px; height: 7px; flex: none; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); margin-right: 2px; transition: transform var(--t-base) var(--ease-out); }
 details[open] > summary::before { transform: rotate(45deg) translate(-2px, -1px) !important; }
 details.card[open] > summary { margin-bottom: 14px; }
-.success { border-color: var(--good-line); background: color-mix(in srgb, var(--good-bg) 60%, var(--surface)); }
+.success { border-color: var(--good-line); background: color-mix(in srgb, var(--good-mark) 8%, var(--surface)); }
 .success h2 { color: var(--good); }
 
 /* ------------------------------------------------------------------------------------------------------------- tables */
-.tablewrap { overflow: auto; max-height: min(66vh, 720px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); overscroll-behavior: contain; }
-.card .tablewrap { border-color: var(--line); }
+.tablewrap { overflow: auto; max-height: min(66vh, 720px); background: var(--surface); border: 1px solid var(--card-line); border-radius: var(--r-card); overscroll-behavior: contain; }
+.card .tablewrap { border-color: var(--line); border-radius: 12px; }
 table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
 th, td { padding: 7px 12px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; vertical-align: middle; }
-thead th { position: sticky; top: 0; z-index: 1; height: var(--row-h); background: var(--raised); color: var(--muted); font: 600 12px/16px var(--text); border-bottom: 1px solid var(--line-2); }
+thead th { position: sticky; top: 0; z-index: 1; height: var(--row-h); background: var(--surface); color: var(--muted); font: 600 12px/16px var(--text); border-bottom: 1px solid var(--line); }
+/* a multicolumn table alternates its rows so a value can be followed across (lists-and-tables.md › Desktop) */
+.restab tbody tr:nth-child(even) td, .tteam tbody tr:nth-child(even) td, .teamtab tbody tr:nth-child(even) td { background: var(--zebra); }
+.restab tbody td, .tteam tbody td, .teamtab tbody td { border-bottom-color: transparent; }   /* the rows alternate, so no line between them (lists-and-tables.md) */
 td.num { text-align: right; }
 thead th .linkbtn { color: inherit; font: inherit; text-decoration: none; white-space: nowrap; }
 tbody tr { transition: background-color var(--t-fast) ease; }
@@ -55,50 +59,50 @@ th.chk, td.chk { width: 36px; text-align: center; padding-inline: 6px; }
 td.num.low, .wfdays td.num.low { color: var(--bad); font-weight: 600; }
 table input.cell, table select.cell, table textarea.cell { border-color: transparent; background: transparent; }
 @media (hover: hover) and (pointer: fine) {
-  tbody tr:hover td { background: var(--fill); }
+  tbody tr:hover td, .restab tbody tr:hover td, .tteam tbody tr:hover td, .teamtab tbody tr:hover td { background: var(--fill); }
   table input.cell:hover, table select.cell:hover { border-color: var(--line-2); }
 }
 
 /* ------------------------------------------------------------------------------------------------------------- numbers at a glance: one strip, cells divided by hairlines */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(136px, 1fr)); gap: 12px; }
-.tile { position: relative; padding: 16px 18px; display: grid; align-content: start; gap: 6px; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-card); transition: box-shadow var(--t-hover) ease, transform var(--t-hover) var(--ease-out); }
-.tile b { display: block; font: 600 26px/32px var(--text); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.tile { position: relative; padding: 16px 18px; display: grid; align-content: start; gap: 6px; min-width: 0; background: var(--surface); border: 1px solid var(--card-line); border-radius: var(--r-card); box-shadow: var(--shadow-card); transition: box-shadow var(--t-hover) ease, transform var(--t-hover) var(--ease-out); }
+.tile b { display: block; font: 600 28px/34px var(--display); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
 .tile .ts { line-height: 1.45; }
 .tile span { color: var(--muted); font-size: 12px; line-height: 1.45; }
-.tile .tl { display: block; color: var(--ink-2); font: 600 12px/16px var(--text); text-transform: none; }
+.tile .tl { display: block; color: var(--muted); font: 600 12.5px/16px var(--text); text-transform: none; }
 .tile .tl::first-letter { text-transform: uppercase; }
 .tile.alert b { color: var(--bad); }
 .tile.good b { color: var(--good); }
 .wstiles .tile b { font-size: 26px; }
 /* label and value pairs */
-.kv { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1.5fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-ctl); overflow: hidden; }
+.kv { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1.5fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .kv div { background: var(--fill); padding: 8px 10px; min-width: 0; }
 .kv b { display: block; font: 600 14px/1.3 var(--text); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .kv span { font-size: 11.5px; color: var(--muted); }
-.minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; padding: 1px; background: none; }
-.minis div { box-shadow: 0 0 0 1px var(--line); background: var(--surface); padding: 10px 12px; min-width: 0; border-radius: var(--r-ctl); }
-.minis b { display: block; font: 600 17px/1.25 var(--text); letter-spacing: -0.015em; font-variant-numeric: tabular-nums; }
+.minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.minis div { box-shadow: none; background: var(--fill); padding: 10px 12px; min-width: 0; border-radius: 10px; }
+.minis b { display: block; font: 600 18px/1.25 var(--display); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .minis span { font-size: 12px; color: var(--muted); }
 .minis div small { display: block; font-size: 11.5px; color: var(--muted); }
 .wsminis { grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); }
 .wsminis div.bad b { color: var(--bad); }
 
 /* ------------------------------------------------------------------------------------------------------------- messages on the page */
-.banner, .wsstatus { display: flex; gap: 10px; align-items: flex-start; padding: 9px 14px; font-size: 13px; line-height: 1.5; color: var(--ink-2); background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: var(--r-ctl); }
+.banner, .wsstatus { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; font-size: 13px; line-height: 1.5; color: var(--ink-2); background: var(--warn-bg); border: 0; border-radius: 12px; }
 .banner.info { background: var(--info-bg); border-color: var(--info-line); }
-.wsstatus .dot { width: 8px; height: 8px; margin-top: 6px; flex: none; border-radius: 50%; background: var(--warn); }
+.wsstatus .dot { width: 8px; height: 8px; margin-top: 6px; flex: none; border-radius: 50%; background: var(--warn-mark); }
 .wsstatus > div { min-width: 0; overflow-wrap: anywhere; }
 .wsstatus b { color: var(--ink); }
-.wsstatus.final { background: var(--good-bg); border-color: var(--good-line); } .wsstatus.final .dot { background: var(--good); }
-.wsstatus.soon { background: var(--warn-bg); border-color: var(--warn-line); }
-.wsstatus.late { background: var(--bad-bg); border-color: var(--bad-line); } .wsstatus.late .dot { background: var(--bad); }
-.wsstatus.draft { background: var(--surface); border-color: var(--line); } .wsstatus.draft .dot { background: var(--info); }
+.wsstatus.final { background: var(--good-bg); } .wsstatus.final .dot { background: var(--good-mark); }
+.wsstatus.soon { background: var(--warn-bg); }
+.wsstatus.late { background: var(--bad-bg); } .wsstatus.late .dot { background: var(--bad-mark); }
+.wsstatus.draft { background: var(--surface); box-shadow: var(--shadow-card); border: 1px solid var(--card-line); } .wsstatus.draft .dot { background: var(--info-mark); }
 .lockban { margin-bottom: 12px; }
 .warns { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
-.warns li { font-size: 12.5px; color: var(--warn); background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: var(--r-ctl); padding: 6px 9px; }
+.warns li { font-size: 12.5px; color: var(--warn); background: var(--warn-bg); border: 0; border-radius: 8px; padding: 6px 10px; }
 .notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.note { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-card); padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
-.note.decide { border-color: var(--info-line); background: var(--info-bg); }
+.note { border: 1px solid var(--card-line); background: var(--surface); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; box-shadow: var(--shadow-card); }
+.note.decide { border-color: var(--info-line); background: var(--info-bg); box-shadow: none; }
 .note.warn { border-color: var(--warn-line); }
 .note.fixed, .note.done { border-color: var(--good-line); }
 .note .nt { display: grid; gap: 3px; min-width: 0; }
@@ -109,7 +113,7 @@ table input.cell, table select.cell, table textarea.cell { border-color: transpa
 .note .na, .note .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .note select.cell { max-width: 100%; border: 1px solid var(--line-2); }
 .empty { padding: 32px 18px; text-align: center; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
-.empty b { display: block; color: var(--ink); font: 600 15px/22px var(--display); margin-bottom: 6px; }
+.empty b { display: block; color: var(--ink); font: 600 17px/22px var(--display); margin-bottom: 6px; }
 .card.empty { padding: 40px 24px; }
 /* lists of lines with actions */
 .ilist { list-style: none; margin: 0; padding: 0; display: grid; }
@@ -129,15 +133,15 @@ table input.cell, table select.cell, table textarea.cell { border-color: transpa
 .checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .checklist li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; }
 /* a bar that shows how far something is */
-.progress { height: 4px; border-radius: 2px; background: var(--fill-2); overflow: hidden; }
+.progress { height: 4px; border-radius: 2px; background: var(--fill-2); overflow: hidden; }   /* indeterminate: the words say what happens */
 .progress i { display: block; height: 100%; width: 40%; border-radius: 2px; background: var(--accent); animation: slide 1.1s var(--ease-in-out) infinite; }
 @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
 .prog { display: inline-flex; align-items: center; gap: 8px; min-width: 120px; justify-content: flex-end; }
 .prog .bar { flex: 1; height: 4px; border-radius: 2px; background: var(--fill-2); min-width: 56px; position: relative; overflow: hidden; }
 .prog .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--accent); }
 .prog .pv { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
-.pbar { display: inline-block; width: 160px; height: 4px; border-radius: 2px; background: var(--fill-2); position: relative; overflow: hidden; }
-.pbar i { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--accent); transition: width 480ms var(--ease-out); }
+.pbar { display: inline-block; width: 160px; height: 6px; border-radius: 3px; background: var(--fill-2); position: relative; overflow: hidden; }
+.pbar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--accent); }
 /* placeholders while something loads, the shape of what comes */
 .sk { display: block; height: 12px; border-radius: 4px; background: linear-gradient(90deg, var(--fill) 25%, var(--fill-2) 50%, var(--fill) 75%); background-size: 200% 100%; animation: skShine 1.3s linear infinite; }
 .sk.w40 { width: 40%; } .sk.w70 { width: 70%; } .sk.w90 { width: 90%; } .sk.tall { height: 320px; }
@@ -150,15 +154,15 @@ table input.cell, table select.cell, table textarea.cell { border-color: transpa
 /* a status word with its icon (never colour alone) */
 .sti { width: 15px; height: 15px; vertical-align: -2px; margin-inline-end: 6px; flex: none; }
 .blockedcard { max-width: var(--prose); margin: 6vh auto 0; display: grid; justify-items: start; gap: 10px; padding: 32px; }
-.blockedcard .bico { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: var(--fill); color: var(--muted); }
+.blockedcard .bico { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--fill); color: var(--muted); }
 .blockedcard .bico svg { width: 20px; height: 20px; }
-.blockedcard h1 { font: 600 22px/28px var(--display); letter-spacing: -0.015em; }
+.blockedcard h1 { font: 700 26px/32px var(--display); letter-spacing: -0.02em; }
 .blockedcard p { margin: 0; color: var(--muted); max-width: 60ch; }
 /* a long page's own list of sections (Supervisors) */
-.secnav { position: sticky; top: calc(var(--head-h) + 8px); z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px; background: color-mix(in srgb, var(--surface) 92%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
+.secnav { position: sticky; top: calc(var(--head-h) + 8px); z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px; background: var(--mat-menu); -webkit-backdrop-filter: var(--mat-blur); backdrop-filter: var(--mat-blur);
+  border: 0; border-radius: 12px; box-shadow: var(--shadow-pop); }
 .secnav .snl { font: 600 12px/16px var(--text); color: var(--muted); padding: 0 8px; }
-.secnav button { border: 0; background: none; color: var(--ink-2); min-height: 30px; padding: 0 10px; border-radius: var(--r-ctl); font: 500 12.5px/1 var(--text); cursor: pointer; }
+.secnav button { border: 0; background: none; color: var(--ink-2); min-height: 30px; padding: 0 10px; border-radius: 8px; font: 500 12.5px/1 var(--text); cursor: pointer; }
 .secnav button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 @media (hover: hover) and (pointer: fine) { .secnav button:hover { background: var(--fill); color: var(--ink); } }
 @media (max-width: 767.98px) { .secnav { position: static; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .secnav button { white-space: nowrap; } }

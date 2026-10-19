@@ -1,6 +1,6 @@
 /* Recognise files: one card per file (what it is and why, the month, the people, where it goes), and the quiet drop layer */
 #recogBody { display: grid; gap: var(--s3); align-content: start; }
-.rcard { display: grid; gap: var(--s2); padding: var(--s4); border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); box-shadow: var(--shadow-card); }
+.rcard { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s2); padding: var(--s4); border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); box-shadow: var(--shadow-card); }
 .rcard.done { opacity: .72; box-shadow: none; }
 .rch { display: flex; align-items: center; gap: var(--s3); }
 .rch > svg { flex: none; color: var(--muted); }

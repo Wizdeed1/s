@@ -7,6 +7,16 @@
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0b0c">
 <meta name="color-scheme" content="light dark">
+<script id="themeBoot">
+/* Light or dark before the first paint, in plain old JavaScript like the start guard: the choice kept in this browser (System,
+   Light or Dark, in the account menu and Settings; System, the first choice, follows the computer) sets data-theme on the page. */
+(function () {
+  var t = 'system', dark = false;
+  try { t = localStorage.getItem('mc-theme') || 'system'; } catch (e) { /* this browser only */ }
+  try { dark = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches); } catch (e) { dark = t === 'dark'; }
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+})();
+</script>
 <script>
 /* The start guard, in plain old JavaScript on purpose so it runs in any browser: when the tool has not shown its first screen
    a few seconds after the page loaded, the sign-in card says why (and what the browser said), instead of "Loading..." for ever. */
@@ -66,7 +76,8 @@
 
 /* ==========================================================================================================================
    MC Monthly Report Builder: the interface (Option A, Daylight), following Apple's Human Interface Guidelines.
-   Light and dark follow the computer's own setting; there is no appearance switch in the tool (dark-mode.md › Best practices).
+   Light or dark as chosen in the account menu or Settings (System, Light, Dark; System, the first choice, follows the computer):
+   the page carries the one it shows as data-theme, set before the first paint (js/theme_boot.html).
    Grouped grey ground, white panels with soft corners, a frosted sidebar, toolbar and tab bar (the floating functional layer;
    content never gets a material, materials.md › Liquid Glass). Beyond One orange only for the main action, the current place,
    selection and progress (branding.md › Apply your app's accent color judiciously). Geist for headlines and figures, the
@@ -75,7 +86,7 @@
    ========================================================================================================================== */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   /* surfaces: the grouped ground, panels on it, what floats above */
   --bg: #f2f2f7; --surface: #ffffff; --raised: #ffffff; --overlay: #ffffff; --sunk: #ffffff;
   --fill: rgba(120, 120, 128, .12); --fill-2: rgba(120, 120, 128, .2);   /* translucent fills: hover, selection, tracks */
@@ -126,6 +137,7 @@
   --mat-bar: rgba(246, 246, 249, .8); --mat-side: rgba(250, 250, 252, .74); --mat-menu: rgba(250, 250, 252, .88); --mat-blur: saturate(1.8) blur(24px);
   /* controls */
   --btn-fill: rgba(120, 120, 128, .14); --btn-fill-hover: rgba(120, 120, 128, .22); --zebra: rgba(116, 116, 128, .075);
+  --seg-thumb: #ffffff;   /* the chosen segment of a segmented control */
   --tt-bg: rgba(250, 250, 252, .97); --tt-ink: #1d1d1f; --tt-line: rgba(0, 0, 0, .12);
   --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%236e6e73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   /* no ambient glow or horizon: decoration is not delight (design-principles.md) */
@@ -147,45 +159,46 @@
   /* the company logo: the dark one on the light sidebar, the white one on the dark sidebar */
   --bl-light: block; --bl-dark: none;
 }
-/* dark: Apple's dark palette. Dimmer grounds, brighter text, elevated panels a step lighter (dark-mode.md › Dark Mode colors) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b0b0c; --surface: #1c1c1e; --raised: #2c2c2e; --overlay: #2c2c2e; --sunk: rgba(118, 118, 128, .16);
-    --fill: rgba(120, 120, 128, .24); --fill-2: rgba(120, 120, 128, .34);
-    --line: #38383a; --line-2: #48484a; --line-3: #636366; --ctl-line: #8e8e93;
-    --ink: #f5f5f7; --ink-2: #d1d1d6; --muted: #a8a8ad; --faint: #8e8e93; --disabled: #545458; --inverse: #0b0b0c;
-    --nav: rgba(28, 28, 30, .72); --nav-2: #1c1c1e; --nav-ink: #f5f5f7; --nav-muted: #d1d1d6; --nav-faint: #a8a8ad; --nav-line: rgba(255, 255, 255, .08);
-    --nav-hover: rgba(120, 120, 128, .24); --nav-current: rgba(242, 103, 34, .24);
-    --accent-hover: #ff7a33; --accent-text: #ff8a4c; --accent-soft: rgba(242, 103, 34, .2); --accent-line: rgba(242, 103, 34, .55);
-    --good: #30d158; --good-bg: rgba(48, 209, 88, .16); --good-line: rgba(48, 209, 88, .4); --good-mark: #30d158;
-    --warn: #ffb340; --warn-bg: rgba(255, 159, 10, .16); --warn-line: rgba(255, 159, 10, .42); --warn-mark: #ff9f0a;
-    --bad: #ff6961; --bad-bg: rgba(255, 69, 58, .14); --bad-line: rgba(255, 69, 58, .42); --bad-mark: #ff453a;
-    --info: #4da3ff; --info-bg: rgba(10, 132, 255, .16); --info-line: rgba(10, 132, 255, .42); --info-mark: #0a84ff;
-    --badge: #e5121f; --focus: #ff8a4c;
-    --toast-bg: rgba(58, 58, 60, .88); --toast-ink: #f5f5f7; --toast-line: rgba(255, 255, 255, .1); --toast-act: #ff9f5a;
-    --at: rgba(48, 209, 88, .16); --at-ink: #7fd8a8; --off: #232326; --off-ink: #a8a8ad; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
-    --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;
-    --c1: #409cff; --c2: #bf5af2; --c3: #40c8b4; --c4: #ff6482; --c5: #e0b45c; --c6: #7d7aff; --heat: #409cff; --bar: #409cff;
-    --card-line: rgba(255, 255, 255, .05);
-    --shadow-card: none;
-    --shadow-raise: 0 0 0 .5px rgba(255, 255, 255, .08), 0 10px 30px rgba(0, 0, 0, .5);
-    --shadow-pop: 0 0 0 .5px rgba(255, 255, 255, .12), 0 12px 36px rgba(0, 0, 0, .6);
-    --shadow-modal: 0 0 0 .5px rgba(255, 255, 255, .1), 0 30px 80px rgba(0, 0, 0, .7);
-    --shadow-sheet: 0 0 0 .5px rgba(255, 255, 255, .1), 0 20px 60px rgba(0, 0, 0, .6);
-    --scrim: rgba(0, 0, 0, .5);
-    --mat-bar: rgba(22, 22, 24, .78); --mat-side: rgba(28, 28, 30, .66); --mat-menu: rgba(44, 44, 46, .9);
-    --btn-fill: rgba(120, 120, 128, .28); --btn-fill-hover: rgba(120, 120, 128, .38); --zebra: rgba(120, 120, 128, .1);
-    --tt-bg: rgba(58, 58, 60, .97); --tt-ink: #f5f5f7; --tt-line: rgba(255, 255, 255, .1);
-    --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%23a8a8ad' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    --bl-light: none; --bl-dark: block;
-  }
+/* dark (the page shows it as data-theme="dark"): Apple's dark palette. Dimmer grounds, brighter text, elevated panels a step
+   lighter (dark-mode.md › Dark Mode colors) */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0b0c; --surface: #1c1c1e; --raised: #2c2c2e; --overlay: #2c2c2e; --sunk: rgba(118, 118, 128, .16);
+  --fill: rgba(120, 120, 128, .24); --fill-2: rgba(120, 120, 128, .34);
+  --line: #38383a; --line-2: #48484a; --line-3: #636366; --ctl-line: #8e8e93;
+  --ink: #f5f5f7; --ink-2: #d1d1d6; --muted: #a8a8ad; --faint: #8e8e93; --disabled: #545458; --inverse: #0b0b0c;
+  --nav: rgba(28, 28, 30, .72); --nav-2: #1c1c1e; --nav-ink: #f5f5f7; --nav-muted: #d1d1d6; --nav-faint: #a8a8ad; --nav-line: rgba(255, 255, 255, .08);
+  --nav-hover: rgba(120, 120, 128, .24); --nav-current: rgba(242, 103, 34, .24);
+  --accent-hover: #ff7a33; --accent-text: #ff8a4c; --accent-soft: rgba(242, 103, 34, .2); --accent-line: rgba(242, 103, 34, .55);
+  --good: #30d158; --good-bg: rgba(48, 209, 88, .16); --good-line: rgba(48, 209, 88, .4); --good-mark: #30d158;
+  --warn: #ffb340; --warn-bg: rgba(255, 159, 10, .16); --warn-line: rgba(255, 159, 10, .42); --warn-mark: #ff9f0a;
+  --bad: #ff6961; --bad-bg: rgba(255, 69, 58, .14); --bad-line: rgba(255, 69, 58, .42); --bad-mark: #ff453a;
+  --info: #4da3ff; --info-bg: rgba(10, 132, 255, .16); --info-line: rgba(10, 132, 255, .42); --info-mark: #0a84ff;
+  --badge: #e5121f; --focus: #ff8a4c;
+  --toast-bg: rgba(58, 58, 60, .88); --toast-ink: #f5f5f7; --toast-line: rgba(255, 255, 255, .1); --toast-act: #ff9f5a;
+  --at: rgba(48, 209, 88, .16); --at-ink: #7fd8a8; --off: #232326; --off-ink: #a8a8ad; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
+  --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;
+  --c1: #409cff; --c2: #bf5af2; --c3: #40c8b4; --c4: #ff6482; --c5: #e0b45c; --c6: #7d7aff; --heat: #409cff; --bar: #409cff;
+  --card-line: rgba(255, 255, 255, .05);
+  --shadow-card: none;
+  --shadow-raise: 0 0 0 .5px rgba(255, 255, 255, .08), 0 10px 30px rgba(0, 0, 0, .5);
+  --shadow-pop: 0 0 0 .5px rgba(255, 255, 255, .12), 0 12px 36px rgba(0, 0, 0, .6);
+  --shadow-modal: 0 0 0 .5px rgba(255, 255, 255, .1), 0 30px 80px rgba(0, 0, 0, .7);
+  --shadow-sheet: 0 0 0 .5px rgba(255, 255, 255, .1), 0 20px 60px rgba(0, 0, 0, .6);
+  --scrim: rgba(0, 0, 0, .5);
+  --mat-bar: rgba(22, 22, 24, .78); --mat-side: rgba(28, 28, 30, .66); --mat-menu: rgba(44, 44, 46, .9);
+  --btn-fill: rgba(120, 120, 128, .28); --btn-fill-hover: rgba(120, 120, 128, .38); --zebra: rgba(120, 120, 128, .1);
+  --seg-thumb: #636366;   /* lighter than the track, as Apple's dark segmented controls */
+  --tt-bg: rgba(58, 58, 60, .97); --tt-ink: #f5f5f7; --tt-line: rgba(255, 255, 255, .1);
+  --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%23a8a8ad' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --bl-light: none; --bl-dark: block;
 }
 /* increased contrast: darker separators and secondary text, visible panel edges (accessibility.md) */
 @media (prefers-contrast: more) {
   :root { --line: #aeaeb2; --line-2: #8e8e93; --card-line: rgba(60, 60, 67, .35); --muted: #3a3a3c; --faint: #48484a; --nav-line: rgba(60, 60, 67, .4); }
 }
-@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
-  :root { --line: #636366; --line-2: #8e8e93; --card-line: rgba(255, 255, 255, .3); --muted: #d1d1d6; --faint: #c7c7cc; --nav-line: rgba(255, 255, 255, .3); }
+@media (prefers-contrast: more) {
+  :root[data-theme="dark"] { --line: #636366; --line-2: #8e8e93; --card-line: rgba(255, 255, 255, .3); --muted: #d1d1d6; --faint: #c7c7cc; --nav-line: rgba(255, 255, 255, .3); }
 }
 /* series colours by name (lines, legends, brands): a team keeps its colour when a filter hides another */
 .s1, .b-virgin { --sc: var(--c1); } .s2, .b-friendi { --sc: var(--c2); } .s3 { --sc: var(--c3); } .s4, .b-fpay { --sc: var(--c4); } .s5 { --sc: var(--c5); } .s6 { --sc: var(--c6); }
@@ -386,11 +399,21 @@ body:not(.scrolled) .ptitle { opacity: 0; transform: translateY(4px); pointer-ev
 .periodmenu button .pst { margin-inline-start: auto; }
 .mhead { padding: 7px 10px 5px; font: 600 11.5px/1.2 var(--text); color: var(--muted); letter-spacing: .01em; }
 .mfoot { margin: 4px 0 0; padding: 8px 10px 6px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
-.acctmenu { min-width: 248px; }
+.acctmenu { min-width: 268px; }
 .acctmenu .who { padding: 9px 10px 11px; margin-bottom: 4px; border-bottom: 1px solid var(--line); display: grid; gap: 3px; }
 .acctmenu .who b { font: 600 14px/1.3 var(--display); }
 .acctmenu .who span { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .acctmenu button { width: 100%; }
+/* the appearance: three choices side by side, the current one on the thumb (a segmented control; the menu stays open) */
+.acctmenu .appear { display: grid; gap: 6px; padding: 4px 10px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.acctmenu .appear > span { font-size: 12px; font-weight: 600; color: var(--muted); }
+.acctmenu .appearseg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.acctmenu .appearseg button { width: auto; min-width: 0; min-height: 28px; justify-content: center; gap: 5px; padding: 0 6px; border-radius: 7px; font-size: 12.5px; font-weight: 500; color: var(--ink); }
+.acctmenu .appearseg button svg { width: 14px; height: 14px; color: inherit; }
+.acctmenu .appearseg button[aria-checked="true"] { background: var(--seg-thumb); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); }
+.acctmenu .appearseg button[aria-checked="true"]::after { content: none; }
+.acctmenu .appearseg button:focus-visible { background: transparent; color: var(--ink); outline: 2px solid var(--focus); outline-offset: -2px; }
+.acctmenu .appearseg button[aria-checked="true"]:focus-visible { background: var(--seg-thumb); }
 
 /* the page: up to 1,440 px beside the sidebar on the grouped grey ground */
 main { position: relative; isolation: isolate; overflow-x: clip; margin-inline-start: var(--side-cur); padding: 18px var(--gutter) 72px; min-height: calc(100vh - var(--head-h) - 80px); transition: margin var(--t-panel) var(--ease-drawer); }
@@ -574,9 +597,9 @@ select.cell { width: auto; min-width: 0; }
 .seg { display: inline-flex; flex-wrap: wrap; position: relative; isolation: isolate; border: 0; border-radius: 9px; background: var(--fill); padding: 2px; gap: 2px; max-width: 100%; }
 .seg button { position: relative; z-index: 1; border: 0; border-radius: 7px; background: transparent; color: var(--ink); min-height: 28px; padding: 0 12px; font: 500 13px/1 var(--text); white-space: nowrap; cursor: pointer;
   user-select: none; -webkit-user-select: none; transition: color var(--t-fast) ease, background-color var(--t-fast) ease; }
-.seg button[aria-pressed="true"] { color: var(--ink); background: var(--surface); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--seg-thumb); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); }
 .seg.thumbed > button[aria-pressed="true"] { background: transparent; box-shadow: none; }
-.seg > .sthumb { position: absolute; left: 0; top: 0; z-index: 0; background: var(--surface); border-radius: 7px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); pointer-events: none;
+.seg > .sthumb { position: absolute; left: 0; top: 0; z-index: 0; background: var(--seg-thumb); border-radius: 7px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); pointer-events: none;
   transition: transform var(--t-move) var(--ease-in-out), width var(--t-move) var(--ease-in-out), height var(--t-move) var(--ease-in-out), opacity var(--t-fast) ease; }
 .seg.icons button { display: inline-flex; align-items: center; gap: 6px; }
 .seg.icons svg { width: 14px; height: 14px; }
@@ -589,13 +612,13 @@ select.cell { width: auto; min-width: 0; }
 .wftabs::-webkit-scrollbar, .rbtabs::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
 .wftabs button, .rbtabs button, .tab { min-height: 30px; padding: 0 12px; color: var(--ink); font: 500 13px/1 var(--text); background: transparent !important; border: 0; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; cursor: pointer; border-radius: 7px; }
 .wftabs button[aria-pressed="true"], .rbtabs button[aria-pressed="true"], .tab[aria-selected="true"] { color: var(--ink); font-weight: 600; }
-.wftabs > .sthumb, .rbtabs > .sthumb { background: var(--surface) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04) !important; border-radius: 7px !important; }
-.wftabs:not(.thumbed) button[aria-pressed="true"], .rbtabs:not(.thumbed) button[aria-pressed="true"] { background: var(--surface) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.wftabs > .sthumb, .rbtabs > .sthumb { background: var(--seg-thumb) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04) !important; border-radius: 7px !important; }
+.wftabs:not(.thumbed) button[aria-pressed="true"], .rbtabs:not(.thumbed) button[aria-pressed="true"] { background: var(--seg-thumb) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 .tabs { position: relative; isolation: isolate; }
-.tabs > .thumb { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; background: var(--surface); border-radius: 7px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04);
+.tabs > .thumb { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; background: var(--seg-thumb); border-radius: 7px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04);
   transition: transform var(--t-move) var(--ease-in-out), width var(--t-move) var(--ease-in-out), opacity var(--t-fast) ease; }
 .tab { position: relative; z-index: 1; margin: 0; }
-.tabs:not(:has(.thumb)) .tab[aria-selected="true"] { background: var(--surface) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.tabs:not(:has(.thumb)) .tab[aria-selected="true"] { background: var(--seg-thumb) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 .rbtabs button svg { color: var(--good-mark); }
 /* team filters as chips */
 .teamchips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -671,6 +694,8 @@ select.cell { width: auto; min-width: 0; }
   .menu button:hover { background: var(--accent-fill); color: var(--on-accent); }
   .menu button:hover svg, .menu button:hover small { color: inherit; }
   .menu button:hover::after { border-color: currentColor; }
+  .acctmenu .appearseg button:hover { background: var(--fill); color: var(--ink); }
+  .acctmenu .appearseg button[aria-checked="true"]:hover { background: var(--seg-thumb); }
   .tabbar button:hover { color: var(--ink); }
   .linkbtn:hover { text-decoration: underline; }
   .linkbtn.nm:hover { text-decoration: underline; text-decoration-color: currentColor; }
@@ -2553,6 +2578,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
   .appbar .btn { min-width: 44px; min-height: 44px; }
   .menu { position: fixed; inset: auto 0 0 0; top: auto; max-width: none; max-height: 70vh; border-radius: var(--r-dlg) var(--r-dlg) 0 0; padding: 10px 10px calc(16px + env(safe-area-inset-bottom, 0px)); animation-name: sheetUp; z-index: var(--z-sheet); }
   .menu button { min-height: 48px; font-size: 15px; }
+  .acctmenu .appearseg button { min-height: 36px; font-size: 14px; }
   body:has(.appbar .menu:not([hidden])) .appbar { z-index: var(--z-sheet); }   /* a menu's sheet covers the tab bar */
   .toast { left: 50%; bottom: calc(var(--tab-h) + 16px + env(safe-area-inset-bottom, 0px)); }
   .buildbar { flex-wrap: wrap; gap: 8px; padding: 8px; }
@@ -2781,6 +2807,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
         <button class="btn ghost acctbtn" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="acctMenu" hidden><span class="avatar" id="acctInit" aria-hidden="true">?</span><span class="sr" id="acctSr">Account</span></button>
         <div class="acctmenu menu" id="acctMenu" role="menu" hidden>
           <div class="who"><b id="acctName" dir="auto"></b><span id="acctEmail"></span><span><span class="pill" id="acctRole">User</span></span></div>
+          <div class="appear" role="group" aria-labelledby="l-appear"><span id="l-appear">Appearance</span><div class="seg appearseg"><button role="menuitemradio" aria-checked="true" data-theme-set="system"><svg aria-hidden="true"><use href="#i-monitor"/></svg>System</button><button role="menuitemradio" aria-checked="false" data-theme-set="light"><svg aria-hidden="true"><use href="#i-sun"/></svg>Light</button><button role="menuitemradio" aria-checked="false" data-theme-set="dark"><svg aria-hidden="true"><use href="#i-moon"/></svg>Dark</button></div></div>
           <button role="menuitem" data-acct="accounts" hidden>Manage accounts</button>
           <button role="menuitem" data-acct="user" id="acctUserBtn">Change username</button>
           <button role="menuitem" data-acct="pw">Change password</button>
@@ -3154,6 +3181,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
       <small>A PNG or JPG of your logo, for example from your brand kit or email signature. It goes at the top of the one-to-one forms and on the Excel files. The emails carry no logo: Outlook adds your signature.</small></div>
     <div class="field"><span class="lbl">KPI scorecards</span><div><button class="btn sm" id="scoreBtn">Scorecards…</button></div><small>KPIs, weights and ranking bands per team, and the incentive base. Loaded from kpi.xlsx.</small></div>
     <div class="field"><label for="mgrName">Final form: manager signing</label><input id="mgrName" autocomplete="off"><input id="mgrTitle" aria-label="Manager title" autocomplete="off" style="margin-top:6px"><small>Signs the final form with the agent and the supervisor.</small></div>
+    <div class="field"><span class="lbl" id="l-th">Appearance</span><div class="seg" id="theme" role="group" aria-labelledby="l-th"><button data-f="system" aria-pressed="true">System</button><button data-f="light" aria-pressed="false">Light</button><button data-f="dark" aria-pressed="false">Dark</button></div><small>System follows your computer's light or dark setting. Kept in this browser; it is in your account menu too.</small></div>
     <div class="field"><label for="lockMins">Your sign-in</label><div class="hint" id="setWho"></div><select id="lockMins"><option value="5">After 5 minutes without activity</option><option value="15">After 15 minutes without activity</option><option value="30">After 30 minutes without activity</option><option value="60">After 60 minutes without activity</option></select>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><button class="btn sm" id="chgPw">Change password</button><button class="btn sm" id="lockNow2">Lock now</button><button class="btn sm" id="signOut2">Sign out</button></div>
       <small id="lockHelp">It also asks you to sign in when you open the tool again. Your work on the page stays while it is locked.</small></div>
@@ -3282,7 +3310,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
       <ul>
         <li>Your pages are in the <b>sidebar</b> on the left. On a laptop it narrows to icons (point at one for its name); the button at its foot widens it again, and this browser remembers your choice. On a phone the pages are in the bar at the bottom; with more than five, <b>More</b> holds the rest, and How to use and Settings are in the account menu.</li>
         <li><b>Search</b> (Ctrl K) is at the top of the sidebar (on a phone, in the header). The <b>header</b> carries the <b>bell</b> with your notifications: deadlines and what is yours to do (everyone), and the checks (for the people who build the month), the <b>month</b> the page shows and your account. A final month shows a lock and is read-only. On Build the month comes from the exports instead; change it in Settings › Month.</li>
-        <li>The tool is light or dark as your computer is set, and changes with it (Windows: Settings › Personalization › Colors; Mac: System Settings › Appearance).</li>
+        <li><b>Appearance</b>: choose Light, Dark or System in your account menu (your initials, top right) or in Settings. System, the first choice, follows your computer's light or dark setting and changes with it. The choice is kept in this browser.</li>
         <li>The WFM roles and the senior manager start on the <b>Dashboard</b>: the month's six numbers against the month before, the trend, what needs attention, the month close, recent activity and how old each source is. Everyone else starts on their own page; what is theirs to do, with its deadline, is in the bell.</li>
         <li><b>Build</b> has its own step bar: Import, Review, Export, Email. Review opens on <b>Checks</b>, the same checks as the bell, with what each one means and what happens until you act. Only three things stop a build: an empty roster, files still being read, and no export or attendance file at all.</li>
       </ul>
@@ -12519,7 +12547,7 @@ const SRC = (() => {   // the page's own source, for the team copy
   try {
     const me = document.currentScript && document.currentScript.textContent.includes('const Auth = (() =>') ? document.currentScript : [...document.scripts].find(x => x.textContent.includes('const Auth = (() =>'));
     const style = [...document.querySelectorAll('style')].find(x => x.textContent.includes('.lockcard'));
-    const head = [document.querySelector('title'), ...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]'), style].filter(Boolean).map(e => e.outerHTML).join('\n');
+    const head = [document.querySelector('title'), document.getElementById('themeBoot'), ...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]'), style].filter(Boolean).map(e => e.outerHTML).join('\n');
     const body = [...document.querySelectorAll('svg, #lock, a#skipLink, nav#sidebar, header.appbar, main#main, footer.sitefoot, nav#tabBar, #moreSheet, #scrim, div.dlg, div#find, aside.drawer, #toast, #tt, #pop, script#rb-data, script#rb-code, script#brand-assets')]
       .filter(e => (e.tagName.toLowerCase() !== 'svg' || e.querySelector('symbol#i-up')) && !(e.parentElement && e.parentElement.closest('#lock, nav#sidebar, header.appbar, main#main, aside.drawer, div.dlg, #moreSheet')))
       .map(e => e.outerHTML).join('\n');
@@ -16889,16 +16917,31 @@ function fillSettings() {
   $('target').value = +(s.target * 100).toFixed(2); $('floor').value = +(s.floor * 100).toFixed(2); $('inactiveMin').value = s.inactiveMin;
   chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES);
   $('mgrName').value = s.manager; $('mgrTitle').value = s.managerTitle; renderLogo();
+  syncTheme();
   const u = Auth.user(); $('setSaved').textContent = state.db ? savedWhere() : 'Not saved in this view';
-  $('setWho').textContent = u ? `Signed in as ${u.name} (${u.username ? 'username ' + u.username + ', ' : ''}${u.email}), ${u.role === 'admin' ? 'admin' : 'user'}` : 'Sign-in is off in this view.';
+  $('setWho').textContent = u ? `Signed in as ${u.name} (${[u.username ? 'username ' + u.username : '', u.email].filter(Boolean).join(', ')}), ${u.role === 'admin' ? 'admin' : 'user'}` : 'Sign-in is off in this view.';
   $('lockMins').value = String(Auth.lockMins()); $('lockMins').disabled = $('chgPw').disabled = $('lockNow2').disabled = $('signOut2').disabled = !u;
 }
 function chips(el, values, key, titles) {
   el.innerHTML = values.map(v => `<label class="chip"${titles ? ` title="${esc(titles[v])}"` : ''}><input type="checkbox" value="${esc(v)}"${state.settings[key].includes(v) ? ' checked' : ''}>${esc(v)}</label>`).join('');
 }
-// light and dark follow the computer's own setting: the tool offers no appearance switch of its own (Apple HIG, dark-mode.md)
-function themeNow() { return 'system'; }
-function applyTheme() { document.documentElement.removeAttribute('data-theme'); }
+// the appearance: System (the first choice, as the computer is set), Light or Dark, kept in this browser as before (mc-theme).
+// The page carries the one it shows (data-theme), set before the first paint by js/theme_boot.html; System follows the computer live.
+function themeNow() { const t = lsGet('mc-theme'); return t === 'light' || t === 'dark' ? t : 'system'; }
+const themeMq = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(t = themeNow()) {
+  const dark = t === 'dark' || (t === 'system' && themeMq.matches);
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#0b0b0c' : '#f2f2f7'));
+  document.dispatchEvent(new CustomEvent('mc-theme'));
+}
+function syncTheme() {
+  const t = themeNow();
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.themeSet === t)));
+  if ($('theme')) setSeg($('theme'), t);
+}
+function setTheme(t) { lsSet('mc-theme', t); applyTheme(t); syncTheme(); }
+try { themeMq.addEventListener('change', () => { if (themeNow() === 'system') applyTheme('system'); }); } catch (e) { /* older browsers */ }
 
 // ---------------------------------------------------------------- events
 const drop = $('drop');
@@ -17061,6 +17104,7 @@ for (const [id, key, div, lo, hi] of [['target', 'target', 100, 0, 100], ['floor
   $(id).addEventListener('change', e => { const v = parseFloat(e.target.value); if (!Number.isFinite(v) || v < lo || v > hi) { fillSettings(); toast(`Use a number from ${lo} to ${hi}.`); return; } state.settings[key] = key === 'inactiveMin' ? Math.round(v) : v / div; refresh(); persistSettings(); });
 }
 for (const [id, key] of [['dedBrands', 'dedBrands'], ['dedTeams', 'dedTeams']]) $(id).addEventListener('change', () => { state.settings[key] = [...$(id).querySelectorAll('input:checked')].map(i => i.value); refresh(); persistSettings(); });
+$('theme').addEventListener('click', e => { const f = e.target.closest('button[data-f]'); if (f) setTheme(f.dataset.f); });
 $('resetSet').addEventListener('click', () => { state.settings = clone(DEFAULTS); if (state.monthManual) { state.monthManual = false; const g = Core.guessMonth(allDets()); state.y = g.y; state.m = g.m; } fillSettings(); refresh(); persistSettings(); toast('Settings reset to the defaults'); });
 
 
@@ -22591,6 +22635,10 @@ function findPages(role) {
   add('help', 'How to use', 'help|how to|guide|manual|instructions', 'Help', () => openDrawer('dHelp'));
   if (Auth.isAdmin && Auth.isAdmin()) add('accounts', 'Manage accounts', 'accounts|users|roles|passwords|reset password|approve accounts', 'Admin', () => Auth.openAccounts());
   if (Auth.user()) add('password', 'Change my password', 'change password|password|new password', 'Account', () => Auth.change());
+  add('light', 'Light appearance', 'light|light mode|light theme|day mode|white', 'Appearance', () => setTheme('light'));
+  add('dark', 'Dark appearance', 'dark|dark mode|dark theme|night mode|night', 'Appearance', () => setTheme('dark'));
+  add('system', 'Appearance as the computer is set', 'system|automatic|auto|follow the computer|system theme', 'Appearance', () => setTheme('system'));
+  add('appearance', 'Appearance: System, Light or Dark', 'appearance|theme|colours|colors', 'In your account menu', () => setTimeout(() => { const b = $('acctBtn'); if (b && !b.hidden && $('acctMenu').hidden) b.click(); }, 0));
   return L;
 }
 function fScrollCard(label) {
@@ -24516,9 +24564,15 @@ for (const id of ['periodMenu']) $(id).addEventListener('keydown', e => {
 });
 $('periodBtn').addEventListener('click', e => { e.stopPropagation(); if (menuOpen && menuOpen.menu === $('periodMenu')) { closeMenus(); return; } openMenu($('periodBtn'), $('periodMenu'), periodMenuHtml()); });
 $('periodMenu').addEventListener('click', e => { const b = e.target.closest('[data-period]'); if (!b) return; closeMenus(true); setPeriod(b.dataset.period); });
-// ---- light and dark follow the computer's own setting, live (no switch in the tool: Apple HIG, dark-mode.md); the sliding
-// thumbs of the segmented controls are measured again when it changes
-try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => requestAnimationFrame(thumbs)); } catch (e) { /* older browsers */ }
+// ---- the appearance in the account menu (System, Light, Dark): the menu stays open, so the change shows at once; left and right
+// move between the three. The sliding thumbs of the segmented controls are measured again when the page turns light or dark.
+$('acctMenu').addEventListener('click', e => { const b = e.target.closest('[data-theme-set]'); if (b) setTheme(b.dataset.themeSet); });
+$('acctMenu').addEventListener('keydown', e => {
+  const b = e.target.closest && e.target.closest('.appearseg button'); if (!b || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+  const L = [...b.parentElement.querySelectorAll('button')], i = L.indexOf(b), rtl = getComputedStyle(b).direction === 'rtl';
+  e.preventDefault(); L[(i + ((e.key === 'ArrowRight') !== rtl ? 1 : L.length - 1)) % L.length].focus();
+});
+document.addEventListener('mc-theme', () => requestAnimationFrame(thumbs));
 
 // ---------------------------------------------------------------- the phone tab bar and its More sheet
 function navList() { return (WS_OF[roleNow()] || []).filter(w => WS_LABEL[w]); }
@@ -26078,7 +26132,7 @@ window.addEventListener('dragover', e => { if (!dropOk(e)) return; const z = e.t
 window.addEventListener('dragleave', () => { dropDepth = Math.max(0, dropDepth - 1); if (!dropDepth) dropShow(false); });
 window.addEventListener('drop', () => { dropDepth = 0; dropShow(false); }, true);
 
-applyTheme(themeNow());
+applyTheme(themeNow()); syncTheme();
 renderBrand();
 render();
 initStorage();

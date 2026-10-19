@@ -75,9 +75,9 @@ select.cell { width: auto; min-width: 0; }
 .seg { display: inline-flex; flex-wrap: wrap; position: relative; isolation: isolate; border: 0; border-radius: 9px; background: var(--fill); padding: 2px; gap: 2px; max-width: 100%; }
 .seg button { position: relative; z-index: 1; border: 0; border-radius: 7px; background: transparent; color: var(--ink); min-height: 28px; padding: 0 12px; font: 500 13px/1 var(--text); white-space: nowrap; cursor: pointer;
   user-select: none; -webkit-user-select: none; transition: color var(--t-fast) ease, background-color var(--t-fast) ease; }
-.seg button[aria-pressed="true"] { color: var(--ink); background: var(--surface); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--seg-thumb); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); }
 .seg.thumbed > button[aria-pressed="true"] { background: transparent; box-shadow: none; }
-.seg > .sthumb { position: absolute; left: 0; top: 0; z-index: 0; background: var(--surface); border-radius: 7px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); pointer-events: none;
+.seg > .sthumb { position: absolute; left: 0; top: 0; z-index: 0; background: var(--seg-thumb); border-radius: 7px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); pointer-events: none;
   transition: transform var(--t-move) var(--ease-in-out), width var(--t-move) var(--ease-in-out), height var(--t-move) var(--ease-in-out), opacity var(--t-fast) ease; }
 .seg.icons button { display: inline-flex; align-items: center; gap: 6px; }
 .seg.icons svg { width: 14px; height: 14px; }
@@ -90,13 +90,13 @@ select.cell { width: auto; min-width: 0; }
 .wftabs::-webkit-scrollbar, .rbtabs::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
 .wftabs button, .rbtabs button, .tab { min-height: 30px; padding: 0 12px; color: var(--ink); font: 500 13px/1 var(--text); background: transparent !important; border: 0; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; cursor: pointer; border-radius: 7px; }
 .wftabs button[aria-pressed="true"], .rbtabs button[aria-pressed="true"], .tab[aria-selected="true"] { color: var(--ink); font-weight: 600; }
-.wftabs > .sthumb, .rbtabs > .sthumb { background: var(--surface) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04) !important; border-radius: 7px !important; }
-.wftabs:not(.thumbed) button[aria-pressed="true"], .rbtabs:not(.thumbed) button[aria-pressed="true"] { background: var(--surface) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.wftabs > .sthumb, .rbtabs > .sthumb { background: var(--seg-thumb) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04) !important; border-radius: 7px !important; }
+.wftabs:not(.thumbed) button[aria-pressed="true"], .rbtabs:not(.thumbed) button[aria-pressed="true"] { background: var(--seg-thumb) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 .tabs { position: relative; isolation: isolate; }
-.tabs > .thumb { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; background: var(--surface); border-radius: 7px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04);
+.tabs > .thumb { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; background: var(--seg-thumb); border-radius: 7px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04);
   transition: transform var(--t-move) var(--ease-in-out), width var(--t-move) var(--ease-in-out), opacity var(--t-fast) ease; }
 .tab { position: relative; z-index: 1; margin: 0; }
-.tabs:not(:has(.thumb)) .tab[aria-selected="true"] { background: var(--surface) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.tabs:not(:has(.thumb)) .tab[aria-selected="true"] { background: var(--seg-thumb) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 .rbtabs button svg { color: var(--good-mark); }
 /* team filters as chips */
 .teamchips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -172,6 +172,8 @@ select.cell { width: auto; min-width: 0; }
   .menu button:hover { background: var(--accent-fill); color: var(--on-accent); }
   .menu button:hover svg, .menu button:hover small { color: inherit; }
   .menu button:hover::after { border-color: currentColor; }
+  .acctmenu .appearseg button:hover { background: var(--fill); color: var(--ink); }
+  .acctmenu .appearseg button[aria-checked="true"]:hover { background: var(--seg-thumb); }
   .tabbar button:hover { color: var(--ink); }
   .linkbtn:hover { text-decoration: underline; }
   .linkbtn.nm:hover { text-decoration: underline; text-decoration-color: currentColor; }

@@ -134,9 +134,15 @@ for (const id of ['periodMenu']) $(id).addEventListener('keydown', e => {
 });
 $('periodBtn').addEventListener('click', e => { e.stopPropagation(); if (menuOpen && menuOpen.menu === $('periodMenu')) { closeMenus(); return; } openMenu($('periodBtn'), $('periodMenu'), periodMenuHtml()); });
 $('periodMenu').addEventListener('click', e => { const b = e.target.closest('[data-period]'); if (!b) return; closeMenus(true); setPeriod(b.dataset.period); });
-// ---- light and dark follow the computer's own setting, live (no switch in the tool: Apple HIG, dark-mode.md); the sliding
-// thumbs of the segmented controls are measured again when it changes
-try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => requestAnimationFrame(thumbs)); } catch (e) { /* older browsers */ }
+// ---- the appearance in the account menu (System, Light, Dark): the menu stays open, so the change shows at once; left and right
+// move between the three. The sliding thumbs of the segmented controls are measured again when the page turns light or dark.
+$('acctMenu').addEventListener('click', e => { const b = e.target.closest('[data-theme-set]'); if (b) setTheme(b.dataset.themeSet); });
+$('acctMenu').addEventListener('keydown', e => {
+  const b = e.target.closest && e.target.closest('.appearseg button'); if (!b || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+  const L = [...b.parentElement.querySelectorAll('button')], i = L.indexOf(b), rtl = getComputedStyle(b).direction === 'rtl';
+  e.preventDefault(); L[(i + ((e.key === 'ArrowRight') !== rtl ? 1 : L.length - 1)) % L.length].focus();
+});
+document.addEventListener('mc-theme', () => requestAnimationFrame(thumbs));
 
 // ---------------------------------------------------------------- the phone tab bar and its More sheet
 function navList() { return (WS_OF[roleNow()] || []).filter(w => WS_LABEL[w]); }

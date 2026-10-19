@@ -22,7 +22,7 @@ Option A was chosen from three samples and built by the rules of Apple's Human I
 | Area | What you see now |
 |---|---|
 | Look | Light: the system grey background, white cards with 16 px corners and a soft shadow, Apple's status colours (green, orange, red, blue) for good, warning, bad and information. Orange is kept for the main action, the current place and progress; text is contrast-checked (small text close to 7:1). Titles and numbers use **Geist**, body text the system font (San Francisco on a Mac or iPhone, Geist elsewhere). |
-| Light and dark | The tool is light or dark as the computer is set and changes with it; there is no theme menu of its own (*dark-mode*: no app-specific appearance setting). Increased contrast and reduced transparency in the system are followed. |
+| Appearance | **System**, **Light** or **Dark**, chosen in the account menu (everyone, on a computer and on a phone), in Settings (the people who build the month) or with Search ("dark", "light", "theme"). System, the first choice, follows the computer and changes with it. The choice is kept in this browser (the `mc-theme` setting, as before) and applied before the first paint (`js/theme_boot.html`). Apple's guidelines prefer no setting of an app's own (*dark-mode*); it is offered because it was asked for. Increased contrast and reduced transparency in the system are followed. |
 | Navigation (D1) | A frosted sidebar with each role's pages in the role's own order, icons in orange, Search at its top; a 72 px icon rail below 1,280 px (remembered in this browser). On a phone: a tab bar with every page when there are five or fewer (only the admin, with seven, gets **More**), no tab bar for a role with one page (the agent, the supervisor, the quality team), and How to use and Settings in the account menu (*tab-bars*: no overflow tab when everything fits). |
 | Toolbar | Frosted; the page's large title moves into it as the page scrolls under it. The bell, the **reporting period** on every page except Build (D13; a final month shows a lock and is read-only), How to use, Settings and the account menu; on a phone the account and period menus open as sheets from the bottom. |
 | Words | Buttons, menus, tabs, segmented controls, sidebar items and column headings use **title-style capitalization** ("Build the Month") on screen (`js/caps.js`); the emails, forms, files, toasts and the one-to-one forms keep their words exactly. |
@@ -102,6 +102,7 @@ node test/agent.cjs "final/MC Monthly Report Builder.html" test/shots           
 node test/recon.cjs "final/MC Monthly Report Builder.html" test/shots             # Results › Reconcile on synthetic old workbooks (test/oldbooks.cjs)
 node test/recog.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # nine files in one drop, the Recognise files panel
 node test/caps.cjs "final/MC Monthly Report Builder.html"                         # title-style capitalization on buttons, menus, tabs and headings
+node test/theme.cjs "final/MC Monthly Report Builder.html" test/shots             # the appearance: System, Light, Dark, kept and applied before the first paint
 npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser
 ```
 

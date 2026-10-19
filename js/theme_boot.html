@@ -1,0 +1,10 @@
+<script id="themeBoot">
+/* Light or dark before the first paint, in plain old JavaScript like the start guard: the choice kept in this browser (System,
+   Light or Dark, in the account menu and Settings; System, the first choice, follows the computer) sets data-theme on the page. */
+(function () {
+  var t = 'system', dark = false;
+  try { t = localStorage.getItem('mc-theme') || 'system'; } catch (e) { /* this browser only */ }
+  try { dark = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches); } catch (e) { dark = t === 'dark'; }
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+})();
+</script>

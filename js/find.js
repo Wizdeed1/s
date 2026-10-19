@@ -220,6 +220,10 @@ function findPages(role) {
   add('help', 'How to use', 'help|how to|guide|manual|instructions', 'Help', () => openDrawer('dHelp'));
   if (Auth.isAdmin && Auth.isAdmin()) add('accounts', 'Manage accounts', 'accounts|users|roles|passwords|reset password|approve accounts', 'Admin', () => Auth.openAccounts());
   if (Auth.user()) add('password', 'Change my password', 'change password|password|new password', 'Account', () => Auth.change());
+  add('light', 'Light appearance', 'light|light mode|light theme|day mode|white', 'Appearance', () => setTheme('light'));
+  add('dark', 'Dark appearance', 'dark|dark mode|dark theme|night mode|night', 'Appearance', () => setTheme('dark'));
+  add('system', 'Appearance as the computer is set', 'system|automatic|auto|follow the computer|system theme', 'Appearance', () => setTheme('system'));
+  add('appearance', 'Appearance: System, Light or Dark', 'appearance|theme|colours|colors', 'In your account menu', () => setTimeout(() => { const b = $('acctBtn'); if (b && !b.hidden && $('acctMenu').hidden) b.click(); }, 0));
   return L;
 }
 function fScrollCard(label) {

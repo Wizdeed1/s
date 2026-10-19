@@ -5,7 +5,7 @@ const SRC = (() => {   // the page's own source, for the team copy
   try {
     const me = document.currentScript && document.currentScript.textContent.includes('const Auth = (() =>') ? document.currentScript : [...document.scripts].find(x => x.textContent.includes('const Auth = (() =>'));
     const style = [...document.querySelectorAll('style')].find(x => x.textContent.includes('.lockcard'));
-    const head = [document.querySelector('title'), ...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]'), style].filter(Boolean).map(e => e.outerHTML).join('\n');
+    const head = [document.querySelector('title'), document.getElementById('themeBoot'), ...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]'), style].filter(Boolean).map(e => e.outerHTML).join('\n');
     const body = [...document.querySelectorAll('svg, #lock, a#skipLink, nav#sidebar, header.appbar, main#main, footer.sitefoot, nav#tabBar, #moreSheet, #scrim, div.dlg, div#find, aside.drawer, #toast, #tt, #pop, script#rb-data, script#rb-code, script#brand-assets')]
       .filter(e => (e.tagName.toLowerCase() !== 'svg' || e.querySelector('symbol#i-up')) && !(e.parentElement && e.parentElement.closest('#lock, nav#sidebar, header.appbar, main#main, aside.drawer, div.dlg, #moreSheet')))
       .map(e => e.outerHTML).join('\n');
@@ -3333,16 +3333,31 @@ function fillSettings() {
   $('target').value = +(s.target * 100).toFixed(2); $('floor').value = +(s.floor * 100).toFixed(2); $('inactiveMin').value = s.inactiveMin;
   chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES);
   $('mgrName').value = s.manager; $('mgrTitle').value = s.managerTitle; renderLogo();
+  syncTheme();
   const u = Auth.user(); $('setSaved').textContent = state.db ? savedWhere() : 'Not saved in this view';
-  $('setWho').textContent = u ? `Signed in as ${u.name} (${u.username ? 'username ' + u.username + ', ' : ''}${u.email}), ${u.role === 'admin' ? 'admin' : 'user'}` : 'Sign-in is off in this view.';
+  $('setWho').textContent = u ? `Signed in as ${u.name} (${[u.username ? 'username ' + u.username : '', u.email].filter(Boolean).join(', ')}), ${u.role === 'admin' ? 'admin' : 'user'}` : 'Sign-in is off in this view.';
   $('lockMins').value = String(Auth.lockMins()); $('lockMins').disabled = $('chgPw').disabled = $('lockNow2').disabled = $('signOut2').disabled = !u;
 }
 function chips(el, values, key, titles) {
   el.innerHTML = values.map(v => `<label class="chip"${titles ? ` title="${esc(titles[v])}"` : ''}><input type="checkbox" value="${esc(v)}"${state.settings[key].includes(v) ? ' checked' : ''}>${esc(v)}</label>`).join('');
 }
-// light and dark follow the computer's own setting: the tool offers no appearance switch of its own (Apple HIG, dark-mode.md)
-function themeNow() { return 'system'; }
-function applyTheme() { document.documentElement.removeAttribute('data-theme'); }
+// the appearance: System (the first choice, as the computer is set), Light or Dark, kept in this browser as before (mc-theme).
+// The page carries the one it shows (data-theme), set before the first paint by js/theme_boot.html; System follows the computer live.
+function themeNow() { const t = lsGet('mc-theme'); return t === 'light' || t === 'dark' ? t : 'system'; }
+const themeMq = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(t = themeNow()) {
+  const dark = t === 'dark' || (t === 'system' && themeMq.matches);
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#0b0b0c' : '#f2f2f7'));
+  document.dispatchEvent(new CustomEvent('mc-theme'));
+}
+function syncTheme() {
+  const t = themeNow();
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.themeSet === t)));
+  if ($('theme')) setSeg($('theme'), t);
+}
+function setTheme(t) { lsSet('mc-theme', t); applyTheme(t); syncTheme(); }
+try { themeMq.addEventListener('change', () => { if (themeNow() === 'system') applyTheme('system'); }); } catch (e) { /* older browsers */ }
 
 // ---------------------------------------------------------------- events
 const drop = $('drop');
@@ -3505,6 +3520,7 @@ for (const [id, key, div, lo, hi] of [['target', 'target', 100, 0, 100], ['floor
   $(id).addEventListener('change', e => { const v = parseFloat(e.target.value); if (!Number.isFinite(v) || v < lo || v > hi) { fillSettings(); toast(`Use a number from ${lo} to ${hi}.`); return; } state.settings[key] = key === 'inactiveMin' ? Math.round(v) : v / div; refresh(); persistSettings(); });
 }
 for (const [id, key] of [['dedBrands', 'dedBrands'], ['dedTeams', 'dedTeams']]) $(id).addEventListener('change', () => { state.settings[key] = [...$(id).querySelectorAll('input:checked')].map(i => i.value); refresh(); persistSettings(); });
+$('theme').addEventListener('click', e => { const f = e.target.closest('button[data-f]'); if (f) setTheme(f.dataset.f); });
 $('resetSet').addEventListener('click', () => { state.settings = clone(DEFAULTS); if (state.monthManual) { state.monthManual = false; const g = Core.guessMonth(allDets()); state.y = g.y; state.m = g.m; } fillSettings(); refresh(); persistSettings(); toast('Settings reset to the defaults'); });
 
 
@@ -3841,7 +3857,7 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(thumbs);
 document.addEventListener('scroll', () => { document.body.classList.toggle('scrolled', window.scrollY > 4); }, { passive: true });
 
 /*@@PORTAL@@*/
-applyTheme(themeNow());
+applyTheme(themeNow()); syncTheme();
 renderBrand();
 render();
 initStorage();

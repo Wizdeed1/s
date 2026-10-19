@@ -1,6 +1,7 @@
 /* ==========================================================================================================================
    MC Monthly Report Builder: the interface (Option A, Daylight), following Apple's Human Interface Guidelines.
-   Light and dark follow the computer's own setting; there is no appearance switch in the tool (dark-mode.md › Best practices).
+   Light or dark as chosen in the account menu or Settings (System, Light, Dark; System, the first choice, follows the computer):
+   the page carries the one it shows as data-theme, set before the first paint (js/theme_boot.html).
    Grouped grey ground, white panels with soft corners, a frosted sidebar, toolbar and tab bar (the floating functional layer;
    content never gets a material, materials.md › Liquid Glass). Beyond One orange only for the main action, the current place,
    selection and progress (branding.md › Apply your app's accent color judiciously). Geist for headlines and figures, the
@@ -9,7 +10,7 @@
    ========================================================================================================================== */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   /* surfaces: the grouped ground, panels on it, what floats above */
   --bg: #f2f2f7; --surface: #ffffff; --raised: #ffffff; --overlay: #ffffff; --sunk: #ffffff;
   --fill: rgba(120, 120, 128, .12); --fill-2: rgba(120, 120, 128, .2);   /* translucent fills: hover, selection, tracks */
@@ -60,6 +61,7 @@
   --mat-bar: rgba(246, 246, 249, .8); --mat-side: rgba(250, 250, 252, .74); --mat-menu: rgba(250, 250, 252, .88); --mat-blur: saturate(1.8) blur(24px);
   /* controls */
   --btn-fill: rgba(120, 120, 128, .14); --btn-fill-hover: rgba(120, 120, 128, .22); --zebra: rgba(116, 116, 128, .075);
+  --seg-thumb: #ffffff;   /* the chosen segment of a segmented control */
   --tt-bg: rgba(250, 250, 252, .97); --tt-ink: #1d1d1f; --tt-line: rgba(0, 0, 0, .12);
   --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%236e6e73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   /* no ambient glow or horizon: decoration is not delight (design-principles.md) */
@@ -81,45 +83,46 @@
   /* the company logo: the dark one on the light sidebar, the white one on the dark sidebar */
   --bl-light: block; --bl-dark: none;
 }
-/* dark: Apple's dark palette. Dimmer grounds, brighter text, elevated panels a step lighter (dark-mode.md › Dark Mode colors) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b0b0c; --surface: #1c1c1e; --raised: #2c2c2e; --overlay: #2c2c2e; --sunk: rgba(118, 118, 128, .16);
-    --fill: rgba(120, 120, 128, .24); --fill-2: rgba(120, 120, 128, .34);
-    --line: #38383a; --line-2: #48484a; --line-3: #636366; --ctl-line: #8e8e93;
-    --ink: #f5f5f7; --ink-2: #d1d1d6; --muted: #a8a8ad; --faint: #8e8e93; --disabled: #545458; --inverse: #0b0b0c;
-    --nav: rgba(28, 28, 30, .72); --nav-2: #1c1c1e; --nav-ink: #f5f5f7; --nav-muted: #d1d1d6; --nav-faint: #a8a8ad; --nav-line: rgba(255, 255, 255, .08);
-    --nav-hover: rgba(120, 120, 128, .24); --nav-current: rgba(242, 103, 34, .24);
-    --accent-hover: #ff7a33; --accent-text: #ff8a4c; --accent-soft: rgba(242, 103, 34, .2); --accent-line: rgba(242, 103, 34, .55);
-    --good: #30d158; --good-bg: rgba(48, 209, 88, .16); --good-line: rgba(48, 209, 88, .4); --good-mark: #30d158;
-    --warn: #ffb340; --warn-bg: rgba(255, 159, 10, .16); --warn-line: rgba(255, 159, 10, .42); --warn-mark: #ff9f0a;
-    --bad: #ff6961; --bad-bg: rgba(255, 69, 58, .14); --bad-line: rgba(255, 69, 58, .42); --bad-mark: #ff453a;
-    --info: #4da3ff; --info-bg: rgba(10, 132, 255, .16); --info-line: rgba(10, 132, 255, .42); --info-mark: #0a84ff;
-    --badge: #e5121f; --focus: #ff8a4c;
-    --toast-bg: rgba(58, 58, 60, .88); --toast-ink: #f5f5f7; --toast-line: rgba(255, 255, 255, .1); --toast-act: #ff9f5a;
-    --at: rgba(48, 209, 88, .16); --at-ink: #7fd8a8; --off: #232326; --off-ink: #a8a8ad; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
-    --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;
-    --c1: #409cff; --c2: #bf5af2; --c3: #40c8b4; --c4: #ff6482; --c5: #e0b45c; --c6: #7d7aff; --heat: #409cff; --bar: #409cff;
-    --card-line: rgba(255, 255, 255, .05);
-    --shadow-card: none;
-    --shadow-raise: 0 0 0 .5px rgba(255, 255, 255, .08), 0 10px 30px rgba(0, 0, 0, .5);
-    --shadow-pop: 0 0 0 .5px rgba(255, 255, 255, .12), 0 12px 36px rgba(0, 0, 0, .6);
-    --shadow-modal: 0 0 0 .5px rgba(255, 255, 255, .1), 0 30px 80px rgba(0, 0, 0, .7);
-    --shadow-sheet: 0 0 0 .5px rgba(255, 255, 255, .1), 0 20px 60px rgba(0, 0, 0, .6);
-    --scrim: rgba(0, 0, 0, .5);
-    --mat-bar: rgba(22, 22, 24, .78); --mat-side: rgba(28, 28, 30, .66); --mat-menu: rgba(44, 44, 46, .9);
-    --btn-fill: rgba(120, 120, 128, .28); --btn-fill-hover: rgba(120, 120, 128, .38); --zebra: rgba(120, 120, 128, .1);
-    --tt-bg: rgba(58, 58, 60, .97); --tt-ink: #f5f5f7; --tt-line: rgba(255, 255, 255, .1);
-    --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%23a8a8ad' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    --bl-light: none; --bl-dark: block;
-  }
+/* dark (the page shows it as data-theme="dark"): Apple's dark palette. Dimmer grounds, brighter text, elevated panels a step
+   lighter (dark-mode.md › Dark Mode colors) */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0b0c; --surface: #1c1c1e; --raised: #2c2c2e; --overlay: #2c2c2e; --sunk: rgba(118, 118, 128, .16);
+  --fill: rgba(120, 120, 128, .24); --fill-2: rgba(120, 120, 128, .34);
+  --line: #38383a; --line-2: #48484a; --line-3: #636366; --ctl-line: #8e8e93;
+  --ink: #f5f5f7; --ink-2: #d1d1d6; --muted: #a8a8ad; --faint: #8e8e93; --disabled: #545458; --inverse: #0b0b0c;
+  --nav: rgba(28, 28, 30, .72); --nav-2: #1c1c1e; --nav-ink: #f5f5f7; --nav-muted: #d1d1d6; --nav-faint: #a8a8ad; --nav-line: rgba(255, 255, 255, .08);
+  --nav-hover: rgba(120, 120, 128, .24); --nav-current: rgba(242, 103, 34, .24);
+  --accent-hover: #ff7a33; --accent-text: #ff8a4c; --accent-soft: rgba(242, 103, 34, .2); --accent-line: rgba(242, 103, 34, .55);
+  --good: #30d158; --good-bg: rgba(48, 209, 88, .16); --good-line: rgba(48, 209, 88, .4); --good-mark: #30d158;
+  --warn: #ffb340; --warn-bg: rgba(255, 159, 10, .16); --warn-line: rgba(255, 159, 10, .42); --warn-mark: #ff9f0a;
+  --bad: #ff6961; --bad-bg: rgba(255, 69, 58, .14); --bad-line: rgba(255, 69, 58, .42); --bad-mark: #ff453a;
+  --info: #4da3ff; --info-bg: rgba(10, 132, 255, .16); --info-line: rgba(10, 132, 255, .42); --info-mark: #0a84ff;
+  --badge: #e5121f; --focus: #ff8a4c;
+  --toast-bg: rgba(58, 58, 60, .88); --toast-ink: #f5f5f7; --toast-line: rgba(255, 255, 255, .1); --toast-act: #ff9f5a;
+  --at: rgba(48, 209, 88, .16); --at-ink: #7fd8a8; --off: #232326; --off-ink: #a8a8ad; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
+  --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;
+  --c1: #409cff; --c2: #bf5af2; --c3: #40c8b4; --c4: #ff6482; --c5: #e0b45c; --c6: #7d7aff; --heat: #409cff; --bar: #409cff;
+  --card-line: rgba(255, 255, 255, .05);
+  --shadow-card: none;
+  --shadow-raise: 0 0 0 .5px rgba(255, 255, 255, .08), 0 10px 30px rgba(0, 0, 0, .5);
+  --shadow-pop: 0 0 0 .5px rgba(255, 255, 255, .12), 0 12px 36px rgba(0, 0, 0, .6);
+  --shadow-modal: 0 0 0 .5px rgba(255, 255, 255, .1), 0 30px 80px rgba(0, 0, 0, .7);
+  --shadow-sheet: 0 0 0 .5px rgba(255, 255, 255, .1), 0 20px 60px rgba(0, 0, 0, .6);
+  --scrim: rgba(0, 0, 0, .5);
+  --mat-bar: rgba(22, 22, 24, .78); --mat-side: rgba(28, 28, 30, .66); --mat-menu: rgba(44, 44, 46, .9);
+  --btn-fill: rgba(120, 120, 128, .28); --btn-fill-hover: rgba(120, 120, 128, .38); --zebra: rgba(120, 120, 128, .1);
+  --seg-thumb: #636366;   /* lighter than the track, as Apple's dark segmented controls */
+  --tt-bg: rgba(58, 58, 60, .97); --tt-ink: #f5f5f7; --tt-line: rgba(255, 255, 255, .1);
+  --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%23a8a8ad' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --bl-light: none; --bl-dark: block;
 }
 /* increased contrast: darker separators and secondary text, visible panel edges (accessibility.md) */
 @media (prefers-contrast: more) {
   :root { --line: #aeaeb2; --line-2: #8e8e93; --card-line: rgba(60, 60, 67, .35); --muted: #3a3a3c; --faint: #48484a; --nav-line: rgba(60, 60, 67, .4); }
 }
-@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
-  :root { --line: #636366; --line-2: #8e8e93; --card-line: rgba(255, 255, 255, .3); --muted: #d1d1d6; --faint: #c7c7cc; --nav-line: rgba(255, 255, 255, .3); }
+@media (prefers-contrast: more) {
+  :root[data-theme="dark"] { --line: #636366; --line-2: #8e8e93; --card-line: rgba(255, 255, 255, .3); --muted: #d1d1d6; --faint: #c7c7cc; --nav-line: rgba(255, 255, 255, .3); }
 }
 /* series colours by name (lines, legends, brands): a team keeps its colour when a filter hides another */
 .s1, .b-virgin { --sc: var(--c1); } .s2, .b-friendi { --sc: var(--c2); } .s3 { --sc: var(--c3); } .s4, .b-fpay { --sc: var(--c4); } .s5 { --sc: var(--c5); } .s6 { --sc: var(--c6); }

@@ -26,7 +26,7 @@
 .r2 > .dtrend { flex: 3 1 600px; }
 .r2 > .ddata { flex: 1 1 300px; }
 .r3 > .dattn { flex: 2 1 520px; }
-.r3 > .dlow, .r3 > .dact { flex: 1 1 260px; }
+.r3 > .dlow { flex: 1 1 260px; }
 /* six KPI widgets: label, value, the change in a tinted chip, the last six months under a soft area */
 .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(min(200px, 100%), calc((100% - 2 * var(--s4)) / 3)), 1fr)); gap: var(--s4); align-content: start; }   /* three to a row at most: 3 + 3, never 4 + 2 */
 .kpi { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; align-content: start; padding: 16px 18px 14px; background: var(--surface); border: 1px solid var(--card-line); border-radius: var(--r-widget); box-shadow: var(--shadow-card); min-width: 0;
@@ -132,14 +132,7 @@
 .lowl b { font-variant-numeric: tabular-nums; font-weight: 600; }
 .cmore, .amore { margin-top: 8px; }
 /* recent activity and the data's freshness */
-.actl, .dsl { list-style: none; margin: 0; padding: 0; display: grid; }
-.actl li { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
-.actl li:first-child { border-top: 0; }
-.actl li::before { content: ""; grid-row: 1 / span 2; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--accent); }
-.actl time { grid-column: 2; grid-row: 2; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.actl span { grid-column: 2; grid-row: 1; display: grid; gap: 1px; min-width: 0; }
-.actl b { font-weight: 500; overflow-wrap: anywhere; }
-.actl small { color: var(--muted); font-size: 12px; }
+.dsl { list-style: none; margin: 0; padding: 0; display: grid; }
 .ds { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 52px; border-top: 1px solid var(--line); }
 .ds:first-child { border-top: 0; }
 .dsd { width: 30px; height: 30px; border-radius: 8px; background: var(--fill); position: relative; }
@@ -161,3 +154,15 @@
 @keyframes drawLine { to { stroke-dashoffset: 0; } }
 @keyframes ringFill { from { stroke-dashoffset: var(--c); } }
 @media (prefers-reduced-motion: reduce) { #dashBody.intro .rings .rf { animation: none; } }
+/* the month close: the senior manager's steps, each with its state and due day */
+.dcsteps { list-style: none; margin: 0; padding: 0; display: grid; }
+.dcsteps li { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 2px 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line); }
+.dcsteps li:first-child { border-top: 0; padding-top: 2px; }
+.dcsteps .dcd { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--line-2); }
+.dcsteps li.done .dcd { background: var(--good-mark); } .dcsteps li.late .dcd { background: var(--bad-mark); } .dcsteps li.soon .dcd { background: var(--warn-mark); }
+.dcsteps .dl { display: grid; gap: 1px; min-width: 0; }
+.dcsteps b { font: 500 13.5px/1.35 var(--text); }
+.dcsteps li.done b { color: var(--muted); }
+.dcsteps small { font-size: 12px; color: var(--muted); }
+.dcsteps li.late small { color: var(--bad); } .dcsteps li.soon small { color: var(--warn); }
+.rleg .dcsum { font-size: 12.5px; color: var(--muted); }

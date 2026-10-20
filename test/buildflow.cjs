@@ -23,7 +23,7 @@ const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');
   const lp = await p.$('#checksBody [data-linkp]');
   if (lp) { await lp.click(); await p.waitForTimeout(400); await p.screenshot({ path: path.join(out, `build-link-${theme}.png`) }); await p.keyboard.press('Escape'); await p.waitForTimeout(300); }
   else console.log('no Link… button found');
-  await p.click('#stepsNav [data-step="export"]'); await p.waitForTimeout(400);
+  await p.click('#wfmTabs [data-wt="export"]'); await p.waitForTimeout(400);   // the month's steps are tabs of the WFM team page
   await p.click('#build'); await p.waitForTimeout(400);
   await p.screenshot({ path: path.join(out, `build-dialog-${theme}.png`) });
   console.log('dialog focus:', await p.evaluate(() => document.activeElement && document.activeElement.id));
@@ -31,7 +31,9 @@ const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');
   console.log('downloaded:', dl.suggestedFilename());
   await p.waitForTimeout(900);
   await p.screenshot({ path: path.join(out, `build-done-${theme}.png`) });
-  await p.click('#stepsNav [data-step="email"]'); await p.waitForTimeout(500);
+  await p.click('#wfmTabs [data-wt="emails"]'); await p.waitForTimeout(400);
+  const ms = await p.$('[data-mailsub="month"]'); if (ms) { await ms.click(); await p.waitForTimeout(500); }
+  console.log('email:', await p.evaluate(() => [document.querySelector('#mSrc [aria-pressed="true"]').dataset.f, !document.getElementById('mKind').hidden, document.getElementById('v-email').closest('#v-wfm') ? 'on the WFM team page' : 'elsewhere'].join(', ')));
   await p.screenshot({ path: path.join(out, `build-email-${theme}.png`) });
   console.log(errs.length ? errs.join('\n') : 'no errors');
   await b.close();

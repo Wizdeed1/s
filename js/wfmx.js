@@ -1,36 +1,66 @@
-// ================================================================ WFM: the workforce page, as each role needs it
-// Tabs: Analytics (departments and months), Agents (every measure per agent), Daily (the daily data), Report builder (the WFM
-// analysts make the daily emails), Daily emails (the WFM manager sends the four brand emails), Interactions (the interactions
-// export) and Emails (the conformance deduction and absences emails, from the shared month). The senior manager reads.
-Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core' });
-const WFM_TABS = [['analytics', 'Analytics'], ['agents', 'Agents'], ['daily', 'Daily'], ['builder', 'Report builder'], ['inter', 'Interactions'], ['emails', 'Emails']];
+// ================================================================ WFM TEAM: one page for the WFM analysts and the WFM manager
+// Its tabs, in three groups. This month: Import, Review and Export (the month's build, for the WFM analysts) and Emails (the
+// four daily brand emails, and the month's deduction, absences and incentive emails). Every day: Daily (the daily data) and
+// Report builder (the analysts make the daily emails). Insight: Analytics (departments and months), Agents (every measure per
+// agent) and Interactions (the interactions export). Each role sees its own tabs; the senior manager reads.
+Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core', wfmAt: '' });
+const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions']];
+const WFM_STEPS = ['import', 'review', 'export'];   // the month's build, shown on the WFM team page
+const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Insight', ['analytics', 'agents', 'inter']]];
 /** every email the WFM team sends, in one place shared by the WFM manager and the WFM analysts: the four daily brand emails and
     the month's deduction and absences emails. Both can edit them and send them (the tool copies them or opens them in Outlook). */
-const canWfmMail = (r = roleNow()) => ['admin', 'wfm', 'user'].includes(r);
+const canWfmMail = () => hasRole('admin', 'wfm', 'user');
 Object.assign(state, { mailSub: '' });
-/** the WFM analysts and the senior manager read the WFM page; the analysts make the daily emails in Report builder */
-const wfmViewOnly = () => ['user', 'senior'].includes(roleNow());
-function wfmTabsFor(r = roleNow()) { return WFM_TABS.filter(([t]) => (t === 'builder' ? ['admin', 'user'].includes(r) : t === 'emails' ? canWfmMail(r) : true)); }
+function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : true)); }
+/** the tab now on screen: a step of the month's build, or a WFM tab */
+const wfmTabNow = () => (state.ws === 'build' ? (WFM_STEPS.includes(state.step) ? state.step : 'import') : state.wfmTab);
+/** the WFM team page's header: the title, the tabs of the role (with what each needs), and the actions of the tab */
+function renderWfmHead() {
+  const head = $('wfmHead'); if (!head) return;
+  const on = state.ws === 'wfm' || state.ws === 'build'; head.hidden = !on; if (!on) return;
+  const tabs = wfmTabsFor(), have = new Set(tabs.map(x => x[0])), cur = wfmTabNow(), lab = Object.fromEntries(WFM_TABS);
+  const unsent = canDailyMail() ? (dmUnsent()[0] || { left: [] }).left.length : 0;
+  const badge = t => {
+    if (t === 'import') { const n = nSlots(); return `<span class="cnt${n === 4 ? ' good' : ''}" aria-label="${n} of 4 Genesys exports">${n}/4</span>`; }
+    if (t === 'review') { let n = 0; try { n = state.ctx ? checkNotes().filter(x => x.sev === 'decide' || x.sev === 'warn').length : 0; } catch (e) { /* the checks are drawn once the month is read */ } return n ? `<span class="cnt warn" aria-label="${plural(n, 'check')} to look at">${n}</span>` : ''; }
+    if (t === 'export') return freshBuild() ? '<svg class="tick" width="13" height="13" aria-label="Built"><use href="#i-check"/></svg>' : '';
+    if (t === 'emails') return unsent ? `<span class="cnt warn" aria-label="${plural(unsent, 'daily email')} to send">${unsent}</span>` : '';
+    return '';
+  };
+  $('wfmTabs').innerHTML = WFM_GROUPS.map(([g, L]) => { const T = L.filter(t => have.has(t)); return T.length ? `<div class="wfmgrp"><small aria-hidden="true">${esc(g)}</small><div class="seg wftabs" role="group" aria-label="${esc(g)}">${T.map(t => `<button data-wt="${t}" aria-pressed="${t === cur}"${t === cur ? ' aria-current="page"' : ''}>${esc(lab[t])}${badge(t)}</button>`).join('')}</div></div>` : ''; }).join('');
+  const r = roleNow(), cov = rolesNow().length > 1;
+  $('wfmEyebrow').textContent = (ROLE_NAME[r] || 'Workforce') + (cov ? ` · covering for the ${ROLE_NAME[rolesNow()[1]] || 'team'}` : '');
+  const build = state.ws === 'build';
+  $('buildActs').hidden = !build; $('wfmBar').hidden = build;
+  if (build) { $('wfmLead').hidden = true; $('wfmRo').hidden = true; }
+  renderCoverNote();
+  requestAnimationFrame(segThumbs);
+}
+/** a WFM team tab: a step of the build, or a WFM tab */
+function wfmGo(t, focus) {
+  if (WFM_STEPS.includes(t)) { state.wfmAt = 'build'; setStep(t); }
+  else { const was = state.ws === 'wfm' && state.wfmTab === t; state.wfmAt = 'wfm'; state.wfmTab = t; if (state.ws !== 'wfm') setWs('wfm'); else { renderWs(); if (!was) animIn($('v-wfm')); } }
+  if (focus) { const b = $('wfmTabs').querySelector(`[data-wt="${t}"]`); if (b) b.focus(); }
+}
+/** the sidebar's WFM team: back to the tab last used there (a builder starts on Import) */
+function openWfmTeam() { const at = state.wfmAt || (isBuilder() ? 'build' : 'wfm'); if (at === 'build' && isBuilder()) setStep(WFM_STEPS.includes(state.step) ? state.step : 'import'); else setWs('wfm'); }
 const WFM_LEAD = {
   analytics: 'Every department and month from the shared history: trends, comparisons, distributions and where the data comes from.',
   agents: 'Every measure for every agent in the month, with the best and the worst quarter marked, to see who needs what.',
   daily: 'Every day\'s numbers, kept for everyone: the brands day by day and each agent\'s day.',
   builder: 'Drop the day\'s exports: MC Leaders and the WFM Daily Review are made here, and the four brand emails go straight to the WFM manager.',
-  emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction and absences emails. Edit them here and send them from Outlook; the tool never sends anything itself.',
+  emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction, absences and incentive emails. Edit them here and send them from Outlook; the tool never sends anything itself.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
 };
 function renderWfmWs() {
   if (state.wfmTab === 'dmail' || state.wfmTab === 'mail') { state.mailSub = state.wfmTab === 'dmail' ? 'daily' : 'month'; state.wfmTab = 'emails'; }   // older links: the two email pages are one now
-  const r = roleNow(), tabs = wfmTabsFor(), t = tabs.some(x => x[0] === state.wfmTab) ? state.wfmTab : 'analytics'; state.wfmTab = t;
+  const r = roleNow(), tabs = wfmTabsFor().filter(x => !WFM_STEPS.includes(x[0])), t = tabs.some(x => x[0] === state.wfmTab) ? state.wfmTab : (tabs[0] || ['analytics'])[0]; state.wfmTab = t;
   const unsent = canDailyMail() ? (dmUnsent()[0] || { left: [] }).left.length : 0;
   if (!['daily', 'month'].includes(state.mailSub)) state.mailSub = unsent || Object.keys(state.dmail || {}).length ? 'daily' : 'month';   // the daily emails first when there are some
-  $('wfmTabs').querySelectorAll('[data-wt]').forEach(b => {
-    const on = tabs.some(x => x[0] === b.dataset.wt); b.hidden = !on; b.setAttribute('aria-pressed', String(b.dataset.wt === t));
-    if (b.dataset.wt === 'emails') b.innerHTML = `Emails${unsent ? `<span class="cnt warn" aria-label="${plural(unsent, 'daily email')} to send">${unsent}</span>` : ''}`;
-  });
-  const ro = r === 'senior' ? 'View only: the WFM team keeps this page current; you see every number.' : r === 'user' && !['builder', 'emails'].includes(t) ? 'View only here, apart from Report builder and Emails: the WFM manager adds the interactions. You build the month on Build.' : '';
+  renderWfmHead();
+  const ro = r === 'senior' ? 'View only: the WFM team keeps this page current; you see every number.' : !hasRole('admin', 'wfm') && t === 'inter' ? 'View only: the WFM manager adds the interactions export.' : '';
   const vo = $('wfmRo'); if (vo) { vo.hidden = !ro; const sp = vo.querySelector('span'); if (sp) sp.textContent = ro; }
-  $('wfmEyebrow').textContent = ROLE_NAME[r] || 'Workforce';
+  $('wfmLead').hidden = false;
   $('wfmLead').textContent = r === 'senior' && t === 'inter' ? 'The interactions export the WFM manager adds: when customers call, what happens to their calls, and each agent\'s calls.' : WFM_LEAD[t];
   const builder = t === 'builder', em = t === 'emails', dm = em && state.mailSub === 'daily', mm = em && !dm;
   $('wfmRb').hidden = !builder; $('wfmDm').hidden = !dm; $('wfmBody').hidden = builder || dm || mm;
@@ -41,24 +71,32 @@ function renderWfmWs() {
 }
 /** the two kinds of email on the Emails page */
 function mailSubHtml(unsent) {
-  return `<div class="seg mailsub" role="group" aria-label="Which emails"><button data-mailsub="daily" aria-pressed="${state.mailSub === 'daily'}">Daily brand emails${unsent ? ` <span class="cnt warn">${unsent}</span>` : ''}</button><button data-mailsub="month" aria-pressed="${state.mailSub === 'month'}">Deduction and absences</button></div>`;
+  return `<div class="seg mailsub" role="group" aria-label="Which emails"><button data-mailsub="daily" aria-pressed="${state.mailSub === 'daily'}">Daily brand emails${unsent ? ` <span class="cnt warn">${unsent}</span>` : ''}</button><button data-mailsub="month" aria-pressed="${state.mailSub === 'month'}">${isBuilder() ? 'Monthly emails' : 'Deduction and absences'}</button></div>`;
 }
 $('wfmBar').addEventListener('click', e => { const b = e.target.closest('[data-mailsub]'); if (!b) return; state.mailSub = b.dataset.mailsub; renderWs(); const n = $('wfmBar').querySelector(`[data-mailsub="${state.mailSub}"]`); if (n) n.focus(); });
 
 // ---------------------------------------------------------------- Emails: the deduction and absences emails, from the shared month
 const mailHome = document.createComment('v-email');
 $('v-email').before(mailHome);
-/** the email view lives in Build (the month being built) or on the WFM page (the shared month) */
+/** the month's emails live on the WFM team page, under Emails › Monthly emails */
 function mountMail(wfm) {
   const v = $('v-email');
-  if (wfm) { if (v.parentNode !== $('wfmMail')) $('wfmMail').appendChild(v); state.mailSrc = 'shared'; state.mailKind = 'ded'; v.hidden = false; v.classList.add('inws'); }
-  else if (v.parentNode === $('wfmMail')) { mailHome.after(v); state.mailSrc = ''; v.classList.remove('inws'); v.hidden = state.ws !== 'build' || state.step !== 'email'; }
+  if (wfm) { if (v.parentNode !== $('wfmMail')) $('wfmMail').appendChild(v); mailSrcSync(); v.hidden = false; v.classList.add('inws'); }
+  else if (v.parentNode === $('wfmMail')) { mailHome.after(v); state.mailSrc = ''; v.classList.remove('inws'); v.hidden = true; }
+}
+/** where the month's emails take their numbers: the shared month, with the supervisors' corrections (everyone), or the month
+    being built or a dropped workbook (the WFM analysts: the incentive email always, the deduction email when they choose it) */
+function mailSrcSync() {
+  if (!isBuilder()) { state.mailSrc = 'shared'; state.mailKind = 'ded'; return; }
+  const pick = state.mailKind === 'inc' ? 'build' : state.mailPick || (state.ctx || state.wb || !wsMonthNow() ? 'build' : 'shared');
+  state.mailSrc = pick === 'shared' ? 'shared' : '';
 }
 function renderMailWs() {
   const k = wsMonthNow();
   const unsent = canDailyMail() ? (dmUnsent()[0] || { left: [] }).left.length : 0;
-  $('wfmBar').innerHTML = `${mailSubHtml(unsent)}${monthSelHtml(k, 'data-wsmonth')}<div class="wsacts"></div>`;
-  if (!k) { mountMail(false); $('wfmBody').hidden = false; $('wfmBody').innerHTML = emptyCard('No months yet', 'The emails use the month saved in the shared history.'); return; }
+  mailSrcSync();
+  $('wfmBar').innerHTML = `${mailSubHtml(unsent)}${mailShared() ? monthSelHtml(k, 'data-wsmonth') : ''}<div class="wsacts"></div>`;
+  if (mailShared() && !k) { mountMail(false); $('wfmBody').hidden = false; $('wfmBody').innerHTML = emptyCard('No months yet', 'The emails use the month saved in the shared history.'); return; }
   mountMail(true); lastMailHtml = ''; renderEmail();
 }
 
@@ -128,11 +166,17 @@ async function exportAgents() {
 }
 
 // ---------------------------------------------------------------- events
-$('wfmTabs').addEventListener('click', e => { const b = e.target.closest('[data-wt]'); if (!b) return; state.wfmTab = b.dataset.wt; renderWs(); animIn($(b.dataset.wt === 'builder' ? 'wfmRb' : b.dataset.wt === 'dmail' ? 'wfmDm' : 'wfmBody')); });
+$('wfmTabs').addEventListener('click', e => { const b = e.target.closest('[data-wt]'); if (b) wfmGo(b.dataset.wt); });
+$('wfmTabs').addEventListener('keydown', e => {   // the arrows go along all the tabs, across the groups
+  const b = e.target.closest('[data-wt]'); if (!b || !['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(e.key)) return;
+  const L = [...$('wfmTabs').querySelectorAll('[data-wt]')], i = L.indexOf(b), rtl = getComputedStyle(b).direction === 'rtl';
+  const j = e.key === 'Home' ? 0 : e.key === 'End' ? L.length - 1 : (i + ((e.key === 'ArrowRight') !== rtl ? 1 : L.length - 1)) % L.length;
+  e.preventDefault(); L[j].focus();
+});
 $('wfmBar').addEventListener('click', e => {
   const t = e.target;
   const ac = t.closest('[data-agcols]'); if (ac) { state.agCols = ac.dataset.agcols; renderWs(); return; }
-  const go = t.closest('[data-wtgo]'); if (go) { state.wfmTab = go.dataset.wtgo; renderWs(); animIn($(go.dataset.wtgo === 'builder' ? 'wfmRb' : 'wfmDm')); return; }
+  const go = t.closest('[data-wtgo]'); if (go) { wfmGo(go.dataset.wtgo); return; }
   if (t.closest('[data-dmonth]')) { dailyToMonth(state.dailyK); return; }
   if (t.closest('[data-interpick]')) { interPicker.click(); return; }
 });

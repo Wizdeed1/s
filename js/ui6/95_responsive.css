@@ -90,7 +90,7 @@
   /* the dashboard: greeting and Today first, KPIs two per row, the chart without end labels, open month-close steps only */
   #dashBody { display: flex; flex-direction: column; }
   .dgrid, .dmain, .dside, .drow { display: contents; }
-  .dhead { order: 1; } #dashToday { order: 2; } #dashBody .card.empty { order: 3; } .kpis { order: 3; } .dclose { order: 4; } .dtrend { order: 5; } .dattn { order: 6; } .dlow { order: 7; } .dact { order: 8; } .ddata { order: 9; }
+  .dhead { order: 1; } #dashToday { order: 2; } #dashBody .card.empty { order: 3; } .kpis { order: 3; } .dclose { order: 4; } .dtrend { order: 5; } .dattn { order: 6; } .dlow { order: 7; } .ddata { order: 8; }
   .qacts { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .kpi { padding: 12px; }
@@ -99,7 +99,6 @@
   #dashBody .kpi { position: relative; } #dashBody .kpi .kinfo { position: static; }
   #dashBody .kpi .ktip { inset-inline: 8px; width: auto; top: 46px; }   /* the card's width: never past the screen's edge */
   .clist:not(.all) .cs.done, .clist:not(.all) .cs.past { display: none; }
-  .actl:not(.all) li:nth-child(n+4) { display: none; }
   .lowl li:nth-child(n+4) { display: none; }
   .greet .gt { font-size: 21px; line-height: 27px; }
   .dctl { width: 100%; }

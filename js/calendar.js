@@ -51,7 +51,7 @@ function calSteps(k) {
     return { ...s, due, days, done, note, st, can: !done || !!done.hand };
   });
 }
-const calMine = s => s.roles.includes(roleNow());
+const calMine = s => s.roles.some(r => rolesNow().includes(r));
 /** a step ticked (or unticked) by hand: read the record again first, so two people ticking at once both count */
 async function calMark(k, id, on) {
   if (!state.db || !k) return;
@@ -101,7 +101,7 @@ function calCardHtml(k) {
       <div class="basegrid caldaygrid">${CAL_STEPS.map(s => `<label><span>${esc(s.label)}</span><input type="number" min="1" max="28" step="1" data-calday="${s.id}" value="${D[s.id]}" aria-label="Due day: ${esc(s.label)}"></label>`).join('')}</div></details>` : ''}</details>`;
 }
 function calCanGo(go, any) {
-  const [kind, x] = String(go || '').split(':'), W = WS_OF[roleNow()] || [];
+  const [kind, x] = String(go || '').split(':'), W = wsOfNow();
   if (kind === 'ws') return W.includes(x) && (any || state.ws !== x);
   if (kind === 'step') return W.includes('build');
   if (kind === 'wfm') return W.includes('wfm');

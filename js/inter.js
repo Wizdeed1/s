@@ -110,7 +110,7 @@ async function isInterFile(file) {
   if (!/\.csv$/i.test(file.name)) return false;
   try { const head = (await file.slice(0, 2048).text()).split(/\r?\n/)[0].toLowerCase(); return /users/.test(head) && /duration/.test(head) && /(disconnect type|ani|media type)/.test(head) && /date/.test(head); } catch (e) { return false; }
 }
-const canInter = () => ['admin', 'wfm'].includes(roleNow());   // the WFM manager adds it; the senior manager and the analysts read it
+const canInter = () => hasRole('admin', 'wfm');   // the WFM manager adds it; the senior manager and the analysts read it
 async function importInteractions(file) {
   if (!canInter()) { toast('The WFM manager adds the interactions export.'); return; }
   if (!state.db) { toast('Nothing can be saved in this view.'); return; }

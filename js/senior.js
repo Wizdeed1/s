@@ -92,7 +92,7 @@ function renderCycle() {
   // activity
   const log = Object.values(state.cycleLog || {}).filter(x => x && x.k === k).sort((a, b) => String(b.at).localeCompare(String(a.at)));
   const act = log.length ? `<details class="card wslog"><summary>Activity · ${plural(log.length, 'entry', 'entries')}</summary><ul class="ilist">${log.slice(0, 200).map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
-  body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${safeHtml(calCardHtml, k)}${editor}${contacts}${can ? safeHtml(handChangesHtml, k) : ''}${act}`;
+  body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${safeHtml(calCardHtml, k)}${editor}${contacts}${act}`;
   if (canCycle() && unseenDone().length && state.ws === 'cycle') { lsSet(seenKey(), new Date().toISOString()); cycleBadge(); }
   reveal(body);
 }
@@ -346,13 +346,11 @@ $('cycleBody').addEventListener('click', e => {
   const m4 = t.closest('[data-mail4]'); if (m4) { mail4(m4.dataset.mail4); return; }
   if (t.closest('[data-cyc="seen"]')) { lsSet(seenKey(), new Date().toISOString()); state.cycleSeenPrev = seenAt(); renderWs(); return; }
   const tm = t.closest('[data-cyc="team"]'); if (tm) { state.wsSpv = tm.dataset.spv; setWs('team'); return; }
-  const ch = t.closest('[data-chg]'); if (ch) { state.chgArea = ch.dataset.chg; renderWs(); return; }
-  if (t.closest('[data-chgx]')) { exportChanges(wsMonthNow()); return; }
   if (t.closest('[data-scadd]')) { const c = scClone(); c.items.push({ id: 'i' + Date.now().toString(36), name: 'New item', src: 'manual', key: '', dir: 'high', weight: 0, bands: [0.95, 0.9, 0.85, 0.8] }); saveSpvCard(c, 'Added a scorecard item'); return; }
   if (t.closest('[data-screset]')) { if (!t.dataset.confirm) { t.dataset.confirm = '1'; t.textContent = 'Click again to reset'; return; } saveSpvCard(SPVCARD0(), 'Reset the supervisor scorecard to the default'); return; }
   const del = t.closest('[data-scdel]'); if (del) { const i = +del.closest('[data-sci]').dataset.sci, c = scClone(), it = c.items[i]; c.items.splice(i, 1); saveSpvCard(c, `Removed "${it ? it.name : ''}" from the scorecard`); }
 });
-$('cycleBody').addEventListener('toggle', e => { const d = e.target.closest && e.target.closest('details[data-det]'); if (!d) return; if (d.dataset.det === 'sc') state.scEdit = d.open; if (d.dataset.det === 'ct') state.ctEdit = d.open; if (d.dataset.det === 'chg') state.chgOpen = d.open; if (d.dataset.det === 'inc') state.incOpen = d.open; }, true);
+$('cycleBody').addEventListener('toggle', e => { const d = e.target.closest && e.target.closest('details[data-det]'); if (!d) return; if (d.dataset.det === 'sc') state.scEdit = d.open; if (d.dataset.det === 'ct') state.ctEdit = d.open; if (d.dataset.det === 'inc') state.incOpen = d.open; }, true);
 // the incentive list: add, choose, remove, back to the usual list
 $('cycleBody').addEventListener('click', e => {
   const t = e.target, L = () => incListNow().map(x => ({ ...x }));

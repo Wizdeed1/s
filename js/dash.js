@@ -1,8 +1,8 @@
 // ================================================================ THE WFM DASHBOARD (D2, D6): the first page of the admin, the WFM roles and the senior manager
-// Built only from what the tool already has: the shared history (the six measures and their trend), Today, the month close,
-// the cycle log, the changes by hand and when each source last came in. Nothing new is stored. The first load of a visit plays
+// Built only from what the tool already has: the shared history (the six measures and their trend), Today, the senior
+// manager's month close steps and when each source last came in. Nothing new is stored. The first load of a visit plays
 // once (the ambient light, the KPI cards, the chart lines, a sweep over the greeting); returning or changing a filter does not.
-Object.assign(state, { dashMetric: 'adh', dashGroup: 'unit', dashHide: new Set(), dashTable: false, dashAll: {}, dashPt: -1 });
+Object.assign(state, { dashMetric: 'adh', dashGroup: 'unit', dashHide: new Set(), dashTable: false, dashPt: -1 });
 let dashPlayed = false, dashIntroT = 0;
 const DASH_KPIS = [
   { k: 'n', label: 'Agents', dir: 0, info: 'People in this month\'s results, one row per agent. Source: the month in the shared history.', fmt: v => Math.round(v).toLocaleString('en-US') },
@@ -112,7 +112,7 @@ function dashTrendCard(months) {
 }
 // ---- needs attention: four groups with a way to each, and the lowest adherence this month so far
 function dashAttention(k) {
-  const a = dashAgg(k), set = state.settings, R = a ? a.rows : [], W = WS_OF[roleNow()] || [];
+  const a = dashAgg(k), set = state.settings, R = a ? a.rows : [], W = wsOfNow();
   const toRes = W.includes('results') ? 'ws:results' : 'ws:team';
   const G = [
     { t: 'Below the adherence target', s: `Monthly adherence under ${pct(set.target, 0)}`, n: R.filter(r => r.adh != null && r.adh < set.target).length, go: 'dash:agents-adh', btn: 'Lowest first' },
@@ -133,37 +133,25 @@ function dashAttention(k) {
     <ol class="lowl">${low.map(r => { const pid = pidOf(r); return `<li><span class="lav" aria-hidden="true">${esc(ini(r.n))}</span><span class="lnm">${pid ? `<button class="linkbtn nm" data-open="${esc(pid)}" data-agent="${esc(pid)}" dir="auto">${esc(r.n)}</button>` : `<span dir="auto">${esc(r.n)}</span>`}<small>${esc(unitOf(r))}</small></span><b class="${r.adh < set.target ? 'bad' : ''}">${r.adh < set.target ? belowB(r.adh, pct(r.adh, 1)) : esc(pct(r.adh, 1))}</b></li>`; }).join('')}</ol>${rec ? `<p class="hint">${esc(rec.src || '')}</p>` : ''}</section>` : '';
   return attn + lowCard;
 }
-// ---- the month close: rings for how far it is (the steps done, the agents whose one-to-one is finished), then the step that is yours
-// next with the way to it. The deadlines themselves are notifications (the bell)
+// ---- the month close: the senior manager's steps only (the results on the agents' pages, the one-to-ones email, the review, the
+// final, the final form): a ring for how many are done, each step's state and due day, and the next one to open for the senior
+// manager. The other teams' steps are on the Supervisors page; the deadlines themselves are notifications (the bell)
 function dashClose(k) {
-  let S = []; try { S = calSteps(k); } catch (e) { S = []; }
+  let S = []; try { S = calSteps(k).filter(s => s.who === 'Senior manager'); } catch (e) { S = []; }
   if (!S.length) return '';
-  const open = S.filter(s => s.st !== 'done'), r = roleNow(), doneN = S.length - open.length, late = open.filter(s => s.st === 'late').length, soon = open.filter(s => s.st === 'soon').length;
-  const mine = open.filter(s => s.roles.includes(r)), next = mine.find(s => s.st === 'late') || mine.find(s => s.st === 'soon') || mine[0];
-  let fin = null; try { const L = spvList().map(x => teamReady(x.pid, k)), n = L.reduce((a, x) => a + x.n, 0); if (n) fin = { d: L.reduce((a, x) => a + x.done, 0), n }; } catch (e) { fin = null; }
-  const R = [{ c: 'r1', l: 'Steps done', d: doneN, n: S.length }].concat(fin ? [{ c: 'r2', l: 'Agents finished', d: fin.d, n: fin.n }] : []);
+  const open = S.filter(s => s.st !== 'done'), doneN = S.length - open.length, late = open.filter(s => s.st === 'late').length, soon = open.filter(s => s.st === 'soon').length;
+  const mine = open.filter(calMine), next = mine.find(s => s.st === 'late') || mine.find(s => s.st === 'soon') || mine[0];
+  const R = [{ c: 'r1', l: 'Steps done', d: doneN, n: S.length }];
   const ring = (x, i) => { const rad = 66 - i * 19, len = 2 * Math.PI * rad, p = x.n ? x.d / x.n : 0; return `<circle class="rt ${x.c}" cx="80" cy="80" r="${rad}"/><circle class="rf ${x.c}" cx="80" cy="80" r="${rad}" style="--c:${len.toFixed(1)};--o:${(len * (1 - p)).toFixed(1)}"/>`; };
-  const when = s => s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.st === 'soon' ? (s.days === 0 ? 'due today' : s.days === 1 ? 'due tomorrow' : `due in ${s.days} days`) : 'open';
+  const when = s => s.st === 'done' ? `Done${s.done && s.done.at ? ' ' + ago(s.done.at) : ''}` : s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.st === 'soon' ? (s.days === 0 ? 'Due today' : s.days === 1 ? 'Due tomorrow' : `Due in ${s.days} days`) : s.st === 'past' ? 'Not recorded' : `Due ${fmtDue(s.due)}`;
   return `<section class="card dclose" aria-labelledby="h-dclose"><div class="dch"><h2 id="h-dclose">Month close</h2><span>${esc(ymLabel(k))}</span></div>
     <div class="dcr"><svg class="rings" viewBox="0 0 160 160" role="img" aria-label="${esc(R.map(x => `${x.l}: ${x.d} of ${x.n}`).join('; '))}">${R.map(ring).join('')}</svg>
-      <ul class="rleg">${R.map(x => `<li class="${x.c}"><span><i aria-hidden="true"></i>${esc(x.l)}</span><b>${x.d}<small> of ${x.n}</small></b></li>`).join('')}</ul></div>
-    ${next ? `<div class="dcn ${next.st}"><span><small>Yours next · ${esc(when(next))}</small><b>${esc(next.label)}</b></span>${calCanGo(next.go, true) ? `<button class="btn sm" data-tgo="${esc(next.go + '@' + k)}">Open</button>` : '<button class="btn sm" data-dopenbell>Deadlines</button>'}</div>` : ''}
-    <p class="cap">${doneN} of ${S.length} steps done${late ? ` · <span class="bad">${late} late</span>` : ''}${soon ? ` · ${soon} due soon` : ''}. Each deadline also arrives in the bell.</p>
-    ${(WS_OF[r] || []).includes('cycle') ? '<div class="acts"><button class="btn sm ghost" data-tgo="cal">Every step</button></div>' : ''}</section>`;
+      <ul class="rleg">${R.map(x => `<li class="${x.c}"><span><i aria-hidden="true"></i>Senior manager's steps</span><b>${x.d}<small> of ${x.n} done</small></b></li>`).join('')}<li class="dcsum">${late ? `<span class="bad">${late} late</span>` : ''}${late && soon ? ' · ' : ''}${soon ? `${soon} due soon` : ''}${!late && !soon ? (open.length ? 'Nothing late' : 'All done') : ''}</li></ul></div>
+    <ol class="dcsteps">${S.map(s => `<li class="${s.st}"><span class="dcd" aria-hidden="true"></span><span class="dl"><b>${esc(s.label)}</b><small>${esc(when(s))}${s.note ? ' · ' + esc(s.note) : ''}</small></span></li>`).join('')}</ol>
+    ${next ? `<div class="dcn ${next.st}"><span><small>Yours next · ${esc(when(next).toLowerCase())}</small><b>${esc(next.label)}</b></span>${calCanGo(next.go, true) ? `<button class="btn sm" data-tgo="${esc(next.go + '@' + k)}">Open</button>` : '<button class="btn sm" data-dopenbell>Deadlines</button>'}</div>` : ''}
+    ${wsOfNow().includes('cycle') ? '<div class="acts"><button class="btn sm ghost" data-tgo="cal">Every step</button></div>' : ''}</section>`;
 }
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-dopenbell]')) openBell(); });
-// ---- recent activity: records the role can already read (the cycle log, changes by hand, when data came in)
-function dashActivity(k) {
-  const L = [];
-  for (const x of Object.values(state.cycleLog || {})) if (x && x.k === k && x.at) L.push({ at: x.at, by: x.by, t: x.what, a: 'Supervisors page' });
-  try { for (const x of handChanges(k)) if (x.at) L.push({ at: x.at, by: x.by, t: `${x.who ? x.who + ': ' : ''}${x.what}`, a: (CHG_AREAS.find(c => c[0] === x.area) || [, 'Change by hand'])[1] }); } catch (e) { /* none */ }
-  for (const [kind, label] of FRESH_KINDS) { const f = state.fresh[kind]; if (f && f.at && (kind !== 'roster' || isBuilder())) L.push({ at: f.at, by: f.by, t: `${label}${f.what ? ': ' + f.what : ''}`, a: 'Data' }); }
-  L.sort((a, b) => String(b.at).localeCompare(String(a.at)));
-  const all = !!state.dashAll.act, cut = all ? 20 : 6;
-  return `<section class="card dact" aria-labelledby="h-dact"><div class="cardhead"><div><h2 id="h-dact">Recent activity</h2><p class="cap">What changed, newest first.</p></div></div>
-    ${L.length ? `<ol class="actl${all ? ' all' : ''}">${L.slice(0, cut).map(x => `<li><time datetime="${esc(x.at)}">${esc(ago(x.at))}</time><span><b dir="auto">${esc(x.t)}</b><small>${esc(x.a)}${x.by ? ' · ' + esc(x.by) : ''}</small></span></li>`).join('')}</ol>${L.length > 3 ? `<button class="btn sm ghost amore" data-dall="act" aria-expanded="${all}">${all ? 'Show fewer' : 'Show all'}</button>` : ''}`
-      : '<p class="subtle">Nothing yet for this month. Saves, changes by hand and new data show here.</p>'}</section>`;
-}
 // ---- data status: how old each source is; no green without a source date
 function dashData() {
   const K = FRESH_KINDS.filter(([k]) => (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool()));
@@ -187,7 +175,7 @@ function renderDash() {
   const u = Auth.user() || {}, r = roleNow(), months = wsMonths(), k = wsMonthNow(), first = firstName(u.name || u.username || '');
   const d = new Date(), date = `${{ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[Core.weekday(d.getFullYear(), d.getMonth() + 1, d.getDate())]} ${d.getDate()} ${MONTH_LONG[d.getMonth()]} ${d.getFullYear()}`;
   const st = k ? (monthLocked(k) ? `<span class="pill"><svg width="11" height="11" aria-hidden="true"><use href="#i-lock"/></svg>Final</span>` : '<span class="pill info">Draft</span>') : '';
-  const acts = (DASH_ACTS[r] || []).filter(([, , go]) => { const kind = go.split(':')[0], x = go.split(':')[1]; const W = WS_OF[r] || []; return kind === 'accounts' ? Auth.isAdmin() || r === 'admin' : kind === 'step' ? W.includes('build') : kind === 'wfm' ? W.includes('wfm') && (x !== 'dmail' || canDailyMail()) && (x !== 'builder' || canDailyTool()) && (x !== 'mail' || canDailyMail()) : W.includes(x); });
+  const acts = [...new Map(rolesNow().flatMap(x => DASH_ACTS[x] || []).map(x => [x[2], x])).values()].slice(0, 5).filter(([, , go]) => { const kind = go.split(':')[0], x = go.split(':')[1]; const W = wsOfNow(); return kind === 'accounts' ? Auth.isAdmin() || r === 'admin' : kind === 'step' ? W.includes('build') : kind === 'wfm' ? W.includes('wfm') && (x !== 'dmail' || canDailyMail()) && (x !== 'builder' || canDailyTool()) && (x !== 'mail' || canDailyMail()) : W.includes(x); });
   const head = `<div class="dhead"><div class="greet"><h2 class="gt">${esc(greetWord())}${first ? ', ' + esc(first) : ''}</h2><p class="gs"><span>${esc(date)}</span>${k ? `<span>Showing ${esc(ymLabel(k))} ${st}</span>` : ''}</p></div>
     ${acts.length ? `<nav class="qacts" aria-label="Quick actions">${acts.map(([t, s, go, ico]) => `<button class="qa" data-tgo="${esc(go)}"><svg aria-hidden="true"><use href="#${ico}"/></svg><span><b>${esc(t)}</b><small>${esc(s)}</small></span></button>`).join('')}</nav>` : ''}</div>`;
   if ($('today').closest('#dashBody')) $('main').prepend($('today'));   // Today lives in the dashboard's side column; kept safe while it is drawn again
@@ -200,7 +188,7 @@ function renderDash() {
   el.innerHTML = `${head}
     <div class="drow r1"><div class="kpis" role="list" aria-label="${esc(ymLabel(k))} at a glance">${dashKpisHtml(k, months)}</div>${safeHtml(dashClose, k)}</div>
     <div class="drow r2">${safeHtml(dashTrendCard, months)}${safeHtml(dashData)}</div>
-    <div class="drow r3">${safeHtml(dashAttention, k)}${safeHtml(dashActivity, k)}</div>`;
+    <div class="drow r3">${safeHtml(dashAttention, k)}</div>`;
   el.querySelectorAll('.kpi').forEach(x => x.setAttribute('role', 'listitem'));
   if (intro) { el.classList.add('intro'); clearTimeout(dashIntroT); dashIntroT = setTimeout(() => el.classList.remove('intro'), 1500); }
 }
@@ -211,7 +199,6 @@ $('dashBody').addEventListener('click', e => {
   const g = t.closest('[data-dgroup]'); if (g) { state.dashGroup = g.dataset.dgroup; state.dashHide.clear(); renderDash(); const b = $('dashBody').querySelector(`[data-dgroup="${g.dataset.dgroup}"]`); if (b) b.focus(); return; }
   const s = t.closest('[data-dser]'); if (s) { const n = s.dataset.dser; if (state.dashHide.has(n)) state.dashHide.delete(n); else state.dashHide.add(n); renderDash(); const b = $('dashBody').querySelector(`[data-dser="${CSS.escape(n)}"]`); if (b) b.focus(); return; }
   if (t.closest('[data-dtable]')) { state.dashTable = !state.dashTable; renderDash(); const b = $('dashBody').querySelector('[data-dtable]'); if (b) b.focus(); return; }
-  const a = t.closest('[data-dall]'); if (a) { state.dashAll[a.dataset.dall] = !state.dashAll[a.dataset.dall]; renderDash(); const b = $('dashBody').querySelector(`[data-dall="${a.dataset.dall}"]`); if (b) b.focus(); return; }
   const o = t.closest('[data-open]'); if (o) { openPerson(o.dataset.open); }
 });
 $('dashBody').addEventListener('mouseover', e => { const h = e.target.closest('[data-dpt]'); if (h && +h.dataset.dpt !== state.dashPt) { state.dashPt = +h.dataset.dpt; dashChartOnly(); } });

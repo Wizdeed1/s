@@ -664,6 +664,7 @@ function renderSteps() {
   });
   renderRing();
   moveThumb(document.querySelector('.steps'), '.step[aria-current="page"]');
+  renderWfmHead();   // the WFM team page's tabs: the step now, and what each needs
 }
 function renderBadges() {
   const ck = checkNotes().filter(n => n.sev === 'decide' || n.sev === 'warn').length, bc = $('bChecks'); bc.textContent = ck; bc.classList.toggle('n', ck > 0); bc.setAttribute('aria-label', plural(ck, 'check') + ' to look at');
@@ -2655,8 +2656,8 @@ function renderEmail() {
   if (state.mailEditOn && state.mailEditSig !== eSig) { state.mailEditOn = false; state.mailEditDirty = false; $('mEdit').checked = false; $('mEditNote').hidden = true; }
   state.mailEditSig = eSig;
   const cm = curMail(), md = cm.md, inc = cm.inc, fin = cm.stage === 'final', cfg = mailCfg();
-  setSeg($('mKind'), state.mailKind); setSeg($('mStage'), state.mailStage);
-  $('mKind').hidden = mailShared(); $('wbDrop').hidden = mailShared();
+  setSeg($('mKind'), state.mailKind); setSeg($('mStage'), state.mailStage); setSeg($('mSrc'), mailShared() ? 'shared' : 'build');
+  $('mKind').hidden = !isBuilder(); $('mSrc').hidden = !isBuilder() || state.mailKind === 'inc'; $('wbDrop').hidden = mailShared();
   $('h-email').textContent = `${inc ? 'Incentive' : 'Deduction'} email – ${fin ? 'final' : 'for review'}`;
   $('emailLead').textContent = inc ? (fin ? 'The final incentive data, sent after the review, with the changes since the review.' : 'Mohammed\'s "incentive Data for review" email, with the incentive workbook attached.')
     : (fin ? 'The final deduction and absenteeism, sent after the review, with the changes since the review.' : 'The "MC Monthly Deduction | For Review" email with the conformance deduction and the absences.');
@@ -3345,6 +3346,8 @@ function setStep(step) {
   if (!isBuilder()) return;
   if (REVIEW_TABS.includes(step)) { state.tab = step; step = 'review'; }
   if (step === 'settings') { openDrawer('dSettings'); $('month').focus(); return; }   // a drawer over the page you are on
+  if (step === 'email') { state.mailSub = 'month'; wfmGo('emails'); return; }   // the month's emails: WFM team › Emails
+  state.wfmAt = 'build';
   leaveWs();
   commitActive();
   if (step === 'email') mountMail(false);
@@ -3614,7 +3617,8 @@ $('v-email').addEventListener('click', e => {
   if (e.target.closest('[data-revclear]')) { delete state.revWb[state.mailKind]; renderEmail(); }
 });
 $('revPicker').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; loadRevFile(f); });
-$('mKind').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailKind = f; lastMailHtml = ''; renderEmail(); renderSteps(); });
+$('mKind').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailKind = f; lastMailHtml = ''; if ($('v-email').classList.contains('inws')) renderWs(); else { renderEmail(); renderSteps(); } });
+$('mSrc').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailPick = f; lastMailHtml = ''; renderWs(); const b = $('mSrc').querySelector(`[data-f="${f}"]`); if (b) b.focus(); });
 $('mStage').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailStage = f; lastMailHtml = ''; renderEmail(); renderSteps(); });
 let mailRaf = 0; const mailRender = () => { cancelAnimationFrame(mailRaf); mailRaf = requestAnimationFrame(renderEmail); };
 for (const [id, key] of [['mTo', 'to'], ['mCc', 'cc'], ['mGreeting', 'greeting'], ['mSign', 'sign']]) $(id).addEventListener('input', e => { mailCfg()[key] = e.target.value; mailRender(); persistMail(); });
@@ -3938,7 +3942,7 @@ renderBrand();
 render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
-window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, handChanges, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, rb: () => RB };   // for testing
+window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, rb: () => RB };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
 Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing

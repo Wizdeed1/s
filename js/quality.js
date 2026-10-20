@@ -171,7 +171,7 @@ async function qMove(from, to, sure) {
   markFresh('quality', `${ymLabel(to)} (moved from ${ymLabel(from)})`);
   toast(`The Final EVAL now counts for ${ymLabel(to)}.`); renderWs();
 }
-const canQuality = () => ['quality', 'admin', 'user'].includes(roleNow());
+const canQuality = () => hasRole('quality', 'admin', 'user');
 /** read a dropped workbook as the Final EVAL; true when it was one */
 async function tryEvalFile(it, notes, kForce) {
   let sheets; try { sheets = await parseRaw(it.name, await it.file.arrayBuffer()); } catch (e) { return false; }

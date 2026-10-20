@@ -4,7 +4,7 @@
 // step bar. Light and dark follow the computer. On a phone the workspaces move to a tab bar at the bottom: every page when they
 // fit (five or fewer), else four and More (Apple: avoid overflow tabs). A page the role cannot use is not in the navigation; opened
 // by a link it says "Not one of your pages" with the way back. Nothing here reads or writes any data the role could not before.
-const WS_LABEL = { dash: 'Dashboard', build: 'Build', team: 'Team', results: 'Results', cycle: 'Supervisors', wfm: 'WFM', quality: 'Quality', me: 'My page', wait: 'Waiting for access', blocked: 'Not one of your pages' };
+const WS_LABEL = { dash: 'Dashboard', build: 'WFM team', team: 'Team', results: 'Results', cycle: 'Supervisors', wfm: 'WFM team', quality: 'Quality', me: 'My page', wait: 'Waiting for access', blocked: 'Not one of your pages' };
 const WS_ICON = { dash: 'i-home', build: 'i-up', team: 'i-team', results: 'i-check', cycle: 'i-clock', wfm: 'i-chart', quality: 'i-star', me: 'i-user' };
 const STEP_LABEL = { import: 'Import', review: 'Review', export: 'Export', email: 'Email' };
 const mqPhone = matchMedia('(max-width: 767.98px)'), mqLaptop = matchMedia('(max-width: 1279.98px)');
@@ -49,7 +49,7 @@ $('sidebar').addEventListener('click', e => {   // Search at the top, How to use
 // ---------------------------------------------------------------- the toolbar: the page title, the role, the period
 function pageTitleNow() {
   const w = state.ws;
-  if (w === 'build') return 'Build';
+  if (w === 'build') return 'WFM team';
   if (w === 'dash') return 'Dashboard';
   const h = $('h-' + w); return (h && normSpace(h.textContent)) || WS_LABEL[w] || '';
 }
@@ -145,12 +145,14 @@ $('acctMenu').addEventListener('keydown', e => {
 document.addEventListener('mc-theme', () => requestAnimationFrame(thumbs));
 
 // ---------------------------------------------------------------- the phone tab bar and its More sheet
-function navList() { return (WS_OF[roleNow()] || []).filter(w => WS_LABEL[w]); }
+/** the pages in the navigation: the month's build is part of the WFM team page, so it has no entry of its own */
+function navList() { return wsOfNow().filter(w => WS_LABEL[w] && w !== 'build'); }
+const navOn = w => w === state.ws || (w === 'wfm' && state.ws === 'build');
 function tabBarHtml() {
   const L = navList(), more = L.length > 5, main = more ? L.slice(0, 4) : L;   // every page when five or fewer; else four and More (no overflow tab when it fits)
   const dot = w => { const d = $('wsSeg').querySelector(`[data-ws="${w}"] .wsdot`); return d ? `<span class="wsdot">${esc(d.textContent)}</span>` : ''; };
-  const inMore = more && !main.includes(state.ws) && L.includes(state.ws);
-  return main.map(w => `<button data-ws="${w}"${w === state.ws ? ' aria-current="page"' : ''}><svg aria-hidden="true"><use href="#${WS_ICON[w]}"/></svg><span>${esc(WS_LABEL[w])}</span>${dot(w)}</button>`).join('')
+  const inMore = more && !main.some(navOn) && L.some(navOn);
+  return main.map(w => `<button data-ws="${w}"${navOn(w) ? ' aria-current="page"' : ''}><svg aria-hidden="true"><use href="#${WS_ICON[w]}"/></svg><span>${esc(WS_LABEL[w])}</span>${dot(w)}</button>`).join('')
     + (more ? `<button data-tabmore${inMore ? ' aria-current="page"' : ''} aria-haspopup="dialog" aria-controls="moreSheet"><svg aria-hidden="true"><use href="#i-more"/></svg><span>More</span></button>` : '');
 }
 function renderTabBar() {
@@ -160,7 +162,7 @@ function renderTabBar() {
 }
 function moreHtml(focus) {
   const L = navList(), main = L.length > 5 ? L.slice(0, 4) : L, rest = L.filter(w => !main.includes(w)), u = Auth.user();
-  const ws = rest.map(w => `<button class="msitem" data-ws="${w}"${w === state.ws ? ' aria-current="page"' : ''}><svg aria-hidden="true"><use href="#${WS_ICON[w]}"/></svg><span>${esc(WS_LABEL[w])}</span></button>`).join('');
+  const ws = rest.map(w => `<button class="msitem" data-ws="${w}"${navOn(w) ? ' aria-current="page"' : ''}><svg aria-hidden="true"><use href="#${WS_ICON[w]}"/></svg><span>${esc(WS_LABEL[w])}</span></button>`).join('');
   return `${ws ? `<div class="msgrp"><small>Workspaces</small>${ws}</div>` : ''}
     <div class="msgrp"><small>Tools</small><button class="msitem" data-mact="find"><svg aria-hidden="true"><use href="#i-search"/></svg><span>Search</span></button><button class="msitem" data-mact="help"><svg aria-hidden="true"><use href="#i-help"/></svg><span>How to use</span></button>${isBuilder() ? '<button class="msitem" data-mact="settings"><svg aria-hidden="true"><use href="#i-gear"/></svg><span>Settings</span></button>' : ''}</div>
     ${u ? `<div class="msgrp"><small>${esc(u.name || u.username || 'Account')}</small>${Auth.isAdmin() ? '<button class="msitem" data-mact="accounts"><svg aria-hidden="true"><use href="#i-user"/></svg><span>Manage accounts</span></button>' : ''}<button class="msitem" data-mact="pw"><svg aria-hidden="true"><use href="#i-lock"/></svg><span>Change password</span></button><button class="msitem" data-mact="lock"><svg aria-hidden="true"><use href="#i-lock"/></svg><span>Lock now</span></button><button class="msitem" data-mact="out"><svg aria-hidden="true"><use href="#i-x"/></svg><span>Sign out</span></button></div>` : ''}`;
@@ -178,11 +180,11 @@ function moreClose() {
 }
 $('tabBar').addEventListener('click', e => {
   const m = e.target.closest('[data-tabmore]'); if (m) { moreOpen(); return; }
-  const b = e.target.closest('button[data-ws]'); if (b) setWs(b.dataset.ws);
+  const b = e.target.closest('button[data-ws]'); if (b) goWs(b.dataset.ws);
 });
 $('moreSheet').addEventListener('click', e => {
   if (e.target.closest('[data-moreclose]')) { moreClose(); return; }
-  const w = e.target.closest('button[data-ws]'); if (w) { moreClose(); setWs(w.dataset.ws); return; }
+  const w = e.target.closest('button[data-ws]'); if (w) { moreClose(); goWs(w.dataset.ws); return; }
   const a = e.target.closest('[data-mact]'); if (!a) return; const act = a.dataset.mact; moreClose();
   if (act === 'find') findOpen(); else if (act === 'help') openDrawer('dHelp'); else if (act === 'settings') openDrawer('dSettings');
   else if (act === 'accounts') Auth.openAccounts(); else if (act === 'pw') Auth.change(); else if (act === 'lock') Auth.lock(); else if (act === 'out') Auth.signOut();
@@ -197,33 +199,35 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------------------------------------------------------------- the navigation follows the workspace (sidebar, tab bar, header)
+/** a page from the navigation: the WFM team page opens on the tab last used there */
+function goWs(w) { if (w === 'wfm') openWfmTeam(); else setWs(w); }
 function syncNav() {
-  const w = state.ws, L = WS_OF[roleNow()] || [];
+  const w = state.ws, L = navList();
   $('wsSeg').querySelectorAll('[data-ws]').forEach(b => {
-    const on = b.dataset.ws === w; b.hidden = !L.includes(b.dataset.ws);
+    const on = navOn(b.dataset.ws); b.hidden = !L.includes(b.dataset.ws);
     b.setAttribute('aria-pressed', String(on)); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
   L.forEach(x => { const b = $('wsSeg').querySelector(`:scope > [data-ws="${x}"]`); if (b) $('wsSeg').appendChild(b); });   // the role's own order, the same as its tab bar
   $('wsSeg').hidden = !L.length;
   const set = $('sbSec').querySelector('[data-sb="settings"]'); if (set) set.hidden = !isBuilder();
-  $('buildBar').hidden = w !== 'build';
+  $('buildBar').hidden = true;   // the month's steps are the WFM team page's tabs now
   document.body.dataset.ws = w;
-  renderTabBar(); syncHead();
+  renderTabBar(); syncHead(); renderWfmHead();
 }
 // ---- links to a workspace (#/team): the page a role cannot use says so, with the way back
 const hashWs = () => { const m = /^#\/([a-z]+)/.exec(location.hash || ''); return m ? m[1] : ''; };
 function putHash(w) { if (!WS_LABEL[w] || w === 'wait' || w === 'blocked') return; const h = '#/' + w; if (location.hash !== h) { try { history.replaceState(null, '', h); } catch (e) { /* a file preview */ } } }
 function showBlocked(w) {
-  const L = WS_OF[roleNow()] || [];
+  const L = navList();
   state.ws = 'blocked'; hidePop(); showWsView('blocked');
   $('blockedSub').textContent = `${WS_LABEL[w] || 'This page'} belongs to another role, so it is not in your navigation. Your pages are ${L.map(x => WS_LABEL[x]).join(', ') || 'not open yet'}.`;
   $('blockedBack').textContent = L.length ? `Go to ${WS_LABEL[L[0]]}` : 'Back';
   syncNav();
 }
-$('blockedBack').addEventListener('click', () => { const L = WS_OF[roleNow()] || []; if (!L.length) return; setWs(L[0]); const h = $('h-' + L[0]) || $('pageTitle'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } else $('main').focus(); });   // the button went with the page: the focus goes to the new one
+$('blockedBack').addEventListener('click', () => { const L = wsOfNow(); if (!L.length) return; setWs(L[0]); const h = $('h-' + L[0]) || $('pageTitle'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } else $('main').focus(); });   // the button went with the page: the focus goes to the new one
 window.addEventListener('hashchange', () => {
   const w = hashWs(); if (!w || w === state.ws || !Auth.user() && !window.__NOLOCK__) return;
-  const L = WS_OF[roleNow()] || []; if (!L.length) return;
+  const L = wsOfNow(); if (!L.length) return;
   if (L.includes(w)) setWs(w); else if (WS_LABEL[w]) showBlocked(w);
 });
 // ---- leaving the page while a file is read or a save is in flight (D14): the browser asks first, only then

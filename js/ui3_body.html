@@ -83,7 +83,7 @@
     <button data-ws="team" aria-pressed="false" data-tip="Team"><svg aria-hidden="true"><use href="#i-team"/></svg><span>Team</span></button>
     <button data-ws="results" aria-pressed="false" data-tip="Results"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Results</span></button>
     <button data-ws="cycle" aria-pressed="false" data-tip="Supervisors"><svg aria-hidden="true"><use href="#i-clock"/></svg><span>Supervisors</span></button>
-    <button data-ws="wfm" aria-pressed="false" data-tip="WFM"><svg aria-hidden="true"><use href="#i-chart"/></svg><span>WFM</span></button>
+    <button data-ws="wfm" aria-pressed="false" data-tip="WFM team"><svg aria-hidden="true"><use href="#i-chart"/></svg><span>WFM team</span></button>
     <button data-ws="quality" aria-pressed="false" data-tip="Quality"><svg aria-hidden="true"><use href="#i-star"/></svg><span>Quality</span></button>
     <button data-ws="me" aria-pressed="false" data-tip="My page"><svg aria-hidden="true"><use href="#i-user"/></svg><span>My page</span></button>
   </div>
@@ -134,10 +134,22 @@
       <button class="step" data-step="export"><span class="n">3</span><span class="t"><b>Export</b><small id="sub-export">Build the workbook</small></span></button>
       <button class="step" data-step="email"><span class="n">4</span><span class="t"><b>Email</b><small id="sub-email">For review</small></span></button>
     </nav>
-    <div class="bbend">
-      <button class="btn ghost sm monthbtn" id="monthBtn" title="The build month comes from the exports. Change it in Settings › Month.">Month</button>
-      <button class="btn primary" id="buildTop" disabled><svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg><span>Build Excel</span></button>
+  </div>
+  <!-- ================================================================ WFM TEAM: one page for the WFM analysts and the WFM manager.
+       Its tabs: the month (Import, Review, Export, Emails), every day (Daily, Report builder) and insight (Analytics, Agents,
+       Interactions); each role sees its own (wfmx.js). -->
+  <div class="wfmhead" id="wfmHead" hidden>
+    <div class="viewhead">
+      <div><div class="eyebrow" id="wfmEyebrow">Workforce</div><h1 id="h-wfm">WFM team</h1><p id="wfmLead" hidden></p></div>
+      <div class="wsbar" id="wfmBar"></div>
+      <div class="bbend" id="buildActs" hidden>
+        <button class="btn ghost sm monthbtn" id="monthBtn" title="The build month comes from the exports. Change it in Settings › Month.">Month</button>
+        <button class="btn primary" id="buildTop" disabled><svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg><span>Build Excel</span></button>
+      </div>
     </div>
+    <nav class="wfmnav" id="wfmTabs" aria-label="WFM team pages"></nav>
+    <div class="covernote" id="coverNote" hidden></div>
+    <p class="rohint" id="wfmRo" hidden><svg width="14" height="14" aria-hidden="true"><use href="#i-lock"/></svg><span>View only.</span></p>
   </div>
   <div class="autonote" id="autoNote" role="status" hidden></div>
   <div class="fresh" id="freshBar" role="status" hidden></div>
@@ -146,7 +158,7 @@
   <section class="view" id="v-import" aria-labelledby="h-import">
     <div class="viewhead">
       <div>
-        <h1 id="h-import">Import this month's files</h1>
+        <h2 class="vt" id="h-import">Import this month's files</h2>
         <p>Drop all the month's files at once: the four Genesys exports, the supervisors' attendance sheets, the IDs file, the KPI file, the quality team's Final EVAL, even the old Excel. Each file is recognised by its sheets and columns, not its name, and goes to its place; anything unclear is asked about.</p>
       </div>
       <span class="privacy"><svg aria-hidden="true"><use href="#i-lock"/></svg>Files stay in your browser; only the month's results are shared</span>
@@ -186,7 +198,7 @@
   <section class="view" id="v-review" aria-labelledby="h-review" hidden>
     <div class="viewhead">
       <div>
-        <h1 id="h-review">Review</h1>
+        <h2 class="vt" id="h-review">Review</h2>
         <p>Check the roster and fix names that don't match, then look at the numbers before you build.</p>
       </div>
       <span class="savestate" id="saveState" aria-live="polite"></span>
@@ -310,7 +322,7 @@
   <section class="view" id="v-export" aria-labelledby="h-export" hidden>
     <div class="viewhead">
       <div>
-        <h1 id="h-export">Export</h1>
+        <h2 class="vt" id="h-export">Export</h2>
         <p>Build the monthly report and the incentive data workbook. Both are formula-driven, so a change in Excel updates every table.</p>
       </div>
     </div>
@@ -357,11 +369,12 @@
   <section class="view" id="v-email" aria-labelledby="h-email" hidden>
     <div class="viewhead">
       <div>
-        <h1 id="h-email">Emails</h1>
+        <h2 class="vt" id="h-email">Emails</h2>
         <p id="emailLead">The deduction and incentive emails, for review and final, ready for Outlook.</p>
       </div>
       <div class="mailtabs">
         <div class="seg" id="mKind" role="group" aria-label="Which email"><button data-f="ded" aria-pressed="true">Deduction</button><button data-f="inc" aria-pressed="false">Incentive</button></div>
+        <div class="seg" id="mSrc" role="group" aria-label="Where the numbers come from" hidden><button data-f="shared" aria-pressed="true">Shared month</button><button data-f="build" aria-pressed="false">This build</button></div>
         <div class="seg" id="mStage" role="group" aria-label="Review or final"><button data-f="review" aria-pressed="true">For review</button><button data-f="final" aria-pressed="false">Final</button></div>
       </div>
     </div>
@@ -428,9 +441,6 @@
     <div id="resultsBody"></div>
   </section>
   <section class="view ws" id="v-wfm" aria-labelledby="h-wfm" hidden>
-    <div class="viewhead"><div><div class="eyebrow" id="wfmEyebrow">Workforce</div><h1 id="h-wfm">Workforce</h1><p id="wfmLead">Every department and month from the shared history: trends, comparisons, distributions and where the data comes from.</p></div><div class="wsbar" id="wfmBar"></div></div>
-    <div class="seg wftabs" id="wfmTabs" role="group" aria-label="WFM pages"><button data-wt="analytics" aria-pressed="true">Analytics</button><button data-wt="agents" aria-pressed="false">Agents</button><button data-wt="daily" aria-pressed="false">Daily</button><button data-wt="builder" aria-pressed="false" hidden>Report builder</button><button data-wt="inter" aria-pressed="false">Interactions</button><button data-wt="emails" aria-pressed="false" hidden>Emails</button></div>
-    <p class="rohint" id="wfmRo" hidden><svg width="14" height="14" aria-hidden="true"><use href="#i-lock"/></svg><span>View only.</span></p>
     <div id="wfmBody"></div>
     <div id="wfmRb" class="rb" hidden></div>
     <div id="wfmDm" class="rb dm" hidden></div>
@@ -615,7 +625,7 @@
         <li>Your pages are in the <b>sidebar</b> on the left. On a laptop it narrows to icons (point at one for its name); the button at its foot widens it again, and this browser remembers your choice. On a phone the pages are in the bar at the bottom; with more than five, <b>More</b> holds the rest, and How to use and Settings are in the account menu.</li>
         <li><b>Search</b> (Ctrl K) is at the top of the sidebar (on a phone, in the header). The <b>header</b> carries the <b>bell</b> with your notifications: deadlines and what is yours to do (everyone), and the checks (for the people who build the month), the <b>month</b> the page shows and your account. A final month shows a lock and is read-only. On Build the month comes from the exports instead; change it in Settings › Month.</li>
         <li><b>Appearance</b>: choose Light, Dark or System in your account menu (your initials, top right) or in Settings. System, the first choice, follows your computer's light or dark setting and changes with it. The choice is kept in this browser.</li>
-        <li>The WFM roles and the senior manager start on the <b>Dashboard</b>: the month's six numbers against the month before, the trend, what needs attention, the month close, recent activity and how old each source is. Everyone else starts on their own page; what is theirs to do, with its deadline, is in the bell.</li>
+        <li>The WFM roles and the senior manager start on the <b>Dashboard</b>: the month's six numbers against the month before, the trend, what needs attention, the senior manager's month close steps and how old each source is. Everyone else starts on their own page; what is theirs to do, with its deadline, is in the bell.</li>
         <li><b>Build</b> has its own step bar: Import, Review, Export, Email. Review opens on <b>Checks</b>, the same checks as the bell, with what each one means and what happens until you act. Only three things stop a build: an empty roster, files still being read, and no export or attendance file at all.</li>
       </ul>
     </section>
@@ -695,7 +705,7 @@
     </section>
     <section>
       <h3>Incentive rules</h3>
-      <p>The scorecards (KPIs, weights, bands), the incentive bases and who earns the incentive (lowest final %, fewest days attended) are one set of rules. Only the senior manager or an admin changes them (<b>Supervisors › Incentive rules</b>, or Settings › Scorecards); everyone else sees them read-only. <b>Start new rules from</b> a month: that month and the ones after it use the new set, the months before keep theirs, and a final month never changes. Every change is logged. <b>Supervisors › Changes by hand</b> lists, for a month, everything changed by hand: eligibility and results, attendance days, quality numbers, objections, the rules, one-to-ones changed after the agent signed. It downloads as Excel.</p>
+      <p>The scorecards (KPIs, weights, bands), the incentive bases and who earns the incentive (lowest final %, fewest days attended) are one set of rules. Only the senior manager or an admin changes them (<b>Supervisors › Incentive rules</b>, or Settings › Scorecards); everyone else sees them read-only. <b>Start new rules from</b> a month: that month and the ones after it use the new set, the months before keep theirs, and a final month never changes. Every change is logged.</p>
     </section>
     <section>
       <h3>Reconcile with the old Excel, and the EVAL with IDs</h3>

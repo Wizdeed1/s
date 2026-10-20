@@ -2,7 +2,7 @@
 // Built from what the tool already knows: the month-close steps that are theirs (late ones first), the one-to-ones still to
 // hold, objections to answer or fix, agents waiting for approval, forms waiting for a signature, last month's actions to check,
 // stale daily data, names to link, accounts waiting. Each line opens the place to do it. "Hide for today" folds it to one line.
-function todayHome() { const L = WS_OF[roleNow()] || []; return L[0] || ''; }
+function todayHome() { const L = wsOfNow(); return L[0] || ''; }
 /** a part of a page that must never stop the page: on an error it is left out (and the error is noted in the console) */
 function safeHtml(fn, ...a) { try { return fn(...a) || ''; } catch (e) { try { console.error('[MC] ' + (fn.name || 'part') + ':', e); } catch (x) { /* none */ } return ''; } }
 function todayHidden() { const u = Auth.user(); return !!u && lsGet('mc-today-hide:' + u.id) === todayIso(); }
@@ -12,7 +12,7 @@ function todayItems() {
   const add = (cls, t, s, go, btn) => out.push({ cls, t, s: s || '', go: go || '', btn: btn || '' });
   if (r === 'agent') { todayAgent(add); return out; }
   // the month close: my steps that are late or due in the next two days
-  if (wsMonths().length && r !== 'spv') for (const s of calSteps(k)) if (!s.done && s.roles.includes(r) && (s.st === 'late' || s.st === 'soon')) add(s.st, `${s.label} · ${ymLabel(k)}`, `${s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.days === 0 ? 'due today' : s.days === 1 ? 'due tomorrow' : `due ${fmtDue(s.due)}`}${s.note ? ' · ' + s.note : ''}`, ((g => (g ? g + '@' + k : ''))(calCanGo(s.go, true) ? s.go : (WS_OF[r] || []).includes('cycle') ? 'cal' : '')));
+  if (wsMonths().length && r !== 'spv') for (const s of calSteps(k)) if (!s.done && s.roles.includes(r) && (s.st === 'late' || s.st === 'soon')) add(s.st, `${s.label} · ${ymLabel(k)}`, `${s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.days === 0 ? 'due today' : s.days === 1 ? 'due tomorrow' : `due ${fmtDue(s.due)}`}${s.note ? ' · ' + s.note : ''}`, ((g => (g ? g + '@' + k : ''))(calCanGo(s.go, true) ? s.go : wsOfNow().includes('cycle') ? 'cal' : '')));
   if (r === 'spv' && u.pid) {
     const team = teamOf(u.pid).filter(p => p.status !== 'Inactive');
     if (haveK && team.length) {
@@ -63,7 +63,7 @@ function todayItems() {
     const P = (state.people || []).filter(a => a.role === 'pending' && !a.disabled && a.kind !== 'agent');
     if (P.length) add('todo', `${plural(P.length, 'account')} waiting for a role`, P.map(a => a.name).slice(0, 5).join(', '), 'accounts', 'Accounts');
   }
-  if (['admin', 'user'].includes(r) && state.ctx && (state.issues || []).length) add('info', `${plural(state.issues.length, 'name')} to check in this month's exports`, 'Link each unknown name to a person, or add them.', 'step:issues', 'Review');
+  if (hasRole('admin', 'user') && state.ctx && (state.issues || []).length) add('info', `${plural(state.issues.length, 'name')} to check in this month's exports`, 'Link each unknown name to a person, or add them.', 'step:issues', 'Review');
   if (r === 'quality') {
     const qk = haveK ? k : qMonthNow(), Q = state.quality[qk];
     if (Q && (Q.unmatched || []).length) add('todo', `${plural(Q.unmatched.length, 'name')} in the ${ymLabel(qk)} EVAL to link`, 'The tool linked the rest; choose who these are.', 'qnames@' + qk, 'Link');
@@ -165,7 +165,7 @@ function todayMonth(k) {
 function todayGo(go) {
   let g = String(go || ''); const at = g.indexOf('@'), mk = at < 0 ? '' : g.slice(at + 1); if (at >= 0) g = g.slice(0, at);
   const i = g.indexOf(':'), kind = i < 0 ? g : g.slice(0, i), x = i < 0 ? '' : g.slice(i + 1);
-  const ch = todayMonth(mk), here = w => { if (state.ws !== w && (WS_OF[roleNow()] || []).includes(w)) setWs(w); else if (ch) renderWs(); };
+  const ch = todayMonth(mk), here = w => { if (state.ws !== w && wsOfNow().includes(w)) setWs(w); else if (ch) renderWs(); };
   if (kind === 'ws') { if (state.ws !== x) setWs(x); else renderWs(); return; }
   if (kind === 'step') { setWs('build'); setStep(x); return; }
   if (kind === 'dmail') { state.wfmTab = 'dmail'; state.dmSel = x; setWs('wfm'); renderWs(); return; }

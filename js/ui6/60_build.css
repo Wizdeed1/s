@@ -229,7 +229,7 @@ b.bad, .astats b.bad { color: var(--bad); }
 .revstate { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; display: grid; gap: 6px; justify-items: start; }
 .revstate h3 { font-size: 13px; }
 #v-email.inws { display: grid; gap: 16px; }
-#v-email.inws > .viewhead h1 { font-size: 22px; }
+#v-email.inws > .viewhead h2.vt { font-size: 20px; }
 /* settings: the logo */
 .logostate { display: flex; align-items: center; gap: 10px; min-height: 40px; flex-wrap: wrap; }
 .logoimg { max-height: 44px; max-width: 180px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px; }

@@ -92,9 +92,9 @@ const F_DBRAND = { Virgin: 'virgin', Friendi: 'friendi', 'Friendi Pay': 'fpay', 
 
 // ---------------------------------------------------------------- what this person may search, and the words for it
 const fRole = () => roleNow();
-const fStaffSR = r => !['spv', 'quality', 'agent', 'user'].includes(r);   // no incentive amounts for supervisors, quality, agents (their own only) and WFM analysts
-const fWfm = r => (WS_OF[r] || []).includes('wfm');
-const fForms = r => ['spv', 'senior', 'admin', 'user'].includes(r);
+const fStaffSR = r => rolesNow().some(x => !['spv', 'quality', 'agent', 'user'].includes(x));   // no incentive amounts for supervisors, quality, agents (their own only) and WFM analysts
+const fWfm = r => wsOfNow().includes('wfm');
+const fForms = r => hasRole('spv', 'senior', 'admin', 'user');
 function findIndex() {
   const role = fRole(), u = Auth.user() || {};
   const sig = [role, u.id || '', state.ver, state.histVer, state.finVer, state.roster.length, state.qualityVer, state.attEditsVer, state.dailyVer, state.interVer,
@@ -168,7 +168,7 @@ function findIndex() {
 
 /** the pages and actions this role can open */
 function findPages(role) {
-  const W = WS_OF[role] || [], L = [], go = ws => () => { if (state.ws !== ws || ws === 'build') setWs(ws); };
+  const W = wsOfNow(), L = [], go = ws => () => { if (state.ws !== ws || ws === 'build') setWs(ws); };
   const add = (key, title, words, sub, run, ok = true) => { if (ok) L.push({ t: 'g', key: 'g:' + key, title, words, sub, run }); };
   const wfm = tab => () => { state.wfmTab = tab; setWs('wfm'); renderWs(); };
   if (W.includes('build')) {
@@ -193,16 +193,15 @@ function findPages(role) {
     add('calendar', 'Month close: who does what by which day', 'month close|calendar|close calendar|closing|deadlines|due days|timeline|late steps', 'Supervisors', () => todayGo('cal'));
     add('objsenior', 'Objections and the dispute rate per team', 'objections|objection|disputes|dispute rate|complaints|escalated', 'Supervisors', () => { setWs('cycle'); scrollTo_('#cycleBody .objcard'); });
     add('rules', 'Incentive rules (scorecards, bases, who earns it), in force from a month', 'incentive rules|rules|governance|bases|eligibility rules|minimum final|rule history|new rules', 'Supervisors', () => openRules());
-    add('changes', 'Changes by hand this month', 'changes by hand|overrides|audit|changes report|who changed|hand changes|manual changes', 'Supervisors', () => { state.chgOpen = true; setWs('cycle'); renderWs(); scrollTo_('#cycleBody .chgcard'); });
   }
   if (W.includes('team') && !W.includes('cycle')) add('objteam', 'Objections from the agents', 'objections|objection|disputes|complaints', 'Team', () => { state.teamTab = 'obj'; setWs('team'); renderWs(); scrollTo_('#objCard'); });
   if (W.length) add('recog', 'Recognise a file: what it is and where it goes', 'recognise|recognize|identify|what is this file|which file|what file|ai|smart|detect|smart drop|upload|old excel|drop', 'Tools', () => recogPick());
   if (W.includes('results')) add('compare', 'Reconcile with the old Excel: why an earned SR differs', 'compare|old excel|parallel run|reconcile|reconciliation|differences|check against excel|final result|earned different|why different|email table|paste', 'Results', () => { setWs('results'); scrollTo_('#reconCard'); });
   if (W.includes('wfm')) {
     for (const [t, l] of wfmTabsFor(role)) add('wfm-' + t, `WFM › ${l}`, t === 'emails' ? 'emails tab|emails|daily emails|deduction email|absences email|send email' : t === 'inter' ? 'interactions|interactions export|calls page' : t === 'agents' ? 'agents table|all agents|agent analytics' : t === 'daily' ? 'daily|daily dashboard|daily data' : t === 'builder' ? 'report builder|member care report builder|daily files|drop daily|daily exports' : t === 'dmail' ? 'daily emails|brand emails|send daily' : 'analytics|charts|dashboard', 'WFM', wfm(t));
-    if (['admin', 'user'].includes(role)) add('rbuild', 'Report builder: drop the day\'s exports (MC Leaders, WFM Daily Review; the brand emails go to the WFM manager)', 'report builder|daily report|daily files|leaders email|mc leaders|wfm daily review|daily review|upload daily|drop daily', 'WFM › Report builder', wfm('builder'));
-    if (['admin', 'wfm', 'user'].includes(role)) add('dailymail', 'Daily emails to send (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay)', 'daily emails|daily email|daily report|postpaid email|virgin email|friendi email|friendi pay email|brand emails|send daily', 'WFM › Daily emails', wfm('dmail'));
-    if (['admin', 'wfm', 'user'].includes(role)) add('dedmail', 'Deduction email (conformance deduction and absences)', 'deduction email|absences email|conformance email|for review email|deduction for review', 'WFM › Emails', wfm('mail'));
+    if (hasRole('admin', 'user')) add('rbuild', 'Report builder: drop the day\'s exports (MC Leaders, WFM Daily Review; the brand emails go to the WFM manager)', 'report builder|daily report|daily files|leaders email|mc leaders|wfm daily review|daily review|upload daily|drop daily', 'WFM › Report builder', wfm('builder'));
+    if (hasRole('admin', 'wfm', 'user')) add('dailymail', 'Daily emails to send (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay)', 'daily emails|daily email|daily report|postpaid email|virgin email|friendi email|friendi pay email|brand emails|send daily', 'WFM › Daily emails', wfm('dmail'));
+    if (hasRole('admin', 'wfm', 'user')) add('dedmail', 'Deduction email (conformance deduction and absences)', 'deduction email|absences email|conformance email|for review email|deduction for review', 'WFM › Emails', wfm('mail'));
   }
   if (W.includes('quality')) {
     add('quality', 'Quality', 'quality page|quality|eval page|qa page', 'Quality', go('quality'));
@@ -426,7 +425,7 @@ function fAnsPerson(x, k, X) {
   if (fForms(role) && k) {
     const os = oneStatus(x.id, k);
     if (os.o && os.st !== 'planned') acts.push(fAct('Open the one-to-one', () => { findClose(); fOpenForm(os.o.id); }));
-    else if ((WS_OF[role] || []).includes('team')) acts.push(fAct(os.o ? 'One-to-one arranged · Team page' : 'Arrange a one-to-one · Team page', () => { findClose(); if (role !== 'spv') state.wsSpv = x.p.spv || ''; state.wsMonth = k; setWs('team'); renderWs(); }));
+    else if (wsOfNow().includes('team')) acts.push(fAct(os.o ? 'One-to-one arranged · Team page' : 'Arrange a one-to-one · Team page', () => { findClose(); if (role !== 'spv') state.wsSpv = x.p.spv || ''; state.wsMonth = k; setWs('team'); renderWs(); }));
   }
   if (fWfm(role)) acts.push(fAct('In the agents table', () => { findClose(); state.agQ = x.name; state.agUnit = ''; state.agSpv = ''; state.wfmTab = 'agents'; setWs('wfm'); renderWs(); }));
   if (!r) return { icon: 'user', title: x.name, sub: [x.unit, spv ? `supervisor ${spv}` : ''].filter(Boolean).join(' · '), note: k ? `Not in the results of ${ymLabel(k)}.` : 'No month saved yet.', acts };
@@ -496,14 +495,14 @@ function fAnsSpv(s, k, X) {
   const tiles = [['Agents', String(team.length)], ['Adherence', pct(A.adh, 1), A.adh != null && A.adh < state.settings.target ? 'bad' : ''], ['Final % (KPI)', pct1(A.fin)], ['One-to-ones held', `${held} of ${team.length}`, held < team.length ? 'bad' : ''], ['Signed by the agent', `${signed} of ${held}`], ['Finished', done ? `Yes · ${fmtWhen(done.at)}` : 'Not yet', done ? '' : 'bad']];
   if (sc && sc.finalPct != null) tiles.push(['Supervisor scorecard', pct1(sc.finalPct)]);
   const acts = [];
-  if ((WS_OF[role] || []).includes('team')) acts.push(fAct(role === 'spv' ? 'Open my team' : `Open ${s.name.split(' ')[0]}'s team`, () => { findClose(); if (role !== 'spv') state.wsSpv = s.pid; state.wsMonth = k; setWs('team'); renderWs(); }, true));
+  if (wsOfNow().includes('team')) acts.push(fAct(role === 'spv' ? 'Open my team' : `Open ${s.name.split(' ')[0]}'s team`, () => { findClose(); if (role !== 'spv') state.wsSpv = s.pid; state.wsMonth = k; setWs('team'); renderWs(); }, true));
   if (canCycle()) acts.push(fAct('Supervisors page', () => { findClose(); state.wsMonth = k; setWs('cycle'); }));
   return { icon: 'team', title: `${s.name}'s team`, sub: `${ymLabel(k)} · supervisor`, tiles, acts };
 }
 function fAnsForm(x, k, X) {
   const os = oneStatus(x.id, k), acts = [];
   if (os.o && os.st !== 'planned') acts.push(fAct('Open the one-to-one', () => { findClose(); fOpenForm(os.o.id); }, true));
-  if ((WS_OF[X.role] || []).includes('team')) acts.push(fAct('Team page', () => { findClose(); if (X.role !== 'spv') state.wsSpv = x.p.spv || ''; state.wsMonth = k; setWs('team'); renderWs(); }, !os.o || os.st === 'planned'));
+  if (wsOfNow().includes('team')) acts.push(fAct('Team page', () => { findClose(); if (X.role !== 'spv') state.wsSpv = x.p.spv || ''; state.wsMonth = k; setWs('team'); renderWs(); }, !os.o || os.st === 'planned'));
   const sg = os.o ? sigState(os.o) : 'none';
   return { icon: 'pen', title: `${x.name} · one-to-one`, sub: ymLabel(k), big: os.st === 'none' ? 'Not yet' : os.st === 'planned' ? 'Arranged' : 'Held', bigCls: os.st === 'none' ? 'bad' : os.st === 'planned' ? '' : 'good',
     bigSub: [os.o && os.o.plannedAt && os.st === 'planned' ? `for ${Forms.fmtDate(os.o.plannedAt)}` : '', os.o && os.st !== 'planned' ? (sg === 'signed' ? 'signed by the agent' : sg === 'changed' ? 'changed since the agent signed' : 'waiting for the agent\'s signature') : '', os.fin ? 'final form saved' : ''].filter(Boolean).join(' · '), acts };
@@ -515,7 +514,7 @@ function fAnsSpecial(sp, P, X, k) {
     const R = cycleRows(k).filter(r => !P.spv || r.pid === P.spv.pid), F = R.filter(r => (sp === 'done' ? !!r.done : !r.done));
     const acts = canCycle() ? [fAct('Supervisors page', () => { findClose(); state.wsMonth = k; setWs('cycle'); }, true)] : [];
     return { icon: 'team', title: sp === 'done' ? `${F.length} of ${R.length} supervisors finished` : `${F.length} of ${R.length} supervisors not finished yet`, sub: ymLabel(k) + (cycleOf(k).deadline ? ` · deadline ${Forms.fmtDate(cycleOf(k).deadline)}` : ''),
-      rows: F.map(r => ({ t: r.name, s: `${r.held} of ${r.team.length} one-to-ones held`, v: r.done ? `Finished ${fmtWhen(r.done.at)}` : 'Not yet', cls: r.done ? '' : 'bad', run: () => { findClose(); if ((WS_OF[role] || []).includes('team')) { state.wsSpv = r.pid; state.wsMonth = k; setWs('team'); renderWs(); } } })), acts, empty: F.length ? '' : 'Nobody.' };
+      rows: F.map(r => ({ t: r.name, s: `${r.held} of ${r.team.length} one-to-ones held`, v: r.done ? `Finished ${fmtWhen(r.done.at)}` : 'Not yet', cls: r.done ? '' : 'bad', run: () => { findClose(); if (wsOfNow().includes('team')) { state.wsSpv = r.pid; state.wsMonth = k; setWs('team'); renderWs(); } } })), acts, empty: F.length ? '' : 'Nobody.' };
   }
   if (sp === 'notheld' || sp === 'onetoone' || sp === 'unsigned') {
     if (!fForms(role)) return null;
@@ -525,13 +524,13 @@ function fAnsSpecial(sp, P, X, k) {
     else if (sp === 'unsigned') { F = L.filter(o => (o.os.st === 'held' || o.os.st === 'closed') && o.os.o && sigState(o.os.o) !== 'signed'); title = `${F.length} one-to-ones waiting for the agent's signature`; }
     else { const held = L.filter(o => o.os.st === 'held' || o.os.st === 'closed').length; title = `${held} of ${L.length} one-to-ones held`; F = L.slice().sort((a, b) => ['none', 'planned', 'held', 'closed'].indexOf(a.os.st) - ['none', 'planned', 'held', 'closed'].indexOf(b.os.st)); }
     const lab = o => (o.os.st === 'none' ? 'Not yet' : o.os.o && replyNew(o.os.o) ? 'Replied: to review' : o.os.st === 'planned' ? `Arranged${o.os.o && o.os.o.plannedAt ? ' · ' + Forms.fmtDate(o.os.o.plannedAt) : ''}` : sigState(o.os.o) === 'signed' ? 'Held · signed' : sigState(o.os.o) === 'changed' ? 'Held · changed after signing' : agentHasAccount(o.x.id) ? 'Held · not signed' : 'Held · no account yet');
-    const acts = (WS_OF[role] || []).includes('team') ? [fAct(role === 'spv' ? 'Open my team' : 'Team page', () => { findClose(); if (role !== 'spv' && P.spv) state.wsSpv = P.spv.pid; state.wsMonth = k; setWs('team'); renderWs(); }, true)] : [];
+    const acts = wsOfNow().includes('team') ? [fAct(role === 'spv' ? 'Open my team' : 'Team page', () => { findClose(); if (role !== 'spv' && P.spv) state.wsSpv = P.spv.pid; state.wsMonth = k; setWs('team'); renderWs(); }, true)] : [];
     return { icon: 'pen', title, sub: [ymLabel(k), fScopeLabel(P, X)].filter(Boolean).join(' · '), rows: F.slice(0, 40).map(o => ({ t: o.x.name, s: o.x.unit, v: lab(o), cls: o.os.st === 'none' ? 'bad' : '', run: () => { findClose(); if (o.os.o && o.os.st !== 'planned') fOpenForm(o.os.o.id); else openPerson(o.x.id); } })), more: F.length > 40 ? `and ${F.length - 40} more` : '', acts, empty: F.length ? '' : 'Nobody.' };
   }
   if (sp === 'noteligible' || sp === 'eligible') {
     if (role === 'quality') return null;
     const L = fRowsK(k, X, P).filter(o => o.r._el), F = L.filter(o => (sp === 'eligible' ? o.r._el.ok : !o.r._el.ok));
-    const acts = (WS_OF[role] || []).includes('results') ? [fAct('Results page', () => { findClose(); state.wsMonth = k; setWs('results'); }, true)] : [];
+    const acts = wsOfNow().includes('results') ? [fAct('Results page', () => { findClose(); state.wsMonth = k; setWs('results'); }, true)] : [];
     return { icon: 'check', title: sp === 'eligible' ? `${F.length} of ${L.length} eligible for the incentive` : `${F.length} of ${L.length} not eligible for the incentive`, sub: [ymLabel(k), fScopeLabel(P, X)].filter(Boolean).join(' · '),
       note: `Not eligible: ${eligText(k, 'long')} (the senior manager can change it).`,
       rows: F.slice(0, 40).map(o => fRowP(o.x, sp === 'eligible' ? (fStaffSR(role) && o.r.earned != null ? `${Math.round(o.r.earned).toLocaleString('en-US')} SR` : 'Eligible') : 'Not eligible', sp === 'eligible' ? '' : 'bad', sp === 'eligible' ? o.x.unit : (o.r._el.why || []).join(', ') || o.x.unit)), more: F.length > 40 ? `and ${F.length - 40} more` : '', acts, empty: F.length ? '' : 'Nobody.' };
@@ -539,7 +538,7 @@ function fAnsSpecial(sp, P, X, k) {
   if (sp === 'critical') {
     if (!['quality', 'admin', 'user', 'senior'].includes(role)) return null;
     const Q = state.quality[k], L = X.people.filter(x => fInScope(x, P)).map(x => ({ x, q: Q && Q.rows ? Q.rows[x.id] : null })).filter(o => o.q && (o.q.crit || []).length);
-    const acts = (WS_OF[role] || []).includes('quality') ? [fAct('Quality page', () => { findClose(); state.qMonth = k; setWs('quality'); }, true)] : [];
+    const acts = wsOfNow().includes('quality') ? [fAct('Quality page', () => { findClose(); state.qMonth = k; setWs('quality'); }, true)] : [];
     return { icon: 'star', title: `${L.length} with critical errors`, sub: ymLabel(k) + (Q ? '' : ' · no Final EVAL yet'), rows: L.map(o => fRowP(o.x, plural(o.q.crit.length, 'error'), (o.q.crit || []).some(c => ATTITUDE.test(c.type || '')) ? 'bad' : '', o.q.crit.map(c => c.type || 'critical').join(', '))), acts, empty: L.length ? '' : 'Nobody.' };
   }
   if (sp === 'deadline') {
@@ -718,7 +717,7 @@ function findGhost(q, X) {
 // ---------------------------------------------------------------- the box
 const FICON = { help: 'i-help', user: 'i-user', team: 'i-team', chart: 'i-chart', grid: 'i-grid', clock: 'i-clock', pen: 'i-pen', day: 'i-day', check: 'i-check', star: 'i-star', search: 'i-search' };
 const ficon = n => `<svg aria-hidden="true"><use href="#${FICON[n] || 'i-search'}"/></svg>`;
-function findAllowed() { const L = WS_OF[fRole()] || []; return L.length > 0 && $('lock').hidden; }
+function findAllowed() { const L = wsOfNow(); return L.length > 0 && $('lock').hidden; }
 function findOpen(q) {
   if (!findAllowed()) return;
   hidePop();
@@ -825,4 +824,4 @@ document.addEventListener('keydown', e => {
   }
 }, true);
 /** the search button shows for everyone who has a page (not on the lock screen or while waiting for a role) */
-function syncFindBtn() { const b = $('findBtn'); if (b) b.hidden = !(WS_OF[fRole()] || []).length; }
+function syncFindBtn() { const b = $('findBtn'); if (b) b.hidden = !wsOfNow().length; }

@@ -8,12 +8,18 @@ Object.assign(state, { ws: 'build', finals: {}, finVer: 0, frozen: {}, people: [
   wfmMetric: 'adh', wfmGroup: 'unit', wfmUnit: '', teamMetric: 'adh', autoAt: 0, autoNote: '', boardAll: {}, wfmTab: 'analytics', spvDone: {}, spvDoneVer: 0, cycleLog: {} });
 const FORM_STATUS = [['planned', 'Arranged'], ['held', 'Held'], ['closed', 'Closed']];
 function roleNow() { const u = Auth.user(); return u ? (u.role || 'user') : 'admin'; }
-function isBuilder() { return ['admin', 'user'].includes(roleNow()); }
+/** the roles the signed-in person works with now: their own, and a colleague's while that colleague is on vacation (cover.js:
+    the WFM manager covers the WFM analysts and the other way round). The audit log and the role tag keep their own role. */
+function rolesNow() { const r = roleNow(), c = coverRoleFor(r); return c && c !== r ? [r, c] : [r]; }
+const hasRole = (...L) => rolesNow().some(x => L.includes(x));
+/** the pages of every role the person works with now, their own role's first */
+function wsOfNow() { const out = []; for (const r of rolesNow()) for (const w of (WS_OF[r] || [])) if (!out.includes(w)) out.push(w); return out; }
+function isBuilder() { return hasRole('admin', 'user'); }
 function isSenior() { return roleNow() === 'senior'; }
-/** incentive amounts are not shown to supervisors and WFM analysts */
-function srHidden() { return ['spv', 'user'].includes(roleNow()); }
+/** incentive amounts are not shown to supervisors and WFM analysts (one who covers the WFM manager sees what the manager sees) */
+function srHidden() { return rolesNow().every(r => ['spv', 'user'].includes(r)); }
 /** the senior manager's cycle: deadline, supervisors' scorecards and the four emails (the admin can stand in) */
-function canCycle() { return ['senior', 'admin'].includes(roleNow()); }
+function canCycle() { return hasRole('senior', 'admin'); }
 function whoNow() { const u = Auth.user(); return u ? (u.name || u.username || u.email || '') : ''; }
 const unitOf = p => `${p.brand || '–'} · ${p.team || '–'}`;
 const unitRank = u => { const [b, t] = u.split(' · '); return (['Virgin', 'Friendi', 'Friendi Pay'].indexOf(b) + 1 || 9) * 100 + (DEP_ORDER.indexOf(t) + 1 || 99); };
@@ -79,6 +85,7 @@ function watchShared(db) {
   live('cyclelog', sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); state.cycleLog = o; });
   live('rules', rulesLoaded);
   live('steps', sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); state.calMarks = o; });
+  live('cover', coverLoaded);
   watchDaily(db); watchInter(db);
   try { db.doc('config/contacts').get().then(s => { if (s.exists) state.contacts = s.data(); }).catch(() => {}); } catch (e) { /* none */ }
   try { db.doc('config/inclist').get().then(s => { if (s.exists) { const d = s.data(); if (d && Array.isArray(d.items)) { state.incList = d; if (state.ws === 'cycle') renderWs(); } } }).catch(() => {}); } catch (e) { /* the usual list */ }
@@ -355,7 +362,7 @@ function roleHeads(r) {
 }
 let hashTaken = false;
 function applyRole() {
-  const r = roleNow(), L = WS_OF[r] || [];
+  const r = roleNow(), L = wsOfNow();
   document.body.dataset.wsrole = r; document.body.classList.toggle('ro', !isBuilder());
   renderWelcome(); roleHeads(r);
   if (state.db) { watchDailyMail(state.db); rbPrefsCarry(); }
@@ -366,6 +373,7 @@ function applyRole() {
   const want = fresh && !hashTaken ? hashWs() : ''; if (fresh) hashTaken = true;   // a link to a page (#/team), on the first sign-in of the visit only: opened when the role has it, else "Not one of your pages" (the next person to sign in starts on their own first page)
   if (want && want !== L[0] && !L.includes(want) && WS_LABEL[want]) { showBlocked(want); return; }
   if (want && L.includes(want)) { setWs(want); return; }
+  if (!fresh && state.ws === 'build' && !L.includes('build') && L.includes('wfm')) { setWs('wfm'); return; }   // a vacation cover ended on a tab of the build: the WFM team page stays
   if (fresh || !L.includes(state.ws)) setWs(L[0]); else setWs(state.ws, true);
 }
 /** the waiting page says who opens the access */
@@ -387,8 +395,8 @@ function showWsView(v) {
   $('buildBar').hidden = true;
 }
 function setWs(ws, quiet) {
-  const L = WS_OF[roleNow()] || []; if (!L.includes(ws)) return;
-  const changed = state.ws !== ws; state.ws = ws; syncWsSeg(); hidePop(); putHash(ws);
+  const L = wsOfNow(); if (!L.includes(ws)) return;
+  const changed = state.ws !== ws; state.ws = ws; if (ws === 'wfm') state.wfmAt = 'wfm'; syncWsSeg(); hidePop(); putHash(ws);
   if (ws !== 'wfm') mountMail(false);
   if (ws === 'build') { for (const w of WS_VIEWS) $('v-' + w).hidden = true; const s = STEPS.includes(state.step) ? state.step : 'import'; state.step = '__'; setStep(s); return; }
   showWsView(ws); renderWs();
@@ -727,7 +735,7 @@ async function exportDailyAdhHist(pid) {
 
 // ---------------------------------------------------------------- events
 $('autoNote').addEventListener('click', e => { if (e.target.closest('[data-autoreplace]')) { autoSig = ''; autoSaveMonth(true); if (!state.autoNote) toast(`${ymLabel(ymKey(state.y, state.m))} in the history now comes from this page, and is saved as you work`); } });
-$('wsSeg').addEventListener('click', e => { const b = e.target.closest('button[data-ws]'); if (b) setWs(b.dataset.ws); });
+$('wsSeg').addEventListener('click', e => { const b = e.target.closest('button[data-ws]'); if (b) goWs(b.dataset.ws); });
 let wsNarrow = innerWidth < 640;   // the charts are drawn for the width: redraw when a phone turns or a window crosses the line
 window.addEventListener('resize', () => { const n = innerWidth < 640; if (n !== wsNarrow) { wsNarrow = n; if (state.ws !== 'build' && state.ws !== 'wait') renderWs(); } });
 for (const id of ['teamBar', 'resultsBar', 'wfmBar', 'cycleBar']) $(id).addEventListener('change', e => {

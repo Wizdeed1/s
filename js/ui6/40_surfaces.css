@@ -24,9 +24,9 @@ h3.sub { font: 600 13px/1.4 var(--text); color: var(--ink-2); margin: 0 0 8px; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--s4); }
 .grid2.top { align-items: start; }
 .grid2.tight { gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-details.card > summary, .sced summary, .chgcard > summary, .wslog summary { cursor: pointer; font: 600 17px/1.3 var(--display); letter-spacing: -0.012em; list-style: none; display: flex; align-items: center; gap: 10px; }
+details.card > summary, .sced summary, .wslog summary { cursor: pointer; font: 600 17px/1.3 var(--display); letter-spacing: -0.012em; list-style: none; display: flex; align-items: center; gap: 10px; }
 details.card > summary::-webkit-details-marker, details > summary::-webkit-details-marker { display: none; }
-details.card > summary::before, .sced summary::before, .chgcard > summary::before, .wslog summary::before, .caldays summary::before, .pfall > summary::before, .objdone summary::before, .meobj summary::before,
+details.card > summary::before, .sced summary::before, .wslog summary::before, .caldays summary::before, .pfall > summary::before, .objdone summary::before, .meobj summary::before,
 .rulelog summary::before, .cmpmore summary::before, .inclist summary::before, .rbhelp summary::before, .rb .acc summary::before, .rb .wfm-pass summary::before, .rbbrands details summary::before, .htable summary::before, .wfdd summary::before, .note details summary::before {
   content: ""; width: 7px; height: 7px; flex: none; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); margin-right: 2px; transition: transform var(--t-base) var(--ease-out); }
 details[open] > summary::before { transform: rotate(45deg) translate(-2px, -1px) !important; }

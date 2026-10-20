@@ -278,7 +278,7 @@ details.calcard > .cap { margin: var(--s3) 0; }
 .callist .cacts { display: flex; gap: 6px; justify-content: flex-end; min-width: 0; }
 .caldays { margin-top: 14px; } .caldays summary { cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; list-style: none; }
 .caldaygrid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin-top: 10px; } .caldaygrid label span { font-weight: 500; }
-/* the supervisor scorecard editor, the incentive list, the rules, the changes by hand, the parallel run */
+/* the supervisor scorecard editor, the incentive list, the rules, the parallel run */
 .scopeag .sgrp > small, .rbox > span, .rbox.edit > label { font-size: 12px; font-weight: 600; color: var(--muted); }
 .inclist summary { cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; list-style: none; }
 .inclist .incl { margin: 8px 0 10px; padding: 0; max-height: 420px; overflow: auto; }
@@ -294,8 +294,6 @@ details.calcard > .cap { margin: var(--s3) 0; }
 fieldset.rulesfs, fieldset.formlock { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 14px; }
 fieldset.rulesfs[disabled] input, fieldset.rulesfs[disabled] select, fieldset.formlock[disabled] input, fieldset.formlock[disabled] textarea, fieldset.formlock[disabled] select { opacity: .75; }
 #formBody { display: grid; gap: 12px; }
-.chgbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin: 8px 0 12px; }
-.chglist { max-height: 460px; overflow: auto; } .chglist li { font-size: 12.5px; } .chglist .chip { font-size: 11px; min-height: 22px; padding: 0 8px; }
 .cmptiles { margin-bottom: 12px; } .cmpmore { margin-top: 10px; }
 
 /* ------------------------------------------------------------------------------------------------------------- Quality */
@@ -478,3 +476,30 @@ p.prange { padding-top: 12px; }
 .monthbox select.cell { min-width: 150px; min-height: var(--ctl); padding-inline: 4px 22px; font: 600 14px/1 var(--text); color: var(--ink); border: 0; background-color: transparent; cursor: pointer; }
 [dir="rtl"] .monthbox .mbstep svg, .monthbox:dir(rtl) .mbstep svg { transform: scaleX(-1); }
 @media (max-width: 767.98px) { #meBar .monthbox { width: 100%; } #meBar .monthbox .mbsel { flex: 1; } #meBar .monthbox select.cell { flex: 1; min-width: 0; } }
+
+/* ------------------------------------------------------------------------------------------------------------- the WFM team page
+   One header for the month's build and the WFM pages: the title, the tab's actions, and the tabs in three groups (this month,
+   every day, insight), each a segmented control with what it needs (4/4 exports, checks to look at, built, emails to send). */
+.wfmhead { display: grid; gap: 14px; margin-bottom: var(--s6); }
+.wfmhead > .viewhead { align-items: flex-end; }
+.wfmnav { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 20px; min-width: 0; }
+.wfmgrp { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+.wfmgrp > small { font: 600 12px/1.2 var(--text); color: var(--muted); padding-inline-start: 6px; }
+.wfmnav .wftabs { max-width: 100%; }
+.wfmnav .wftabs button { min-height: 32px; padding: 0 13px; gap: 6px; }
+.wfmnav .wftabs .cnt:not(.warn) { margin-left: 2px; color: var(--muted); }
+.wfmnav .wftabs .cnt.good { color: var(--good); }
+.wfmnav .wftabs .tick { color: var(--good-mark); flex: none; }
+.wfmhead .rohint { margin: 0; }
+.wfmhead .bbend { flex: none; display: flex; align-items: center; gap: 8px; }
+/* the build's step pages are sections of the WFM team page: their titles are a level down */
+.view > .viewhead h2.vt { font: 700 22px/28px var(--display); letter-spacing: -0.018em; color: var(--ink); margin: 0; }
+#v-email.inws > .viewhead { margin-top: 2px; }
+/* a colleague on vacation: who covers, and the switch to say so */
+.covernote { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 7px 12px; border-radius: 10px; background: var(--sunk); font-size: 13px; color: var(--ink-2); justify-self: start; max-width: 100%; }
+.covernote.on { justify-self: stretch; padding: 10px 14px; border-radius: 12px; }
+.covernote .cvl { font-weight: 600; color: var(--muted); }
+.covernote.on { background: var(--info-bg); color: var(--ink); }
+.covernote .cvlist { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.covernote label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.covernote small { color: var(--muted); }

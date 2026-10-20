@@ -1,10 +1,8 @@
 // ================================================================ INCENTIVE RULES: sets of rules in force from a month, changed only by the senior manager or an admin
 // The KPI scorecards (KPIs, weights, bands), the incentive bases and the eligibility barriers make one set of rules. A new set
 // starts from a month; every month is scored with the set in force for it, so next month's changes never touch a month that
-// is closed. Each change is logged with who and when. Everyone else sees the rules read-only. The "Changes by hand" report
-// lists, for a month, everything a person changed by hand: eligibility and results, attendance days, quality numbers,
-// objections, the rules, one-to-ones changed after the agent signed, and the supervisors' page.
-Object.assign(state, { rules: {}, rulesVer: 0, ruleEdit: null, chgArea: '' });
+// is closed. Each change is logged with who and when. Everyone else sees the rules read-only.
+Object.assign(state, { rules: {}, rulesVer: 0, ruleEdit: null });
 const ELIG0 = { minFinal: 0.8, minDays: 5 };
 const canRules = () => ['senior', 'admin'].includes(roleNow());
 /** the sets of rules, oldest first: [{ from: 'YYYY-MM', cards: {base, bases, teams, people}, elig, count, at, by, log }]. cards.people = a
@@ -133,7 +131,7 @@ function eligEditHtml() {
 
 // ---------------------------------------------------------------- how it is counted: the 'count' section of the set being looked at
 // Every setting starts as the tool always counted. Only the senior manager or an admin changes them (canRules); each change is one
-// line in the rules' log (who and when, also in Changes by hand), with Undo, and final months keep their frozen numbers.
+// line in the rules' log (who and when), with Undo, and final months keep their frozen numbers.
 Object.assign(state, { cntOpen: false });
 const CNT_MISSING = { scale: 'left out; the other KPIs count as 100%', rank1: 'counts as ranking 1', none: 'no final % until every KPI has a value' };
 const CNT_EDGE = { in: 'gets that ranking', out: 'gets the ranking below' }, CNT_MONEY = { round: 'rounded', floor: 'rounded down', ceil: 'rounded up' };
@@ -391,41 +389,4 @@ function openHow(pid, k) {
 }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-how]'); if (b) { e.preventDefault(); openHow(b.dataset.how, b.dataset.howk); } });
 
-// ---------------------------------------------------------------- changes by hand: one month, every area
-const CHG_AREAS = [['results', 'Results and eligibility'], ['att', 'Attendance'], ['quality', 'Quality'], ['obj', 'Objections'], ['rules', 'Incentive rules'], ['forms', 'One-to-ones'], ['cycle', 'Supervisors page']];
-function handChanges(k) {
-  const out = [], add = (area, at, by, who, what) => out.push({ area, at: at || '', by: by || '', who: who || '', what: String(what || '') });
-  const F = state.finals[k], H = state.history[k], rowName = rk => { const r = ((F && F.rows) || (H && H.rows) || []).find(x => rowKey(x) === rk); return r ? r.n : rk; };
-  if (F) {
-    for (const [rk, a] of Object.entries(F.adj || {})) {
-      const bits = [a.elig === true ? 'eligible (decided)' : a.elig === false ? 'not eligible (decided)' : '', a.fin != null ? `final % set to ${pct1(a.fin)}` : '', a.earned != null ? `earned set to ${a.earned} SR` : '', a.note ? `note: ${a.note}` : ''].filter(Boolean);
-      add('results', a.at, a.by, rowName(rk), bits.join(' · ') || 'changed');
-    }
-    for (const e of F.log || []) add('results', e.at, e.by, '', e.what);
-  }
-  watchAttEdits(k);
-  const E = attEditsOf(k), mo = MON[+k.slice(5) - 1];
-  if (E) for (const [pid, ed] of E) for (const [d, e] of Object.entries((ed && ed.days) || {})) add('att', e.at, e.by, ed.n || supName(pid), `${d} ${mo}: ${typeof e.v === 'number' ? `late ${e.v} min` : e.v}${e.note ? ` · ${e.note}` : ''}`);
-  const Q = state.quality[k];
-  if (Q) for (const e of Q.log || []) add('quality', e.at, e.by, '', e.what);
-  if (typeof objList === 'function') for (const o of objList({ k })) for (const e of (o.log || []).filter(x => x.role !== 'agent')) add('obj', e.at, e.by, o.name, `${objLabel(o)}: ${e.what}`);
-  const R = rulesFor(k);
-  for (const e of ((R.v ? R.v.log : state.cards.log) || [])) add('rules', e.at, e.by, '', `${R.from ? `Rules from ${ymLabel(R.from)}` : 'First rules'}: ${e.what}`);
-  for (const f of state.forms.filter(x => fkey(x) === k)) if (sigOf(f.id) && sigState(f) === 'changed') add('forms', f.savedAt, f.savedByName, f.agent && f.agent.name, `${FORM_TITLE[f.kind] || 'Form'} changed after the agent signed it`);
-  for (const e of Object.values(state.cycleLog || {})) if (e && e.k === k) add('cycle', e.at, e.by, '', e.what);
-  return out.sort((a, b) => String(b.at).localeCompare(String(a.at)));
-}
-function handChangesHtml(k) {
-  if (!k) return '';
-  const L = handChanges(k), A = state.chgArea, shown = A ? L.filter(x => x.area === A) : L, n = a => L.filter(x => x.area === a).length;
-  return `<details class="card chgcard" data-det="chg"${state.chgOpen ? ' open' : ''}><summary>Changes by hand · ${esc(ymLabel(k))} · ${L.length}</summary>
-    <p class="cap">Everything a person changed by hand for ${esc(ymLabel(k))}, newest first: eligibility and results, attendance days, quality numbers, objections, the incentive rules, one-to-ones changed after the agent signed, and this page.</p>
-    <div class="chgbar"><div class="seg sm wrap" role="group" aria-label="Area"><button data-chg="" aria-pressed="${!A}">All ${L.length}</button>${CHG_AREAS.filter(([a]) => n(a)).map(([a, l]) => `<button data-chg="${a}" aria-pressed="${A === a}">${esc(l)} ${n(a)}</button>`).join('')}</div><button class="btn sm" data-chgx${L.length ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Excel</button></div>
-    ${shown.length ? `<ul class="ilist chglist">${shown.slice(0, 300).map(x => `<li><span class="chip">${esc((CHG_AREAS.find(a => a[0] === x.area) || [, x.area])[1])}</span><span class="nm">${x.who ? `<b dir="auto">${esc(x.who)}</b> · ` : ''}${esc(x.what)}</span><span class="sp"></span><span class="sg">${esc(x.by || '')}${x.at ? ' · ' + esc(fmtWhen(x.at)) : ''}</span></li>`).join('')}</ul>${shown.length > 300 ? `<p class="hint">The newest 300 are shown; the Excel file has all ${shown.length}.</p>` : ''}` : '<p class="subtle">Nothing was changed by hand.</p>'}</details>`;
-}
-async function exportChanges(k) {
-  const L = handChanges(k); if (!L.length) return;
-  await xlBook(`Changes by hand - ${ymLabel(k)}.xlsx`, [{ name: 'Changes by hand', title: `Changes by hand - ${ymLabel(k)}`, sub: stamp(k), cols: [{ h: 'When', t: 'text', w: 18 }, { h: 'Area', t: 'text', w: 20 }, { h: 'Changed by', t: 'text', w: 22 }, { h: 'Person', t: 'text', w: 28 }, { h: 'What', t: 'text', w: 80 }],
-    rows: L.map(x => [x.at ? new Date(x.at).toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '', (CHG_AREAS.find(a => a[0] === x.area) || [, x.area])[1], x.by, x.who, x.what]), freezeCol: 1 }]);
-}
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-rulesopen]'); if (b) openRules(b.dataset.rulesset !== undefined && (b.dataset.rulesset === '' || state.rules[b.dataset.rulesset]) ? b.dataset.rulesset : undefined); });

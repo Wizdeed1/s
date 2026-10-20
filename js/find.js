@@ -97,7 +97,7 @@ const fWfm = r => wsOfNow().includes('wfm');
 const fForms = r => hasRole('spv', 'senior', 'admin', 'user');
 function findIndex() {
   const role = fRole(), u = Auth.user() || {};
-  const sig = [role, u.id || '', state.ver, state.histVer, state.finVer, state.roster.length, state.qualityVer, state.attEditsVer, state.dailyVer, state.interVer,
+  const sig = [rolesNow().join('+'), u.id || '', state.ver, state.histVer, state.finVer, state.roster.length, state.qualityVer, state.attEditsVer, state.dailyVer, state.interVer,
     state.me ? state.me.loaded + Object.keys(state.me.months || {}).length : 0, (state.people || []).length, Object.keys(state.spvDone || {}).length, (state.forms || []).length].join('|');
   if (FIND.idx && FIND.idxSig === sig) return FIND.idx;
   const X = { role, me: role === 'agent', people: [], spvs: [], units: [], months: [], metrics: [], pages: [], phr: new Map(), vocab: [], byName: new Map() };

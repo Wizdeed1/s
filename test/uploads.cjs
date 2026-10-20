@@ -54,6 +54,23 @@ let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? '✓ ' : '�
   const n2 = (await saved()).length;
   ok(n1 === n0 - 1 && n2 === n0, `taking a file out of Build deletes its saved copy (${n0} → ${n1}); Undo puts it back (${n2})`);
   await p.screenshot({ path: path.join(out, 'uploads-after.png') });
+  // another month: the saved files become an older month's (as if they were August's); a new visit does not put an older month
+  // back in Build, and a drop for the new month keeps the older month's files saved; the same month dropped again replaces them
+  await p.evaluate(async () => { const db = await new Promise((res, rej) => { const r = indexedDB.open('mc-uploads', 2); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const all = await new Promise(res => { const q = db.transaction('meta').objectStore('meta').getAll(); q.onsuccess = () => res(q.result); });
+    await new Promise(res => { const t = db.transaction('meta', 'readwrite'); for (const m of all) t.objectStore('meta').put({ ...m, k: '2026-08' }); t.oncomplete = res; }); db.close(); });
+  await boot(); await p.waitForTimeout(1500);
+  ok(await p.evaluate(() => Object.keys(window.__mc.state.slots).length) === 0, 'a month older than the one being closed is not put back in Build by itself');
+  await p.evaluate(() => window.__mc.setStep('import'));
+  const nOld = (await saved()).length;
+  await p.setInputFiles('#picker', files);
+  await p.waitForFunction(n => document.querySelectorAll('#upCard .uplist li').length >= n + 4, nOld, { timeout: 30000 });
+  const months = () => p.evaluate(() => [...document.querySelectorAll('#upCard .upmonth')].map(s => `${s.getAttribute('aria-label')}:${s.querySelectorAll('.uplist li').length}`).join(', '));
+  let mm = await months();
+  ok(/Aug 2026:\d/.test(mm) && /Sep 2026:4/.test(mm) && (await saved()).length === nOld + 4, `dropping the new month keeps the older month's files saved (${mm})`);
+  await p.setInputFiles('#picker', files); await p.waitForTimeout(2500);
+  mm = await months();
+  ok(/Sep 2026:4/.test(mm) && (await saved()).length === nOld + 4, `the same month dropped again replaces its own files only (${mm})`);
   console.log(errs.length ? errs.join('\n') : 'no errors'); if (bad || errs.length) process.exitCode = 1;
   await b.close();
 })();

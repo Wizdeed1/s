@@ -363,7 +363,7 @@ async function addFiles(list, opts = {}) {
   if (later.length) recogFiles(later, 'import');
   const items = [...list].map(f => ({ fid: ++fseq, name: f.name, size: f.size, file: f, t0: Date.now() }));
   if (!items.length) return;
-  const upBefore = upInBuild();   // the saved uploads Build uses before this drop
+  const upBefore = upSnap();   // the saved uploads Build uses before this drop, by slot and attendance sheet
   const snap0 = impSnap(); items.forEach(it => impLogAdd('wait', `Reading ${it.name} (${fmtSize(it.size)})`));
   state.pending.push(...items); renderPending(); renderSteps(); renderImpSide();
   const notes = [];
@@ -585,7 +585,7 @@ function computeModel(ctx) {
     const at = ctx.attendance && ctx.attendance.get(p._id), attC = at && at.filled ? Att.counts(at.days, at.tardyFile) : null;
     const attended = attC ? attC.worked : valid.length;
     // no schedule this month: the schedule export has no day for them and no attendance was filled (left out when the setting is on)
-    const noSched = anySch && (!s || s.days.every(v => v == null)) && !(at && at.days && at.days.some(v => v != null && v !== ''));
+    const noSched = anySch && !(set.incFullAdhTeams || []).includes(normSpace(p.team)) && (!s || s.days.every(v => v == null)) && !(at && at.days && at.days.some(v => v != null && v !== ''));   // a team with no Genesys data (Settings) never
     const shown = (status !== 'Inactive' || attended >= set.inactiveMin) && !(noSched && set.hideNoSched !== false);
     const inDed = shown && set.dedBrands.includes(normSpace(p.brand)) && set.dedTeams.includes(normSpace(p.team));
     const sch = s ? s.days : null, act = t ? t.days : null;
@@ -725,7 +725,7 @@ function renderImportNote() {
 const opts = (vals, cur, titles) => vals.map(v => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}${titles ? ` title="${esc(titles[v] || '')}"` : ''}>${esc(v)}</option>`).join('') + (cur && !vals.includes(cur) ? `<option selected>${esc(cur)}</option>` : '');
 function statusCell(p) {
   const m = state.byId.get(p._id), on = p.status !== 'Inactive', nm = normSpace(p.name) || 'new person';
-  const hid = m && !m.shown ? `<span class="pill warn ico" role="img" title="Hidden: inactive with ${m.attended} attended days (limit ${state.settings.inactiveMin}), so left out of the reports" aria-label="Hidden from the reports"><svg aria-hidden="true"><use href="#i-eyeoff"/></svg></span>` : '';
+  const hid = m && !m.shown ? `<span class="pill warn ico" role="img" title="${m.noSched ? 'Hidden: no day in the Schedule export and no attendance, so left out of the reports (Settings › Leave out people with no schedule)' : `Hidden: inactive with ${m.attended} attended days (limit ${state.settings.inactiveMin}), so left out of the reports`}" aria-label="Hidden from the reports"><svg aria-hidden="true"><use href="#i-eyeoff"/></svg></span>` : '';
   return `<span class="stcell"><button class="sw" role="switch" aria-checked="${on}" data-sw aria-label="Status of ${esc(nm)}"><i></i>${on ? 'Active' : 'Inactive'}</button>${hid}</span>`;
 }
 function badgesCell(p) {
@@ -889,7 +889,7 @@ function renderPreview() {
     </div>
     <div class="grid2 top">
       <div class="card"><h2>Most deduction minutes</h2><p class="cap">Top ${top.length || 10} in ${esc(scope)}. Select a name for the day-by-day view.</p>${topHtml}</div>
-      <div class="card"><h2>Hidden from the reports</h2><p class="cap">Inactive with fewer than ${set.inactiveMin} attended days. They stay in the Roster sheet.</p>
+      <div class="card"><h2>Hidden from the reports</h2><p class="cap">Inactive with fewer than ${set.inactiveMin} attended days (they stay in the Roster sheet), and the people with no schedule this month (left out of every sheet; Settings › Leave out people with no schedule).</p>
         ${hidden.length ? `<ul class="ilist">${hidden.map(m => `<li><button class="linkbtn nm" data-open="${esc(m.p._id)}" data-agent="${esc(m.p._id)}" dir="auto">${esc(m.exp)}</button><span class="sg">${esc(m.p.team || '')} · ${plural(m.attended, 'day')}</span></li>`).join('')}</ul>` : '<p class="subtle">Nobody is hidden.</p>'}</div>
     </div>
     ${perfCardHtml(shown)}
@@ -913,7 +913,8 @@ function renderPerson() {
   let h = profileHtml(p);
   if (!m) { put(h + `<div class="banner info">${state.ctx ? (normSpace(p.name) ? 'Not found in this month\'s exports. Check the Genesys name above.' : 'Type a name first, so this person can be matched.') : 'Drop the exports on Import to see this month\'s numbers.'}</div>` + (normSpace(p.name) ? agentHistoryHtml(p) + formsListHtml(p._id) : '')); return; }
   h += `<div class="pexp">${badgesCell(p)}<span class="hint">Found in these exports</span></div>`;
-  if (!m.shown) h += `<div class="banner">Left out of the reports: Inactive with ${plural(m.attended, 'attended day')} (limit ${set.inactiveMin}). Attendance typed in Excel can bring them back.</div>`;
+  if (!m.shown) h += m.noSched ? `<div class="banner">Left out of the reports: no day in the Schedule export and no attendance this month. If they are in the Schedule export under another spelling, link the name; to keep everyone, turn off Settings › Leave out people with no schedule.</div>`
+    : `<div class="banner">Left out of the reports: Inactive with ${plural(m.attended, 'attended day')} (limit ${set.inactiveMin}). Attendance typed in Excel can bring them back.</div>`;
   h += `<div class="minis"><div><b>${pct(m.avg)}</b><span>Adherence Avr.</span></div><div><b>${m.adh ? m.days : '–'}</b><span>Days counted</span></div><div><b>${mss(m.aht)}</b><span>AHT (m:ss)</span></div><div><b>${m.inDed ? m.ded : '–'}</b><span>${m.inDed ? 'Deduction (min)' : 'Not in deduction scope'}</span></div></div>`;
   h += kpiCardHtml(p._id) + perfSectionHtml(m) + wfSectionHtml(m) + agentHistoryHtml(p) + formsListHtml(p._id);
   const wd = d => Core.weekday(Y, Mo, d);
@@ -966,7 +967,7 @@ function renderExport() {
   $('build').disabled = !ready || state.building;
   $('buildNote').textContent = ready ? 'The file is saved to your computer after you confirm.' : buildBlocker() + '.';
   $('sheets').innerHTML = sheetsHtml(!!state.ctx);
-  renderIncExport();
+  renderIncExport(); renderRepCard();
   $('sheets').closest('.card').hidden = !!freshBuild();
   const sc = $('success');
   sc.classList.remove('success', 'building', 'failed', 'sweep');
@@ -979,16 +980,17 @@ function renderExport() {
   } else if (state.built) {
     const b = state.built, stale = b.ver !== state.ver;
     sc.hidden = false; sc.classList.toggle('success', !stale); if (state.builtNew && !stale) { sc.classList.add('sweep'); state.builtNew = false; }
-    sc.innerHTML = `<div class="bsrow"><div class="bstate">${stale ? '<h2><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>Changed since build</h2>' : '<h2><svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Workbook saved</h2>'}<p class="hint">${stale ? `${esc(b.filename)} was saved at ${esc(b.at)}, before your latest changes. Build again to include them.` : `${b.down === false ? `${esc(b.filename)} was not downloaded; it is` : `Saved ${esc(b.filename)} at ${esc(b.at)}${b.kept === 'ok' ? ', and a copy is' : ''}`}${b.kept === 'ok' ? ` in <b>${esc(reportsWhere())}</b>` : ''}. Nothing was sent or uploaded.`}</p></div><div class="bsact"><button class="btn ${stale ? 'primary' : ''}" id="buildAgain">Build again</button><small>Makes a new file with the page as it is now.</small></div></div>
-      ${stale ? '' : `<div class="sheets" style="margin-top:12px">${b.sheets}</div><p class="hint" style="margin-top:10px">Next: open it in Excel and paste the attendance into the Attendance sheet. The steps are below.</p>`}`;
+    sc.innerHTML = `<div class="bsrow"><div class="bstate">${stale ? '<h2><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>Changed since build</h2>' : '<h2><svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Workbook saved</h2>'}<p class="hint">${stale ? `${esc(b.filename)} was saved at ${esc(b.at)}, before your latest changes. Build again to include them.` : `${b.down === false ? `${esc(b.filename)} was not downloaded.` : `Saved ${esc(b.filename)} at ${esc(b.at)}.`}${b.locked === 'ok' ? ' Kept in <b>Saved workbooks</b> below.' : ''}${b.kept === 'ok' ? ` A plain copy is in <b>${esc(reportsWhere())}</b>.` : ''} Nothing was sent or uploaded.`}</p></div><div class="bsact"><button class="btn ${stale ? 'primary' : ''}" id="buildAgain">Build again</button><small>Makes a new file with the page as it is now.</small></div></div>
+      ${stale ? '' : `<div class="sheets" style="margin-top:12px">${b.sheets}</div><p class="hint" style="margin-top:10px">Next: open it in Excel and paste the attendance into the Attendance sheet. The steps are below.${(() => { const n = state.settings.hideNoSched !== false ? (state.model || []).filter(m => m.noSched).length : 0; return n ? ` ${plural(n, 'person', 'people')} with no schedule this month ${n === 1 ? 'has' : 'have'} no row in it (Review › Checks names them; Settings › Leave out people with no schedule).` : ''; })()}</p>`}`;
   } else sc.hidden = true;
 }
 
 // ---------------------------------------------------------------- build + save
-/** the built files can also be kept in the data folder, MC Data › MC Reports: plain Excel files, so anyone who can open the
-    folder opens them without the tool (the rest of the folder stays locked). On unless turned off in the build dialog. */
+/** every build is kept locked with the shared data (Export › Saved workbooks, uploads.js). A plain copy can also go to the data
+    folder, MC Data › MC Reports, to open in Excel without the tool: off unless chosen in the build dialog, because anyone who can
+    open the shared folder (agents too) could open it, while the rest of the folder stays locked. */
 const REPORTS_DIR = 'MC Reports';   // a space: never the name of one of the tool's own folders
-const keepReports = () => !!(state.db && state.db.folder && folderNow) && lsGet('mc-keep-reports') !== '0';
+const keepReports = () => !!(state.db && state.db.folder && folderNow) && lsGet('mc-keep-reports') === '1';
 async function saveToReports(name, bytes) {
   if (!keepReports()) return '';
   try {
@@ -1010,10 +1012,11 @@ async function build() {
     const bytes = await Writer2.build(ctx);
     const filename = fileNameOut();
     const c = await saveRaw(filename, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    const kept = await saveToReports(filename, bytes);   // and a copy in MC Data › MC Reports
-    if (c === 'ok' || kept === 'ok') {
-      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), sheets: sheetsHtml(true), kept, down: c === 'ok' }; state.builtNew = true;
-      toast(`${c === 'ok' ? `Saved ${filename}` : `${filename} was not downloaded`}${kept === 'ok' ? `${c === 'ok' ? ', and a copy' : '; it is'} in ${reportsWhere()}` : kept ? `. The copy in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})` : ''}. Nothing was sent or uploaded.`);
+    const locked = await repKeep(filename, bytes, 'monthly');   // kept, locked, with the shared data (Export › Saved workbooks)
+    const kept = await saveToReports(filename, bytes);   // and, when chosen, a plain copy in MC Data › MC Reports
+    if (c === 'ok' || kept === 'ok' || locked === 'ok') {
+      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), sheets: sheetsHtml(true), kept, locked, down: c === 'ok' }; state.builtNew = true;
+      toast(`${c === 'ok' ? `Saved ${filename}` : `${filename} was not downloaded`}${locked === 'ok' ? '; kept in Saved workbooks' : ''}${kept === 'ok' ? `, and a plain copy in ${reportsWhere()}` : kept ? `. The copy in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})` : ''}. Nothing was sent or uploaded.`);
     } else { state.buildErr = saveMsg(c, filename) + (kept && kept !== 'ok' ? ` The copy in ${REPORTS_DIR} failed too (${kept.replace(/^error: /, '')}).` : ''); toast(state.buildErr); }
   } catch (e) { state.buildErr = 'Could not build the file: ' + (e && e.message ? e.message : e); toast(state.buildErr); }
   finally {
@@ -2152,9 +2155,9 @@ async function buildInc() {
   state.incBuilding = true; renderExport();
   try {
     const bytes = await incBytes(); const fn = WriterInc.fileName(state.y, state.m); const ok = await save(fn, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    const kept = await saveToReports(fn, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
-    if (kept === 'ok') toast(`${fn}: a copy is in ${reportsWhere()}`); else if (kept) toast(`The copy of ${fn} in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})`);
-    if (ok || kept === 'ok') state.incBuilt = { ver: state.ver, fn, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), kept };
+    const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), locked = await repKeep(fn, u8, 'incentive'), kept = await saveToReports(fn, u8);
+    if (kept === 'ok') toast(`${fn}: kept in Saved workbooks, and a plain copy in ${reportsWhere()}`); else if (kept) toast(`The copy of ${fn} in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})`);
+    if (ok || kept === 'ok' || locked === 'ok') state.incBuilt = { ver: state.ver, fn, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), kept, locked };
   }
   catch (e) { toast('Could not build the incentive file: ' + (e && e.message ? e.message : e)); }
   finally { state.incBuilding = false; renderExport(); }
@@ -2353,7 +2356,7 @@ const MAIL_DEFAULTS = {
   intro: 'Please review the data below and notify me if there are any changes.',
   introFinal: 'Please find below the final data after the review.',
   sign: 'Best Regards,',
-  absScope: 'brands', zeros: false, attach: true,
+  absScope: 'brands', zeros: false, attach: true, classic: false,   // classic: the plain email of before instead of the card look
 };
 state.mail = clone(MAIL_DEFAULTS);
 state.incMail = clone(INC_DEFAULTS);

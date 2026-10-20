@@ -94,7 +94,7 @@ function watchShared(db) {
   loadPeople();
 }
 let peopleTimer = 0;
-function loadPeople() { clearTimeout(peopleTimer); peopleTimer = setTimeout(async () => { state.people = await Auth.people(); watchSigs(); watchReplies(); watchObjs(); if (state.ws !== 'build') renderWs(); else renderToday(); }, 150); }
+function loadPeople() { clearTimeout(peopleTimer); peopleTimer = setTimeout(async () => { const was = rolesNow().join(); state.people = await Auth.people(); watchSigs(); watchReplies(); watchObjs(); if (rolesNow().join() !== was) { applyRole(); return; } if (state.ws !== 'build') renderWs(); else renderToday(); }, 150); }   // a cover ticked for an account that changed
 /** the supervisors: roster people who are someone's Supervisor (the roster's Supervisor column) */
 const spvList = () => supervisors().map(s => ({ pid: s.pid, name: s.name, size: s.size }));
 /** the agent's supervisor, shown under their name */
@@ -697,7 +697,10 @@ function monthHasAtt(k) {
   nsAttMemo.set(k, { sig, on }); return on;
 }
 const hideNoSched = () => state.settings.hideNoSched !== false;
-function isNoSchedRow(r, k) { if (!r || r.adh != null || !(r.d || r.dx)) return false; const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5)); return attTotals(daysOfRow(r, ND), k).sched === 0 && monthHasAtt(k); }
+function isNoSchedRow(r, k) {   // every day blank: a month of leave, even a leave the incentive does not count, is a schedule
+  if (!r || r.adh != null || !(r.d || r.dx) || (state.settings.incFullAdhTeams || []).includes(normSpace(r.team))) return false;
+  const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5)); return daysOfRow(r, ND).every(v => v == null) && monthHasAtt(k);
+}
 const noSchedRow = (r, k) => hideNoSched() && isNoSchedRow(r, k);
 /** the people an export lists for a month: those with a row, and with a schedule (when the setting is on) */
 const exportPeople = (P, map, k) => (hideNoSched() ? P.filter(p => { const r = map.get(p._id); return r && !noSchedRow(r, k); }) : P);

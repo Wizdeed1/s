@@ -6,11 +6,13 @@
 Object.assign(state, { cover: { away: {}, log: [] } });
 const COVER_OF = { wfm: 'user', user: 'wfm' };   // whose work each role takes on
 const meId = () => (Auth.user() || {}).id || '';
+/** a tick still counts only while its account is there, turned on, with the role it was ticked for */
+const coverLive = (id, x) => { const a = (state.people || []).find(p => p.id === id); return !!(a && x && !a.disabled && a.role === x.role); };
 /** the role a person also works with now: a colleague's, while that colleague is on vacation */
 function coverRoleFor(r) {
   const other = COVER_OF[r]; if (!other) return '';
   const A = (state.cover && state.cover.away) || {}, me = meId();
-  return Object.entries(A).some(([id, x]) => id !== me && x && x.role === other) ? other : '';
+  return Object.entries(A).some(([id, x]) => id !== me && x && x.role === other && coverLive(id, x)) ? other : '';
 }
 /** the colleagues a person can mark as away: the accounts with the other WFM role (the admin: both) */
 function coverPeople() {
@@ -21,7 +23,9 @@ const COVER_GETS = { user: 'Import, Review, Export and Report builder, with the 
 function renderCoverNote() {
   const el = $('coverNote'); if (!el) return;
   const A = state.cover.away || {}, mine = A[meId()], L = coverPeople(), r = roleNow(), cov = coverRoleFor(r);
-  if (!L.length && !mine) { el.hidden = true; el.innerHTML = ''; return; }
+  // a tick left by an account that was removed, turned off or given another role: anyone on this page can clear it
+  const stale = ['wfm', 'user', 'admin'].includes(r) ? Object.entries(A).filter(([id, x]) => id !== meId() && !coverLive(id, x) && !L.some(a => a.id === id)) : [];
+  if (!L.length && !mine && !stale.length) { el.hidden = true; el.innerHTML = ''; return; }
   const nm = a => a.name || a.username || 'Someone', since = x => x ? ` since ${fmtWhen(x.at)}${x.byName && x.by !== meId() ? `, ticked by ${x.byName}` : ''}` : '';
   const away = L.filter(a => A[a.id]);
   const lead = mine ? `You are marked as on vacation${since(mine)}. Your colleague has your tabs until you are back.`
@@ -30,7 +34,7 @@ function renderCoverNote() {
   const on = !!(cov || mine); el.hidden = false; el.classList.toggle('on', on);
   el.title = on ? '' : 'Tick a colleague who is on vacation: you then have their work too, with their permissions, until you untick it. Everyone sees the tick.';
   el.innerHTML = `<svg width="15" height="15" aria-hidden="true"><use href="#i-day"/></svg><span class="${on ? '' : 'cvl'}">${esc(lead)}</span>
-    <span class="cvlist">${mine ? '<button class="btn sm" data-coverback>I am back</button>' : ''}${L.map(a => `<label><input type="checkbox" data-cover="${esc(a.id)}"${A[a.id] ? ' checked' : ''}> ${esc(nm(a))} is on vacation <small>${esc(ROLE_NAME[a.role] || '')}</small></label>`).join('')}</span>`;
+    <span class="cvlist">${mine ? '<button class="btn sm" data-coverback>I am back</button>' : ''}${L.map(a => `<label><input type="checkbox" data-cover="${esc(a.id)}"${A[a.id] ? ' checked' : ''}> ${esc(nm(a))} is on vacation <small>${esc(ROLE_NAME[a.role] || '')}</small></label>`).join('')}${stale.map(([id, x]) => `<label><input type="checkbox" data-cover="${esc(id)}" checked> ${esc((x && x.name) || 'Someone')} <small>no longer ${esc(ROLE_NAME[x && x.role] || 'in this role')}: untick to clear</small></label>`).join('')}</span>`;
 }
 /** someone away, or back: shared at once, and logged */
 function setCover(id, on) {

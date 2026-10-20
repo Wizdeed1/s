@@ -72,6 +72,12 @@ const PEOPLE = [{ id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user
   ok(await p.isVisible('#v-import'), 'the manager can import the month while covering');
   await p.uncheck('#coverNote [data-cover="u1"]'); await p.waitForTimeout(300); n = await nav(p);
   ok(n.ws === 'wfm' && n.tabs === 'emails,daily,analytics,agents,inter', `untick on Import: back to the manager's own WFM team page (${n.ws})`);
+  // a tick left for an account that is gone gives nobody anything, and can be cleared
+  await p.evaluate(() => { const S = window.__mc.state; S.cover = { away: { ux: { role: 'user', name: 'Gone P.', at: '2026-10-01T00:00:00Z' } }, log: [] }; window.__mc.renderWs(); });
+  await p.waitForTimeout(300); n = await nav(p);
+  ok(n.tabs === 'emails,daily,analytics,agents,inter' && /no longer/.test(await p.textContent('#coverNote')), 'a tick for an account that is gone gives no tabs, and shows to be cleared');
+  await p.click('#coverNote [data-cover="ux"]'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => !window.__mc.state.cover.away.ux), 'unticked: cleared');
   await ctx.close();
 
   // the senior manager: no Changes by hand on the Supervisors page

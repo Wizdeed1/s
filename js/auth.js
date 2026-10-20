@@ -673,17 +673,18 @@ const Auth = (() => {
         a.disabled ? '<span class="pill bad">Turned off</span>' : '', a.mustChange ? '<span class="pill warn">Must choose a new password</span>' : '', a.username ? '' : '<span class="pill warn">No username</span>'].join('');
       const acts = editing
         ? `<form class="unform accform" data-unform><label><span>Name</span><input name="name" value="${esc(a.name)}" maxlength="80" autocomplete="off" dir="auto"></label>${me ? '' : `<label><span>Username</span><input name="username" value="${esc(a.username || '')}" maxlength="32" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="username"></label>`}<label><span>Email</span><input name="email" type="email" value="${esc(a.email || '')}" maxlength="120" spellcheck="false" autocomplete="off" placeholder="optional"></label><button class="btn sm primary">Save</button><button type="button" class="btn sm" data-a="uncancel">Cancel</button><span class="unerr" role="alert"></span></form>`
+        : a.builtIn ? `<span class="hint">Built into this team copy, so it cannot be changed here.${me ? ' Your password is in the account menu.' : ''}</span>`
         : me ? `<button class="btn sm" data-a="uname">Edit name or email</button><span class="hint">Your username and password are in the account menu.</span>`
-        : locked ? `<span class="hint">Built into this team copy, so it cannot be changed here.</span>`
         : `<label class="rolepick"><span class="sr">Role of ${esc(a.name)}</span><select data-role aria-label="Role of ${esc(a.name)}">${ROLES.map(r => `<option value="${r}"${r === a.role ? ' selected' : ''}>${esc(ROLE_NAME[r])}</option>`).join('')}</select></label><button class="btn sm${linkEdit === a.id ? ' primary' : ''}" data-a="linkopen">${a.pid ? 'Person' : 'Link to person'}</button>${a.role === 'spv' && a.pid ? `<button class="btn sm${agentsEdit === a.id ? ' primary' : ''}" data-a="agentsopen" title="The agents this supervisor leads">Agents · ${teamOf(a.pid).length}</button>` : ''}${needsKey && a.pub ? '<button class="btn sm primary" data-a="regrant">Open access again</button>' : ''}<button class="btn sm" data-a="uname">Edit</button><button class="btn sm" data-a="reset">Reset password</button><button class="btn sm" data-a="${a.disabled ? 'on' : 'off'}">${a.disabled ? 'Turn on' : 'Turn off'}</button>
            <button class="btn sm ghost danger-text" data-a="remove">Remove</button>`;
       return `<div class="accrow" data-id="${esc(a.id)}"><div class="who"><b dir="auto">${esc(a.name)}</b><span>${a.username ? `Username: <b class="uname">${esc(a.username)}</b>` : ''}${a.email ? ` · ${esc(a.email)}` : ''}</span><span class="hint">Last sign-in: ${esc(when(a.lastLogin))}</span></div><div class="pills">${pills}</div><div class="acts">${acts}</div>${!locked && linkEdit === a.id ? linkPickerHtml(a) : ''}${!locked && agentsEdit === a.id && a.role === 'spv' && a.pid ? agentsPickerHtml(a) : ''}</div>`;
     }).join('');
     // what the list cannot show as an account: an access record left without its account, a file that could not be read
-    const D = await dirAll(), ids = new Set(all.map(a => a.id)), orphan = [...D.entries()].filter(([id]) => !ids.has(id));
-    const bad = (db && typeof db.problems === 'function' ? db.problems() : []).filter(x => /^(accounts|dir)\//.test(x.path));
+    const probs = (db && typeof db.problems === 'function' ? db.problems() : []), badIds = new Set(probs.map(x => x.path.split('/')[1]));
+    const D = await dirAll(), ids = new Set(all.map(a => a.id)), orphan = [...D.entries()].filter(([id]) => !ids.has(id) && !badIds.has(id));   // an account that could not be read is not an orphan
+    const bad = probs.filter(x => /^(accounts|dir)\//.test(x.path) && !ids.has(x.path.split('/')[1]));   // one the list still shows is not offered
     $('accOther').hidden = !orphan.length && !bad.length;
-    $('accOther').innerHTML = `<h3>Records with no account</h3><p class="hint">Left in the data by an account that was removed, or a file that could not be read. Removing them changes nobody's access.</p><ul class="acclist accother">${
+    $('accOther').innerHTML = `<h3>Records with no account</h3><p class="hint">An access record left by an account that was removed: removing it changes nobody's access. A file that could not be read is read again before it is removed, and kept if it reads now.</p><ul class="acclist accother">${
       orphan.map(([id, d]) => `<li class="accrow" data-orph="${esc(id)}"><div class="who"><b>Access record ${esc(id)}</b><span>${esc(ROLE_NAME[d && d.role] || 'No role')}${d && d.pid ? ' · ' + esc(personName(d.pid) || 'a person') : ''}${d && d.at ? ' · set ' + esc(when(d.at)) : ''}${d && d.by ? ' by ' + esc(d.by) : ''}</span></div><div class="acts"><button class="btn sm ghost danger-text" data-orphdel="dir/${esc(id)}">Remove</button></div></li>`).join('')}${
       bad.map(x => `<li class="accrow"><div class="who"><b>${esc(x.path)}</b><span>Could not be read (${esc(x.code)})</span></div><div class="acts"><button class="btn sm ghost danger-text" data-orphdel="${esc(x.path)}">Remove</button></div></li>`).join('')}</ul>`;
     $('migrateBox').hidden = !(folder() && hasLocalData());
@@ -764,7 +765,13 @@ const Auth = (() => {
   $('accOther').addEventListener('click', async e => {
     const b = e.target.closest('[data-orphdel]'); if (!b || !isAdmin()) return;
     if (!b.dataset.confirm) { b.dataset.confirm = '1'; b.textContent = 'Click again to remove'; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; b.textContent = 'Remove'; } }, 3000); return; }
-    try { await db.doc(b.dataset.orphdel).delete(); toast(`Removed ${b.dataset.orphdel}`); } catch (er) { toast(`Could not remove it (${(er && er.code) || 'error'})`); }
+    const path = b.dataset.orphdel, id = path.split('/')[1];
+    // read again first: a live account, or a file that reads now, is never removed from here
+    try {
+      if (path.startsWith('dir/')) { const s = await db.doc('accounts/' + id).get(); if (s.exists) { toast('That account is there after all: nothing was removed.'); renderAccounts(); return; } }
+      else { const s = await db.doc(path).get(); if (s.exists) { toast('That file reads now: nothing was removed.'); renderAccounts(); return; } }
+    } catch (er) { /* still unreadable: it can go */ }
+    try { await db.doc(path).delete(); toast(`Removed ${path}`); } catch (er) { toast(`Could not remove it (${(er && er.code) || 'error'})`); }
     renderAccounts();
   });
   $('accList').addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.closest('[data-unform]')) { e.stopPropagation(); unEdit = null; renderAccounts(); } }, true);

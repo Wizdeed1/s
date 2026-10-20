@@ -87,6 +87,7 @@ function chkWhy(n) {
   if (/^gen:/.test(n.id) || n.id === 'gen-unm') return ['A name the roster does not know is left out of every report and the incentive.', 'This person is left out of the workbook.'];
   if (/^unm:/.test(n.id)) return ['Attendance for someone not on the roster cannot be counted.', 'Their attendance is left out.'];
   if (n.id === 'cross') return ['The supervisors\' sheets and Genesys say different things about these days.', 'Nothing was changed; the attendance sheets are used.'];
+  if (n.id === 'nosched') return ['Settings › Leave out people with no schedule is on: someone with no shift and no attendance has nothing to report.', 'They are in no sheet, no export and not in the month saved for the pages; turn the setting off to keep them.'];
   if (n.id === 'notl') return ['Without a status timeline the Actual is 0, so the deduction is 0 every day.', 'Their deduction shows as 0.'];
   if (n.id === 'noid') return ['The emails and the incentive file match people by National ID.', 'They are listed without an ID.'];
   if (/^IDs/.test(g)) return ['The IDs file and the roster disagree.', 'The roster is used.'];
@@ -96,6 +97,9 @@ function chkWhy(n) {
 /** Genesys names not on the roster: one check each, so each one can be linked in place */
 function checkNotes() {
   const N = state.notes.filter(n => n.id !== 'gen-unm'), gen = state.notes.find(n => n.id === 'gen-unm');
+  const ns = state.settings.hideNoSched !== false ? (state.model || []).filter(m => m.noSched) : [];
+  if (ns.length) { const unm = (state.issues || []).filter(x => (x.where || []).includes('sch')).length;
+    N.push({ id: 'nosched', sev: unm ? 'warn' : 'info', group: 'Genesys', title: `${plural(ns.length, 'person', 'people')} with no schedule this month, left out of every sheet`, body: `No day in the Schedule export and no attendance: ${ns.map(m => m.exp).sort((a, b) => a.localeCompare(b)).join(', ')}.${unm ? ` The Schedule export also has ${plural(unm, 'name')} nobody on the roster matches: if one of them is one of these people, link the name and they come back.` : ''}` }); }
   if (gen) for (const x of state.issues) N.push({ id: 'gen:' + x.key, sev: 'warn', group: 'Genesys', title: `Not on the roster: ${x.name}`, body: `In the ${x.where.map(w => WHERE[w]).join(', ')} export${x.where.length > 1 ? 's' : ''}.${x.sugg ? (x.alias ? ` It is the roster name of ${x.sugg.name.replace(/\.$/, '')}, whose system name is another name.` : ` Looks like ${x.sugg.name.replace(/\.$/, '')}.`) : x.several ? ` Several people fit: ${x.several.map(p => p.name).join(', ')}.` : ' No close match on the roster.'}`, issue: x.key });
   return N;
 }
@@ -217,7 +221,8 @@ function askBuild(btn) {
   $('buildDlgBody').innerHTML = `<p>This writes <b>${esc(fileNameOut())}</b> on this computer: nine sheets, formula-driven, for ${plural(shown || rosterRows().length, 'person', 'people')} from ${plural(n, 'export')}${state.attFiles.length ? ` and ${plural(state.attFiles.length, 'attendance sheet')}` : ''}.</p>
     <p class="hint">Nothing is sent or uploaded. ${state.built ? (stale ? 'The earlier file stays as it was; this makes a new one with your latest changes.' : 'The earlier file stays as it was; this makes a new one.') : 'Your browser asks where to save it, or saves it to Downloads.'}</p>
     ${state.issues.length ? `<p class="warnline"><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>${plural(state.issues.length, 'name')} in the exports ${state.issues.length === 1 ? 'is' : 'are'} not on the roster and will be left out.</p>` : ''}
-    ${state.db && state.db.folder ? `<label class="check keeprep"><input type="checkbox" id="buildKeep"${lsGet('mc-keep-reports') !== '0' ? ' checked' : ''}> Also keep a copy in <b>${esc(reportsWhere())}</b></label><p class="hint">That copy is a normal Excel file: anyone who can open the data folder can open it, without the tool. The incentive file goes there too.</p>` : ''}`;
+    <p class="hint">${state.db ? 'A locked copy is kept with the shared data (Export › Saved workbooks), so you can download it again later.' : 'A copy is kept in this browser (Export › Saved workbooks).'}</p>
+    ${state.db && state.db.folder ? `<label class="check keeprep"><input type="checkbox" id="buildKeep"${lsGet('mc-keep-reports') === '1' ? ' checked' : ''}> Also put a plain copy in <b>${esc(reportsWhere())}</b>, to open in Excel from the folder</label><p class="hint warnline"><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>Not locked: anyone who can open the shared folder, agents included, can open it and see every agent's IDs, deductions and absences. The incentive file goes there too.</p>` : ''}`;
   openDlg('dBuild', btn);
 }
 $('buildCancel').addEventListener('click', () => closeDlg());

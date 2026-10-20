@@ -18,7 +18,7 @@ const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');
   await p.screenshot({ path: path.join(out, `build-import-${theme}.png`) });
   console.log('log:', JSON.stringify((await p.evaluate(() => window.__mc.impLog().map(x => x.kind + ': ' + x.text))).slice(0, 8), null, 1));
   await p.click('#toReview'); await p.waitForTimeout(500);
-  const first = await p.$('#checksBody .chkhead'); if (first) { await first.click(); await p.waitForTimeout(250); }
+  const first = (await p.$('#checksBody .chk:has([data-linkp]) .chkhead')) || (await p.$('#checksBody .chkhead')); if (first) { await first.click(); await p.waitForTimeout(250); }   // a check with a Link… button
   await p.screenshot({ path: path.join(out, `build-checks-${theme}.png`) });
   const lp = await p.$('#checksBody [data-linkp]');
   if (lp) { await lp.click(); await p.waitForTimeout(400); await p.screenshot({ path: path.join(out, `build-link-${theme}.png`) }); await p.keyboard.press('Escape'); await p.waitForTimeout(300); }

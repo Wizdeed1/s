@@ -193,8 +193,9 @@ function peopleModel(ctx, R0 = 5) {
   // no schedule this month: the Schedule export has no day for them and no attendance was filled. Left out of every sheet
   // (the Roster sheet too) unless the setting is off; the Overview names them.
   const schKnown = (rawSched || []).length > 0;
+  const noTeams = (set.incFullAdhTeams || []).map(C.normSpace);   // the teams with no Genesys data (Settings) are never left out
   const noSchedOf = p => {
-    if (!schKnown) return false;
+    if (!schKnown || noTeams.includes(C.normSpace(p.team))) return false;
     const sr = iSch.get(C.normName(C.normSpace(C.normSpace(p.sys) ? p.sys : p.name))), row = sr ? rawSched[sr - 2] : null, a = attOf(p);
     return (!row || (Array.isArray(row.days) && row.days.every(v => v == null))) && !(a && a.days && a.days.some(v => v != null && v !== ''));
   };

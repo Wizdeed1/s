@@ -23,6 +23,9 @@ print(json.dumps(out))`, file]).toString());
   await p.waitForFunction(() => Object.keys(window.__mc.state.slots).length >= 4 && !window.__mc.state.pending.length && window.__mc.state.model, null, { timeout: 30000 });
   const m1 = await p.evaluate(() => { const M = window.__mc.state.model; return { all: M.length, shown: M.filter(x => x.shown).length, ns: M.filter(x => x.noSched).length, nsShown: M.filter(x => x.noSched && x.shown).length }; });
   ok(m1.ns > 100 && m1.nsShown === 0 && m1.shown <= m1.all - m1.ns, `the model: ${m1.ns} of ${m1.all} with no schedule, none of them in the reports (${m1.shown} shown)`);
+  const ctm = await p.evaluate(() => { const M = window.__mc.state.model.filter(x => x.p.team === 'CT'); return { all: M.length, noRow: M.filter(x => !x.found.sch).length, ns: M.filter(x => x.noSched).length }; });
+  ok(ctm.noRow > 0 && ctm.ns === 0, `CT (Settings: no Genesys data) is never left out: ${ctm.noRow} of ${ctm.all} with no schedule row, ${ctm.ns} left out`);
+  ok(await p.evaluate(() => { window.__mc.setStep('checks'); return !!document.querySelector('#checksBody [data-chk="nosched"]'); }), 'Review › Checks names the people left out');
   // the workbook
   await p.evaluate(() => window.__mc.setStep('export')); await p.click('#build'); await p.waitForSelector('#buildGo');
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 60000 }), p.click('#buildGo')]);
@@ -39,7 +42,7 @@ print(json.dumps(out))`, file]).toString());
   await p.evaluate(() => {
     const M = window.__mc, S = M.state, F = window.__FIX__; S.history = JSON.parse(JSON.stringify(F.history)); S.finals = {}; S.histVer++;
     const k = Object.keys(S.history).sort().pop(), H = S.history[k], ND = new Date(H.y, H.m, 0).getDate();
-    let n = 0; for (const r of H.rows) { if (!r.d) r.d = 'A'.repeat(ND); if (n < 2 && r.team === 'CC') { r.d = '-'.repeat(ND); delete r.dx; r.adh = null; r._ns = 1; n++; } }
+    let n = 0, v = 0; for (const r of H.rows) { if (!r.d) r.d = 'A'.repeat(ND); if (n < 2 && r.team === 'CC') { r.d = '-'.repeat(ND); delete r.dx; r.adh = null; r._ns = 1; n++; } else if (v < 1 && r.team === 'CC') { r.d = 'V'.repeat(ND); delete r.dx; r.adh = null; v++; } }   // V: a month of a leave the incentive does not count
     S.wsMonth = k; M.setWs('team'); S.teamTab = 'att'; M.renderWs();
   });
   await p.waitForTimeout(300);

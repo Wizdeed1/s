@@ -41,15 +41,26 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   // build: the dialog offers the copy in MC Reports; the copy is a plain Excel file
   await p.evaluate(() => window.__mc.setStep('export')); await p.waitForTimeout(300);
   await p.click('#build'); await p.waitForSelector('#buildKeep', { timeout: 5000 });
-  ok(await p.isChecked('#buildKeep'), 'the build dialog keeps a copy in MC Data › MC Reports (on by default)');
+  ok(!(await p.isChecked('#buildKeep')), 'the plain copy in MC Data › MC Reports is off unless chosen (it would not be locked)');
   await p.screenshot({ path: path.join(out, 'folder-build-dialog.png') });
-  const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 60000 }), p.click('#buildGo')]);
+  let [dl] = await Promise.all([p.waitForEvent('download', { timeout: 60000 }), p.click('#buildGo')]);
+  await p.waitForTimeout(1500);
+  t = await tree();
+  const rm = (t.repmeta || []).filter(n => n.endsWith('.mcd')), rf = (t.repfile || []).filter(n => n.endsWith('.mcd'));
+  const h3 = rf.length ? await head('repfile', rf[0]) : {};
+  ok(rm.length === 1 && rf.length === 1 && h3.head === 'MCD1' && !t['MC Reports'], `${dl.suggestedFilename()} downloaded and kept locked (repmeta ${rm.length}, repfile ${rf.length}); no plain copy`);
+  ok(await p.evaluate(() => document.querySelectorAll('#repCard [data-repdl]').length === 1 && /Saved workbooks/.test(document.getElementById('success').textContent)), 'Export › Saved workbooks lists it');
+  const [again] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#repCard [data-repdl]')]);
+  ok(/^MC Monthly Report - .*\.xlsx$/.test(again.suggestedFilename()), `it downloads again from there (${again.suggestedFilename()})`);
+  // the plain copy, when chosen
+  await p.click('#buildAgain'); await p.waitForSelector('#buildKeep'); await p.check('#buildKeep');
+  [dl] = await Promise.all([p.waitForEvent('download', { timeout: 60000 }), p.click('#buildGo')]);
   await p.waitForTimeout(1500);
   t = await tree();
   const rep = (t['MC Reports'] || []).find(n => /^MC Monthly Report - .*\.xlsx$/.test(n));
   const h2 = rep ? await head('MC Reports', rep) : {};
-  ok(rep && h2.head.startsWith('PK') && h2.size > 5000, `${dl.suggestedFilename()} downloaded, and a copy in MC Reports: ${rep} (${h2.size} bytes, a plain Excel file)`);
-  ok(await p.evaluate(() => /MC Reports/.test(document.getElementById('success').textContent)), 'the result says where the copy is');
+  ok(rep && h2.head.startsWith('PK') && h2.size > 5000 && (t.repmeta || []).filter(n => n.endsWith('.mcd')).length === 1, `chosen: a plain copy in MC Reports (${rep}, ${h2.size} bytes), and still one locked copy of the month`);
+  ok(await p.evaluate(() => /MC Reports/.test(document.getElementById('success').textContent)), 'the result says where the plain copy is');
   await p.screenshot({ path: path.join(out, 'folder-built.png') });
   // a reload: the remembered folder, sign in again, the month back in Build
   await p.goto(URL);

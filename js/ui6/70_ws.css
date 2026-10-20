@@ -191,7 +191,7 @@ button.ad:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; 
 .restab td:first-child { white-space: normal; min-width: 180px; }
 .restab input.adj, .restab input.man, .qtab input.qv, .qtab input.qc, .sctab input.w, .sctab input.b, .sced input.w { width: 76px; min-height: 30px; padding: 0 7px; text-align: right; font-variant-numeric: tabular-nums; border: 1px solid var(--ctl-line); border-radius: 7px; background: var(--sunk); color: var(--ink); }
 .qtab input.qc { width: 200px; text-align: left; }
-.restab input.adj:focus, .restab input.man:focus, .qtab input.qv:focus, .qtab input.qc:focus { border-color: var(--accent); box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 28%, transparent); outline: none; }
+.restab input.adj:focus, .restab input.man:focus, .qtab input.qv:focus, .qtab input.qc:focus { border-color: var(--field-focus); box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--field-focus) 30%, transparent); outline: none; }
 .restab input.adj.changed, select.elig.changed { border-color: var(--warn); background: var(--warn-bg); }
 select.elig { min-height: 28px; padding: 0 22px 0 8px; font-size: 12px; max-width: 170px; border: 1px solid var(--ctl-line); border-radius: 7px; background: var(--sunk) var(--select-chev) no-repeat right 7px center / 8px 12px; -webkit-appearance: none; appearance: none; }
 .qtab tr.bad td { background: var(--bad-bg); }

@@ -2065,7 +2065,7 @@ function incMailModel(stage) {
   const att = state.incWb ? { name: state.incWb.name, size: state.incWb.size } : { name: WriterInc.fileName(y, m), size: null };
   return { kind: 'inc', stage, y, m, d, warns, changes, snap, subject: subjectFor('inc', stage), attach: att };
 }
-function incMailHtml(md, logoSrc, preview) {
+function incMailHtmlClassic(md, logoSrc, preview) {
   const P = (inner, st = '') => `<p class="MsoNormal" style="margin:0in;font-size:11.0pt;${F};${st}">${inner}</p>`, gap = P('&nbsp;');
   const im = state.incMail, label = incLabel(md.y, md.m), lines = t => String(t || '').split(/\r?\n/).map(l => esc(l) || '&nbsp;');
   let b = lines(im.greeting).map(l => P(`<span lang="EN-GB">${l}</span>`)).join('') + gap;
@@ -2461,7 +2461,7 @@ function mailModel(stage = state.mailStage) {
   return { kind: 'ded', stage, y, m, ded: dedRows, dedFull: ded, dedAll: ded.length, abs, warns, changes, snap, attach, deadline: dl[1] ? `${MON[dl[1] - 1]} ${ordinal(dl[2])}` : '', subject: subjectFor('ded', stage) };
 }
 const F = 'font-family:Calibri,sans-serif';
-function mailHtml(md, logoSrc, preview) {
+function mailHtmlClassic(md, logoSrc, preview) {
   const P = (inner, st = '') => `<p class="MsoNormal" style="margin:0in;font-size:11.0pt;${F};${st}">${inner}</p>`;
   const gap = P('&nbsp;');
   const lines = t => String(t || '').split(/\r?\n/).map(l => esc(l) || '&nbsp;');
@@ -2509,6 +2509,88 @@ function mailText(md) {
   }
   out.push('', state.mail.sign);
   return out.join('\r\n');
+}
+// ---------------------------------------------------------------- the monthly emails' card look
+// After the WFM team's notification emails: a white card on a light ground, a navy band with the email's name, a status band
+// (amber while it is for review, green when it is final), tables with a navy heading row and a light footer. Tables and inline
+// styles only, so Outlook shows it as designed. The words are the same as before; "Classic look" in the form keeps the old layout.
+const CARD = { ground: '#F1F5F9', line: '#E2E8F0', navy: '#0F172A', sky: '#38BDF8', ink: '#0F172A', text: '#475569', soft: '#334155', muted: '#64748B', faint: '#94A3B8', foot: '#FAFAFA', zebra: '#F8FAFC' };
+const CF = "font-family:Aptos,'Segoe UI',Calibri,Arial,sans-serif";
+const cardTone = fin => (fin ? { bg: '#F0FDF4', line: '#DCFCE7', bar: '#16A34A', label: '#15803D', value: '#166534', mark: '&#10003;' } : { bg: '#FFFBEB', line: '#FEF3C7', bar: '#D97706', label: '#B45309', value: '#92400E', mark: '!' });
+const cardP = (inner, st = '') => `<p class="MsoNormal" style="margin:0 0 10pt 0;font-size:11.5pt;line-height:150%;color:${CARD.text};${CF};${st}">${inner}</p>`;
+const cardH = (t, note) => `<p class="MsoNormal" style="margin:20pt 0 8pt 0;${CF}"><b><span style="font-size:12.5pt;color:${CARD.ink}">${t}</span></b>${note ? `<span style="font-size:10pt;color:${CARD.muted}">&nbsp;&nbsp;·&nbsp;&nbsp;${note}</span>` : ''}</p>`;
+/** a table: head is a list of headings, rows a list of cells { t, left, b, absent }; left lists the columns read from the left */
+function cardTable(head, rows, left = [1]) {
+  const al = i => (left.includes(i) ? '' : 'text-align:center;');
+  const th = (h, i) => `<td nowrap style="background:${CARD.navy};border:none;padding:6pt 10pt"><p class="MsoNormal" style="margin:0;${al(i)}${CF}"><b><span style="font-size:9.5pt;color:#FFFFFF">${h}</span></b></p></td>`;
+  const td = (c, i, z) => `<td nowrap style="${c.absent ? 'background:#FEE2E2;' : z ? `background:${CARD.zebra};` : 'background:#FFFFFF;'}border:none;border-bottom:solid ${CARD.line} 1.0pt;padding:5pt 10pt"><p class="MsoNormal" style="margin:0;${al(i)}${CF}">${c.b || c.absent ? '<b>' : ''}<span style="font-size:10pt;color:${c.absent ? '#B91C1C' : CARD.ink}">${c.t}</span>${c.b || c.absent ? '</b>' : ''}</p></td>`;
+  return `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:solid ${CARD.line} 1.0pt"><tr>${head.map(th).join('')}</tr>${rows.map((r, j) => `<tr>${r.map((c, i) => td(c, i, j % 2 === 1)).join('')}</tr>`).join('')}</table>`;
+}
+/** the status band: what stage this email is, and the one thing to know (the deadline, or that it is final) */
+function cardBand(fin, label, value) {
+  const t = cardTone(fin);
+  return `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;background:${t.bg};border:solid ${t.line} 1.0pt;border-left:solid ${t.bar} 4.5pt;margin:6pt 0 4pt 0"><tr><td style="border:none;padding:13pt 22pt">`
+    + `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr><td width="36" style="width:27pt;border:none;padding:0"><p class="MsoNormal" align="center" style="margin:0;text-align:center;line-height:27pt;background:${t.bar};${CF}"><b><span style="font-size:13.5pt;color:#FFFFFF">${t.mark}</span></b></p></td>`
+    + `<td style="border:none;padding:0 0 0 12pt"><p class="MsoNormal" style="margin:0;${CF}"><b><span style="font-size:9pt;color:${t.label};text-transform:uppercase;letter-spacing:.6pt">${label}</span></b></p><p class="MsoNormal" style="margin:0;${CF}"><b><span style="font-size:13.5pt;color:${t.value}">${value}</span></b></p></td></tr></table></td></tr></table>`;
+}
+/** the whole email: the navy band, the body, the footer, on the light ground */
+function cardMail({ eyebrow, title, body, foot1, foot2, logo, preview }) {
+  const head = `<tr><td style="background:${CARD.navy};border:none;padding:22pt 42pt"><table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse"><tr><td style="border:none;padding:0">`
+    + `<p class="MsoNormal" style="margin:0;${CF}"><b><span style="font-size:8.5pt;color:${CARD.sky};text-transform:uppercase;letter-spacing:1.15pt">${eyebrow}</span></b></p>`
+    + `<p class="MsoNormal" style="margin:3pt 0 0 0;${CF}"><b><span style="font-size:15pt;color:#FFFFFF;letter-spacing:-.25pt">${title}</span></b></p></td>`
+    + (logo ? `<td align="right" style="border:none;padding:0 0 0 12pt;text-align:right">${logo}</td>` : '') + '</tr></table></td></tr>';
+  const foot = `<tr><td style="border:none;border-top:solid #F1F5F9 1.0pt;background:${CARD.foot};padding:16pt 42pt"><p class="MsoNormal" align="center" style="margin:0 0 3pt 0;text-align:center;${CF}"><b><span style="font-size:9pt;color:${CARD.text}">${foot1}</span></b></p><p class="MsoNormal" align="center" style="margin:0;text-align:center;${CF}"><span style="font-size:8.5pt;color:${CARD.faint}">${foot2}</span></p></td></tr>`;
+  return `<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">${preview ? '<style>body{margin:0;}</style>' : ''}</head><body lang="EN-US" style="word-wrap:break-word;margin:0;background:#FFFFFF"><div class="WordSection1">`
+    + `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;background:${CARD.ground};border-collapse:collapse"><tr><td style="border:none;padding:28pt 10pt"><div align="center">`
+    + `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="800" style="width:600pt;background:#FFFFFF;border:solid ${CARD.line} 1.0pt;border-collapse:collapse">${head}<tr><td style="border:none;padding:28pt 42pt 22pt 42pt">${body}</td></tr>${foot}</table>`
+    + '</div></td></tr></table></div></body></html>';
+}
+const cardLines = t => String(t || '').split(/\r?\n/).map(l => esc(l) || '&nbsp;');
+const cardGreet = t => `<p class="MsoNormal" style="margin:0 0 12pt 0;${CF}"><b><span style="font-size:11.5pt;color:${CARD.ink}">${cardLines(t).join('<br>')}</span></b></p>`;
+const cardSign = t => `<p class="MsoNormal" style="margin:20pt 0 0 0;${CF}"><span style="font-size:10.5pt;color:${CARD.soft}">${cardLines(t).join('<br>')}</span></p>`;
+const cardLogo = src => { const L = state.logo; if (!src || !state.mailLogo || !L) return ''; const h = 30, w = Math.round(h * L.w / L.h); return `<img src="${src}" width="${w}" height="${h}" style="width:${w}px;height:${h}px" alt="">`; };
+/** the deduction email (the classic one stays one tick away) */
+function mailHtml(md, logoSrc, preview) {
+  if (state.mail.classic) return mailHtmlClassic(md, logoSrc, preview);
+  const M = MON[md.m - 1], fin = md.stage === 'final';
+  let b = cardGreet(state.mail.greeting) + cardLines(fin ? state.mail.introFinal : state.mail.intro).map(l => cardP(l)).join('');
+  b += fin ? cardBand(true, 'Final', `${MONTH_LONG[md.m - 1]} ${md.y}`) : cardBand(false, md.deadline ? 'Review deadline' : 'For review', md.deadline ? esc(md.deadline) : `${MONTH_LONG[md.m - 1]} ${md.y}`);
+  if (fin && md.changes && state.mailChanges) {
+    const c = md.changes;
+    b += cardH('Changes after the review');
+    if (!c.ded.length && !c.abs.length) b += cardP('No changes after the review.');
+    if (c.ded.length) b += cardTable(['ID', 'Name', 'Review (min)', 'Final (min)'], c.ded.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.before) }, { t: String(x.after), b: true }]));
+    if (c.abs.length) b += (c.ded.length ? '<p class="MsoNormal" style="margin:0">&nbsp;</p>' : '') + cardTable(['ID', 'Name', 'Absent days (review)', 'Absent days (final)'], c.abs.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.before) }, { t: String(x.after), b: true }]));
+  }
+  b += cardH('Conformance Deduction', md.ded.length ? plural(md.ded.length, 'person', 'people') : '');
+  b += md.ded.length ? cardTable(['ID', 'Name', 'Total Deduction (min)'], md.ded.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.total), b: true }])) : cardP('No deduction minutes this month.');
+  if (md.abs) {
+    b += cardH('Absenteeism', md.abs.rows.length ? plural(md.abs.rows.length, 'person', 'people') : '');
+    b += md.abs.rows.length ? cardTable(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(d => `${d}-${M}`)], md.abs.rows.map(a => [{ t: esc(a.id) }, { t: esc(a.name), left: true }, { t: String(a.days.length), b: true }, ...md.abs.dates.map(d => (a.days.includes(d) ? { t: 'Absent', absent: true } : { t: '&nbsp;' }))])) : cardP('No absences this month.');
+  }
+  b += cardSign(state.mail.sign);
+  return cardMail({ eyebrow: `MC Workforce · ${fin ? 'Final' : 'For review'}`, title: `Monthly Deduction · ${MONTH_LONG[md.m - 1]} ${md.y}`, body: b, foot1: 'Member Care · Workforce Management', foot2: `Conformance deduction and absenteeism · ${M} ${md.y}`, logo: cardLogo(logoSrc), preview });
+}
+/** the incentive email (the classic one stays one tick away) */
+function incMailHtml(md, logoSrc, preview) {
+  if (state.mail.classic) return incMailHtmlClassic(md, logoSrc, preview);
+  const im = state.incMail, label = incLabel(md.y, md.m), fin = md.stage === 'final';
+  let b = cardGreet(im.greeting);
+  if (fin) {
+    b += cardP(`Kindly find attached the final data which will be used to calculate your incentive for <b style="color:${CARD.ink}">${esc(label)}</b>, after the review.`);
+    b += cardBand(true, 'Final data', esc(label));
+    if (md.changes && md.changes.length) { b += cardH('Changes after the review'); b += cardTable(['Name', 'What changed'], md.changes.map(c => [{ t: esc(c.n), left: true }, { t: esc(c.what), left: true }]), [0, 1]); }
+    else if (md.changes) b += cardP('No changes were made after the review.', 'margin-top:12pt');
+  } else {
+    b += cardP(`Kindly find the attached data which will be used to calculate your incentive for <b style="color:${CARD.ink}">${esc(label)}</b>`);
+    b += cardP(`Please review it and If you have any concerns, please <b><u>refer to your direct leader, the deadline is ${esc(incDeadlineText())}.</u></b>`);
+    b += cardBand(false, 'Review deadline', esc(incDeadlineText() || label));
+  }
+  b += cardH('The attached include 3 tabs');
+  b += `<ul style="margin-top:0;margin-bottom:0" type="disc">${['Adherence data .', 'AHT.', 'Attendance data.'].map(t => `<li class="MsoListParagraph" style="margin:0 0 3pt 0;font-size:11pt;color:${CARD.text};${CF}">${t}</li>`).join('')}</ul>`;
+  if (!fin) b += `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;margin-top:14pt"><tr><td style="border:none;border-left:solid #D97706 3.0pt;background:#FFFBEB;padding:9pt 14pt"><p class="MsoNormal" style="margin:0;${CF}"><b><span style="font-size:11pt;color:#92400E">Make sure to send your objection to your direct leader and CC me</span></b></p></td></tr></table>`;
+  b += cardSign(im.sign);
+  return cardMail({ eyebrow: `MC Workforce · ${fin ? 'Final' : 'For review'}`, title: `Incentive Data · ${MONTH_LONG[md.m - 1]} ${md.y}`, body: b, foot1: 'Member Care · Workforce Management', foot2: `Incentive data · ${label}`, logo: cardLogo(logoSrc), preview });
 }
 const addrList = s => String(s || '').split(/[;,\n]+/).map(x => normSpace(x)).filter(Boolean);
 function b64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/.{76}(?=.)/g, '$&\r\n'); }
@@ -2602,7 +2684,7 @@ function renderEmail() {
       .map(([v, l]) => `<option value="${v}"${state.mail.absScope === v ? ' selected' : ''}>${esc(l)}</option>`).join('');
     $('mAbsScope').disabled = !md.abs;
   }
-  $('mZeros').checked = !!state.mail.zeros; $('mAttach').checked = !!cfg.attach; $('mChanges').checked = !!state.mailChanges;
+  $('mZeros').checked = !!state.mail.zeros; $('mAttach').checked = !!cfg.attach; $('mChanges').checked = !!state.mailChanges; $('mClassic').checked = !!state.mail.classic;
   $('mAttachWrap').hidden = !md.attach; $('mAttachLbl').textContent = md.attach ? `Attach ${md.attach.name} to the .eml` : '';
   $('attBtn').hidden = !md.attach; $('attBtn').title = md.attach ? `Save ${md.attach.name}` : '';
   $('mailWarns').innerHTML = md.warns.map(x => `<li>${esc(x)}</li>`).join('');
@@ -2615,7 +2697,21 @@ function renderEmail() {
   const html = cm.html(state.logo ? state.logo.dataUrl : null, true);
   if (html !== lastMailHtml && !state.mailEditOn) { lastMailHtml = html; $('mailFrame').srcdoc = html; }   // while someone edits the preview, it is theirs
 }
-$('mailFrame').addEventListener('load', () => { try { const f = $('mailFrame'), d = f.contentDocument; f.style.height = '420px'; f.style.height = Math.max(420, d.documentElement.scrollHeight + 4) + 'px'; } catch (e) { /* preview only */ } });
+/** the preview: an email wider than the pane (the card look is 800 px, as in Outlook) is scaled down to fit, but never below 62%
+ * so it stays readable; what is still wider (a month of absence dates) scrolls sideways inside the preview */
+function mailFit() {
+  try {
+    const f = $('mailFrame'), d = f.contentDocument, sizer = f.parentElement, wrap = sizer && sizer.parentElement; if (!d || !d.body || !wrap) return;
+    f.style.transform = ''; f.style.width = '100%'; sizer.style.width = ''; sizer.style.height = '';
+    const W = wrap.clientWidth, cw = Math.max(d.documentElement.scrollWidth, d.body.scrollWidth), s = W && cw > W + 2 ? Math.max(0.62, W / cw) : 1;
+    f.style.width = s < 1 ? cw + 'px' : '100%';
+    f.style.height = '420px'; const h = Math.max(420, d.documentElement.scrollHeight + 4); f.style.height = h + 'px';
+    f.style.transform = s < 1 ? `scale(${s.toFixed(4)})` : ''; f.style.transformOrigin = '0 0';
+    sizer.style.width = s < 1 ? Math.ceil(cw * s) + 'px' : ''; sizer.style.height = Math.ceil(h * s) + 'px';
+  } catch (e) { /* preview only */ }
+}
+$('mailFrame').addEventListener('load', mailFit);
+window.addEventListener('resize', () => requestAnimationFrame(mailFit));
 /** the month email, edited by hand in the preview: { html, text } of what is there now, or null when nobody edited it */
 function mailEdited() {
   if (!state.mailEditOn || !state.mailEditDirty) return null;
@@ -2625,7 +2721,7 @@ function mailEditMode(on) {
   let d = null; try { d = $('mailFrame').contentDocument; } catch (e) { d = null; }
   if (on && (!d || !d.body)) { $('mEdit').checked = false; toast('Editing in the preview is not available in this view.'); return; }
   state.mailEditOn = !!on; $('mEditNote').hidden = !on;
-  if (d && d.body) { d.body.contentEditable = on ? 'true' : 'false'; d.body.style.outline = on ? '2px dashed #9aa' : 'none'; if (on) { d.body.addEventListener('input', () => { state.mailEditDirty = true; }); d.body.focus(); } }
+  if (d && d.body) { d.body.contentEditable = on ? 'true' : 'false'; d.body.style.outline = on ? '2px dashed #9aa' : 'none'; if (on) { d.body.addEventListener('input', () => { state.mailEditDirty = true; requestAnimationFrame(mailFit); }); d.body.focus(); } }
   if (!on) { state.mailEditDirty = false; lastMailHtml = ''; renderEmail(); }
 }
 $('mEdit').addEventListener('change', e => mailEditMode(e.target.checked));
@@ -3550,6 +3646,7 @@ $('mAbsScope').addEventListener('change', e => { state.mail.absScope = e.target.
 $('mZeros').addEventListener('change', e => { state.mail.zeros = e.target.checked; renderEmail(); persistMail(); });
 $('mAttach').addEventListener('change', e => { mailCfg().attach = e.target.checked; renderEmail(); persistMail(); });
 $('mChanges').addEventListener('change', e => { state.mailChanges = e.target.checked; renderEmail(); });
+$('mClassic').addEventListener('change', e => { state.mail.classic = e.target.checked; renderEmail(); persistMail(); });
 $('mReset').addEventListener('click', () => {
   if (state.mailKind === 'inc') { for (const k of ['greeting', 'sign']) state.incMail[k] = INC_DEFAULTS[k]; }
   else for (const k of ['greeting', 'intro', 'introFinal', 'sign']) state.mail[k] = MAIL_DEFAULTS[k];

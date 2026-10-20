@@ -12,7 +12,7 @@ body:has(#lock:not([hidden])) .sidebar, body:has(#lock:not([hidden])) .tabbar, b
 .lockhead .hint { font-size: 13px; }
 #lockForm .lockin, #lockForm .pwfield input { width: 100%; height: var(--ctl-lg); min-height: var(--ctl-lg); padding: 0 12px; border: 1px solid var(--ctl-line); border-radius: 10px; background: var(--sunk); color: var(--ink); font-size: 15px; transition: border-color var(--t-hover) ease, box-shadow var(--t-hover) ease; }
 #lockForm select.lockin { padding-right: 30px; }
-#lockForm .lockin:focus, #lockForm .pwfield input:focus { border-color: var(--accent); box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 30%, transparent); outline: none; }
+#lockForm .lockin:focus, #lockForm .pwfield input:focus { border-color: var(--field-focus); box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--field-focus) 30%, transparent); outline: none; }
 .pwfield { position: relative; }
 #lockForm .pwfield input { padding-inline: 12px 76px; letter-spacing: .02em; }
 #lockForm .pwfield button { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); }

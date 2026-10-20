@@ -42,11 +42,12 @@
 .field select, .toolbar select, .wsfield select, select.cell, .pf select, .rb .fld select, .rb .wslot select, .mailform select, .linkbox select, #lockForm select.lockin, .drawer select {
   -webkit-appearance: none; appearance: none; background-image: var(--select-chev); background-repeat: no-repeat; background-position: right 10px center; background-size: 10px 14px; padding-right: 30px; }
 select { cursor: pointer; }
+select option, select optgroup { background-color: var(--overlay); color: var(--ink); }   /* the open list: solid, readable in light and dark */
 input::placeholder, textarea::placeholder { color: var(--faint); opacity: 1; }
 .field input:focus, .field select:focus, .field textarea:focus, .drawer textarea:focus, .drawer input:focus, .mailform textarea:focus, .mailform input:focus, .mailform select:focus,
 .toolbar input[type=search]:focus, .toolbar select:focus, .wsfield select:focus, select.cell:focus, input.cell:focus, textarea.cell:focus, .pf input:focus, .pf select:focus,
 .rb .fld input:focus, .rb .fld select:focus, .rb .wslot select:focus, .rbdate input:focus, .rbta:focus, .rb textarea:focus, .scopeq:focus, .basegrid input:focus, .linkbox select:focus {
-  border-color: var(--accent); box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 28%, transparent); outline: none; }
+  border-color: var(--field-focus); box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--field-focus) 30%, transparent); outline: none; }
 input:disabled, select:disabled, textarea:disabled { opacity: .55; cursor: not-allowed; }
 input[type=checkbox], input[type=radio] { accent-color: var(--accent-fill); width: 16px; height: 16px; margin: 0; }
 input[type=date] { font-variant-numeric: tabular-nums; }

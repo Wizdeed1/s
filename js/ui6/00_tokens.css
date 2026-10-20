@@ -31,6 +31,7 @@
   --info: #0062cc; --info-bg: rgba(0, 122, 255, .1); --info-line: rgba(0, 122, 255, .3); --info-mark: #007aff;
   --badge: #d70015; --on-badge: #ffffff;   /* a red oval with white text, for critical counts only (tab-bars.md › badge) */
   --focus: #e2621f;
+  --field-focus: #007aff;   /* a field being typed in or chosen from: the system blue, so it never reads as an error */
   /* the message at the bottom: a dark heads-up display in both appearances */
   --toast-bg: rgba(36, 36, 38, .9); --toast-ink: #ffffff; --toast-line: rgba(255, 255, 255, .08); --toast-act: #ff9f5a;
   /* attendance codes */
@@ -98,7 +99,7 @@
   --warn: #ffb340; --warn-bg: rgba(255, 159, 10, .16); --warn-line: rgba(255, 159, 10, .42); --warn-mark: #ff9f0a;
   --bad: #ff6961; --bad-bg: rgba(255, 69, 58, .14); --bad-line: rgba(255, 69, 58, .42); --bad-mark: #ff453a;
   --info: #4da3ff; --info-bg: rgba(10, 132, 255, .16); --info-line: rgba(10, 132, 255, .42); --info-mark: #0a84ff;
-  --badge: #e5121f; --focus: #ff8a4c;
+  --badge: #e5121f; --focus: #ff8a4c; --field-focus: #0a84ff;
   --toast-bg: rgba(58, 58, 60, .88); --toast-ink: #f5f5f7; --toast-line: rgba(255, 255, 255, .1); --toast-act: #ff9f5a;
   --at: rgba(48, 209, 88, .16); --at-ink: #7fd8a8; --off: #232326; --off-ink: #a8a8ad; --al: #12331f; --al-ink: #8bd9a8; --sl: #362b0f; --sl-ink: #f0cd78;
   --abs: #3d191b; --abs-ink: #ffa1a4; --tardy: #ff9a4f; --ot: #2a223b; --ot-ink: #d0bff0;

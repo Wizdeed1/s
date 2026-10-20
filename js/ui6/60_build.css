@@ -223,7 +223,9 @@ b.bad, .astats b.bad { color: var(--bad); }
 .mailhead span:first-child { color: var(--muted); }
 .mailhead span:last-child { overflow-wrap: anywhere; }
 .mailhead .att { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; background: var(--fill); border: 1px solid var(--line); border-radius: var(--r-chip); padding: 2px 8px; width: max-content; max-width: 100%; }
-#mailFrame { width: 100%; border: 1px solid var(--line); border-radius: var(--r-ctl); background: #fff; min-height: 420px; display: block; }
+.mailfit { overflow-x: auto; overflow-y: hidden; border: 1px solid var(--line); border-radius: var(--r-ctl); background: #fff; }
+.mailsizer { position: relative; overflow: hidden; }
+#mailFrame { width: 100%; border: 0; background: #fff; min-height: 420px; display: block; }
 .revstate { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; display: grid; gap: 6px; justify-items: start; }
 .revstate h3 { font-size: 13px; }
 #v-email.inws { display: grid; gap: 16px; }

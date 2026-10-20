@@ -391,6 +391,7 @@
           <label class="check" id="fZeros"><input type="checkbox" id="mZeros"> List people with 0 deduction minutes</label>
           <label class="check" id="fChanges"><input type="checkbox" id="mChanges" checked> List the changes since the review</label>
           <label class="check" id="mAttachWrap"><input type="checkbox" id="mAttach" checked> <span id="mAttachLbl">Attach the workbook to the .eml</span></label>
+          <label class="check" id="fClassic"><input type="checkbox" id="mClassic"> Classic look (the plain email of before)</label>
           <button class="linkbtn" id="mReset" style="justify-self:start">Reset the message to the default</button>
         </div>
       </div>
@@ -406,7 +407,7 @@
         <p class="hint" id="mEditNote" hidden>You are editing the email itself: Copy and Download use your text as it is. Turn editing off to rebuild it from the fields (your changes in the preview are then replaced).</p>
         <ul class="warns" id="mailWarns"></ul>
         <div class="mailhead" id="mailHead"></div>
-        <iframe id="mailFrame" title="Email preview" sandbox="allow-same-origin"></iframe>
+        <div class="mailfit"><div class="mailsizer"><iframe id="mailFrame" title="Email preview" sandbox="allow-same-origin"></iframe></div></div>
       </div>
     </div>
   </section>

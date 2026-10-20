@@ -142,7 +142,7 @@ const agentHasAccount = pid => (state.people || []).some(a => a.role === 'agent'
 // ---------------------------------------------------------------- the agent's part: written on their own page, sent to the supervisor
 // The agent fills the places the supervisor left empty and sends them (agent/<pid>/reply/<form>). The supervisor reads it,
 // accepts or rejects it with a final comment and sends the final back; only then does the agent sign.
-Object.assign(state, { replies: new Map(), replyVer: 0, teamSort: 'adh', teamDir: '', teamQ: '', teamBrand: '', teamDep: '', teamTab: 'agents', teamPage: 0 });
+Object.assign(state, { replies: new Map(), replyVer: 0, teamSort: 'adh', teamDir: '', teamQ: '', teamBrand: '', teamDep: '', teamTab: 'agents', teamPage: 0, attDeps: new Set(), attShowNs: false });
 const AGENT_TXT = { '1to1': ['discussion', 'rootCause', 'agentComments', 'reviewDate'], final: ['agentComments'] };
 const replyOf = id => (state.replies && state.replies.get(id)) || null;
 /** the agent sent their part and the supervisor has not sent the final since */
@@ -446,7 +446,14 @@ function waitingHtml(spvPid) {
 const ATT_SHORT = v => (v == null ? '' : typeof v === 'number' ? String(v) : { Attend: '✓', Absent: 'Abs', OFF: 'OFF', AL: 'AL', SL: 'SL', 'Other leave': 'LV', Unpaid: 'UPL', 'National Day': 'ND', 'Founding Day': 'FD', 'Compassionate Leave': 'CL', Paternity: 'PL', Marriage: 'MRL', ML: 'ML', Exam: 'EXM', Eid: 'EID' }[v] || String(v).slice(0, 4));
 const ATT_CLS = v => (v == null ? 'na' : typeof v === 'number' ? 'td' : { Attend: 'at', OFF: 'off', AL: 'al', SL: 'sl', Absent: 'ab' }[v] || 'ot');
 function attGridHtml(items, k, canEdit) {
-  const L = items.filter(x => x.r && (x.r.d || x.r.dx)); if (!L.length) return '';
+  const L0 = items.filter(x => x.r && (x.r.d || x.r.dx)); if (!L0.length) return '';
+  // the departments (CC, SM, CT, QA…) as chips, several at once; the people with no schedule this month only when asked
+  const dep = x => normSpace(x.p.team) || '–', deps = [...new Set(L0.map(dep))].sort((a, b) => (DEP_ORDER.indexOf(a) + 1 || 99) - (DEP_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
+  for (const d of [...state.attDeps]) if (!deps.includes(d)) state.attDeps.delete(d);
+  const ns = L0.filter(x => isNoSchedRow(x.r, k)), nsSet = new Set(ns), D = state.attDeps;
+  const L = L0.filter(x => (state.attShowNs || !nsSet.has(x)) && (!D.size || D.has(dep(x))));
+  const chipsHtml = `<div class="attfilt"><div class="teamchips" role="group" aria-label="Departments"><button data-attdep="" aria-pressed="${!D.size}">All <span class="cnt">${L0.length - (state.attShowNs ? 0 : ns.length)}</span></button>${deps.map(d => { const n = L0.filter(x => dep(x) === d && (state.attShowNs || !nsSet.has(x))).length; return n || D.has(d) ? `<button data-attdep="${esc(d)}" aria-pressed="${D.has(d)}" title="${esc(DEP_NAMES[d] || d)}">${esc(d)} <span class="cnt">${n}</span></button>` : ''; }).join('')}</div>
+    ${ns.length ? `<label class="sw"><input type="checkbox" data-attns${state.attShowNs ? ' checked' : ''}> Show the ${plural(ns.length, 'person', 'people')} with no schedule</label>` : ''}</div>`;
   const y = +k.slice(0, 4), m = +k.slice(5), ND = Core.daysIn(y, m), edits = attEditsOf(k) || new Map();
   const head = Array.from({ length: ND }, (_, i) => `<th class="dh${['Fri', 'Sat'].includes(Core.weekday(y, m, i + 1).slice(0, 3)) ? ' we' : ''}" title="${esc(Core.weekday(y, m, i + 1))}">${i + 1}<small>${esc(Core.weekday(y, m, i + 1).slice(0, 2))}</small></th>`).join('');
   const rows = L.sort(byExp).map(x => {
@@ -459,7 +466,8 @@ function attGridHtml(items, k, canEdit) {
   }).join('');
   const nEd = [...edits.values()].reduce((a, e) => a + Object.keys((e && e.days) || {}).length, 0);
   return `<div class="card attcard cvauto"><div class="cardhead"><div><h2>Attendance · ${esc(ymLabel(k))}</h2><p class="cap">Counted by the tool from the Genesys schedule and sign-ons: a missed shift is Absent, a late sign-on shows its minutes, a leave in the schedule shows as that leave. ${canEdit ? 'Select a day to correct it; only you, as the supervisor, can.' : monthLocked(k) ? 'The month is final.' : 'Only the agent\'s supervisor can correct it.'}${nEd ? ` ${plural(nEd, 'day')} corrected (dotted).` : ''}</p></div></div>
-    <div class="tablewrap attgrid"><table><thead><tr><th class="an">Agent</th>${head}<th class="r">Abs</th><th class="r">Late</th><th class="r">Leave</th><th class="r">Days</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    ${chipsHtml}
+    ${L.length ? `<div class="tablewrap attgrid"><table><thead><tr><th class="an">Agent</th>${head}<th class="r">Abs</th><th class="r">Late</th><th class="r">Leave</th><th class="r">Days</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="subtle">Nobody in these departments.</p>'}</div>`;
 }
 let attPopEl = null;
 function closeAttPop() { if (attPopEl) { attPopEl.remove(); attPopEl = null; } }
@@ -557,6 +565,7 @@ $('teamBody').addEventListener('input', e => {
   tqT = setTimeout(() => { const pos = t.selectionStart; renderWs(); const n = $('teamBody').querySelector('[data-tq]'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (x) { /* search fields */ } } }, 120);
 });
 $('teamBody').addEventListener('change', e => {
+  if (e.target.matches('[data-attns]')) { state.attShowNs = e.target.checked; renderWs(); const c = $('teamBody').querySelector('[data-attns]'); if (c) c.focus(); return; }
   const t = e.target, refocus = sel => { const n = $('teamBody').querySelector(sel); if (n) n.focus(); };
   if (t.matches('[data-tsort]')) { state.teamSort = t.value; state.teamDir = ''; state.teamPage = 0; renderWs(); refocus('[data-tsort]'); }
   if (t.matches('[data-tbrand]')) { state.teamBrand = t.value; state.teamPage = 0; renderWs(); refocus('[data-tbrand]'); }
@@ -568,6 +577,7 @@ $('teamBody').addEventListener('click', e => {
   const c = t.closest('[data-tclear]');
   if (c) { const w = c.dataset.tclear; if (w === 'brand' || w === 'all') state.teamBrand = ''; if (w === 'dep' || w === 'all') state.teamDep = ''; if (w === 'q' || w === 'all') state.teamQ = ''; if (w === 'spv' || w === 'all') state.wsSpv = ''; state.teamPage = 0; renderWs(); const f = $('teamBody').querySelector('[data-tclear]') || $('teamBody').querySelector('[data-tbrand]'); if (f) f.focus(); return; }
   const tb = t.closest('[data-ttab]'); if (tb) { teamTabTo(tb.dataset.ttab); return; }
+  const ad = t.closest('[data-attdep]'); if (ad) { const d = ad.dataset.attdep; if (!d) state.attDeps.clear(); else if (state.attDeps.has(d)) state.attDeps.delete(d); else state.attDeps.add(d); renderWs(); const b = $('teamBody').querySelector(`[data-attdep="${CSS.escape(d)}"]`); if (b) b.focus(); return; }
   const sc = t.closest('[data-tsortc]'); if (sc) { const k2 = sc.dataset.tsortc, C = TCOL[k2]; if (state.teamSort === k2) state.teamDir = (state.teamDir || C.d) === 'asc' ? 'desc' : 'asc'; else { state.teamSort = k2; state.teamDir = C.d; } state.teamPage = 0; renderWs(); const b = $('teamBody').querySelector(`[data-tsortc="${k2}"]`); if (b) b.focus(); return; }
   const pg = t.closest('[data-tpage]'); if (pg && !pg.disabled) { state.teamPage = +pg.dataset.tpage; renderWs(); const top = $('teamAgents'); if (top) top.scrollIntoView({ block: 'start' }); const b = $('teamBody').querySelector('.pager [aria-current="page"]'); if (b) b.focus({ preventScroll: true }); return; }
   const row = t.closest('tr[data-row]'); if (row && !t.closest('button, a, input, select')) { const nb = row.querySelector('[data-open]'); if (nb) nb.focus({ preventScroll: true }); openPerson(row.dataset.row); }

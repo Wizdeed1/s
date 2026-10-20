@@ -323,7 +323,8 @@ function renderQuality() {
     columns the tool reads). Filled in and dropped back, each row links by its ID: no names to guess. */
 async function evalTemplate(k) {
   const leads = new Set(supervisors().map(x => x.pid)), order = t => DEP_ORDER.indexOf(t) + 1 || 99;
-  const R = rosterRows().filter(p => p.status !== 'Inactive' && !leads.has(p._id) && !['MG', 'OP'].includes(normSpace(p.team)));
+  const map = k && monthHasAtt(k) ? rowsByPid(k) : null;   // a month built already: only the people with a schedule in it
+  const R = rosterRows().filter(p => p.status !== 'Inactive' && !leads.has(p._id) && !['MG', 'OP'].includes(normSpace(p.team)) && (!map || !hideNoSched() || (map.get(p._id) && !noSchedRow(map.get(p._id), k))));
   const nm = p => gname(effP(p._id) || p) || p.name, sheets = [], idCol = { h: 'National ID', t: 'text', w: 14 }, nmCol = { h: 'Agent Name', t: 'text', w: 34 };
   const ce = [{ h: 'Critical Error', t: 'text', w: 28 }, { h: 'Number of Critical Errors', t: 'int', w: 14 }];
   // the quality team's own template; CT scores one Evaluation score

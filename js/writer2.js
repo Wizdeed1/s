@@ -186,11 +186,20 @@ function attCounts(q) {   // the same counts the Attendance formulas make
 }
 function peopleModel(ctx, R0 = 5) {
   const set = ctx.settings, ND = C.daysIn(ctx.year, ctx.month);
-  const roster = ctx.roster.filter(p => C.normSpace(p.name));
   const rawAdh = ctx.rawAdh, rawAht = ctx.rawAht, rawSched = ctx.rawSched, rawAct = ctx.rawActual;
   const rowIndex = list => { const m = new Map(); list.forEach((x, i) => { const k = C.normName(x.name); if (!m.has(k)) m.set(k, i + 2); }); return m; };
   const iAdh = rowIndex(rawAdh), iAht = rowIndex(rawAht), iSch = rowIndex(rawSched), iAct = rowIndex(rawAct);
   const attOf = p => (ctx.attendance && p._id != null && ctx.attendance.get(p._id)) || null;
+  // no schedule this month: the Schedule export has no day for them and no attendance was filled. Left out of every sheet
+  // (the Roster sheet too) unless the setting is off; the Overview names them.
+  const schKnown = (rawSched || []).length > 0;
+  const noSchedOf = p => {
+    if (!schKnown) return false;
+    const sr = iSch.get(C.normName(C.normSpace(C.normSpace(p.sys) ? p.sys : p.name))), row = sr ? rawSched[sr - 2] : null, a = attOf(p);
+    return (!row || (Array.isArray(row.days) && row.days.every(v => v == null))) && !(a && a.days && a.days.some(v => v != null && v !== ''));
+  };
+  const all = ctx.roster.filter(p => C.normSpace(p.name)), noSched = all.filter(noSchedOf);
+  const roster = set.hideNoSched !== false && noSched.length ? all.filter(p => !noSched.includes(p)) : all;
   const people = roster.map((p, i) => {
     const exp = C.normSpace(C.normSpace(p.sys) ? p.sys : p.name), key = keyOf(p.nid, p.name), ek = C.normName(exp);
     const adhRow = iAdh.get(ek) || '', ahtRow = iAht.get(ek) || '', schRow = iSch.get(ek) || '', actRow = iAct.get(ek) || '';
@@ -209,6 +218,7 @@ function peopleModel(ctx, R0 = 5) {
     p.hasAdh = p.shown && p.adhRow ? 1 : 0; p.hasAht = p.shown && p.ahtRow && p.aht != null ? 1 : 0;
     p.inDed = p.shown && set.dedBrands.includes(C.normSpace(p.brand)) && set.dedTeams.includes(C.normSpace(p.team)) ? 1 : 0;
   });
+  people.noSched = set.hideNoSched !== false ? noSched : [];
   return people;
 }
 
@@ -606,6 +616,13 @@ async function build(ctx) {
     OV.heights[r] = Math.min(120, 18 + 13 * Math.floor(names.join(', ').length / 150)); r++;
   }
   OV.addCF(`C${r - checks.length}:C${r - 1}`, `C${r - checks.length}>0`, dx.redBold);
+  const ns = (people.noSched || []).map(p => C.normSpace(p.name)).sort((x, y) => x.localeCompare(y));   // left out of every sheet: named here only
+  if (ns.length) {
+    OV.set(r, 1, 'No schedule this month: no day in the Schedule export and no attendance, so left out of every sheet (Settings: Leave out people with no schedule)', wrapL); OV.set(r, 2, null, wrapL); OV.merge(r, 1, r, 2);
+    OV.set(r, 3, ns.length, S.get({ font: { b: true }, border: GRID, align: { h: 'center', v: 'top' } }));
+    OV.set(r, 4, ns.join(', '), wrapL); for (let c = 5; c <= 14; c++) OV.set(r, c, null, wrapL); OV.merge(r, 4, r, 14);
+    OV.heights[r] = Math.min(120, 30 + 13 * Math.floor(ns.join(', ').length / 150)); r++;
+  }
   sheets.OV = OV;
 
   // ---------------- Raw data sheets

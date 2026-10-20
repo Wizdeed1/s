@@ -40,7 +40,7 @@ const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
 const REVIEW_TABS = ['checks', 'people', 'issues', 'preview', 'kpi', 'history'];
-const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
+const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
   step: 'import', tab: 'checks',
@@ -264,6 +264,7 @@ function applySettings(d) {
   if (typeof d.manager === 'string' && d.manager.trim()) s.manager = d.manager;
   if (typeof d.managerTitle === 'string' && d.managerTitle.trim()) s.managerTitle = d.managerTitle;
   if (Array.isArray(d.noAutoLink)) s.noAutoLink = d.noAutoLink.filter(x => typeof x === 'string');
+  if (typeof d.hideNoSched === 'boolean') s.hideNoSched = d.hideNoSched;
 }
 let setTimer = null;
 function persistSettings() {
@@ -583,14 +584,16 @@ function computeModel(ctx) {
     const status = p.status === 'Inactive' ? 'Inactive' : 'Active';
     const at = ctx.attendance && ctx.attendance.get(p._id), attC = at && at.filled ? Att.counts(at.days, at.tardyFile) : null;
     const attended = attC ? attC.worked : valid.length;
-    const shown = status !== 'Inactive' || attended >= set.inactiveMin;
+    // no schedule this month: the schedule export has no day for them and no attendance was filled (left out when the setting is on)
+    const noSched = anySch && (!s || s.days.every(v => v == null)) && !(at && at.days && at.days.some(v => v != null && v !== ''));
+    const shown = (status !== 'Inactive' || attended >= set.inactiveMin) && !(noSched && set.hideNoSched !== false);
     const inDed = shown && set.dedBrands.includes(normSpace(p.brand)) && set.dedTeams.includes(normSpace(p.team));
     const sch = s ? s.days : null, act = t ? t.days : null;
     const diff = Array.from({ length: ND }, (_, i) => { const sv = sch ? sch[i] : null, av = act ? act[i] : null; return sv == null || av == null ? null : av === 0 ? 0 : Math.max(0, sv - av); });
     const ded = inDed ? diff.reduce((x, y) => x + (y || 0), 0) : null;
     const found = { adh: !!a, aht: !!h, sch: !!s, tl: tl.has(ek) };
     const pid = Core.cleanId(p.nid), pf = PF ? PF.byName.get(ek) || (pid && PF.byId.get(pid)) || PF.byName.get(normName(p.name)) || null : null;
-    return { p, exp, ek, adh, avg, days: valid.length, status, attended, shown, inDed, sch, act, diff, ded, aht: h ? h.sec : null, found, pf,
+    return { p, exp, ek, adh, avg, days: valid.length, status, attended, shown, noSched, inDed, sch, act, diff, ded, aht: h ? h.sec : null, found, pf,
       any: found.adh || found.aht || found.sch || found.tl, files: { adh: anyAdh, aht: anyAht, sch: anySch, tl: anyTl } };
   });
 }
@@ -1625,7 +1628,7 @@ async function saveMonthToHistory(src) {
   return ymKey(rec.y, rec.m);
 }
 async function exportHistory() {
-  const months = histAll(); if (!months.length) return;
+  const months = histAll().map(x => ({ key: x.key, rec: { ...x.rec, rows: x.rec.rows.filter(r => !noSchedRow(r, x.key)) } })); if (!months.length) return;   // no one with no schedule
   const S = new Writer2.Styles(), Sh = Writer2.Sheet, P = histPeople(months), M = usedMetrics(months.flatMap(x => x.rec.rows));
   const hd = S.get({ font: { b: true, color: 'FFFFFFFF' }, fill: 'FF1F3864', border: 'FFFFFFFF', align: { h: 'center', wrap: true } });
   const tx = S.get({ font: {}, align: { h: 'left' } }), nm = S.get({ font: {}, align: { h: 'center' } }), pc = S.get({ font: {}, align: { h: 'center' }, numFmt: '0.00%' });
@@ -3430,7 +3433,7 @@ function fillSettings() {
   const s = state.settings;
   $('month').value = `${state.y}-${String(state.m).padStart(2, '0')}`;
   $('monthHelp').textContent = state.monthManual ? 'Set by you. Files dropped later will not change it.' : 'Detected from the exports. Change it if a file covers more than one month.';
-  $('target').value = +(s.target * 100).toFixed(2); $('floor').value = +(s.floor * 100).toFixed(2); $('inactiveMin').value = s.inactiveMin;
+  $('target').value = +(s.target * 100).toFixed(2); $('floor').value = +(s.floor * 100).toFixed(2); $('inactiveMin').value = s.inactiveMin; $('hideNoSched').checked = s.hideNoSched !== false;
   chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES);
   $('mgrName').value = s.manager; $('mgrTitle').value = s.managerTitle; renderLogo();
   syncTheme();
@@ -3617,6 +3620,7 @@ $('toastAct').addEventListener('click', () => { const fn = toastFn; toastFn = nu
 
 // settings
 $('month').addEventListener('change', e => { const [y, m] = e.target.value.split('-').map(Number); if (y && m) { state.y = y; state.m = m; state.monthManual = true; $('monthHelp').textContent = 'Set by you. Files dropped later will not change it.'; refresh(); } });
+$('hideNoSched').addEventListener('change', e => { state.settings.hideNoSched = e.target.checked; refresh(); persistSettings(); });
 for (const [id, key, div, lo, hi] of [['target', 'target', 100, 0, 100], ['floor', 'floor', 100, 0, 100], ['inactiveMin', 'inactiveMin', 1, 0, 31]]) {
   $(id).addEventListener('change', e => { const v = parseFloat(e.target.value); if (!Number.isFinite(v) || v < lo || v > hi) { fillSettings(); toast(`Use a number from ${lo} to ${hi}.`); return; } state.settings[key] = key === 'inactiveMin' ? Math.round(v) : v / div; refresh(); persistSettings(); });
 }

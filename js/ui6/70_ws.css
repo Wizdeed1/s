@@ -503,3 +503,6 @@ p.prange { padding-top: 12px; }
 .covernote .cvlist { display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .covernote label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
 .covernote small { color: var(--muted); }
+/* the attendance grid: the departments as chips, and the people with no schedule only when asked */
+.attfilt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: -4px 0 14px; }
+.attfilt .teamchips .cnt { margin-left: 4px; font-size: 11.5px; color: inherit; opacity: .7; font-variant-numeric: tabular-nums; }

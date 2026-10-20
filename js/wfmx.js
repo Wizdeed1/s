@@ -159,7 +159,7 @@ function scatterHtml(L, k) {
     <figure class="trend wschart"><svg class="trendsvg scatter" viewBox="0 0 ${W} ${H}" role="img" aria-label="Adherence against AHT for ${P.length} agents">${grid}<line class="tg" x1="${l}" x2="${W - r}" y1="${Y(set.target).toFixed(1)}" y2="${Y(set.target).toFixed(1)}"/><line class="tg dash" x1="${X(mA).toFixed(1)}" x2="${X(mA).toFixed(1)}" y1="${t}" y2="${H - b}"/>${dots}<text class="xl" x="${W - r}" y="${H - 22}" text-anchor="end">AHT →</text></svg></figure></div>`;
 }
 async function exportAgents() {
-  const k = wsMonthNow(); if (!k) return; const L = agentRowsWs(k), hasI = L.some(x => x.I), cols = AGC.filter(c => !(c[0] === 'earned' && srHidden()) && (c[5] !== 'inter' || hasI) && L.some(x => c[2](x.r, x.I) != null));
+  const k = wsMonthNow(); if (!k) return; const L = agentRowsWs(k).filter(x => !noSchedRow(x.r, k)), hasI = L.some(x => x.I), cols = AGC.filter(c => !(c[0] === 'earned' && srHidden()) && (c[5] !== 'inter' || hasI) && L.some(x => c[2](x.r, x.I) != null));
   const t = c => (['adh', 'conf', 'fin', 'heldR', 'xferR', 'occ', 'iShort', 'iHang', 'iRep'].includes(c[0]) ? 'pct' : ['aht', 'talk', 'hold', 'acw'].includes(c[0]) ? 'time' : 'int');
   await xlBook(`Agents - ${ymLabel(k)}.xlsx`, [{ name: 'Agents', title: `Agents - ${ymLabel(k)}`, sub: stamp(k), cols: [{ h: 'Agent', t: 'text', w: 30 }, { h: 'National ID', t: 'text', w: 13 }, { h: 'Team', t: 'text', w: 16 }, { h: 'Supervisor', t: 'text', w: 22 }, ...cols.map(c => ({ h: c[1], t: t(c), bad: c[0] === 'adh' ? v => v < state.settings.target : undefined }))],
     rows: L.sort(byExp).map(x => [x.exp, Core.cleanId((effP(x.p._id) || x.p).nid) || '', x.unit, x.spv || '', ...cols.map(c => c[2](x.r, x.I))]) }]);

@@ -687,6 +687,20 @@ function agentRow(p, r, k, o = {}) {
   if (o.noSR) row.splice(15, 1);   // Earned SR
   return row;
 }
+// ---- no schedule: a saved month's row with no scheduled day (blank or OFF only, no adherence) while the month has attendance.
+// Left out of every Excel export when Settings › Leave out people with no schedule is on (a month built since then has no such
+// rows at all); a person with no row in the month is left out of the team exports too, as they have nothing in it.
+const nsAttMemo = new Map();
+function monthHasAtt(k) {
+  const sig = `${state.histVer}|${state.finVer}`, c = nsAttMemo.get(k); if (c && c.sig === sig) return c.on;
+  const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5)), on = ((monthData(k) || { rows: [] }).rows).some(r => (r.d || r.dx) && attTotals(daysOfRow(r, ND), k).sched > 0);
+  nsAttMemo.set(k, { sig, on }); return on;
+}
+const hideNoSched = () => state.settings.hideNoSched !== false;
+function isNoSchedRow(r, k) { if (!r || r.adh != null || !(r.d || r.dx)) return false; const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5)); return attTotals(daysOfRow(r, ND), k).sched === 0 && monthHasAtt(k); }
+const noSchedRow = (r, k) => hideNoSched() && isNoSchedRow(r, k);
+/** the people an export lists for a month: those with a row, and with a schedule (when the setting is on) */
+const exportPeople = (P, map, k) => (hideNoSched() ? P.filter(p => { const r = map.get(p._id); return r && !noSchedRow(r, k); }) : P);
 function adhSheet(people, k) {
   const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5)), map = rowsByPid(k), set = state.settings;
   const cols = [{ h: 'Agent (Genesys)', t: 'text', w: 30 }, { h: 'Team', t: 'text', w: 12 }, ...Array.from({ length: ND }, (_, i) => ({ h: `${i + 1} ${Core.weekday(+k.slice(0, 4), +k.slice(5), i + 1).slice(0, 2)}`, t: 'pct', w: 7.5, bad: v => v < set.target })), { h: 'Avr.', t: 'pct', bad: v => v < set.target }];
@@ -697,12 +711,12 @@ async function exportWs(kind) {
   if (kind === 'agents') return exportAgents(); if (kind === 'inter') return exportInter(); if (kind === 'cycle') return exportCycle(); if (kind === 'quality') return exportQuality();
   const k = wsMonthNow(), set = state.settings; if (!k) return;
   if (kind === 'team' || kind === 'teamadh') {
-    const P = wsPeople(), map = rowsByPid(k), spv = roleNow() === 'spv', who = spv ? whoNow() : state.wsSpv ? supName(state.wsSpv) || 'Team' : 'All teams';
+    const map = rowsByPid(k), P = exportPeople(wsPeople(), map, k), spv = roleNow() === 'spv', who = spv ? whoNow() : state.wsSpv ? supName(state.wsSpv) || 'Team' : 'All teams';
     const sheets = kind === 'teamadh' ? [adhSheet(P, k)] : [{ name: 'Team', title: `${who} - ${ymLabel(k)}`, sub: stamp(k), cols: agentCols(set, { noSR: srHidden() }), rows: P.map(p => agentRow(p, map.get(p._id), k, { noSR: srHidden() })) }, adhSheet(P, k)];
     await xlBook(`${kind === 'teamadh' ? 'Daily adherence' : 'Team'} - ${fileSafe(who)} - ${ymLabel(k)}.xlsx`, sheets); return;
   }
   if (kind === 'results') {
-    const map = rowsByPid(k), P = rosterRows().filter(p => map.get(p._id));
+    const map = rowsByPid(k), P = rosterRows().filter(p => { const r = map.get(p._id); return r && !noSchedRow(r, k); });
     const units = [...new Set(P.map(unitOf))].sort(sortUnits), S = spvList();
     const sumCols = [{ h: 'Group', t: 'text', w: 26 }, { h: 'Agents', t: 'int' }, { h: 'Adherence', t: 'pct', bad: v => v < set.target }, { h: 'Below target', t: 'int' }, { h: 'AHT', t: 'time' }, { h: 'Final %', t: 'pct' }, { h: 'Earned SR', t: 'int' }, { h: 'Deduction (min)', t: 'int' }, { h: 'Exceptions', t: 'int' }, { h: 'One-to-ones held', t: 'int' }];
     const sumRow = (g, L) => { const a = aggRows(L.map(p => map.get(p._id))); return [g, L.length, a.adh, a.below, a.aht, a.fin, a.earned, a.ded, a.exc, L.filter(p => ['held', 'closed'].includes(oneStatus(p._id, k).st)).length]; };
@@ -719,7 +733,7 @@ async function exportWs(kind) {
     const months = wsMonths(), M = wfmMetrics(), G = GROUPS[state.wfmGroup] || GROUPS.unit, mt = M.find(m => m.k === state.wfmMetric) || M[0];
     const groups = [...new Set(months.flatMap(x => (monthData(x) || { rows: [] }).rows.map(G[1])))].sort(state.wfmGroup === 'unit' ? sortUnits : (a, b) => a.localeCompare(b));
     const t = m => (PCTK.has(m.k) || m.pct ? 'pct' : TIMEK.has(m.k) ? 'time' : 'num');
-    const rowsK = (monthData(k) || { rows: [] }).rows;
+    const rowsK = (monthData(k) || { rows: [] }).rows.filter(r => !noSchedRow(r, k));
     await xlBook(`WFM analytics - ${ymLabel(k)}.xlsx`, [
       { name: 'Month by group', title: `${G[0]}s - ${ymLabel(k)}`, sub: stamp(k), cols: [{ h: G[0], t: 'text', w: 26 }, { h: 'People', t: 'int' }, ...M.map(m => ({ h: m.label, t: t(m) }))], rows: [...groups.map(g => { const L = rowsK.filter(r => G[1](r) === g); return [g, L.length, ...M.map(m => groupVal(L, m))]; }).filter(r => r[1]), ['All', rowsK.length, ...M.map(m => groupVal(rowsK, m))]], freezeCol: 1 },
       { name: 'Trend', title: `${mt.label} by month`, sub: `${G[0]}s · ${mt.total === 'sum' ? 'totals' : 'average per person'}`, cols: [{ h: G[0], t: 'text', w: 26 }, ...months.map(x => ({ h: ymLabel(x), t: t(mt) }))], rows: [...groups.map(g => [g, ...months.map(x => groupVal((monthData(x) || { rows: [] }).rows.filter(r => G[1](r) === g), mt))]), ['All', ...months.map(x => groupVal((monthData(x) || { rows: [] }).rows, mt))]], freezeCol: 1 },

@@ -172,17 +172,17 @@ function findPages(role) {
   const add = (key, title, words, sub, run, ok = true) => { if (ok) L.push({ t: 'g', key: 'g:' + key, title, words, sub, run }); };
   const wfm = tab => () => { state.wfmTab = tab; setWs('wfm'); renderWs(); };
   if (W.includes('build')) {
-    add('import', 'Import the month\'s files', 'import|upload|drop files|exports|build the month', 'Build', () => setStep('import'));
-    add('people', 'Review: people and names', 'review|roster|names|people list', 'Build', () => setStep('people'));
-    add('matchsys', 'Match system names: the Genesys names nobody matches yet', 'match system names|system names|genesys names|match names|link names|unmatched names|names not on the roster', 'Build', () => { setStep('people'); openMatch(null); });
-    add('dups', 'Duplicates: people entered twice, combined into one', 'duplicates|duplicate|entered twice|same person twice|combine|merge people|double names|same national id', 'Build', () => openDups());
-    add('sysasname', 'Use the Genesys names as the names', 'use system names as names|genesys names as names|rename to the genesys name|system name as name', 'Build', () => { setStep('people'); askSysNames(); });
-    add('issues', 'Review: things to check', 'issues|checks|problems|to check', 'Build', () => setStep('issues'));
-    add('kpitab', 'KPI results of the month', 'kpi results|kpi tab', 'Build', () => setStep('kpi'));
-    add('histtab', 'History of past months', 'history|past months|previous months', 'Build', () => setStep('history'));
-    add('export', 'Build the Excel workbook', 'export|excel|workbook|build excel|download', 'Build', () => setStep('export'));
-    add('email', 'Deduction and incentive emails', 'email|emails|incentive email|mail', 'Build', () => setStep('email'));
-    add('settings', 'Settings', 'settings|month|target|options', 'Build', () => setStep('settings'));
+    add('import', 'Import the month\'s files', 'import|upload|drop files|exports|build the month', 'WFM team', () => setStep('import'));
+    add('people', 'Review: people and names', 'review|roster|names|people list', 'WFM team', () => setStep('people'));
+    add('matchsys', 'Match system names: the Genesys names nobody matches yet', 'match system names|system names|genesys names|match names|link names|unmatched names|names not on the roster', 'WFM team', () => { setStep('people'); openMatch(null); });
+    add('dups', 'Duplicates: people entered twice, combined into one', 'duplicates|duplicate|entered twice|same person twice|combine|merge people|double names|same national id', 'WFM team', () => openDups());
+    add('sysasname', 'Use the Genesys names as the names', 'use system names as names|genesys names as names|rename to the genesys name|system name as name', 'WFM team', () => { setStep('people'); askSysNames(); });
+    add('issues', 'Review: things to check', 'issues|checks|problems|to check', 'WFM team', () => setStep('issues'));
+    add('kpitab', 'KPI results of the month', 'kpi results|kpi tab', 'WFM team', () => setStep('kpi'));
+    add('histtab', 'History of past months', 'history|past months|previous months', 'WFM team', () => setStep('history'));
+    add('export', 'Build the Excel workbook', 'export|excel|workbook|build excel|download', 'WFM team', () => setStep('export'));
+    add('email', 'Deduction and incentive emails', 'email|emails|incentive email|mail', 'WFM team', () => setStep('email'));
+    add('settings', 'Settings', 'settings|month|target|options', 'WFM team', () => setStep('settings'));
     add('scorecards', 'KPI scorecards', 'scorecards|scorecard|weights|bands|incentive base|kpi settings', 'Settings', () => { renderScore(); openDrawer('dScore'); });
   }
   if (W.includes('team')) add('team', role === 'spv' ? 'My team' : 'Team page', 'team page|team|board|one to one board|attendance grid', 'Team', go('team'));
@@ -198,7 +198,7 @@ function findPages(role) {
   if (W.length) add('recog', 'Recognise a file: what it is and where it goes', 'recognise|recognize|identify|what is this file|which file|what file|ai|smart|detect|smart drop|upload|old excel|drop', 'Tools', () => recogPick());
   if (W.includes('results')) add('compare', 'Reconcile with the old Excel: why an earned SR differs', 'compare|old excel|parallel run|reconcile|reconciliation|differences|check against excel|final result|earned different|why different|email table|paste', 'Results', () => { setWs('results'); scrollTo_('#reconCard'); });
   if (W.includes('wfm')) {
-    for (const [t, l] of wfmTabsFor(role)) add('wfm-' + t, `WFM team › ${l}`, t === 'emails' ? 'emails tab|emails|daily emails|deduction email|absences email|send email' : t === 'inter' ? 'interactions|interactions export|calls page' : t === 'agents' ? 'agents table|all agents|agent analytics' : t === 'daily' ? 'daily|daily dashboard|daily data' : t === 'builder' ? 'report builder|member care report builder|daily files|drop daily|daily exports' : t === 'dmail' ? 'daily emails|brand emails|send daily' : 'analytics|charts|dashboard', 'WFM', wfm(t));
+    for (const [t, l] of wfmTabsFor().filter(x => !WFM_STEPS.includes(x[0]))) add('wfm-' + t, `WFM team › ${l}`, t === 'emails' ? 'emails tab|emails|daily emails|deduction email|absences email|send email' : t === 'inter' ? 'interactions|interactions export|calls page' : t === 'agents' ? 'agents table|all agents|agent analytics' : t === 'daily' ? 'daily|daily dashboard|daily data' : t === 'builder' ? 'report builder|member care report builder|daily files|drop daily|daily exports' : t === 'dmail' ? 'daily emails|brand emails|send daily' : 'analytics|charts|dashboard', 'WFM', wfm(t));
     if (hasRole('admin', 'user')) add('rbuild', 'Report builder: drop the day\'s exports (MC Leaders, WFM Daily Review; the brand emails go to the WFM manager)', 'report builder|daily report|daily files|leaders email|mc leaders|wfm daily review|daily review|upload daily|drop daily', 'WFM team › Report builder', wfm('builder'));
     if (hasRole('admin', 'wfm', 'user')) add('dailymail', 'Daily emails to send (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay)', 'daily emails|daily email|daily report|postpaid email|virgin email|friendi email|friendi pay email|brand emails|send daily', 'WFM team › Daily emails', wfm('dmail'));
     if (hasRole('admin', 'wfm', 'user')) add('dedmail', 'Deduction email (conformance deduction and absences)', 'deduction email|absences email|conformance email|for review email|deduction for review', 'WFM team › Emails', wfm('mail'));

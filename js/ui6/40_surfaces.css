@@ -147,10 +147,6 @@ table input.cell, table select.cell, table textarea.cell { border-color: transpa
 .sk.w40 { width: 40%; } .sk.w70 { width: 70%; } .sk.w90 { width: 90%; } .sk.tall { height: 320px; }
 @keyframes skShine { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
-/* ------------------------------------------------------------------------------------------------------------- hover lifts cards and KPI tiles only */
-@media (hover: hover) and (pointer: fine) {
-  .tile:hover, .kpi:hover { box-shadow: var(--shadow-raise); }
-}
 /* a status word with its icon (never colour alone) */
 .sti { width: 15px; height: 15px; vertical-align: -2px; margin-inline-end: 6px; flex: none; }
 .blockedcard { max-width: var(--prose); margin: 6vh auto 0; display: grid; justify-items: start; gap: 10px; padding: 32px; }

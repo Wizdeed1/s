@@ -1,8 +1,9 @@
 /* ------------------------------------------------------------------------------------------------------------- motion (Apple HIG, motion.md)
-   Brief, purposeful, never on an interaction that happens many times a day: changing page, changing step, typing, filtering,
-   sorting and paging act at once. Two moments only: the dashboard's first load of a visit (72_dash.css) and a finished build
-   (60_build.css); progress that changes grows to its new value (js/motion.js). Entrances use transform and opacity only; things
-   leave faster than they come; with reduced motion all of it is a short fade or nothing. */
+   Brief, purposeful, never on an interaction that happens many times a day: typing, filtering, sorting and paging act at once.
+   The moments: the dashboard's first load of a visit (72_dash.css), every other page and tab the first time it is shown in a
+   visit (the boxes rise in turn, below; js/motion.js introOnce), and a finished build (60_build.css); progress that changes
+   grows to its new value (js/motion.js). Entrances use transform and opacity only; things leave faster than they come; with
+   reduced motion all of it is a short fade or nothing. */
 .view.enter { animation: none; }
 @keyframes viewIn { from { opacity: 0; transform: translateY(10px); } }
 .todaywrap:not([hidden]) > * { animation: fadeIn var(--t-small) ease both; }
@@ -27,7 +28,22 @@ details[open] > :not(summary) { animation: openIn var(--t-small) var(--ease-out)
 .tlist li.fresh .tdot { animation: pulse 1400ms var(--ease-out) 1; }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
 
+/* every page and tab, once a visit: the boxes on screen rise in turn, as the dashboard's do */
+.rise-in { animation: rise var(--t-ws) var(--ease-out) both !important; animation-delay: calc(min(var(--ii, 0), 12) * var(--stagger)) !important; }   /* over a box's own reset (all: unset) */
+/* every box answers the pointer, quietly: panels deepen their shadow and edge; the small tiles and cards rise 2 px as well.
+   Only where a mouse can hover (a touch screen fires false hovers); with reduced motion the shadow alone. */
+.card, .chks, .fbar, .note, .slot, .rcard, .csatbox, .rb .editor, .wsstatus.draft, .monthbox { transition: box-shadow var(--t-small) var(--ease-out), border-color var(--t-small) var(--ease-out), background-color var(--t-hover) ease; }
+.tile, .kpi, .kpistrip .kpi, .ctile, .qa, .atile, .egrid > .ecard, .rbbrands > li { transition: box-shadow var(--t-small) var(--ease-out), border-color var(--t-small) var(--ease-out), background-color var(--t-hover) ease, transform var(--t-small) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .card:hover, .chks:hover, .fbar:hover, .note:hover, .slot:hover, .rcard:hover, .csatbox:hover, .rb .editor:hover, .wsstatus.draft:hover, .monthbox:hover { box-shadow: var(--shadow-hover); border-color: var(--card-line-hover); }
+  .tile:hover, .kpi:hover, .kpistrip .kpi:hover, .ctile:hover, .qa:hover, .atile:hover, .egrid > .ecard:hover, .rbbrands > li:hover { box-shadow: var(--shadow-raise); border-color: var(--card-line-hover); transform: translateY(-2px); }
+  .tile:hover, .kpi:hover { z-index: 1; }   /* a tooltip inside stays above the next tile */
+  .card .card:hover, .card .tile:hover { box-shadow: var(--shadow-hover); }   /* a box inside a box: one step, not two */
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .rise-in { animation: none !important; }
+  .tile:hover, .kpi:hover, .kpistrip .kpi:hover, .ctile:hover, .qa:hover, .atile:hover, .egrid > .ecard:hover, .rbbrands > li:hover { transform: none !important; }
   /* movement becomes a 120 ms fade, staggers collapse, the chart is there at once, emphasis effects do not play, nothing loops */
   *, *::before, *::after { scroll-behavior: auto !important; }
   .drawer, .drawer.out, .sheet-more, .dlgbox, .dlg.out .dlgbox { animation-name: fadeIn !important; animation-duration: 120ms !important; }

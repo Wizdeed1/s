@@ -23,6 +23,25 @@ async function later(b) {
     ok(rows.length && rows.every(r => r.every(x => x.every((v, i) => v === r[0][i]))), `${vp.width} px: the KPI values of a row are level (${rows.map(r => r.length).join(' + ')} cards)`);
     await p.context().close();
   }
+  // every page and tab: its boxes rise in turn the first time it is shown in a visit, never on a return; a tile lifts under the mouse
+  {
+    const p = await as(b, { id: 'u2', name: 'Noura B.', username: 'noura.b', role: 'wfm' });
+    const rising = () => p.evaluate(() => document.querySelectorAll('.rise-in').length);
+    await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(60); const team1 = await rising();
+    await p.waitForTimeout(900); const left = await rising();
+    await p.evaluate(() => window.__mc.setWs('wfm')); await p.waitForTimeout(60); const wfm1 = await rising();
+    await p.waitForTimeout(900); await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(60); const team2 = await rising();
+    ok(team1 > 2 && left === 0 && wfm1 > 1 && team2 === 0, `the boxes rise in on the first visit of a page (Team ${team1}, WFM ${wfm1}), the class is gone after (${left}), a return stays still (${team2})`);
+    const tile = await p.$('#teamBody .tile, #teamBody .kpistrip .kpi'); await tile.hover(); await p.waitForTimeout(350);
+    const lift = await tile.evaluate(el => getComputedStyle(el).transform);
+    ok(/matrix\(1, 0, 0, 1, 0, -2\)/.test(lift), `a tile rises 2 px under the mouse (${lift})`);
+    ok(!p.errs.length, `no errors on the way ${p.errs.join('; ')}`);
+    await p.context().close();
+    const r = await as(b, { id: 'u2', name: 'Noura B.', username: 'noura.b', role: 'wfm' }, { rm: 'reduce' });
+    await r.evaluate(() => window.__mc.setWs('team')); await r.waitForTimeout(60);
+    ok(await r.evaluate(() => document.querySelectorAll('.rise-in').length) === 0, 'with reduced motion nothing rises');
+    await r.context().close();
+  }
   // the Supervisors bars, drawn the way senior.js draws them (the synthetic months have no one-to-one done)
   const p = await as(b, { id: 'u3', name: 'Faisal M.', username: 'faisal.m', role: 'senior' });
   await p.evaluate(() => { window.__mc.setWs('cycle'); window.__mc.renderWs(); });

@@ -401,7 +401,7 @@ function renderWs() {
   if (w === 'dash') renderDash(); else if (w === 'team') renderTeam(); else if (w === 'results') renderResults(); else if (w === 'wfm') renderWfmWs(); else if (w === 'quality') renderQuality(); else if (w === 'cycle') renderCycle(); else if (w === 'me') renderMe();
   if (w === 'cycle') sectionNav('cycleBody');
   renderAutoNote(); renderFresh(); cycleBadge(); renderToday(); syncNav();
-  requestAnimationFrame(segThumbs);
+  requestAnimationFrame(() => { segThumbs(); introOnce($('v-' + w)); });
 }
 const monthSelHtml = (k, attr) => { const L = wsMonths(); return L.length ? `<label class="wsfield"><span>Month</span><select class="cell" ${attr} aria-label="Month">${L.slice().reverse().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(ymLabel(x))}${monthLocked(x) ? ' · final' : ''}</option>`).join('')}</select></label>` : ''; };
 function statusBanner(k) {

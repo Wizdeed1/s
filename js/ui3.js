@@ -637,6 +637,7 @@ function render(o = {}) {
   if (state.step === 'email') renderEmail();
   if (!$('dPerson').hidden && state.personId) renderPerson();
   setSave(); renderToday(); renderCsat();
+  requestAnimationFrame(() => { if (state.ws === 'build') introOnce($('v-' + state.step)); });
 }
 function renderHeader() {
   $('monthBtn').textContent = monthLabel();
@@ -3287,7 +3288,7 @@ window.__mcSave = async (name, blob) => {
 // ---- motion: views rise in, a thumb slides under the current tab and step, cards reveal as you scroll
 function animIn(el) {
   if (!el || RM()) return;
-  el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); countUp(el);
+  el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); introOnce(el);
   el.addEventListener('animationend', function done(e) { if (e.target === el) { el.classList.remove('enter'); el.removeEventListener('animationend', done); } });
 }
 function moveThumb(box, sel) {
@@ -3320,28 +3321,6 @@ function segThumb(box) {
   th.style.opacity = '1'; th.style.transform = g.t; th.style.width = g.w; th.style.height = g.h; segMem.set(key, g);
 }
 function segThumbs() { if (RM()) return; document.querySelectorAll('.seg').forEach(b => { if (b.offsetParent !== null) segThumb(b); }); }
-/** numbers count up to their value when a page or a card comes into sight (never while working: only on the way in) */
-const CU_SEL = '.tile b, .minis b, .pfstats b, .sbprog b, .dmprog b, .rbbrands b, .ecard .big b, .kpicard b';
-function countUp(root) {
-  return;   // numbers are shown as they are: a dashboard read many times a day does not count up
-  if (!root || RM() || !root.querySelectorAll) return;
-  const items = [];
-  for (const el of [...(root.matches(CU_SEL) ? [root] : []), ...root.querySelectorAll(CU_SEL)]) {
-    if (el.dataset.cu || el.childNodes.length !== 1 || el.firstChild.nodeType !== 3) continue;
-    const t = el.textContent.trim(), m = t.match(/^(-?)(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(%?)$/); if (!m) continue;
-    const v = parseFloat(m[2].replace(/,/g, '') + (m[3] ? '.' + m[3] : '')) * (m[1] ? -1 : 1); if (!isFinite(v) || v === 0) continue;
-    el.dataset.cu = '1'; items.push({ el, v, dec: m[3] ? m[3].length : 0, grp: m[2].includes(','), suf: m[4], end: t });
-  }
-  if (!items.length) return;
-  const t0 = performance.now(), D = 900, ease = x => 1 - Math.pow(1 - x, 3);
-  const fmt = (x, it) => (it.grp ? x.toLocaleString('en-US', { minimumFractionDigits: it.dec, maximumFractionDigits: it.dec }) : x.toFixed(it.dec)) + it.suf;
-  const step = now => {
-    const k = Math.min(1, (now - t0) / D), e = ease(k);
-    for (const it of items) if (it.el.isConnected) it.el.textContent = k >= 1 ? it.end : fmt(it.v * e, it);
-    if (k < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
 /** the app bar: a shadow once the page scrolls under it */
 let barScrolled = false;
 window.addEventListener('scroll', () => { const s = scrollY > 6; if (s !== barScrolled) { barScrolled = s; const a = document.querySelector('header.appbar'); if (a) a.classList.toggle('scrolled', s); } }, { passive: true });

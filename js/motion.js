@@ -78,9 +78,9 @@ try {
 // ---- the dashboard's moment: its six numbers count up once a visit (the first load only; never on a return or a redraw)
 const countParts = s => { const m = /^([^\d-]*)(-?[\d,]*\.?\d+)(.*)$/.exec(String(s).trim()); if (!m) return null; const dec = (m[2].split('.')[1] || '').length; return { pre: m[1], n: +m[2].replace(/,/g, ''), dec, post: m[3], comma: m[2].includes(',') || +m[2].replace(/,/g, '') >= 1000 }; };
 const countFmt = (p, v) => p.pre + (p.comma ? v.toLocaleString('en-US', { minimumFractionDigits: p.dec, maximumFractionDigits: p.dec }) : v.toFixed(p.dec)) + p.post;
-function countUp(root) {
+function countUp(root, sel = '.kpi .kval') {
   const g = gsapOk(); if (!g || !root) return;
-  root.querySelectorAll('.kpi .kval').forEach((el, i) => {
+  [...root.querySelectorAll(sel)].filter(el => !el.children.length && el.getClientRects().length).slice(0, 24).forEach((el, i) => {   // plain numbers only: a value with markup inside keeps it
     const txt = el.textContent, mm = /^(\d+):(\d{2})$/.exec(txt.trim());
     if (mm) { const tot = +mm[1] * 60 + +mm[2], o = { v: 0 }; g.to(o, { v: tot, duration: 0.9, delay: i * 0.04, ease: 'power3.out', onUpdate: () => { const s = Math.round(o.v); el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }, onComplete: () => { el.textContent = txt; } }); return; }
     const p = countParts(txt); if (!p || !Number.isFinite(p.n) || p.n === 0) return;
@@ -103,3 +103,25 @@ function fillBars(root, key) {
   if (g) moves.forEach((x, n) => g.fromTo(x.i, { scaleX: x.was / x.now }, { scaleX: 1, transformOrigin: '0% 50%', duration: 0.7, delay: n * 0.03, ease: 'power3.out', clearProps: 'transform' }));
 }
 try { const cb = $('cycleBody'); if (cb) new MutationObserver(() => { const c = $('spvDone'); if (c) fillBars(c, 'spv:' + wsMonthNow()); }).observe(cb, { childList: true }); } catch (e) { /* none */ }
+
+// ---- every page and tab: the dashboard's moment, once a visit. The boxes on screen rise in turn and their numbers count up the
+// first time a page or tab is shown; a return, a redraw or a filter stays still (the dashboard keeps its own, in dash.js).
+const introSeen = new Set();
+const INTRO_SEL = '.card, .tile, .kpistrip .kpi, .chks, .ctile, .slot, .rcard, .fbar, .note, .csatbox, .atile, .egrid > .ecard, .rbbrands > li, .rb .editor, .wsstatus';
+/** the page and tab now on screen, as a key: the intro plays once for each */
+const introKey = () => state.ws === 'build' ? `build|${state.step}${state.step === 'review' ? '|' + state.tab : ''}`
+  : state.ws === 'team' ? `team|${state.teamTab || ''}` : state.ws === 'wfm' ? `wfm|${state.wfmTab || ''}${state.wfmTab === 'emails' ? '|' + state.mailSub : ''}` : state.ws;
+function introOnce(root) {
+  if (!root || RM() || !state.rosterReady || state.ws === 'dash' || !root.getClientRects().length) return;
+  const key = introKey(); if (introSeen.has(key)) return;
+  const all = [...root.querySelectorAll(INTRO_SEL)].filter(el => el.getClientRects().length && !el.closest('[hidden], .sk-card'));
+  if (!all.length) return;   // nothing drawn yet (the data is still coming): the first real drawing plays it
+  introSeen.add(key);
+  const vh = window.innerHeight, top = all.filter(el => !all.some(o => o !== el && o.contains(el)));   // the outer boxes; what is inside moves with them
+  top.filter(el => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < vh; }).slice(0, 16).forEach((el, i) => {
+    const done = e => { if (e && e.target !== el) return; el.classList.remove('rise-in'); el.style.removeProperty('--ii'); el.removeEventListener('animationend', done); };
+    el.style.setProperty('--ii', i); el.classList.add('rise-in'); el.addEventListener('animationend', done);
+    setTimeout(done, 1400);   // a box hidden before its end never says so
+  });
+  countUp(root, '.tile b, .kpistrip .kpi b, .kpi .kval');
+}

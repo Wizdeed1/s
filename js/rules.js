@@ -375,7 +375,7 @@ function howHtml(r, k, o = {}) {
   out.push(`<li class="howrules">Counted with ${esc(R.from ? `the rules from ${ymLabel(R.from)}` : 'the first rules')}${diff.length ? `, which count ${esc(andList(diff.map(l => l.toLowerCase())))} differently from the tool's default` : ''}. <button type="button" class="linkbtn" data-rulesopen data-rulesset="${esc(R.from)}">See the rules</button></li>`);
   return `<ol class="howsteps">${out.join('')}</ol>`;
 }
-/** the 'How' link next to a person's final % (Results, Build › KPI results) */
+/** the 'How' link next to a person's final % (Results, WFM team › Review › KPI results) */
 const howLink = (pid, name, k) => `<button type="button" class="linkbtn howlink" data-how="${esc(pid)}" data-howk="${esc(k || '')}" aria-label="How the final % of ${esc(name)} was counted">How</button>`;
 /** the explanation folded under a KPI table (the person page, the Build person panel) */
 const howDetailsHtml = (r, k, p, o = {}) => (r && (r.kpi || r.kx) ? `<details class="howdet"><summary>How this was counted</summary>${howHtml(r, k, { p, ...o })}</details>` : '');

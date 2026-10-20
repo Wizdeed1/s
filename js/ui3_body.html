@@ -558,7 +558,8 @@
     <section class="sec"><h3>How people sign in</h3>
       <div class="seg" id="signinSeg" role="group" aria-label="Sign in with"><button type="button" data-signin="both" aria-pressed="true">Username or email</button><button type="button" data-signin="user" aria-pressed="false">Username only</button></div>
       <p class="hint" id="signinHint" style="margin-top:8px"></p></section>
-    <section class="sec"><h3>People with an account</h3><div class="acclist" id="accList"></div></section>
+    <section class="sec"><h3>People with an account</h3><div class="acctools" id="accTools"></div><div class="acclist" id="accList"></div></section>
+    <section class="sec" id="accOther" hidden></section>
     <section class="sec" id="migrateBox" hidden><h3>Data from before</h3><p class="hint">This computer still has what this browser kept before the shared folder: the roster, history, settings, forms and accounts. Copy it into the shared folder once, so everyone has it. Older accounts keep their password; each person signs in once more, and the access opens the next time an admin opens the tool.</p><button class="btn primary" id="migrateGo">Copy it into the shared folder</button> <span class="hint" id="migrateMsg"></span></section>
     <section class="sec"><h3>Team copy</h3><p class="hint" id="teamInfo" style="margin-bottom:10px"></p><button class="btn primary" id="teamCopy"><svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>Download team copy</button></section>
     <section class="sec"><h3>Roles</h3><ul class="rolelist">
@@ -628,7 +629,7 @@
         <li><b>Search</b> (Ctrl K) is at the top of the sidebar (on a phone, in the header). The <b>header</b> carries the <b>bell</b> with your notifications: deadlines and what is yours to do (everyone), and the checks (for the people who build the month), the <b>month</b> the page shows and your account. A final month shows a lock and is read-only. On Build the month comes from the exports instead; change it in Settings › Month.</li>
         <li><b>Appearance</b>: choose Light, Dark or System in your account menu (your initials, top right) or in Settings. System, the first choice, follows your computer's light or dark setting and changes with it. The choice is kept in this browser.</li>
         <li>The WFM roles and the senior manager start on the <b>Dashboard</b>: the month's six numbers against the month before, the trend, what needs attention, the senior manager's month close steps and how old each source is. Everyone else starts on their own page; what is theirs to do, with its deadline, is in the bell.</li>
-        <li><b>Build</b> has its own step bar: Import, Review, Export, Email. Review opens on <b>Checks</b>, the same checks as the bell, with what each one means and what happens until you act. Only three things stop a build: an empty roster, files still being read, and no export or attendance file at all.</li>
+        <li><b>WFM team</b> holds the month's build as tabs: Import, Review, Export and Emails, next to Daily, Report builder, Analytics, Agents and Interactions. Review opens on <b>Checks</b>, the same checks as the bell, with what each one means and what happens until you act. Only three things stop a build: an empty roster, files still being read, and no export or attendance file at all.</li>
       </ul>
     </section>
     <section>

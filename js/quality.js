@@ -228,7 +228,7 @@ function csatBoxHtml(k, ctx) {
     ${can ? `<span class="csatin"><input id="${id}" class="cell" data-csat="${esc(k)}" value="${v == null ? '' : +(v * 100).toFixed(2)}" inputmode="decimal" placeholder="–" aria-describedby="${id}-h"><span aria-hidden="true">%</span></span>` : `<b class="num">${v == null ? '–' : esc(pct(v, 1))}</b>`}
     <small id="${id}-h">${v == null ? `One score for the month: type it once and it counts for every agent in ${esc(T.join(', '))}. Empty: each agent's own value from the KPI file.` : `Counts for every agent in ${esc(T.join(', '))}${monthLocked(k) ? '' : ', whatever the KPI file says'}.`}</small></div>`;
 }
-/** the box on Build (Import and KPI results) for the month being built; never redrawn under the cursor */
+/** the box on WFM team › Import and Review › KPI results, for the month being built; never redrawn under the cursor */
 function renderCsat() {
   const k = monthKey();
   for (const [el, ctx] of [[$('csatImp'), 'imp'], [$('csatKpi'), 'kpi']]) {

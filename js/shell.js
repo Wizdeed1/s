@@ -262,7 +262,7 @@ const DEPT = [
   ['user', 'WFM analyst', [
     'Every morning, <b>WFM › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM › Emails</b>.',
     '<b>WFM › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
-    'At month end, <b>Build › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' attendance sheets, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
+    'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' attendance sheets, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
     '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook; the incentive data workbook is made too.',
@@ -288,7 +288,7 @@ const DEPT = [
     '<b>Waiting for approval</b>: approve new agent accounts and link each one to their name.',
     'When every one-to-one is done, <b>Finish your team</b>: the senior manager is told straight away. The <b>bell</b> lists what is due.']],
   ['quality', 'Quality team', [
-    '<b>Quality</b>: drop the month\'s Final EVAL in your template: Agent Name, Call QA, Ticket QA / Empowerment Utilization, Call Reason &amp; FCR Accuracy, Final Score, Critical Error and Number of Critical Errors (CT: Evaluation score). The analysts can also drop it on Build › Import with everything else.',
+    '<b>Quality</b>: drop the month\'s Final EVAL in your template: Agent Name, Call QA, Ticket QA / Empowerment Utilization, Call Reason &amp; FCR Accuracy, Final Score, Critical Error and Number of Critical Errors (CT: Evaluation score). The analysts can also drop it on WFM team › Import with everything else.',
     'Ticket QA counts as Empowerment Utilization, CR as Call Reason &amp; FCR Accuracy and the Final Score as Quality Observations (CT\'s Evaluation score as QA Evaluation).',
     'Check the names the tool linked and link the ones left; the answers are remembered next month.',
     'Type <b>DRC-CSAT</b> once for the month: it counts for every agent.',
@@ -308,7 +308,7 @@ const DEPT = [
   ['admin', 'Admin', [
     '<b>Manage accounts</b> (the account menu): give each person a role, link supervisors to their names and choose their agents, reset passwords and open access again.',
     '<b>Settings</b>: targets, the deduction scope, the logo, the sign-in lock time, and the scorecards.',
-    'Admins can do everything the analysts do on Build and see every page.',
+    'Admins can do everything the analysts do on the WFM team page and see every page.',
     'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome.']],
 ];
 let deptSel = '', deptRole = '';

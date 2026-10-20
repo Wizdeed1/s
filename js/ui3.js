@@ -345,7 +345,7 @@ function localDb() {
 
 // ---------------------------------------------------------------- files
 let fseq = 0;
-/** Build › Import takes every file of the month in one drop. The Genesys exports, the attendance sheets and the IDs file fill
+/** WFM team › Import takes every file of the month in one drop. The Genesys exports, the attendance sheets and the IDs file fill
     their places as before; every other file is recognised (js/recog.js) and goes where it belongs: the Final EVAL to Quality for its
     month, the KPI file to KPI results, the old Excel of a month to Results › Reconcile, the incentive data of an open past month to
     the history. A file that could do harm where it lands (the incentive data of a final month, the old deduction workbook as this

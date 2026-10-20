@@ -1,6 +1,6 @@
 // ================================================================ RECOGNISE FILES: what a file is and where it goes, worked out on this computer
 // Drop or choose anything: each file gets a verdict from its sheet names, its columns (English and Arabic, spelling slips allowed),
-// its title rows, its dates and a look at its first values (js/recog_core.js, in the parse worker). Build › Import sends every sure
+// its title rows, its dates and a look at its first values (js/recog_core.js, in the parse worker). WFM team › Import sends every sure
 // file of the month to its place at once; the others, and anything dropped where nothing takes it, open the Recognise files panel:
 // what the file looks like and why, the month (and when its name and its content disagree), who in it is on the roster, and "Use it
 // for …" with the page that takes it. A choice made here is remembered by the shape of the columns only (never a name, an ID or a
@@ -10,12 +10,12 @@ const RECOG_NOTE = 'Recognised on this computer from the sheet names, columns an
 const RC_LEVEL = { sure: ['Sure', 'good'], likely: ['Likely', 'warn'], unsure: ['Not sure', 'bad'] };
 /** where a file can go: the words for the button, and who may send it there */
 const RC_ROUTE = {
-  import: { l: () => 'Build › Import (this month\'s files)', can: () => isBuilder() },
-  attendance: { l: k => `${k ? ymLabel(k) : 'this month'}'s attendance (Build › Import)`, can: () => isBuilder() },
-  ids: { l: () => 'the HR IDs file (Build › Import)', can: () => isBuilder() },
+  import: { l: () => 'WFM team › Import (this month\'s files)', can: () => isBuilder() },
+  attendance: { l: k => `${k ? ymLabel(k) : 'this month'}'s attendance (WFM team › Import)`, can: () => isBuilder() },
+  ids: { l: () => 'the HR IDs file (WFM team › Import)', can: () => isBuilder() },
   history: { l: k => `the history${k ? ` of ${ymLabel(k)}` : ''} (replaces what is there)`, can: () => isBuilder() },
   compare: { l: k => `Results › Reconcile with the old Excel${k ? ` (${ymLabel(k)})` : ''}`, can: () => wsOfNow().includes('results'), who: 'the senior manager, the WFM manager or an admin compares it there' },
-  email: { l: () => 'Build › Email (the workbook to send)', can: () => isBuilder() },
+  email: { l: () => 'WFM team › Emails (the workbook to send)', can: () => isBuilder() },
   quality: { l: k => `Quality: the Final EVAL${k ? ` of ${ymLabel(k)}` : ''}`, can: () => canQuality() },
   kpi: { l: () => `the KPI file of ${ymLabel(monthKey())}`, can: () => isBuilder() },
   roster: { l: () => 'the roster (you see every change first)', can: () => isBuilder() },

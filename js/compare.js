@@ -33,7 +33,7 @@ async function cmpFiles(files, month, o = {}) {
   for (const f of [...files].slice(0, 6)) {
     let sheets; try { const buf = await f.arrayBuffer(); sheets = await (typeof parseRaw === 'function' ? parseRaw(f.name, buf) : parse(f.name, buf, true)); } catch (e) { toast(`${f.name}: could not read it.`); continue; }
     const e = rcEntry(f.name, sheets);
-    if (!e.kind || e.kind === 'att' || ((e.kind === 'final' || e.kind === 'res') && !e.table)) { toast(e.kind === 'att' ? `${f.name} is an attendance report: drop it on Build › Import to use it for the month.` : `${f.name}: not an old final result, incentive data or deduction workbook (no ID or Name column with Final %, Earned SR, Adherence, AHT, Absent or Tardy next to it).`, { label: 'What is it?', fn: () => (typeof recogFiles === 'function' ? recogFiles([f], 'results') : null) }); continue; }
+    if (!e.kind || e.kind === 'att' || ((e.kind === 'final' || e.kind === 'res') && !e.table)) { toast(e.kind === 'att' ? `${f.name} is an attendance report: drop it on WFM team › Import to use it for the month.` : `${f.name}: not an old final result, incentive data or deduction workbook (no ID or Name column with Final %, Earned SR, Adherence, AHT, Absent or Tardy next to it).`, { label: 'What is it?', fn: () => (typeof recogFiles === 'function' ? recogFiles([f], 'results') : null) }); continue; }
     if (month && /^\d{4}-\d{2}$/.test(month) && e.month !== month) { e.month = month; e.src = 'chosen'; e.conflict = null; }   // the month chosen in the Recognise panel
     got.push(e);
   }

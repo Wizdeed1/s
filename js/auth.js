@@ -49,7 +49,7 @@ const Auth = (() => {
   async function listRaw() {
     const snap = await db.collection('accounts').get();
     const out = [];
-    for (const d of snap.docs) { const a = d.data(); if (a && (a.username || a.email)) out.push({ ...a, id: d.id }); }
+    for (const d of snap.docs) { const a = d.data(); if (a && typeof a === 'object') out.push({ ...a, name: normSpace(a.name || '') || a.username || a.email || 'No name', id: d.id }); }   // every record: one without a username or email is listed too, to fix or remove
     return out;
   }
   async function listAccts() {
@@ -542,15 +542,24 @@ const Auth = (() => {
   }
 
   // ---- admin: manage accounts
-  let unEdit = null, linkEdit = null, agentsEdit = null;   // the row whose username / person / agents are being edited
-  async function setUsernameFor(id, raw) {
+  let unEdit = null, linkEdit = null, agentsEdit = null;   // the row whose details / person / agents are being edited
+  let accQ = '', accRole = '';   // the list's search and role filter
+  /** an account's name, username and email, as the admin types them (your own: name and email; the username is in the account menu) */
+  async function saveAcctEdit(id, f) {
     if (!isAdmin()) return;
-    const a = await getAcct(id); if (!a || a.builtIn || id === user.id) return;
-    const u = normUser(raw), up = userProblem(u), msg = $('accList').querySelector(`[data-id="${CSS.escape(id)}"] .unerr`);
-    const say = t => { if (msg) msg.textContent = t; };
-    if (up) { say(up); return; }
-    if (u !== normUser(a.username || '') && await usernameTaken(u, id)) { say('This username is taken. Pick another one.'); return; }
-    const D = await readDir(id); await putAcct({ ...effective(a, D), username: u }); unEdit = null; toast(`${a.name} signs in as ${u}`); renderAccounts();
+    const all = await listAccts(), a = all.find(x => x.id === id); if (!a || a.builtIn) return;
+    const me = id === user.id, msg = $('accList').querySelector(`[data-id="${CSS.escape(id)}"] .unerr`), say = t => { if (msg) msg.textContent = t; };
+    const name = normSpace(f.name || ''), email = normEmail(f.email || ''), u = me ? normUser(a.username || '') : normUser(f.username || '');
+    if (!name) { say('Type a name.'); return; }
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say('This email does not look right.'); return; }
+    if (email && all.some(x => x.id !== id && x.email && normEmail(x.email) === email)) { say('Another account has this email.'); return; }
+    if (!me) {
+      if (u) { const up = userProblem(u); if (up) { say(up); return; } if (u !== normUser(a.username || '') && await usernameTaken(u, id)) { say('This username is taken. Pick another one.'); return; } }
+      else if (userOnly || !email) { say(userOnly ? 'Sign-in takes usernames only: give it a username.' : 'Give it a username or an email, or it cannot sign in.'); return; }
+    }
+    const D = await readDir(id); await putAcct({ ...effective(a, D), name, email, ...(me ? {} : { username: u }) });
+    if (me) { user.name = name; user.email = email; renderUser(); }
+    unEdit = null; toast(`${name}: saved`); renderAccounts();
   }
   async function setSignin(want) {
     if (!isAdmin() || want === userOnly) return;
@@ -567,9 +576,9 @@ const Auth = (() => {
     const all = await peopleAll(), a = all.find(x => x.id === id); if (!a) return;
     const me = id === user.id, admins = all.filter(x => x.role === 'admin' && !x.disabled);
     const lastAdmin = a.role === 'admin' && admins.length <= 1;
-    if (a.builtIn || me) return;
-    if (act === 'uname') { unEdit = id; renderAccounts().then(() => { const f = $('accList').querySelector('.unform input'); if (f) { f.focus(); f.select(); } }); return; }
+    if (act === 'uname' && !a.builtIn) { unEdit = id; renderAccounts().then(() => { const f = $('accList').querySelector('.unform input'); if (f) { f.focus(); f.select(); } }); return; }   // your own row too: name and email
     if (act === 'uncancel') { unEdit = null; renderAccounts(); return; }
+    if (a.builtIn || me) return;
     if (act === 'linkopen') { linkEdit = linkEdit === id ? null : id; if (linkEdit) agentsEdit = null; renderAccounts(); return; }
     if (act === 'agentsopen') { agentsEdit = agentsEdit === id ? null : id; if (agentsEdit) linkEdit = null; renderAccounts(); return; }
     if (act === 'reset') {
@@ -648,20 +657,35 @@ const Auth = (() => {
     $('signinHint').textContent = (userOnly ? 'Only usernames work on the sign-in screen.' : 'A username, or the email of an older account, works on the sign-in screen.')
       + (miss.length ? ` ${miss.length === 1 ? 'This account has' : 'These accounts have'} no username yet: ${miss.map(a => a.name).join(', ')}.` : '');
     const order = a => (a.role === 'pending' && !a.disabled ? 0 : a.role === 'admin' ? 1 : 2);
-    $('accList').innerHTML = all.sort((x, y) => order(x) - order(y) || String(x.name).localeCompare(String(y.name))).map(a => {
-      const me = a.id === user.id, locked = a.builtIn || me, editing = !locked && unEdit === a.id;
+    // the search and the roles, each with its count; Turned off is its own group
+    const grp = a => (a.disabled ? 'off' : a.role), groups = [['', 'All'], ['pending', 'Waiting'], ...ROLES.filter(r => r !== 'pending').map(r => [r, ROLE_NAME[r]]), ['off', 'Turned off']];
+    if (accRole && !all.some(a => grp(a) === accRole)) accRole = '';
+    const q = normName(accQ), shown = all.filter(a => (!accRole || grp(a) === accRole) && (!q || normName(`${a.name} ${a.username || ''} ${a.email || ''} ${personName(a.pid) || ''}`).includes(q)));
+    const tools = $('accTools');   // the search box stays as it is while you type; the chips are drawn again
+    if (!tools.querySelector('[data-accq]')) tools.innerHTML = '<input type="search" class="accq" data-accq placeholder="Find a name, username or email" aria-label="Find an account"><div class="accchips"></div>';
+    tools.querySelector('.accchips').innerHTML = `<div class="teamchips" role="group" aria-label="Role">${groups.map(([g, l]) => { const n = g ? all.filter(a => grp(a) === g).length : all.length; return n || g === accRole || !g ? `<button type="button" data-accrole="${g}" aria-pressed="${g === accRole}">${esc(l)} <span class="cnt">${n}</span></button>` : ''; }).join('')}</div>`;
+    $('accList').innerHTML = (shown.length ? '' : '<p class="subtle">Nobody matches.</p>') + shown.sort((x, y) => order(x) - order(y) || String(x.name).localeCompare(String(y.name))).map(a => {
+      const me = a.id === user.id, locked = a.builtIn || me, editing = !a.builtIn && unEdit === a.id;
       const needsKey = folder() && a.role !== 'pending' && !a.builtIn && !a.disabled && (!a.pub || (STAFF.has(a.role) && !(a.grants && a.grants.dk)) || (a.role === 'agent' && !(a.grants && a.grants.ak && a.grants.ak[a.pid])));
       const pills = [`<span class="pill ${a.role === 'admin' ? 'info' : a.role === 'pending' ? 'warn' : ''}">${esc(ROLE_NAME[a.role] || 'User')}</span>`,
         a.pid ? `<span class="pill">${esc(personName(a.pid) || 'linked')}</span>` : '', a.role === 'pending' && a.kind ? `<span class="pill">Says: ${esc((KINDS.find(k => k[0] === a.kind) || [, a.kind])[1])}${a.wantSpv ? ' · ' + esc(personName(a.wantSpv)) : ''}</span>` : '',
         a.builtIn ? '<span class="pill">Built in</span>' : '', me ? '<span class="pill good">You</span>' : '', needsKey ? `<span class="pill warn">${a.pub ? 'Access to open again' : 'Signs in once to get a key'}</span>` : '',
         a.disabled ? '<span class="pill bad">Turned off</span>' : '', a.mustChange ? '<span class="pill warn">Must choose a new password</span>' : '', a.username ? '' : '<span class="pill warn">No username</span>'].join('');
       const acts = editing
-        ? `<form class="unform" data-unform><label class="sr" for="un-${esc(a.id)}">Username for ${esc(a.name)}</label><input id="un-${esc(a.id)}" value="${esc(a.username || '')}" maxlength="32" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="username"><button class="btn sm primary">Save</button><button type="button" class="btn sm" data-a="uncancel">Cancel</button><span class="unerr" role="alert"></span></form>`
-        : locked ? `<span class="hint">${me ? 'Use the account menu to change your own username or password.' : 'Built into this team copy, so it cannot be changed here.'}</span>`
-        : `<label class="rolepick"><span class="sr">Role of ${esc(a.name)}</span><select data-role aria-label="Role of ${esc(a.name)}">${ROLES.map(r => `<option value="${r}"${r === a.role ? ' selected' : ''}>${esc(ROLE_NAME[r])}</option>`).join('')}</select></label><button class="btn sm${linkEdit === a.id ? ' primary' : ''}" data-a="linkopen">${a.pid ? 'Person' : 'Link to person'}</button>${a.role === 'spv' && a.pid ? `<button class="btn sm${agentsEdit === a.id ? ' primary' : ''}" data-a="agentsopen" title="The agents this supervisor leads">Agents · ${teamOf(a.pid).length}</button>` : ''}${needsKey && a.pub ? '<button class="btn sm primary" data-a="regrant">Open access again</button>' : ''}<button class="btn sm" data-a="uname">${a.username ? 'Change username' : 'Set username'}</button><button class="btn sm" data-a="reset">Reset password</button><button class="btn sm" data-a="${a.disabled ? 'on' : 'off'}">${a.disabled ? 'Turn on' : 'Turn off'}</button>
+        ? `<form class="unform accform" data-unform><label><span>Name</span><input name="name" value="${esc(a.name)}" maxlength="80" autocomplete="off" dir="auto"></label>${me ? '' : `<label><span>Username</span><input name="username" value="${esc(a.username || '')}" maxlength="32" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="username"></label>`}<label><span>Email</span><input name="email" type="email" value="${esc(a.email || '')}" maxlength="120" spellcheck="false" autocomplete="off" placeholder="optional"></label><button class="btn sm primary">Save</button><button type="button" class="btn sm" data-a="uncancel">Cancel</button><span class="unerr" role="alert"></span></form>`
+        : me ? `<button class="btn sm" data-a="uname">Edit name or email</button><span class="hint">Your username and password are in the account menu.</span>`
+        : locked ? `<span class="hint">Built into this team copy, so it cannot be changed here.</span>`
+        : `<label class="rolepick"><span class="sr">Role of ${esc(a.name)}</span><select data-role aria-label="Role of ${esc(a.name)}">${ROLES.map(r => `<option value="${r}"${r === a.role ? ' selected' : ''}>${esc(ROLE_NAME[r])}</option>`).join('')}</select></label><button class="btn sm${linkEdit === a.id ? ' primary' : ''}" data-a="linkopen">${a.pid ? 'Person' : 'Link to person'}</button>${a.role === 'spv' && a.pid ? `<button class="btn sm${agentsEdit === a.id ? ' primary' : ''}" data-a="agentsopen" title="The agents this supervisor leads">Agents · ${teamOf(a.pid).length}</button>` : ''}${needsKey && a.pub ? '<button class="btn sm primary" data-a="regrant">Open access again</button>' : ''}<button class="btn sm" data-a="uname">Edit</button><button class="btn sm" data-a="reset">Reset password</button><button class="btn sm" data-a="${a.disabled ? 'on' : 'off'}">${a.disabled ? 'Turn on' : 'Turn off'}</button>
            <button class="btn sm ghost danger-text" data-a="remove">Remove</button>`;
       return `<div class="accrow" data-id="${esc(a.id)}"><div class="who"><b dir="auto">${esc(a.name)}</b><span>${a.username ? `Username: <b class="uname">${esc(a.username)}</b>` : ''}${a.email ? ` · ${esc(a.email)}` : ''}</span><span class="hint">Last sign-in: ${esc(when(a.lastLogin))}</span></div><div class="pills">${pills}</div><div class="acts">${acts}</div>${!locked && linkEdit === a.id ? linkPickerHtml(a) : ''}${!locked && agentsEdit === a.id && a.role === 'spv' && a.pid ? agentsPickerHtml(a) : ''}</div>`;
     }).join('');
+    // what the list cannot show as an account: an access record left without its account, a file that could not be read
+    const D = await dirAll(), ids = new Set(all.map(a => a.id)), orphan = [...D.entries()].filter(([id]) => !ids.has(id));
+    const bad = (db && typeof db.problems === 'function' ? db.problems() : []).filter(x => /^(accounts|dir)\//.test(x.path));
+    $('accOther').hidden = !orphan.length && !bad.length;
+    $('accOther').innerHTML = `<h3>Records with no account</h3><p class="hint">Left in the data by an account that was removed, or a file that could not be read. Removing them changes nobody's access.</p><ul class="acclist accother">${
+      orphan.map(([id, d]) => `<li class="accrow" data-orph="${esc(id)}"><div class="who"><b>Access record ${esc(id)}</b><span>${esc(ROLE_NAME[d && d.role] || 'No role')}${d && d.pid ? ' · ' + esc(personName(d.pid) || 'a person') : ''}${d && d.at ? ' · set ' + esc(when(d.at)) : ''}${d && d.by ? ' by ' + esc(d.by) : ''}</span></div><div class="acts"><button class="btn sm ghost danger-text" data-orphdel="dir/${esc(id)}">Remove</button></div></li>`).join('')}${
+      bad.map(x => `<li class="accrow"><div class="who"><b>${esc(x.path)}</b><span>Could not be read (${esc(x.code)})</span></div><div class="acts"><button class="btn sm ghost danger-text" data-orphdel="${esc(x.path)}">Remove</button></div></li>`).join('')}</ul>`;
     $('migrateBox').hidden = !(folder() && hasLocalData());
   }
   function hasLocalData() { try { const d = JSON.parse(localStorage.getItem('wf-db') || '{}'); return Object.keys(d).some(k => k.startsWith('roster/') || k.startsWith('history/')); } catch (e) { return false; } }
@@ -732,7 +756,16 @@ const Auth = (() => {
   $('signinSeg').addEventListener('click', e => { const b = e.target.closest('[data-signin]'); if (b) setSignin(b.dataset.signin === 'user'); });
   $('accList').addEventListener('submit', e => {
     const f = e.target.closest('[data-unform]'); if (!f) return; e.preventDefault();
-    setUsernameFor(f.closest('[data-id]').dataset.id, f.querySelector('input').value);
+    const v = n => { const el = f.querySelector(`[name="${n}"]`); return el ? el.value : undefined; };
+    saveAcctEdit(f.closest('[data-id]').dataset.id, { name: v('name'), username: v('username'), email: v('email') });
+  });
+  $('accTools').addEventListener('input', e => { if (e.target.matches('[data-accq]')) { accQ = e.target.value; renderAccounts(); } });
+  $('accTools').addEventListener('click', e => { const b = e.target.closest('[data-accrole]'); if (!b) return; accRole = b.dataset.accrole; renderAccounts().then(() => { const n = $('accTools').querySelector(`[data-accrole="${accRole}"]`); if (n) n.focus(); }); });
+  $('accOther').addEventListener('click', async e => {
+    const b = e.target.closest('[data-orphdel]'); if (!b || !isAdmin()) return;
+    if (!b.dataset.confirm) { b.dataset.confirm = '1'; b.textContent = 'Click again to remove'; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; b.textContent = 'Remove'; } }, 3000); return; }
+    try { await db.doc(b.dataset.orphdel).delete(); toast(`Removed ${b.dataset.orphdel}`); } catch (er) { toast(`Could not remove it (${(er && er.code) || 'error'})`); }
+    renderAccounts();
   });
   $('accList').addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.closest('[data-unform]')) { e.stopPropagation(); unEdit = null; renderAccounts(); } }, true);
   $('accList').addEventListener('change', e => {

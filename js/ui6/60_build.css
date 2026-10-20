@@ -344,3 +344,19 @@ b.bad, .astats b.bad { color: var(--bad); }
 #success.sweep { animation: rise var(--t-ws) var(--ease-out) both; }
 #success.sweep::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--accent) 16%, transparent) 50%, transparent 70%); transform: translateX(-100%); animation: sweep 1100ms var(--ease-in-out) 200ms 1 both; pointer-events: none; }
 @keyframes sweep { to { transform: translateX(100%); } }
+/* the saved uploads on Import: by month, each file with its month, Replace and Delete */
+.upcard .cardhead { align-items: flex-end; }
+.upmonth { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); margin-top: 12px; }
+.upmonth:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.uph { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.uph b { font: 600 15px/1.3 var(--display); }
+.uph small { color: var(--muted); font-size: 12.5px; }
+.uph .btn { margin-inline-start: auto; }
+.uplist { list-style: none; margin: 0; padding: 0; display: grid; }
+.uplist li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 0; border-top: 1px solid var(--line); }
+.uplist li:first-child { border-top: 0; }
+.upn { flex: 1 1 260px; min-width: 0; display: grid; gap: 1px; }
+.upn b { font-weight: 500; overflow-wrap: anywhere; }
+.upn small { color: var(--muted); font-size: 12px; }
+.upa { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.upa select.cell { min-height: 28px; font-size: 12.5px; }

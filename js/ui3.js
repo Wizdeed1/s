@@ -137,7 +137,7 @@ async function initStorage() {
   if (!inClaude && Array.isArray(window.__ROSTER__)) {   // test harness: in-memory roster
     state.roster = window.__ROSTER__.map((r, i) => ({ _id: 'p' + i, order: i, ...r })); state.rosterReady = true;
     Auth.start(window.__NOLOCK__ ? null : localDb());
-    refresh(); return;
+    refresh(); setTimeout(upRestore, 50); return;
   }
   if (inClaude) {
     bootStep('the saved data', false);
@@ -249,6 +249,7 @@ async function loadData(db) {
     const ids = new Set(state.roster.map(p => p._id)); for (const id of [...state.sel]) if (!ids.has(id)) state.sel.delete(id);
     if (tableHasFocus()) { state.pendingRender = true; refresh({ table: false }); }
     else refresh();
+    upRestore();   // the month's saved files back in Build, once a visit
   }, e => { state.rosterMsg = 'The saved roster could not be loaded (' + ((e && e.code) || 'error') + '). Reload the page to try again.'; state.rosterReady = true; refresh(); });
 }
 function applySettings(d) {
@@ -361,6 +362,7 @@ async function addFiles(list, opts = {}) {
   if (later.length) recogFiles(later, 'import');
   const items = [...list].map(f => ({ fid: ++fseq, name: f.name, size: f.size, file: f, t0: Date.now() }));
   if (!items.length) return;
+  const upBefore = upInBuild();   // the saved uploads Build uses before this drop
   const snap0 = impSnap(); items.forEach(it => impLogAdd('wait', `Reading ${it.name} (${fmtSize(it.size)})`));
   state.pending.push(...items); renderPending(); renderSteps(); renderImpSide();
   const notes = [];
@@ -402,6 +404,7 @@ async function addFiles(list, opts = {}) {
   for (const x of ask) notes.push({ routed: x.it.name, kind: 'info', text: `${x.it.name}: ${x.rec ? x.rec.label : 'not recognised'} → you choose where it goes` });
   const gh = route.hist.length ? applyGenesysHistory(route.hist, route.W) : null;
   refresh(); impLogAfter(items, snap0, notes);
+  upAfterDrop(items, upBefore);   // each export and attendance sheet is kept (WFM team › Import › Saved uploads)
   const bad = notes.filter(n => n.bad).length, replaced = notes.filter(n => n.replaced).map(n => n.replaced), sum = notesSummary();
   const kpiN = notes.filter(n => n.kpi).map(n => n.kpi), evN = notes.filter(n => n.evalK).map(n => n.evalK), idsN = notes.filter(n => n.ids).length, histK = [...new Set(notes.filter(n => n.hist).map(n => n.hist))].sort();
   // one line for a drop of every kind: '9 files: 4 Genesys exports, 2 attendance sheets, the Final EVAL for Sep 2026 → Quality, 2 old Excel files → Results'
@@ -674,7 +677,7 @@ function renderBadges() {
 }
 
 // ---- import
-function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); }
+function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); }
 function renderPending() {
   $('pending').innerHTML = state.pending.map(p => `<li><div class="row"><b>${esc(p.name)}</b><span>${fmtSize(p.size)}</span></div><div class="progress" role="progressbar" aria-label="Reading ${esc(p.name)}"><i></i></div><div class="hint">Reading and recognising the columns…</div></li>`).join('');
 }
@@ -973,12 +976,25 @@ function renderExport() {
   } else if (state.built) {
     const b = state.built, stale = b.ver !== state.ver;
     sc.hidden = false; sc.classList.toggle('success', !stale); if (state.builtNew && !stale) { sc.classList.add('sweep'); state.builtNew = false; }
-    sc.innerHTML = `<div class="bsrow"><div class="bstate">${stale ? '<h2><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>Changed since build</h2>' : '<h2><svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Workbook saved</h2>'}<p class="hint">${stale ? `${esc(b.filename)} was saved at ${esc(b.at)}, before your latest changes. Build again to include them.` : `Saved ${esc(b.filename)} at ${esc(b.at)}. Nothing was sent or uploaded.`}</p></div><div class="bsact"><button class="btn ${stale ? 'primary' : ''}" id="buildAgain">Build again</button><small>Makes a new file with the page as it is now.</small></div></div>
+    sc.innerHTML = `<div class="bsrow"><div class="bstate">${stale ? '<h2><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>Changed since build</h2>' : '<h2><svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Workbook saved</h2>'}<p class="hint">${stale ? `${esc(b.filename)} was saved at ${esc(b.at)}, before your latest changes. Build again to include them.` : `${b.down === false ? `${esc(b.filename)} was not downloaded; it is` : `Saved ${esc(b.filename)} at ${esc(b.at)}${b.kept === 'ok' ? ', and a copy is' : ''}`}${b.kept === 'ok' ? ` in <b>${esc(reportsWhere())}</b>` : ''}. Nothing was sent or uploaded.`}</p></div><div class="bsact"><button class="btn ${stale ? 'primary' : ''}" id="buildAgain">Build again</button><small>Makes a new file with the page as it is now.</small></div></div>
       ${stale ? '' : `<div class="sheets" style="margin-top:12px">${b.sheets}</div><p class="hint" style="margin-top:10px">Next: open it in Excel and paste the attendance into the Attendance sheet. The steps are below.</p>`}`;
   } else sc.hidden = true;
 }
 
 // ---------------------------------------------------------------- build + save
+/** the built files can also be kept in the data folder, MC Data › MC Reports: plain Excel files, so anyone who can open the
+    folder opens them without the tool (the rest of the folder stays locked). On unless turned off in the build dialog. */
+const REPORTS_DIR = 'MC Reports';   // a space: never the name of one of the tool's own folders
+const keepReports = () => !!(state.db && state.db.folder && folderNow) && lsGet('mc-keep-reports') !== '0';
+async function saveToReports(name, bytes) {
+  if (!keepReports()) return '';
+  try {
+    if (!(await FolderStore.permission(folderNow, false))) return 'error: the browser no longer lets the tool write in the data folder';
+    const d = await folderNow.getDirectoryHandle(REPORTS_DIR, { create: true }), fh = await d.getFileHandle(name, { create: true }), w = await fh.createWritable();
+    await w.write(bytes); await w.close(); return 'ok';
+  } catch (e) { return 'error: ' + errText(e); }
+}
+const reportsWhere = () => `${state.db && state.db.name ? state.db.name : 'the data folder'} › ${REPORTS_DIR}`;
 async function build() {
   if (!canBuild() || state.building) return;
   state.building = true; state.buildErr = ''; renderHeader(); if (state.step !== 'export') setStep('export'); else renderExport();
@@ -991,10 +1007,11 @@ async function build() {
     const bytes = await Writer2.build(ctx);
     const filename = fileNameOut();
     const c = await saveRaw(filename, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    if (c === 'ok') {
-      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), sheets: sheetsHtml(true) }; state.builtNew = true;
-      toast(`Saved ${filename}. Nothing was sent or uploaded.`);
-    } else { state.buildErr = saveMsg(c, filename); toast(state.buildErr); }
+    const kept = await saveToReports(filename, bytes);   // and a copy in MC Data › MC Reports
+    if (c === 'ok' || kept === 'ok') {
+      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), sheets: sheetsHtml(true), kept, down: c === 'ok' }; state.builtNew = true;
+      toast(`${c === 'ok' ? `Saved ${filename}` : `${filename} was not downloaded`}${kept === 'ok' ? `${c === 'ok' ? ', and a copy' : '; it is'} in ${reportsWhere()}` : kept ? `. The copy in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})` : ''}. Nothing was sent or uploaded.`);
+    } else { state.buildErr = saveMsg(c, filename) + (kept && kept !== 'ok' ? ` The copy in ${REPORTS_DIR} failed too (${kept.replace(/^error: /, '')}).` : ''); toast(state.buildErr); }
   } catch (e) { state.buildErr = 'Could not build the file: ' + (e && e.message ? e.message : e); toast(state.buildErr); }
   finally {
     state.building = false; btns.forEach((b, i) => { b.innerHTML = labels[i]; });
@@ -2130,7 +2147,12 @@ async function incBytes() {
 async function buildInc() {
   if (!state.ctx || state.incBuilding) return;
   state.incBuilding = true; renderExport();
-  try { const bytes = await incBytes(); const fn = WriterInc.fileName(state.y, state.m); const ok = await save(fn, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); if (ok) state.incBuilt = { ver: state.ver, fn, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }; }
+  try {
+    const bytes = await incBytes(); const fn = WriterInc.fileName(state.y, state.m); const ok = await save(fn, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const kept = await saveToReports(fn, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+    if (kept === 'ok') toast(`${fn}: a copy is in ${reportsWhere()}`); else if (kept) toast(`The copy of ${fn} in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})`);
+    if (ok || kept === 'ok') state.incBuilt = { ver: state.ver, fn, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), kept };
+  }
   catch (e) { toast('Could not build the incentive file: ' + (e && e.message ? e.message : e)); }
   finally { state.incBuilding = false; renderExport(); }
 }
@@ -3448,6 +3470,7 @@ drop.addEventListener('drop', e => { const f = [...(e.dataTransfer?.files || [])
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   if (drop.contains(e.target) || $('wbDrop').contains(e.target)) return; e.preventDefault(); const f = [...(e.dataTransfer?.files || [])]; if (!f.length) return;
+  if (state.ws === 'wfm' && state.wfmTab === 'emails' && state.mailSub === 'month' && !mailShared() && !$('v-email').hidden) { loadWorkbook(f[0]); return; }   // the month's emails from this build: an edited workbook
   if (state.ws !== 'build') { wsDrop(f); return; }
   if (state.step === 'email') { loadWorkbook(f[0]); return; }
   if (state.step !== 'import') setStep('import'); addFiles(f);
@@ -3456,7 +3479,7 @@ $('slots').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.hasAttribute('data-pick')) $('picker').click();
   const k = b.getAttribute('data-unslot');
-  if (k) { const old = state.slots[k]; delete state.slots[k]; impLogAdd('removed', `Removed ${KIND_BY[k].title}: ${old.name}`); refresh(); toast(`Removed ${old.name}`, { label: 'Undo', fn: () => { state.slots[k] = old; impLogAdd('read', `Put back ${KIND_BY[k].title}: ${old.name}`); refresh(); } }); }
+  if (k) { const old = state.slots[k], before = upInBuild(); delete state.slots[k]; impLogAdd('removed', `Removed ${KIND_BY[k].title}: ${old.name}`); refresh(); upPrune(before); toast(`Removed ${old.name}`, { label: 'Undo', fn: () => { state.slots[k] = old; impLogAdd('read', `Put back ${KIND_BY[k].title}: ${old.name}`); refresh(); upPutBack(old.upId); } }); }
 });
 $('others').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -3695,7 +3718,7 @@ noteOn('change', e => {
 // attendance card on Import
 $('attCard').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.unatt) { const f = state.attFiles.find(x => x.name === b.dataset.unatt); state.attFiles = state.attFiles.filter(x => x !== f); if (f) impLogAdd('removed', `Removed attendance sheet: ${f.name}`); refresh(); if (f) toast(`Removed ${f.name}`, { label: 'Undo', fn: () => { state.attFiles.push(f); impLogAdd('read', `Put back attendance sheet: ${f.name}`); refresh(); } }); }
+  if (b.dataset.unatt) { const f = state.attFiles.find(x => x.name === b.dataset.unatt), before = upInBuild(); state.attFiles = state.attFiles.filter(x => x !== f); if (f) impLogAdd('removed', `Removed attendance sheet: ${f.name}`); refresh(); upPrune(before); if (f) toast(`Removed ${f.name}`, { label: 'Undo', fn: () => { state.attFiles.push(f); impLogAdd('read', `Put back attendance sheet: ${f.name}`); refresh(); upPutBack(f.upId); } }); }
   if (b.id === 'attNotes') openNotes();
   if (b.id === 'attPick') $('picker').click();
 });

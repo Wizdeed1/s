@@ -161,7 +161,7 @@
         <h2 class="vt" id="h-import">Import this month's files</h2>
         <p>Drop all the month's files at once: the four Genesys exports, the supervisors' attendance sheets, the IDs file, the KPI file, the quality team's Final EVAL, even the old Excel. Each file is recognised by its sheets and columns, not its name, and goes to its place; anything unclear is asked about.</p>
       </div>
-      <span class="privacy"><svg aria-hidden="true"><use href="#i-lock"/></svg>Files stay in your browser; only the month's results are shared</span>
+      <span class="privacy"><svg aria-hidden="true"><use href="#i-lock"/></svg><span id="impPrivacy">Files are kept for the WFM team only, locked like the rest of the data</span></span>
     </div>
     <div class="impgrid">
     <div class="impmain">
@@ -181,6 +181,7 @@
       <div class="eyebrow" style="margin-bottom:8px">Other files</div>
       <ul class="others" id="others"></ul>
     </div>
+    <section class="card upcard" id="upCard" aria-labelledby="h-up" hidden></section>
     <div class="next">
       <p class="hint" id="importNote"></p>
       <button class="btn primary" id="toReview">Continue to Review<svg width="16" height="16" aria-hidden="true"><use href="#i-chevr"/></svg></button>
@@ -188,7 +189,7 @@
     </div>
     <aside class="impside" aria-label="Import status">
       <section class="card needcard" aria-labelledby="h-need"><h2 id="h-need">Needed for the workbook</h2><ul class="checklist" id="needList"></ul></section>
-      <section class="card logcard" aria-labelledby="h-log"><div class="cardhead"><div><h2 id="h-log">Import log</h2><p class="cap">This session only. Files are read here and never stored or uploaded.</p></div></div><ol class="implog" id="impLog" aria-live="polite"></ol></section>
+      <section class="card logcard" aria-labelledby="h-log"><div class="cardhead"><div><h2 id="h-log">Import log</h2><p class="cap">This session only. The files themselves are kept in Saved uploads, never sent anywhere.</p></div></div><ol class="implog" id="impLog" aria-live="polite"></ol></section>
       <details class="card whatdrop" id="whatDrop"><summary>What to drop</summary><dl class="wdl" id="whatDropList"></dl></details>
     </aside>
     </div>
@@ -731,7 +732,7 @@
     </section>
     <section>
       <h3>Your data</h3>
-      <p>Export files are read on your computer and never uploaded. What is kept: the roster, the months' results (one row per agent), the quality numbers, the forms and signatures, and day totals of the daily data and of the interactions export (never the callers' numbers). With the shared folder it is kept there, locked; otherwise in this browser on this computer. Use Export roster for a backup copy of the roster.</p>
+      <p>Export files are read on your computer and never sent anywhere. What is kept: the roster, the months' results (one row per agent), the quality numbers, the forms and signatures, day totals of the daily data and of the interactions export (never the callers' numbers), and the month's Genesys exports and attendance sheets as you dropped them (WFM team › Import › Saved uploads), so signing out loses nothing; only the WFM team opens them. With the shared folder it is kept there, locked; otherwise in this browser on this computer. Use Export roster for a backup copy of the roster.</p>
     </section>
   </div>
 </aside>

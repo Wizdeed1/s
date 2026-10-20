@@ -2,7 +2,7 @@
 // The checks are the bell's checks (computeNotes), shown as a tab in Review (D5) with five filter tiles. Each row expands to
 // what happened, why it matters and what happens until someone acts; decisions are made in place. Only three things stop a
 // build: an empty roster, files still being read, no export and no attendance file. Everything else is a warning that says
-// what it leaves out. The import log lives in memory for this session only (D7): files are never stored.
+// what it leaves out. The import log lives in memory for this session only (D7); the files themselves are kept by uploads.js.
 Object.assign(state, { chkFilter: '', chkOpen: new Set(), chkAt: 0 });
 
 // ---------------------------------------------------------------- the import log (this session only, never saved)
@@ -216,11 +216,12 @@ function askBuild(btn) {
   $('h-build').textContent = state.built ? 'Build the workbook again?' : 'Build the monthly workbook?';
   $('buildDlgBody').innerHTML = `<p>This writes <b>${esc(fileNameOut())}</b> on this computer: nine sheets, formula-driven, for ${plural(shown || rosterRows().length, 'person', 'people')} from ${plural(n, 'export')}${state.attFiles.length ? ` and ${plural(state.attFiles.length, 'attendance sheet')}` : ''}.</p>
     <p class="hint">Nothing is sent or uploaded. ${state.built ? (stale ? 'The earlier file stays as it was; this makes a new one with your latest changes.' : 'The earlier file stays as it was; this makes a new one.') : 'Your browser asks where to save it, or saves it to Downloads.'}</p>
-    ${state.issues.length ? `<p class="warnline"><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>${plural(state.issues.length, 'name')} in the exports ${state.issues.length === 1 ? 'is' : 'are'} not on the roster and will be left out.</p>` : ''}`;
+    ${state.issues.length ? `<p class="warnline"><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>${plural(state.issues.length, 'name')} in the exports ${state.issues.length === 1 ? 'is' : 'are'} not on the roster and will be left out.</p>` : ''}
+    ${state.db && state.db.folder ? `<label class="check keeprep"><input type="checkbox" id="buildKeep"${lsGet('mc-keep-reports') !== '0' ? ' checked' : ''}> Also keep a copy in <b>${esc(reportsWhere())}</b></label><p class="hint">That copy is a normal Excel file: anyone who can open the data folder can open it, without the tool. The incentive file goes there too.</p>` : ''}`;
   openDlg('dBuild', btn);
 }
 $('buildCancel').addEventListener('click', () => closeDlg());
-$('buildGo').addEventListener('click', () => { closeDlg(false, false); build().then(() => { const s = $('success'); if (s && !s.hidden) { const b = s.querySelector('#buildAgain'); if (b) b.focus({ preventScroll: true }); } }); });
+$('buildGo').addEventListener('click', () => { const kp = $('buildKeep'); if (kp) lsSet('mc-keep-reports', kp.checked ? '1' : '0'); closeDlg(false, false); build().then(() => { const s = $('success'); if (s && !s.hidden) { const b = s.querySelector('#buildAgain'); if (b) b.focus({ preventScroll: true }); } }); });
 // ---- Finalize a month (Results): the dialog says what locks
 let finalK = '';
 function askFinalize(k, btn) {

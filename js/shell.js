@@ -62,7 +62,7 @@ function syncHead() {
   renderPeriod();
 }
 // ---- the reporting period (D13): every page except Build, where the month comes from the exports
-/** WFM › Interactions and WFM › Daily keep their own months (the months that have those files) */
+/** WFM team › Interactions and WFM team › Daily keep their own months (the months that have those files) */
 const wfmOwnTab = () => (state.ws === 'wfm' && (state.wfmTab === 'inter' || state.wfmTab === 'daily') ? state.wfmTab : '');
 function dailyKs() { try { const H = state.dhist || {}, hk = new Set(); for (const secs of Object.values(H)) for (const r of ((secs.voice || {}).daily || [])) hk.add(r.date.slice(0, 7)); return [...new Set([...dailyMonths(), ...hk])].sort(); } catch (e) { return []; } }
 function periodList() {
@@ -260,20 +260,22 @@ document.addEventListener('click', e => {
 // ---------------------------------------------------------------- How to use: each department's steps, the signed-in role first
 const DEPT = [
   ['user', 'WFM analyst', [
-    'Every morning, <b>WFM › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM › Emails</b>.',
-    '<b>WFM › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
+    'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
+    '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
     'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' attendance sheets, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
-    '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook; the incentive data workbook is made too.',
-    '<b>Email</b>: send the deduction for review, then the final after the review deadline (it lists what changed).',
+    '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook (a copy goes to MC Data › MC Reports); the incentive data workbook is made too. People with no schedule in the month are left out of every sheet (Settings).',
+    '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed); the incentive email comes from the build.',
+    'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
   ['wfm', 'WFM manager', [
-    'Every morning, <b>WFM › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them.',
-    '<b>WFM › Interactions</b>: add the week\'s interactions export.',
-    '<b>WFM › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
+    'Every morning, <b>WFM team › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them.',
+    '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
+    '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
+    'When a WFM analyst is on vacation, tick their name under <b>Vacation cover</b> on the WFM team page: you then have their tabs (Import, Review, Export, Report builder) until you untick it.',
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
-    'The <b>Dashboard</b> and <b>WFM › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
+    'The <b>Dashboard</b> and <b>WFM team › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
   ['senior', 'Senior manager', [
     '<b>Supervisors</b>: set the one-to-ones deadline and the month close days, and keep the <b>incentive rules</b>: the scorecards, the bases, who is eligible and how the days and KPIs are counted.',
     '<b>Results</b>: decide on eligibility where the rules say otherwise, adjust a result where needed (every change is logged), and <b>Finalize</b> the month.',

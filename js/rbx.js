@@ -1,7 +1,7 @@
 // ================================================================ REPORT BUILDER: the Member Care Report Builder, built into the tool
-// The WFM analyst drops the day's exports on WFM › Report builder. MC Leaders and the WFM Daily Review are made there, as in
+// The WFM analyst drops the day's exports on WFM team › Report builder. MC Leaders and the WFM Daily Review are made there, as in
 // Member Care Report Builder 14. The four brand emails (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay) go to the
-// WFM manager's WFM › Daily emails: he reads them, writes the SLA insight and sends them. The builder's own modules make every
+// WFM manager's WFM team › Daily emails: he reads them, writes the SLA insight and sends them. The builder's own modules make every
 // email (they are in the page: script#rb-code), so the emails come out exactly as the stand-alone builder made them. Each day's
 // numbers still go to the shared history, and building the WFM Daily Review still keeps each agent's day.
 Object.assign(state, { rbPrefs: {}, rbIn: {}, dmail: {}, dmBrands: {}, dmSel: '', dmActive: 'postpaid', rbActive: 'leaders', rbVer: 0 });
@@ -432,7 +432,7 @@ function watchDailyMail(db) {
       const fresh = canDailyMail() && Object.keys(o).some(k => !state.dmail[k] && state.dmailSeen);
       state.dmail = o; state.dmailSeen = true; state.rbVer++;
       if (rbVisible('dmail')) dmRender(false); else if (state.ws === 'wfm') renderWs(); else renderToday();
-      if (fresh) toast('New daily emails are ready to send: WFM › Daily emails.');
+      if (fresh) toast('New daily emails are ready to send: WFM team › Daily emails.');
       rbSendRender();
     }, () => { dmWatching = false; });
   } catch (e) { dmWatching = false; }
@@ -600,7 +600,7 @@ function rbEditMode(host, on) {
   doc.body.style.outline = on ? '2px dashed #9aa' : 'none';
 }
 
-// ---------------------------------------------------------------- WFM › Report builder (the WFM analyst)
+// ---------------------------------------------------------------- WFM team › Report builder (the WFM analyst)
 async function rbBoot() {
   if (RB.ready) return true;
   await rbLoad();
@@ -830,7 +830,7 @@ function rbFieldIn(t) {   // MC Leaders' fields (the analyst's own email): the p
 ['dragenter', 'dragover'].forEach(ev => $('wfmRb').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-rbdrop]'); if (z) { e.preventDefault(); z.classList.add('over'); } }));
 ['dragleave', 'drop'].forEach(ev => $('wfmRb').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-rbdrop]'); if (z) { e.preventDefault(); if (ev === 'drop') e.stopPropagation(); z.classList.remove('over'); if (ev === 'drop' && e.dataTransfer && e.dataTransfer.files.length) rbAddFiles([...e.dataTransfer.files]); } }));   // read once: the page's own drop handler does not see it
 
-// ---------------------------------------------------------------- WFM › Daily emails (the WFM manager): the four brand emails, to read, finish and send
+// ---------------------------------------------------------------- WFM team › Daily emails (the WFM manager): the four brand emails, to read, finish and send
 function dmShow() {
   const host = $('wfmDm');
   if (!host.dataset.built) {

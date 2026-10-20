@@ -57,7 +57,7 @@ function todayItems() {
     if (canDailyTool() && D && age > 1.5) add('todo', 'Build yesterday\'s WFM Daily Review', `The last agents' day kept: ${D.what || ''} (${ago(D.at)}). Building the WFM Daily Review in Report builder keeps it, and the agents' "this month so far".`, 'wfm:builder', 'Report builder');
     if (canDailyMail()) for (const o of dmUnsent().slice(0, 2)) add(dayDiff(todayIso(), o.x.end) <= 1 ? 'todo' : 'info', `${plural(o.left.length, 'daily email')} to send · ${rbDayLabel(o.x)}`, `${o.left.map(rbName).join(', ')} · made by ${o.x.by || 'the WFM analyst'} ${ago(o.x.at)}`, 'dmail:' + o.x.k, 'Daily emails');
     const I = state.fresh.inter, ia = I ? (Date.now() - new Date(I.at).getTime()) / 86400000 : null;
-    if (canInter() && (!I || ia > 8)) add('info', 'Interactions export', I ? `Last one ${ago(I.at)}: drop this week's on WFM › Interactions.` : 'None yet: drop the interactions export on WFM › Interactions.', 'wfm:inter', 'Interactions');
+    if (canInter() && (!I || ia > 8)) add('info', 'Interactions export', I ? `Last one ${ago(I.at)}: drop this week's on WFM team › Interactions.` : 'None yet: drop the interactions export on WFM team › Interactions.', 'wfm:inter', 'Interactions');
   }
   if (r === 'admin') {
     const P = (state.people || []).filter(a => a.role === 'pending' && !a.disabled && a.kind !== 'agent');

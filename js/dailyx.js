@@ -1,6 +1,6 @@
 // ================================================================ DAILY: the daily data kept for everyone, and the Daily dashboard on the WFM page
-// The WFM analysts make the daily emails in WFM › Report builder (rbx.js); the WFM manager sends the four brand emails from
-// WFM › Daily emails. Each day the builder reads is kept in the shared data, not only in one browser: the brands' daily numbers
+// The WFM analysts make the daily emails in WFM team › Report builder (rbx.js); the WFM manager sends the four brand emails from
+// WFM team › Daily emails. Each day the builder reads is kept in the shared data, not only in one browser: the brands' daily numbers
 // (its history), and, when the WFM Daily Review is built, each agent's day. The month is then shown from the stored days on
 // every page, without waiting for the monthly exports (a month built from the monthly exports always takes over).
 Object.assign(state, { dhist: null, dhistAt: '', dhistBy: '', daily: {}, dailyVer: 0, dailyK: '' });

@@ -265,7 +265,7 @@ const DEPT = [
     'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' attendance sheets, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
-    '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook (a copy goes to MC Data › MC Reports); the incentive data workbook is made too. People with no schedule in the month are left out of every sheet (Settings).',
+    '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it); the incentive data workbook is made too. People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
     '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed); the incentive email comes from the build.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],

@@ -2963,6 +2963,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
       <ul class="others" id="others"></ul>
     </div>
     <section class="card upcard" id="upCard" aria-labelledby="h-up" hidden></section>
+    <input type="file" id="upRepPick" accept=".csv,.txt,.xlsx,.xlsm,.xlsb" hidden>
     <div class="next">
       <p class="hint" id="importNote"></p>
       <button class="btn primary" id="toReview">Continue to Review<svg width="16" height="16" aria-hidden="true"><use href="#i-chevr"/></svg></button>
@@ -3109,6 +3110,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
       </div>
     </div>
     <div class="card success" id="success" hidden></div>
+    <section class="card upcard repcard" id="repCard" aria-labelledby="h-rep" hidden></section>
     <div class="grid2">
       <div class="card">
         <h2>Before you build</h2>
@@ -3517,7 +3519,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
     </section>
     <section>
       <h3>Your data</h3>
-      <p>Export files are read on your computer and never sent anywhere. What is kept: the roster, the months' results (one row per agent), the quality numbers, the forms and signatures, day totals of the daily data and of the interactions export (never the callers' numbers), and the month's Genesys exports and attendance sheets as you dropped them (WFM team › Import › Saved uploads), so signing out loses nothing; only the WFM team opens them. With the shared folder it is kept there, locked; otherwise in this browser on this computer. Use Export roster for a backup copy of the roster.</p>
+      <p>Export files are read on your computer and never sent anywhere. What is kept: the roster, the months' results (one row per agent), the quality numbers, the forms and signatures, day totals of the daily data and of the interactions export (never the callers' numbers), the month's Genesys exports and attendance sheets as you dropped them (WFM team › Import › Saved uploads), so signing out loses nothing, and every workbook built (Export › Saved workbooks); only the WFM team opens them. A plain copy of a workbook goes to MC Data › MC Reports only when chosen in the build dialog: that copy is not locked. With the shared folder it is kept there, locked; otherwise in this browser on this computer. Use Export roster for a backup copy of the roster.</p>
     </section>
   </div>
 </aside>
@@ -10453,8 +10455,9 @@ function peopleModel(ctx, R0 = 5) {
   // no schedule this month: the Schedule export has no day for them and no attendance was filled. Left out of every sheet
   // (the Roster sheet too) unless the setting is off; the Overview names them.
   const schKnown = (rawSched || []).length > 0;
+  const noTeams = (set.incFullAdhTeams || []).map(C.normSpace);   // the teams with no Genesys data (Settings) are never left out
   const noSchedOf = p => {
-    if (!schKnown) return false;
+    if (!schKnown || noTeams.includes(C.normSpace(p.team))) return false;
     const sr = iSch.get(C.normName(C.normSpace(C.normSpace(p.sys) ? p.sys : p.name))), row = sr ? rawSched[sr - 2] : null, a = attOf(p);
     return (!row || (Array.isArray(row.days) && row.days.every(v => v == null))) && !(a && a.days && a.days.some(v => v != null && v !== ''));
   };
@@ -13957,17 +13960,18 @@ const Auth = (() => {
         a.disabled ? '<span class="pill bad">Turned off</span>' : '', a.mustChange ? '<span class="pill warn">Must choose a new password</span>' : '', a.username ? '' : '<span class="pill warn">No username</span>'].join('');
       const acts = editing
         ? `<form class="unform accform" data-unform><label><span>Name</span><input name="name" value="${esc(a.name)}" maxlength="80" autocomplete="off" dir="auto"></label>${me ? '' : `<label><span>Username</span><input name="username" value="${esc(a.username || '')}" maxlength="32" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="username"></label>`}<label><span>Email</span><input name="email" type="email" value="${esc(a.email || '')}" maxlength="120" spellcheck="false" autocomplete="off" placeholder="optional"></label><button class="btn sm primary">Save</button><button type="button" class="btn sm" data-a="uncancel">Cancel</button><span class="unerr" role="alert"></span></form>`
+        : a.builtIn ? `<span class="hint">Built into this team copy, so it cannot be changed here.${me ? ' Your password is in the account menu.' : ''}</span>`
         : me ? `<button class="btn sm" data-a="uname">Edit name or email</button><span class="hint">Your username and password are in the account menu.</span>`
-        : locked ? `<span class="hint">Built into this team copy, so it cannot be changed here.</span>`
         : `<label class="rolepick"><span class="sr">Role of ${esc(a.name)}</span><select data-role aria-label="Role of ${esc(a.name)}">${ROLES.map(r => `<option value="${r}"${r === a.role ? ' selected' : ''}>${esc(ROLE_NAME[r])}</option>`).join('')}</select></label><button class="btn sm${linkEdit === a.id ? ' primary' : ''}" data-a="linkopen">${a.pid ? 'Person' : 'Link to person'}</button>${a.role === 'spv' && a.pid ? `<button class="btn sm${agentsEdit === a.id ? ' primary' : ''}" data-a="agentsopen" title="The agents this supervisor leads">Agents · ${teamOf(a.pid).length}</button>` : ''}${needsKey && a.pub ? '<button class="btn sm primary" data-a="regrant">Open access again</button>' : ''}<button class="btn sm" data-a="uname">Edit</button><button class="btn sm" data-a="reset">Reset password</button><button class="btn sm" data-a="${a.disabled ? 'on' : 'off'}">${a.disabled ? 'Turn on' : 'Turn off'}</button>
            <button class="btn sm ghost danger-text" data-a="remove">Remove</button>`;
       return `<div class="accrow" data-id="${esc(a.id)}"><div class="who"><b dir="auto">${esc(a.name)}</b><span>${a.username ? `Username: <b class="uname">${esc(a.username)}</b>` : ''}${a.email ? ` · ${esc(a.email)}` : ''}</span><span class="hint">Last sign-in: ${esc(when(a.lastLogin))}</span></div><div class="pills">${pills}</div><div class="acts">${acts}</div>${!locked && linkEdit === a.id ? linkPickerHtml(a) : ''}${!locked && agentsEdit === a.id && a.role === 'spv' && a.pid ? agentsPickerHtml(a) : ''}</div>`;
     }).join('');
     // what the list cannot show as an account: an access record left without its account, a file that could not be read
-    const D = await dirAll(), ids = new Set(all.map(a => a.id)), orphan = [...D.entries()].filter(([id]) => !ids.has(id));
-    const bad = (db && typeof db.problems === 'function' ? db.problems() : []).filter(x => /^(accounts|dir)\//.test(x.path));
+    const probs = (db && typeof db.problems === 'function' ? db.problems() : []), badIds = new Set(probs.map(x => x.path.split('/')[1]));
+    const D = await dirAll(), ids = new Set(all.map(a => a.id)), orphan = [...D.entries()].filter(([id]) => !ids.has(id) && !badIds.has(id));   // an account that could not be read is not an orphan
+    const bad = probs.filter(x => /^(accounts|dir)\//.test(x.path) && !ids.has(x.path.split('/')[1]));   // one the list still shows is not offered
     $('accOther').hidden = !orphan.length && !bad.length;
-    $('accOther').innerHTML = `<h3>Records with no account</h3><p class="hint">Left in the data by an account that was removed, or a file that could not be read. Removing them changes nobody's access.</p><ul class="acclist accother">${
+    $('accOther').innerHTML = `<h3>Records with no account</h3><p class="hint">An access record left by an account that was removed: removing it changes nobody's access. A file that could not be read is read again before it is removed, and kept if it reads now.</p><ul class="acclist accother">${
       orphan.map(([id, d]) => `<li class="accrow" data-orph="${esc(id)}"><div class="who"><b>Access record ${esc(id)}</b><span>${esc(ROLE_NAME[d && d.role] || 'No role')}${d && d.pid ? ' · ' + esc(personName(d.pid) || 'a person') : ''}${d && d.at ? ' · set ' + esc(when(d.at)) : ''}${d && d.by ? ' by ' + esc(d.by) : ''}</span></div><div class="acts"><button class="btn sm ghost danger-text" data-orphdel="dir/${esc(id)}">Remove</button></div></li>`).join('')}${
       bad.map(x => `<li class="accrow"><div class="who"><b>${esc(x.path)}</b><span>Could not be read (${esc(x.code)})</span></div><div class="acts"><button class="btn sm ghost danger-text" data-orphdel="${esc(x.path)}">Remove</button></div></li>`).join('')}</ul>`;
     $('migrateBox').hidden = !(folder() && hasLocalData());
@@ -14048,7 +14052,13 @@ const Auth = (() => {
   $('accOther').addEventListener('click', async e => {
     const b = e.target.closest('[data-orphdel]'); if (!b || !isAdmin()) return;
     if (!b.dataset.confirm) { b.dataset.confirm = '1'; b.textContent = 'Click again to remove'; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; b.textContent = 'Remove'; } }, 3000); return; }
-    try { await db.doc(b.dataset.orphdel).delete(); toast(`Removed ${b.dataset.orphdel}`); } catch (er) { toast(`Could not remove it (${(er && er.code) || 'error'})`); }
+    const path = b.dataset.orphdel, id = path.split('/')[1];
+    // read again first: a live account, or a file that reads now, is never removed from here
+    try {
+      if (path.startsWith('dir/')) { const s = await db.doc('accounts/' + id).get(); if (s.exists) { toast('That account is there after all: nothing was removed.'); renderAccounts(); return; } }
+      else { const s = await db.doc(path).get(); if (s.exists) { toast('That file reads now: nothing was removed.'); renderAccounts(); return; } }
+    } catch (er) { /* still unreadable: it can go */ }
+    try { await db.doc(path).delete(); toast(`Removed ${path}`); } catch (er) { toast(`Could not remove it (${(er && er.code) || 'error'})`); }
     renderAccounts();
   });
   $('accList').addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.closest('[data-unform]')) { e.stopPropagation(); unEdit = null; renderAccounts(); } }, true);
@@ -14097,7 +14107,7 @@ async function addFiles(list, opts = {}) {
   if (later.length) recogFiles(later, 'import');
   const items = [...list].map(f => ({ fid: ++fseq, name: f.name, size: f.size, file: f, t0: Date.now() }));
   if (!items.length) return;
-  const upBefore = upInBuild();   // the saved uploads Build uses before this drop
+  const upBefore = upSnap();   // the saved uploads Build uses before this drop, by slot and attendance sheet
   const snap0 = impSnap(); items.forEach(it => impLogAdd('wait', `Reading ${it.name} (${fmtSize(it.size)})`));
   state.pending.push(...items); renderPending(); renderSteps(); renderImpSide();
   const notes = [];
@@ -14319,7 +14329,7 @@ function computeModel(ctx) {
     const at = ctx.attendance && ctx.attendance.get(p._id), attC = at && at.filled ? Att.counts(at.days, at.tardyFile) : null;
     const attended = attC ? attC.worked : valid.length;
     // no schedule this month: the schedule export has no day for them and no attendance was filled (left out when the setting is on)
-    const noSched = anySch && (!s || s.days.every(v => v == null)) && !(at && at.days && at.days.some(v => v != null && v !== ''));
+    const noSched = anySch && !(set.incFullAdhTeams || []).includes(normSpace(p.team)) && (!s || s.days.every(v => v == null)) && !(at && at.days && at.days.some(v => v != null && v !== ''));   // a team with no Genesys data (Settings) never
     const shown = (status !== 'Inactive' || attended >= set.inactiveMin) && !(noSched && set.hideNoSched !== false);
     const inDed = shown && set.dedBrands.includes(normSpace(p.brand)) && set.dedTeams.includes(normSpace(p.team));
     const sch = s ? s.days : null, act = t ? t.days : null;
@@ -14459,7 +14469,7 @@ function renderImportNote() {
 const opts = (vals, cur, titles) => vals.map(v => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}${titles ? ` title="${esc(titles[v] || '')}"` : ''}>${esc(v)}</option>`).join('') + (cur && !vals.includes(cur) ? `<option selected>${esc(cur)}</option>` : '');
 function statusCell(p) {
   const m = state.byId.get(p._id), on = p.status !== 'Inactive', nm = normSpace(p.name) || 'new person';
-  const hid = m && !m.shown ? `<span class="pill warn ico" role="img" title="Hidden: inactive with ${m.attended} attended days (limit ${state.settings.inactiveMin}), so left out of the reports" aria-label="Hidden from the reports"><svg aria-hidden="true"><use href="#i-eyeoff"/></svg></span>` : '';
+  const hid = m && !m.shown ? `<span class="pill warn ico" role="img" title="${m.noSched ? 'Hidden: no day in the Schedule export and no attendance, so left out of the reports (Settings › Leave out people with no schedule)' : `Hidden: inactive with ${m.attended} attended days (limit ${state.settings.inactiveMin}), so left out of the reports`}" aria-label="Hidden from the reports"><svg aria-hidden="true"><use href="#i-eyeoff"/></svg></span>` : '';
   return `<span class="stcell"><button class="sw" role="switch" aria-checked="${on}" data-sw aria-label="Status of ${esc(nm)}"><i></i>${on ? 'Active' : 'Inactive'}</button>${hid}</span>`;
 }
 function badgesCell(p) {
@@ -14623,7 +14633,7 @@ function renderPreview() {
     </div>
     <div class="grid2 top">
       <div class="card"><h2>Most deduction minutes</h2><p class="cap">Top ${top.length || 10} in ${esc(scope)}. Select a name for the day-by-day view.</p>${topHtml}</div>
-      <div class="card"><h2>Hidden from the reports</h2><p class="cap">Inactive with fewer than ${set.inactiveMin} attended days. They stay in the Roster sheet.</p>
+      <div class="card"><h2>Hidden from the reports</h2><p class="cap">Inactive with fewer than ${set.inactiveMin} attended days (they stay in the Roster sheet), and the people with no schedule this month (left out of every sheet; Settings › Leave out people with no schedule).</p>
         ${hidden.length ? `<ul class="ilist">${hidden.map(m => `<li><button class="linkbtn nm" data-open="${esc(m.p._id)}" data-agent="${esc(m.p._id)}" dir="auto">${esc(m.exp)}</button><span class="sg">${esc(m.p.team || '')} · ${plural(m.attended, 'day')}</span></li>`).join('')}</ul>` : '<p class="subtle">Nobody is hidden.</p>'}</div>
     </div>
     ${perfCardHtml(shown)}
@@ -14647,7 +14657,8 @@ function renderPerson() {
   let h = profileHtml(p);
   if (!m) { put(h + `<div class="banner info">${state.ctx ? (normSpace(p.name) ? 'Not found in this month\'s exports. Check the Genesys name above.' : 'Type a name first, so this person can be matched.') : 'Drop the exports on Import to see this month\'s numbers.'}</div>` + (normSpace(p.name) ? agentHistoryHtml(p) + formsListHtml(p._id) : '')); return; }
   h += `<div class="pexp">${badgesCell(p)}<span class="hint">Found in these exports</span></div>`;
-  if (!m.shown) h += `<div class="banner">Left out of the reports: Inactive with ${plural(m.attended, 'attended day')} (limit ${set.inactiveMin}). Attendance typed in Excel can bring them back.</div>`;
+  if (!m.shown) h += m.noSched ? `<div class="banner">Left out of the reports: no day in the Schedule export and no attendance this month. If they are in the Schedule export under another spelling, link the name; to keep everyone, turn off Settings › Leave out people with no schedule.</div>`
+    : `<div class="banner">Left out of the reports: Inactive with ${plural(m.attended, 'attended day')} (limit ${set.inactiveMin}). Attendance typed in Excel can bring them back.</div>`;
   h += `<div class="minis"><div><b>${pct(m.avg)}</b><span>Adherence Avr.</span></div><div><b>${m.adh ? m.days : '–'}</b><span>Days counted</span></div><div><b>${mss(m.aht)}</b><span>AHT (m:ss)</span></div><div><b>${m.inDed ? m.ded : '–'}</b><span>${m.inDed ? 'Deduction (min)' : 'Not in deduction scope'}</span></div></div>`;
   h += kpiCardHtml(p._id) + perfSectionHtml(m) + wfSectionHtml(m) + agentHistoryHtml(p) + formsListHtml(p._id);
   const wd = d => Core.weekday(Y, Mo, d);
@@ -14700,7 +14711,7 @@ function renderExport() {
   $('build').disabled = !ready || state.building;
   $('buildNote').textContent = ready ? 'The file is saved to your computer after you confirm.' : buildBlocker() + '.';
   $('sheets').innerHTML = sheetsHtml(!!state.ctx);
-  renderIncExport();
+  renderIncExport(); renderRepCard();
   $('sheets').closest('.card').hidden = !!freshBuild();
   const sc = $('success');
   sc.classList.remove('success', 'building', 'failed', 'sweep');
@@ -14713,16 +14724,17 @@ function renderExport() {
   } else if (state.built) {
     const b = state.built, stale = b.ver !== state.ver;
     sc.hidden = false; sc.classList.toggle('success', !stale); if (state.builtNew && !stale) { sc.classList.add('sweep'); state.builtNew = false; }
-    sc.innerHTML = `<div class="bsrow"><div class="bstate">${stale ? '<h2><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>Changed since build</h2>' : '<h2><svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Workbook saved</h2>'}<p class="hint">${stale ? `${esc(b.filename)} was saved at ${esc(b.at)}, before your latest changes. Build again to include them.` : `${b.down === false ? `${esc(b.filename)} was not downloaded; it is` : `Saved ${esc(b.filename)} at ${esc(b.at)}${b.kept === 'ok' ? ', and a copy is' : ''}`}${b.kept === 'ok' ? ` in <b>${esc(reportsWhere())}</b>` : ''}. Nothing was sent or uploaded.`}</p></div><div class="bsact"><button class="btn ${stale ? 'primary' : ''}" id="buildAgain">Build again</button><small>Makes a new file with the page as it is now.</small></div></div>
-      ${stale ? '' : `<div class="sheets" style="margin-top:12px">${b.sheets}</div><p class="hint" style="margin-top:10px">Next: open it in Excel and paste the attendance into the Attendance sheet. The steps are below.</p>`}`;
+    sc.innerHTML = `<div class="bsrow"><div class="bstate">${stale ? '<h2><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>Changed since build</h2>' : '<h2><svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Workbook saved</h2>'}<p class="hint">${stale ? `${esc(b.filename)} was saved at ${esc(b.at)}, before your latest changes. Build again to include them.` : `${b.down === false ? `${esc(b.filename)} was not downloaded.` : `Saved ${esc(b.filename)} at ${esc(b.at)}.`}${b.locked === 'ok' ? ' Kept in <b>Saved workbooks</b> below.' : ''}${b.kept === 'ok' ? ` A plain copy is in <b>${esc(reportsWhere())}</b>.` : ''} Nothing was sent or uploaded.`}</p></div><div class="bsact"><button class="btn ${stale ? 'primary' : ''}" id="buildAgain">Build again</button><small>Makes a new file with the page as it is now.</small></div></div>
+      ${stale ? '' : `<div class="sheets" style="margin-top:12px">${b.sheets}</div><p class="hint" style="margin-top:10px">Next: open it in Excel and paste the attendance into the Attendance sheet. The steps are below.${(() => { const n = state.settings.hideNoSched !== false ? (state.model || []).filter(m => m.noSched).length : 0; return n ? ` ${plural(n, 'person', 'people')} with no schedule this month ${n === 1 ? 'has' : 'have'} no row in it (Review › Checks names them; Settings › Leave out people with no schedule).` : ''; })()}</p>`}`;
   } else sc.hidden = true;
 }
 
 // ---------------------------------------------------------------- build + save
-/** the built files can also be kept in the data folder, MC Data › MC Reports: plain Excel files, so anyone who can open the
-    folder opens them without the tool (the rest of the folder stays locked). On unless turned off in the build dialog. */
+/** every build is kept locked with the shared data (Export › Saved workbooks, uploads.js). A plain copy can also go to the data
+    folder, MC Data › MC Reports, to open in Excel without the tool: off unless chosen in the build dialog, because anyone who can
+    open the shared folder (agents too) could open it, while the rest of the folder stays locked. */
 const REPORTS_DIR = 'MC Reports';   // a space: never the name of one of the tool's own folders
-const keepReports = () => !!(state.db && state.db.folder && folderNow) && lsGet('mc-keep-reports') !== '0';
+const keepReports = () => !!(state.db && state.db.folder && folderNow) && lsGet('mc-keep-reports') === '1';
 async function saveToReports(name, bytes) {
   if (!keepReports()) return '';
   try {
@@ -14744,10 +14756,11 @@ async function build() {
     const bytes = await Writer2.build(ctx);
     const filename = fileNameOut();
     const c = await saveRaw(filename, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    const kept = await saveToReports(filename, bytes);   // and a copy in MC Data › MC Reports
-    if (c === 'ok' || kept === 'ok') {
-      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), sheets: sheetsHtml(true), kept, down: c === 'ok' }; state.builtNew = true;
-      toast(`${c === 'ok' ? `Saved ${filename}` : `${filename} was not downloaded`}${kept === 'ok' ? `${c === 'ok' ? ', and a copy' : '; it is'} in ${reportsWhere()}` : kept ? `. The copy in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})` : ''}. Nothing was sent or uploaded.`);
+    const locked = await repKeep(filename, bytes, 'monthly');   // kept, locked, with the shared data (Export › Saved workbooks)
+    const kept = await saveToReports(filename, bytes);   // and, when chosen, a plain copy in MC Data › MC Reports
+    if (c === 'ok' || kept === 'ok' || locked === 'ok') {
+      state.built = { ver: state.ver, filename, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), sheets: sheetsHtml(true), kept, locked, down: c === 'ok' }; state.builtNew = true;
+      toast(`${c === 'ok' ? `Saved ${filename}` : `${filename} was not downloaded`}${locked === 'ok' ? '; kept in Saved workbooks' : ''}${kept === 'ok' ? `, and a plain copy in ${reportsWhere()}` : kept ? `. The copy in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})` : ''}. Nothing was sent or uploaded.`);
     } else { state.buildErr = saveMsg(c, filename) + (kept && kept !== 'ok' ? ` The copy in ${REPORTS_DIR} failed too (${kept.replace(/^error: /, '')}).` : ''); toast(state.buildErr); }
   } catch (e) { state.buildErr = 'Could not build the file: ' + (e && e.message ? e.message : e); toast(state.buildErr); }
   finally {
@@ -15886,9 +15899,9 @@ async function buildInc() {
   state.incBuilding = true; renderExport();
   try {
     const bytes = await incBytes(); const fn = WriterInc.fileName(state.y, state.m); const ok = await save(fn, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    const kept = await saveToReports(fn, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
-    if (kept === 'ok') toast(`${fn}: a copy is in ${reportsWhere()}`); else if (kept) toast(`The copy of ${fn} in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})`);
-    if (ok || kept === 'ok') state.incBuilt = { ver: state.ver, fn, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), kept };
+    const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), locked = await repKeep(fn, u8, 'incentive'), kept = await saveToReports(fn, u8);
+    if (kept === 'ok') toast(`${fn}: kept in Saved workbooks, and a plain copy in ${reportsWhere()}`); else if (kept) toast(`The copy of ${fn} in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})`);
+    if (ok || kept === 'ok' || locked === 'ok') state.incBuilt = { ver: state.ver, fn, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), kept, locked };
   }
   catch (e) { toast('Could not build the incentive file: ' + (e && e.message ? e.message : e)); }
   finally { state.incBuilding = false; renderExport(); }
@@ -16087,7 +16100,7 @@ const MAIL_DEFAULTS = {
   intro: 'Please review the data below and notify me if there are any changes.',
   introFinal: 'Please find below the final data after the review.',
   sign: 'Best Regards,',
-  absScope: 'brands', zeros: false, attach: true,
+  absScope: 'brands', zeros: false, attach: true, classic: false,   // classic: the plain email of before instead of the card look
 };
 state.mail = clone(MAIL_DEFAULTS);
 state.incMail = clone(INC_DEFAULTS);
@@ -18333,7 +18346,7 @@ function watchShared(db) {
   loadPeople();
 }
 let peopleTimer = 0;
-function loadPeople() { clearTimeout(peopleTimer); peopleTimer = setTimeout(async () => { state.people = await Auth.people(); watchSigs(); watchReplies(); watchObjs(); if (state.ws !== 'build') renderWs(); else renderToday(); }, 150); }
+function loadPeople() { clearTimeout(peopleTimer); peopleTimer = setTimeout(async () => { const was = rolesNow().join(); state.people = await Auth.people(); watchSigs(); watchReplies(); watchObjs(); if (rolesNow().join() !== was) { applyRole(); return; } if (state.ws !== 'build') renderWs(); else renderToday(); }, 150); }   // a cover ticked for an account that changed
 /** the supervisors: roster people who are someone's Supervisor (the roster's Supervisor column) */
 const spvList = () => supervisors().map(s => ({ pid: s.pid, name: s.name, size: s.size }));
 /** the agent's supervisor, shown under their name */
@@ -18936,7 +18949,10 @@ function monthHasAtt(k) {
   nsAttMemo.set(k, { sig, on }); return on;
 }
 const hideNoSched = () => state.settings.hideNoSched !== false;
-function isNoSchedRow(r, k) { if (!r || r.adh != null || !(r.d || r.dx)) return false; const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5)); return attTotals(daysOfRow(r, ND), k).sched === 0 && monthHasAtt(k); }
+function isNoSchedRow(r, k) {   // every day blank: a month of leave, even a leave the incentive does not count, is a schedule
+  if (!r || r.adh != null || !(r.d || r.dx) || (state.settings.incFullAdhTeams || []).includes(normSpace(r.team))) return false;
+  const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5)); return daysOfRow(r, ND).every(v => v == null) && monthHasAtt(k);
+}
 const noSchedRow = (r, k) => hideNoSched() && isNoSchedRow(r, k);
 /** the people an export lists for a month: those with a row, and with a schedule (when the setting is on) */
 const exportPeople = (P, map, k) => (hideNoSched() ? P.filter(p => { const r = map.get(p._id); return r && !noSchedRow(r, k); }) : P);
@@ -22766,11 +22782,13 @@ async function wsDrop(files) {
 Object.assign(state, { cover: { away: {}, log: [] } });
 const COVER_OF = { wfm: 'user', user: 'wfm' };   // whose work each role takes on
 const meId = () => (Auth.user() || {}).id || '';
+/** a tick still counts only while its account is there, turned on, with the role it was ticked for */
+const coverLive = (id, x) => { const a = (state.people || []).find(p => p.id === id); return !!(a && x && !a.disabled && a.role === x.role); };
 /** the role a person also works with now: a colleague's, while that colleague is on vacation */
 function coverRoleFor(r) {
   const other = COVER_OF[r]; if (!other) return '';
   const A = (state.cover && state.cover.away) || {}, me = meId();
-  return Object.entries(A).some(([id, x]) => id !== me && x && x.role === other) ? other : '';
+  return Object.entries(A).some(([id, x]) => id !== me && x && x.role === other && coverLive(id, x)) ? other : '';
 }
 /** the colleagues a person can mark as away: the accounts with the other WFM role (the admin: both) */
 function coverPeople() {
@@ -22781,7 +22799,9 @@ const COVER_GETS = { user: 'Import, Review, Export and Report builder, with the 
 function renderCoverNote() {
   const el = $('coverNote'); if (!el) return;
   const A = state.cover.away || {}, mine = A[meId()], L = coverPeople(), r = roleNow(), cov = coverRoleFor(r);
-  if (!L.length && !mine) { el.hidden = true; el.innerHTML = ''; return; }
+  // a tick left by an account that was removed, turned off or given another role: anyone on this page can clear it
+  const stale = ['wfm', 'user', 'admin'].includes(r) ? Object.entries(A).filter(([id, x]) => id !== meId() && !coverLive(id, x) && !L.some(a => a.id === id)) : [];
+  if (!L.length && !mine && !stale.length) { el.hidden = true; el.innerHTML = ''; return; }
   const nm = a => a.name || a.username || 'Someone', since = x => x ? ` since ${fmtWhen(x.at)}${x.byName && x.by !== meId() ? `, ticked by ${x.byName}` : ''}` : '';
   const away = L.filter(a => A[a.id]);
   const lead = mine ? `You are marked as on vacation${since(mine)}. Your colleague has your tabs until you are back.`
@@ -22790,7 +22810,7 @@ function renderCoverNote() {
   const on = !!(cov || mine); el.hidden = false; el.classList.toggle('on', on);
   el.title = on ? '' : 'Tick a colleague who is on vacation: you then have their work too, with their permissions, until you untick it. Everyone sees the tick.';
   el.innerHTML = `<svg width="15" height="15" aria-hidden="true"><use href="#i-day"/></svg><span class="${on ? '' : 'cvl'}">${esc(lead)}</span>
-    <span class="cvlist">${mine ? '<button class="btn sm" data-coverback>I am back</button>' : ''}${L.map(a => `<label><input type="checkbox" data-cover="${esc(a.id)}"${A[a.id] ? ' checked' : ''}> ${esc(nm(a))} is on vacation <small>${esc(ROLE_NAME[a.role] || '')}</small></label>`).join('')}</span>`;
+    <span class="cvlist">${mine ? '<button class="btn sm" data-coverback>I am back</button>' : ''}${L.map(a => `<label><input type="checkbox" data-cover="${esc(a.id)}"${A[a.id] ? ' checked' : ''}> ${esc(nm(a))} is on vacation <small>${esc(ROLE_NAME[a.role] || '')}</small></label>`).join('')}${stale.map(([id, x]) => `<label><input type="checkbox" data-cover="${esc(id)}" checked> ${esc((x && x.name) || 'Someone')} <small>no longer ${esc(ROLE_NAME[x && x.role] || 'in this role')}: untick to clear</small></label>`).join('')}</span>`;
 }
 /** someone away, or back: shared at once, and logged */
 function setCover(id, on) {
@@ -22818,38 +22838,50 @@ $('coverNote').addEventListener('click', e => { if (e.target.closest('[data-cove
 // in Build by itself. WFM team › Import lists them by month: load a month into Build, move a file to another month, replace
 // it with a newer one, or delete it. A file taken out of Build (or replaced by a newer export of its kind) is deleted with it.
 // Two records per file: upmeta/<id> (name, month, kind, who, when: small, for the list) and upfile/<id> (the bytes).
-const UP = { list: [], loaded: false, restored: false, watching: false, cache: new Map(), month: '', confirm: '', err: '' };
+const UP = { list: [], loaded: false, restored: false, watching: false, cache: new Map(), month: '', confirm: '', err: '', gone: new Map(), deleting: new Map() };
 const UP_MAX_ONLINE = 1.5 * 1024 * 1024;   // the online page's data keeps smaller records than a data folder
 const upMode = () => (state.db && !state.db.local ? 'db' : 'idb');
 const upNewId = () => 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 // ---- this browser (no shared data, or "this computer only"): IndexedDB, which takes files of any size
 let upIdbP = null;
 function upIdb() {
-  if (!upIdbP) upIdbP = new Promise((res, rej) => { const r = indexedDB.open('mc-uploads', 1); r.onupgradeneeded = () => { r.result.createObjectStore('meta', { keyPath: 'id' }); r.result.createObjectStore('file'); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  if (!upIdbP) upIdbP = new Promise((res, rej) => {
+    const r = indexedDB.open('mc-uploads', 2);
+    r.onupgradeneeded = () => { const d = r.result; for (const [n, kp] of [['meta', 'id'], ['file', ''], ['repmeta', 'id'], ['repfile', '']]) if (!d.objectStoreNames.contains(n)) d.createObjectStore(n, kp ? { keyPath: kp } : undefined); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
   return upIdbP;
 }
+const IDBS = { up: ['meta', 'file'], rep: ['repmeta', 'repfile'] };   // this browser's stores for each family
 async function upIdbDo(store, mode, fn) { const db = await upIdb(); return new Promise((res, rej) => { const t = db.transaction(store, mode), s = t.objectStore(store), q = fn(s); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); }
 // ---- the four calls: put, list, bytes, delete
-async function upPut(meta, bytes) {
-  if (upMode() === 'idb') { await upIdbDo('file', 'readwrite', s => s.put(bytes, meta.id)); await upIdbDo('meta', 'readwrite', s => s.put(meta)); return; }
+async function upPut(meta, bytes, c = 'up') {
+  if (upMode() === 'idb') { await upIdbDo(IDBS[c][1], 'readwrite', s => s.put(bytes, meta.id)); await upIdbDo(IDBS[c][0], 'readwrite', s => s.put(meta)); return; }
   if (!state.db.folder && bytes.length > UP_MAX_ONLINE) throw Object.assign(new Error('too big'), { code: 'too-big' });
-  await state.db.doc('upfile/' + meta.id).set({ id: meta.id, b64: FolderStore.b64e(bytes) });
-  await state.db.doc('upmeta/' + meta.id).set(meta);
+  await state.db.doc(`${c}file/${meta.id}`).set({ id: meta.id, b64: FolderStore.b64e(bytes) });
+  await state.db.doc(`${c}meta/${meta.id}`).set(meta);
 }
-async function upListNow() {
-  if (upMode() === 'idb') return (await upIdbDo('meta', 'readonly', s => s.getAll())) || [];
-  const sn = await state.db.collection('upmeta').get(); return sn.docs.map(d => d.data()).filter(m => m && m.id && m.k);
+async function upListNow(c = 'up') {
+  if (upMode() === 'idb') return (await upIdbDo(IDBS[c][0], 'readonly', s => s.getAll())) || [];
+  const sn = await state.db.collection(c + 'meta').get(); return sn.docs.map(d => d.data()).filter(m => m && m.id && m.k);
 }
-async function upBytes(id) {
-  const c = UP.cache.get(id); if (c) return c;
+async function upBytes(id, c = 'up') {
+  const hit = UP.cache.get(id); if (hit) return hit;
   let b = null;
-  if (upMode() === 'idb') { const x = await upIdbDo('file', 'readonly', s => s.get(id)); b = x ? new Uint8Array(x) : null; }
-  else { const sn = await state.db.doc('upfile/' + id).get(); b = sn.exists && sn.data().b64 ? FolderStore.b64d(sn.data().b64) : null; }
+  if (upMode() === 'idb') { const x = await upIdbDo(IDBS[c][1], 'readonly', s => s.get(id)); b = x ? new Uint8Array(x) : null; }
+  else { const sn = await state.db.doc(`${c}file/${id}`).get(); b = sn.exists && sn.data().b64 ? FolderStore.b64d(sn.data().b64) : null; }
   if (b) UP.cache.set(id, b); return b;
 }
-async function upDel(id) {
-  if (upMode() === 'idb') { await upIdbDo('meta', 'readwrite', s => s.delete(id)); await upIdbDo('file', 'readwrite', s => s.delete(id)); }
-  else { await state.db.doc('upmeta/' + id).delete().catch(() => {}); await state.db.doc('upfile/' + id).delete().catch(() => {}); }
+async function upDelNow(id, c = 'up') {
+  if (upMode() === 'idb') { await upIdbDo(IDBS[c][0], 'readwrite', s => s.delete(id)); await upIdbDo(IDBS[c][1], 'readwrite', s => s.delete(id)); }
+  else { await state.db.doc(`${c}meta/${id}`).delete().catch(() => {}); await state.db.doc(`${c}file/${id}`).delete().catch(() => {}); }
+}
+/** a delete leaves the list at once and is remembered (for an Undo that comes while it is still on its way) */
+function upDel(id) {
+  const m = UP.list.find(x => x.id === id); if (m) UP.gone.set(id, m);
+  UP.list = UP.list.filter(x => x.id !== id);
+  const p = upDelNow(id).finally(() => { if (UP.deleting.get(id) === p) UP.deleting.delete(id); });
+  UP.deleting.set(id, p); return p;
 }
 async function upRefresh() { try { UP.list = await upListNow(); UP.err = ''; } catch (e) { UP.err = errText(e); } UP.loaded = true; renderUploads(); }
 /** the list, live: another analyst's upload shows here too (the data folder is read again every few seconds) */
@@ -22861,36 +22893,69 @@ function upWatch() {
 // ---- which saved files Build uses now
 const upInBuild = () => new Set([...Object.values(state.slots).map(v => v && v.upId), ...state.attFiles.map(f => f.upId)].filter(Boolean));
 const upKindsOf = fid => Object.entries(state.slots).filter(([, v]) => v && v.fid === fid).map(([k]) => k);
-/** after a drop: each new export or attendance sheet is kept; a saved file nothing in Build uses any more is deleted */
+const upMetaOf = id => UP.list.find(m => m.id === id) || UP.gone.get(id) || null;
+/** the month a dropped file is for, from its own rows (the export's month, the attendance dates, the shifts), else Build's month */
+function upMonthOf(fid) {
+  const dets = [...Object.values(state.slots).filter(v => v && v.fid === fid).flatMap(v => v.dets), ...state.attFiles.filter(f => f.fid === fid).flatMap(f => f.dets)], n = {};
+  const add = (y, m, w) => { if (y && m) { const k = ymKey(y, m); n[k] = (n[k] || 0) + w; } };
+  for (const d of dets) {
+    const D = (d && d.data) || {};
+    if (D.month && D.month.y) add(D.month.y, D.month.m, 1000);
+    if (Array.isArray(D.dates)) for (const x of D.dates) add(x.y, x.m, 1);
+    if (Array.isArray(D.segs)) for (const s of D.segs) { const t = new Date(s.s); add(t.getFullYear(), t.getMonth() + 1, 1); }
+  }
+  const best = Object.entries(n).sort((a, b) => b[1] - a[1])[0];
+  return best ? best[0] : monthKey();
+}
+/** what Build holds before a drop: which saved file is in which slot and which attendance sheet */
+const upSnap = () => ({ ids: upInBuild(), kinds: Object.fromEntries(Object.entries(state.slots).filter(([, v]) => v && v.upId).map(([k, v]) => [k, v.upId])), att: state.attFiles.filter(f => f.upId).map(f => ({ name: f.name, upId: f.upId })) });
+/** after a drop: each new export or attendance sheet is kept. A saved file replaced by a newer one of the same kind and the same
+    month is deleted; one of another month stays saved under its month, and leaves Build when Build has moved on to a new month */
 async function upAfterDrop(items, before) {
   if (!isBuilder()) return;
   upWatch();
-  const k = monthKey(), who = whoNow();
+  const who = whoNow(), fresh = [];
   for (const it of items) {
     const kinds = upKindsOf(it.fid), att = state.attFiles.find(f => f.fid === it.fid);
     if (!kinds.length && !att) continue;
     const old = it.file && it.file.__up;
     if (old) { kinds.forEach(x => { state.slots[x].upId = old.id; }); if (att) att.upId = old.id; continue; }   // put back from the saved files
-    const meta = { id: upNewId(), k, name: it.name, size: it.size, type: (it.file && it.file.type) || '', kinds, att: !!att, at: new Date().toISOString(), by: who };
+    const meta = { id: upNewId(), k: upMonthOf(it.fid), name: it.name, size: it.size, type: (it.file && it.file.type) || '', kinds, att: !!att, at: new Date().toISOString(), by: who };
+    fresh.push(meta);
     kinds.forEach(x => { state.slots[x].upId = meta.id; }); if (att) att.upId = meta.id;
     try { const bytes = new Uint8Array(await it.file.arrayBuffer()); UP.cache.set(meta.id, bytes); await upPut(meta, bytes); UP.list = UP.list.filter(m => m.id !== meta.id).concat(meta); }
     catch (e) { UP.err = e && e.code === 'too-big' ? `${it.name} is too big to keep in the online page's data; it stays in Build until you close the page.` : `${it.name} could not be kept (${errText(e)}).`; kinds.forEach(x => { delete state.slots[x].upId; }); if (att) delete att.upId; }
   }
-  await upPrune(before);
+  if (!before || !before.ids) { renderUploads(); return; }
+  // replaced in this drop: deleted only when the newer file is for the same month (an older month's file stays saved)
+  const now = upInBuild();
+  for (const id of [...before.ids].filter(x => !now.has(x))) {
+    const mo = upMetaOf(id); if (!mo) continue;
+    const by = Object.entries(before.kinds).filter(([, v]) => v === id).map(([kk]) => state.slots[kk] && state.slots[kk].upId).concat(before.att.filter(a => a.upId === id).map(a => (state.attFiles.find(f => f.name === a.name) || {}).upId)).filter(Boolean);
+    if (by.some(nid => { const mn = upMetaOf(nid); return mn && mn.k === mo.k; })) upDel(id).catch(() => {});
+  }
+  // a drop that moved Build on to another month: the files of the month before leave Build (they stay saved under their month)
+  const k = monthKey(), stale = new Set([...before.ids].filter(id => upInBuild().has(id) && (upMetaOf(id) || {}).k && upMetaOf(id).k !== k));
+  if (stale.size && fresh.some(m => m.k === k)) {
+    for (const [kk, v] of Object.entries(state.slots)) if (v && stale.has(v.upId)) delete state.slots[kk];
+    state.attFiles = state.attFiles.filter(f => !stale.has(f.upId));
+    impLogAdd('removed', `${plural(stale.size, 'file')} of another month left Build, which holds ${ymLabel(k)} now (still in Saved uploads)`); refresh();
+  }
   renderUploads();
 }
-/** saved files that Build stopped using (taken out, or replaced by a newer export of the same kind) are deleted */
+/** a file taken out of Build: its saved copy is deleted when it is the month Build holds (Undo brings it back) */
 async function upPrune(before) {
-  const now = upInBuild(), gone = [...before].filter(id => !now.has(id));
-  UP.gone = UP.gone || new Map();
-  for (const id of gone) { const m = UP.list.find(x => x.id === id); if (m) UP.gone.set(id, m); try { await upDel(id); } catch (e) { /* the list shows it still */ } UP.list = UP.list.filter(x => x.id !== id); }
+  const now = upInBuild(), k = monthKey(), gone = [...before].filter(id => !now.has(id) && (upMetaOf(id) || {}).k === k);
+  for (const id of gone) upDel(id).catch(() => {});
   if (gone.length) renderUploads();
 }
-/** an Undo puts a file back in Build: its saved copy comes back too */
+/** an Undo puts a file back in Build: its saved copy comes back too, after a delete still on its way */
 async function upPutBack(upId) {
-  const m = upId && (UP.list.find(x => x.id === upId) || UP.gone && UP.gone.get(upId)), b = upId && UP.cache.get(upId);
-  if (!m || !b || UP.list.some(x => x.id === upId)) return;
-  try { await upPut(m, b); UP.list = UP.list.concat(m); renderUploads(); } catch (e) { /* stays in Build */ }
+  const m = upId && upMetaOf(upId), b = upId && UP.cache.get(upId);
+  if (!m || !b) return;
+  if (UP.deleting.has(upId)) await UP.deleting.get(upId).catch(() => {});
+  if (UP.list.some(x => x.id === upId)) return;
+  try { await upPut(m, b); UP.gone.delete(upId); UP.list = UP.list.concat(m); renderUploads(); } catch (e) { /* stays in Build */ }
 }
 /** a month's saved files, read into Build in place of what is there (those files stay saved under their own month) */
 async function upLoadMonth(k, how) {
@@ -22898,6 +22963,7 @@ async function upLoadMonth(k, how) {
   const files = [];
   for (const m of M) { const b = await upBytes(m.id).catch(() => null); if (!b) continue; const f = new File([b], m.name, { type: m.type || '' }); f.__up = m; files.push(f); }
   if (!files.length) { toast(`The saved files of ${ymLabel(k)} could not be read.`); return; }
+  if (how === 'auto' && (Object.keys(state.slots).length || state.attFiles.length || state.pending.length)) return;   // files were dropped while these were read: they win
   state.slots = {}; state.attFiles = [];
   const [y, m] = k.split('-').map(Number); state.y = y; state.m = m;
   await addFiles(files, { restore: true });
@@ -22912,6 +22978,7 @@ async function upRestore() {
   if (!UP.loaded) await upRefresh();
   if (Object.keys(state.slots).length || state.attFiles.length || state.pending.length || !UP.list.length) return;
   const last = UP.list.slice().sort((a, b) => String(b.at).localeCompare(String(a.at)))[0];
+  if (last.k < closeMonthNow()) return;   // a month older than the one being closed now: Build starts empty for the new month (load it from Saved uploads)
   await upLoadMonth(last.k, 'auto');
 }
 // ---- the list on Import: by month, with load, change month, replace and delete
@@ -22930,7 +22997,7 @@ function renderUploads() {
     ${UP.err ? `<p class="banner warn">${esc(UP.err)}</p>` : ''}
     ${shown.map(k => { const L = UP.list.filter(m => m.k === k).sort((a, b) => String(a.name).localeCompare(String(b.name))), here = L.some(m => inB.has(m.id));
       return `<section class="upmonth" aria-label="${esc(ymLabel(k))}"><div class="uph"><b>${esc(ymLabel(k))}</b><small>${plural(L.length, 'file')}${here ? ' · in Build now' : ''}</small>${here ? '' : `<button class="btn sm" data-upload="${k}">Load into Build</button>`}</div><ul class="uplist">${L.map(row).join('')}</ul></section>`; }).join('')}
-    <input type="file" id="upRepPick" accept=".csv,.txt,.xlsx,.xlsm,.xlsb" hidden>`;
+`;
 }
 $('upCard').addEventListener('change', async e => {
   const t = e.target;
@@ -22948,13 +23015,13 @@ $('upCard').addEventListener('change', async e => {
     } catch (er) { toast(`Could not move ${m.name} (${errText(er)})`); }
     renderUploads(); return;
   }
-  if (t.id === 'upRepPick' && t.files && t.files[0]) {   // a newer file in place of a saved one
-    const m = UP.list.find(x => x.id === UP.replacing), f = t.files[0]; t.value = ''; if (!m) return;
-    const bytes = new Uint8Array(await f.arrayBuffer()), nm = { ...m, name: f.name, size: f.size, type: f.type || '', at: new Date().toISOString(), by: whoNow(), replaced: m.name };
-    try { await upPut(nm, bytes); UP.cache.set(m.id, bytes); UP.list = UP.list.map(x => (x.id === m.id ? nm : x)); toast(`${m.name} replaced by ${f.name}`); if (upInBuild().has(m.id)) await upLoadMonth(nm.k, 'replace'); }
-    catch (er) { toast(`Could not replace ${m.name} (${errText(er)})`); }
-    renderUploads();
-  }
+});
+$('upRepPick').addEventListener('change', async e => {   // a newer file in place of a saved one (the picker stays outside the list, which is drawn again)
+  const t = e.target, m = UP.list.find(x => x.id === UP.replacing), f = t.files && t.files[0]; t.value = ''; if (!m || !f) return;
+  const bytes = new Uint8Array(await f.arrayBuffer()), nm = { ...m, name: f.name, size: f.size, type: f.type || '', at: new Date().toISOString(), by: whoNow(), replaced: m.name };
+  try { await upPut(nm, bytes); UP.cache.set(m.id, bytes); UP.list = UP.list.map(x => (x.id === m.id ? nm : x)); toast(`${m.name} replaced by ${f.name}`); if (upInBuild().has(m.id)) await upLoadMonth(nm.k, 'replace'); }
+  catch (er) { toast(`Could not replace ${m.name} (${errText(er)})`); }
+  renderUploads();
 });
 $('upCard').addEventListener('click', async e => {
   const t = e.target;
@@ -22965,12 +23032,46 @@ $('upCard').addEventListener('click', async e => {
   if (UP.confirm !== id) { UP.confirm = id; renderUploads(); const b = $('upCard').querySelector(`[data-updel="${CSS.escape(id)}"]`); if (b) b.focus(); return; }
   UP.confirm = '';
   try { await upDel(id); } catch (er) { toast(`Could not delete ${m.name} (${errText(er)})`); return; }
-  UP.list = UP.list.filter(x => x.id !== id);
   // in Build now: it leaves Build as well
   let left = false; for (const [k, v] of Object.entries(state.slots)) if (v && v.upId === id) { delete state.slots[k]; left = true; }
   const n = state.attFiles.length; state.attFiles = state.attFiles.filter(f => f.upId !== id); left = left || n !== state.attFiles.length;
   if (left) { impLogAdd('removed', `Deleted ${m.name} from the saved uploads and from Build`); refresh(); }
   toast(`Deleted ${m.name}${left ? ', and took it out of Build' : ''}`); renderUploads();
+});
+
+// ---------------------------------------------------------------- SAVED WORKBOOKS: every build is kept, locked, with the shared data
+// The monthly workbook and the incentive file are kept after each build (the latest of each kind per month) as locked records
+// like the rest of the data: Export › Saved workbooks downloads them again or deletes them. Only the WFM team opens them.
+const REP = { list: [], loaded: false, confirm: '' };
+async function repKeep(name, bytes, kind) {
+  if (!isBuilder()) return '';
+  const k = monthKey(), meta = { id: upNewId(), k, name, size: bytes.length, kind, at: new Date().toISOString(), by: whoNow() };
+  try {
+    if (!REP.loaded) { REP.list = await upListNow('rep').catch(() => []); REP.loaded = true; }
+    await upPut(meta, bytes, 'rep'); UP.cache.set(meta.id, bytes);
+    const old = REP.list.filter(m => m.k === k && m.kind === kind);   // the newer build of the month takes the older one's place
+    REP.list = REP.list.filter(m => !old.includes(m)).concat(meta);
+    for (const m of old) upDelNow(m.id, 'rep').catch(() => {});
+    renderRepCard(); return 'ok';
+  } catch (e) { return 'error: ' + (e && e.code === 'too-big' ? 'too big for the online page\'s data' : errText(e)); }
+}
+async function repLoad() { try { REP.list = await upListNow('rep'); } catch (e) { REP.list = []; } REP.loaded = true; renderRepCard(); }
+function renderRepCard() {
+  const el = $('repCard'); if (!el) return;
+  if (!isBuilder()) { el.hidden = true; return; }
+  if (!REP.loaded) { repLoad(); return; }
+  const L = REP.list.slice().sort((a, b) => String(b.k).localeCompare(String(a.k)) || String(a.kind).localeCompare(String(b.kind)));
+  el.hidden = !L.length;
+  el.innerHTML = `<div class="cardhead"><div><h2 id="h-rep">Saved workbooks</h2><p class="cap">Each build is kept ${state.db && state.db.folder ? `in the data folder ${esc(state.db.name)}, locked like the rest of the data` : upMode() === 'db' ? 'with the shared data' : 'in this browser'}: the latest monthly workbook and incentive file of each month. Download one again here.</p></div></div>
+    <ul class="uplist">${L.map(m => `<li><span class="upn"><b dir="auto">${esc(m.name)}</b><small>${esc(ymLabel(m.k))} · ${m.kind === 'incentive' ? 'Incentive file' : 'Monthly workbook'} · ${esc(fmtSize(m.size || 0))} · built by ${esc(m.by || 'someone')}, ${esc(fmtWhen(m.at))}</small></span><span class="upa"><button class="btn sm" data-repdl="${esc(m.id)}"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Download</button><button class="btn sm ${REP.confirm === m.id ? 'danger' : 'ghost'}" data-repdel="${esc(m.id)}">${REP.confirm === m.id ? 'Delete it?' : 'Delete'}</button></span></li>`).join('')}</ul>`;
+}
+$('repCard').addEventListener('click', async e => {
+  const d = e.target.closest('[data-repdl]'), x = e.target.closest('[data-repdel]');
+  if (d) { const m = REP.list.find(z => z.id === d.dataset.repdl); if (!m) return; const b = await upBytes(m.id, 'rep').catch(() => null); if (!b) { toast(`${m.name} could not be read.`); return; } const c = await saveRaw(m.name, new Blob([b], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); toast(c === 'ok' ? `Saved ${m.name}` : saveMsg(c, m.name)); return; }
+  if (!x) return; const id = x.dataset.repdel, m = REP.list.find(z => z.id === id); if (!m) return;
+  if (REP.confirm !== id) { REP.confirm = id; renderRepCard(); const b = $('repCard').querySelector(`[data-repdel="${CSS.escape(id)}"]`); if (b) b.focus(); return; }
+  REP.confirm = ''; REP.list = REP.list.filter(z => z.id !== id); renderRepCard();
+  try { await upDelNow(id, 'rep'); toast(`Deleted ${m.name}`); } catch (er) { toast(`Could not delete ${m.name} (${errText(er)})`); }
 });
 
 // ================================================================ SEARCH: one box on every page that guesses what you want
@@ -23072,7 +23173,7 @@ const fWfm = r => wsOfNow().includes('wfm');
 const fForms = r => hasRole('spv', 'senior', 'admin', 'user');
 function findIndex() {
   const role = fRole(), u = Auth.user() || {};
-  const sig = [role, u.id || '', state.ver, state.histVer, state.finVer, state.roster.length, state.qualityVer, state.attEditsVer, state.dailyVer, state.interVer,
+  const sig = [rolesNow().join('+'), u.id || '', state.ver, state.histVer, state.finVer, state.roster.length, state.qualityVer, state.attEditsVer, state.dailyVer, state.interVer,
     state.me ? state.me.loaded + Object.keys(state.me.months || {}).length : 0, (state.people || []).length, Object.keys(state.spvDone || {}).length, (state.forms || []).length].join('|');
   if (FIND.idx && FIND.idxSig === sig) return FIND.idx;
   const X = { role, me: role === 'agent', people: [], spvs: [], units: [], months: [], metrics: [], pages: [], phr: new Map(), vocab: [], byName: new Map() };
@@ -25254,7 +25355,7 @@ const DEPT = [
     'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' attendance sheets, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
-    '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook (a copy goes to MC Data › MC Reports); the incentive data workbook is made too. People with no schedule in the month are left out of every sheet (Settings).',
+    '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it); the incentive data workbook is made too. People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
     '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed); the incentive email comes from the build.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
@@ -25608,6 +25709,7 @@ function chkWhy(n) {
   if (/^gen:/.test(n.id) || n.id === 'gen-unm') return ['A name the roster does not know is left out of every report and the incentive.', 'This person is left out of the workbook.'];
   if (/^unm:/.test(n.id)) return ['Attendance for someone not on the roster cannot be counted.', 'Their attendance is left out.'];
   if (n.id === 'cross') return ['The supervisors\' sheets and Genesys say different things about these days.', 'Nothing was changed; the attendance sheets are used.'];
+  if (n.id === 'nosched') return ['Settings › Leave out people with no schedule is on: someone with no shift and no attendance has nothing to report.', 'They are in no sheet, no export and not in the month saved for the pages; turn the setting off to keep them.'];
   if (n.id === 'notl') return ['Without a status timeline the Actual is 0, so the deduction is 0 every day.', 'Their deduction shows as 0.'];
   if (n.id === 'noid') return ['The emails and the incentive file match people by National ID.', 'They are listed without an ID.'];
   if (/^IDs/.test(g)) return ['The IDs file and the roster disagree.', 'The roster is used.'];
@@ -25617,6 +25719,9 @@ function chkWhy(n) {
 /** Genesys names not on the roster: one check each, so each one can be linked in place */
 function checkNotes() {
   const N = state.notes.filter(n => n.id !== 'gen-unm'), gen = state.notes.find(n => n.id === 'gen-unm');
+  const ns = state.settings.hideNoSched !== false ? (state.model || []).filter(m => m.noSched) : [];
+  if (ns.length) { const unm = (state.issues || []).filter(x => (x.where || []).includes('sch')).length;
+    N.push({ id: 'nosched', sev: unm ? 'warn' : 'info', group: 'Genesys', title: `${plural(ns.length, 'person', 'people')} with no schedule this month, left out of every sheet`, body: `No day in the Schedule export and no attendance: ${ns.map(m => m.exp).sort((a, b) => a.localeCompare(b)).join(', ')}.${unm ? ` The Schedule export also has ${plural(unm, 'name')} nobody on the roster matches: if one of them is one of these people, link the name and they come back.` : ''}` }); }
   if (gen) for (const x of state.issues) N.push({ id: 'gen:' + x.key, sev: 'warn', group: 'Genesys', title: `Not on the roster: ${x.name}`, body: `In the ${x.where.map(w => WHERE[w]).join(', ')} export${x.where.length > 1 ? 's' : ''}.${x.sugg ? (x.alias ? ` It is the roster name of ${x.sugg.name.replace(/\.$/, '')}, whose system name is another name.` : ` Looks like ${x.sugg.name.replace(/\.$/, '')}.`) : x.several ? ` Several people fit: ${x.several.map(p => p.name).join(', ')}.` : ' No close match on the roster.'}`, issue: x.key });
   return N;
 }
@@ -25738,7 +25843,8 @@ function askBuild(btn) {
   $('buildDlgBody').innerHTML = `<p>This writes <b>${esc(fileNameOut())}</b> on this computer: nine sheets, formula-driven, for ${plural(shown || rosterRows().length, 'person', 'people')} from ${plural(n, 'export')}${state.attFiles.length ? ` and ${plural(state.attFiles.length, 'attendance sheet')}` : ''}.</p>
     <p class="hint">Nothing is sent or uploaded. ${state.built ? (stale ? 'The earlier file stays as it was; this makes a new one with your latest changes.' : 'The earlier file stays as it was; this makes a new one.') : 'Your browser asks where to save it, or saves it to Downloads.'}</p>
     ${state.issues.length ? `<p class="warnline"><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>${plural(state.issues.length, 'name')} in the exports ${state.issues.length === 1 ? 'is' : 'are'} not on the roster and will be left out.</p>` : ''}
-    ${state.db && state.db.folder ? `<label class="check keeprep"><input type="checkbox" id="buildKeep"${lsGet('mc-keep-reports') !== '0' ? ' checked' : ''}> Also keep a copy in <b>${esc(reportsWhere())}</b></label><p class="hint">That copy is a normal Excel file: anyone who can open the data folder can open it, without the tool. The incentive file goes there too.</p>` : ''}`;
+    <p class="hint">${state.db ? 'A locked copy is kept with the shared data (Export › Saved workbooks), so you can download it again later.' : 'A copy is kept in this browser (Export › Saved workbooks).'}</p>
+    ${state.db && state.db.folder ? `<label class="check keeprep"><input type="checkbox" id="buildKeep"${lsGet('mc-keep-reports') === '1' ? ' checked' : ''}> Also put a plain copy in <b>${esc(reportsWhere())}</b>, to open in Excel from the folder</label><p class="hint warnline"><svg class="sti" aria-hidden="true"><use href="#i-alert"/></svg>Not locked: anyone who can open the shared folder, agents included, can open it and see every agent's IDs, deductions and absences. The incentive file goes there too.</p>` : ''}`;
   openDlg('dBuild', btn);
 }
 $('buildCancel').addEventListener('click', () => closeDlg());

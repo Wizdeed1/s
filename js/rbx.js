@@ -693,7 +693,7 @@ function rbSendRender() {
   const chip = key => {
     const d = RB.data[key], sent = rbSentOf(key, dk), w = d ? d.warnings.length : 0;
     const st = sent ? `<b class="ok">Sent</b><small>${esc(fmtWhen(sent.at))}${sent.by ? ' · ' + esc(sent.by) : ''}</small>` : !has ? '<b>Waiting</b><small>for the exports</small>' : w ? `<b class="warn">${plural(w, 'check')}</b><small>${pub ? 'with the WFM manager' : 'on its way'}</small>` : `<b class="ok">Ready</b><small>${pub ? 'with the WFM manager' : 'on its way'}</small>`;
-    return `<li class="${sent ? 'sent' : !has ? 'idle' : w ? 'warn' : 'ok'}"><span class="bn">${esc(rbName(key))}</span>${st}${has && d && w && !sent ? `<details><summary>What to check</summary><ul>${d.warnings.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}</li>`;
+    return `<li class="${sent ? 'sent' : !has ? 'idle' : w ? 'warn' : 'ok'}" data-peek="${key}" tabindex="0" aria-label="${esc(rbName(key))}: ${sent ? 'sent' : !has ? 'waiting for the exports' : w ? plural(w, 'check') : 'ready'}. Hover or focus to see the email"><span class="bn">${esc(rbName(key))}</span>${st}${has && d && w && !sent ? `<details><summary>What to check</summary><ul>${d.warnings.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}</li>`;
   };
   el.innerHTML = `<div class="cardhead"><div><h2>Brand emails · sent to the WFM manager</h2><p class="cap">${has ? (pub ? `With the WFM manager since ${esc(fmtWhen(pub.at))}${pub.by ? ' (' + esc(pub.by) + ')' : ''}: he writes the SLA insight and sends them. Anything you drop now updates them.` : 'Going to the WFM manager now…') : 'Drop the Genesys and Crystal exports: Virgin Postpaid, Virgin Mobile, FRiENDi Mobile and FRiENDi Pay are made from them and go straight to the WFM manager.'}</p></div></div><ul class="rbbrands">${RB_BRANDS.map(chip).join('')}</ul>`;
 }
@@ -752,6 +752,58 @@ $('wfmRb').addEventListener('click', e => {
   if (t.closest('[data-rbhexp]')) { rbExportHistory(); return; }
   const a = t.closest('[data-rba]'); if (a && a.tagName === 'BUTTON') { const host = a.closest('.rbpanel'); rbAction(host, a.dataset.rba, () => ({ key: 'leaders', dk: rbDayKeyOf(rbPeriod()), period: rbPeriod(), model: RB.models.leaders })); }
 });
+// ---- a brand box shows its email, small and whole, while the pointer rests on it (or it has the keyboard focus): how the email
+// the tool made looks now, without opening it. Read only; it follows the pointer's box and never covers it.
+let rbPeekEl = null, rbPeekT = 0, rbPeekOn = null;
+const RB_PEEK = { w: 380, h: 500 };   // the largest the small view gets; the whole email is scaled into it
+function rbPeekModel(box) {
+  const key = box.dataset.peek || box.dataset.dmtab; if (!RB_BRANDS.includes(key)) return null;
+  if (box.dataset.dmtab) { const dk = state.dmSel, docs = state.dmBrands[dk], doc = docs && docs[key]; return doc ? { key, model: rbBrandBuild(key, doc, dk).model } : null; }
+  return RB.models && RB.models[key] ? { key, model: RB.models[key] } : null;
+}
+function rbPeekPlace(box) {
+  const el = rbPeekEl; if (!el || !box.isConnected) return;
+  const r = box.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight, vw = innerWidth, vh = innerHeight, gap = 10;
+  let x = r.right + gap, y = r.top;   // beside the box when there is room, else under (or over) it
+  if (x + w > vw - 8) x = r.left - gap - w;
+  if (x < 8) { x = Math.min(Math.max(8, r.left), vw - w - 8); y = r.bottom + gap; if (y + h > vh - 8) y = r.top - gap - h; }
+  y = Math.min(Math.max(8, y), Math.max(8, vh - h - 8));
+  el.style.left = Math.round(x) + 'px'; el.style.top = Math.round(y) + 'px';
+}
+function rbPeekShow(box) {
+  const m = rbPeekModel(box); if (!m) return;
+  let html = ''; try { html = rbHtml(m.model, m.key); } catch (e) { return; }
+  if (!rbPeekEl) {
+    rbPeekEl = document.createElement('div'); rbPeekEl.className = 'rbpeek'; rbPeekEl.setAttribute('aria-hidden', 'true');
+    rbPeekEl.innerHTML = '<div class="rbpeekin"><iframe tabindex="-1" title="Email preview" sandbox="allow-same-origin"></iframe></div><small></small>';
+    document.body.appendChild(rbPeekEl);
+  }
+  rbPeekOn = box;
+  const el = rbPeekEl, fr = el.querySelector('iframe'), inner = el.querySelector('.rbpeekin');
+  el.querySelector('small').textContent = `${rbName(m.key)} · the email as it is now`;
+  fr.onload = () => {
+    if (rbPeekOn !== box) return;
+    try {
+      const d = fr.contentDocument, W = Math.max(480, d.documentElement.scrollWidth, d.body.scrollWidth); fr.style.width = W + 'px';
+      const H = Math.max(200, d.documentElement.scrollHeight, d.body.scrollHeight), s = Math.min(RB_PEEK.w / W, RB_PEEK.h / H, 1);
+      fr.style.height = H + 'px'; fr.style.transform = `scale(${s.toFixed(4)})`;
+      inner.style.width = Math.ceil(W * s) + 'px'; inner.style.height = Math.ceil(H * s) + 'px';
+      el.hidden = false; rbPeekPlace(box); el.classList.add('in');
+    } catch (e) { /* a preview only */ }
+  };
+  fr.style.width = '760px'; fr.style.height = '600px'; fr.srcdoc = html;
+}
+function rbPeekHide() { clearTimeout(rbPeekT); rbPeekOn = null; if (rbPeekEl) { rbPeekEl.classList.remove('in'); rbPeekEl.hidden = true; } }
+const rbPeekHover = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
+for (const host of [$('wfmRb'), $('wfmDm')]) {
+  host.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest('[data-peek], [data-dmtab]'); if (!b || b === rbPeekOn || !rbPeekHover()) return; clearTimeout(rbPeekT); rbPeekT = setTimeout(() => rbPeekShow(b), 250); });
+  host.addEventListener('mouseout', e => { const b = e.target.closest && e.target.closest('[data-peek], [data-dmtab]'); if (!b || (e.relatedTarget && b.contains(e.relatedTarget))) return; rbPeekHide(); });
+  host.addEventListener('focusin', e => { const b = e.target.closest && e.target.closest('[data-peek]'); if (b && e.target === b) rbPeekShow(b); });
+  host.addEventListener('focusout', e => { if (e.target.closest && e.target.closest('[data-peek]')) rbPeekHide(); });
+  host.addEventListener('click', () => rbPeekHide());
+}
+window.addEventListener('scroll', () => { if (rbPeekOn) rbPeekHide(); }, { passive: true });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && rbPeekOn) rbPeekHide(); });
 $('wfmRb').addEventListener('keydown', e => { const z = e.target.closest && e.target.closest('[data-rbdrop]'); if (z && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); $('wfmRb').querySelector('[data-rbpick]').click(); } });
 $('wfmRb').addEventListener('change', e => {
   const t = e.target;

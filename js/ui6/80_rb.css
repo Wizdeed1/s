@@ -138,3 +138,12 @@
   .rb .wfm-day.on:hover { background: var(--accent-fill-hover); color: var(--on-accent); }
   .rbsun:not(.on):hover { background: var(--btn-fill-hover); }
 }
+/* a brand box's email, small and whole, beside the box while the pointer rests on it (rbx.js rbPeekShow) */
+.rbbrands > li[data-peek] { cursor: default; }
+.rbbrands > li[data-peek]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.rbpeek { position: fixed; z-index: var(--z-pop, 60); display: grid; gap: 6px; padding: 8px 8px 7px; background: var(--overlay); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-pop); pointer-events: none; opacity: 0; transform: translateY(4px) scale(.98); transform-origin: top left; transition: opacity var(--t-small) var(--ease-out), transform var(--t-small) var(--ease-out); }
+.rbpeek.in { opacity: 1; transform: none; }
+.rbpeekin { position: relative; overflow: hidden; border-radius: 8px; background: #fff; }
+.rbpeekin iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: #fff; }
+.rbpeek small { font-size: 11.5px; color: var(--muted); padding: 0 2px; }
+@media (prefers-reduced-motion: reduce) { .rbpeek { transform: none !important; transition-duration: 120ms; } }

@@ -239,7 +239,7 @@ async function loadData(db) {
   try { const snap = await db.doc('config/ids').get(); if (snap.exists) { const d = snap.data() || {}; if (Array.isArray(d.rows)) { state.idsFile = { name: d.name || 'IDs file', at: d.at || '', rows: d.rows, keep: Array.isArray(d.keep) ? d.keep : [] }; state.idsAuto = true; refresh(); } } } catch (e) { /* none */ }
   if (!state.logo && Auth.team() && Auth.team().logo) { state.logo = Auth.team().logo; render(); }
   watchShared(db);   // history, final results and accounts stay live, so every role sees the same data
-  try { const snap = await db.doc('config/scorecards').get(); if (snap.exists) { const d = snap.data() || {}; if (d.teams && typeof d.teams === 'object') { migrateCards(d.teams); state.cards = { base: typeof d.base === 'number' ? d.base : 1000, bases: d.bases && typeof d.bases === 'object' ? d.bases : undefined, teams: d.teams, ...(d.elig && typeof d.elig === 'object' ? { elig: d.elig } : {}), ...(d.count && typeof d.count === 'object' ? { count: d.count } : {}), ...(d.people && typeof d.people === 'object' ? { people: d.people } : {}), ...(Array.isArray(d.log) ? { log: d.log } : {}) }; state.rulesVer++; state.incModelCache = null; refresh(); } } } catch (e) { /* defaults stay */ }
+  try { const snap = await db.doc('config/scorecards').get(); if (snap.exists) { const d = snap.data() || {}; if (d.teams && typeof d.teams === 'object') { migrateCards(d.teams); state.cards = { base: typeof d.base === 'number' ? d.base : 1000, bases: d.bases && typeof d.bases === 'object' ? d.bases : undefined, teams: d.teams, ...(d.elig && typeof d.elig === 'object' ? { elig: d.elig } : {}), ...(d.count && typeof d.count === 'object' ? { count: Kpi.fromSaved(d.count) } : {}), ...(d.people && typeof d.people === 'object' ? { people: d.people } : {}), ...(Array.isArray(d.log) ? { log: d.log } : {}) }; state.rulesVer++; state.incModelCache = null; refresh(); } } } catch (e) { /* defaults stay */ }
   try { const sn = await db.collection('kpi').get(); sn.docs.forEach(d => { const x = d.data(); if (x && Array.isArray(x.rows)) state.kpiFiles[d.id] = x; }); if (sn.docs.length) refresh(); } catch (e) { /* none */ }
   loadSnaps(); loadAttState();
   try { db.collection('forms').onSnapshot(sn => { state.forms = sn.docs.map(d => ({ ...d.data(), id: d.id })); if (!$('dPerson').hidden) renderPerson(); if (state.ws !== 'build') renderWs(); }, () => {}); } catch (e) { /* none */ }
@@ -1692,7 +1692,7 @@ function computeKpi() {
   return out;
 }
 const kpiSum = r => ({ finalRank: r.finalRank == null ? '–' : r.finalRank.toFixed(2), finalPct: pct1(r.finalPct), sched: r.sched, actual: r.actual, daysPct: pct1(r.daysPct), target: srHidden() ? '–' : r.target, earned: srHidden() ? '–' : r.earned, missing: r.missing.join(', ') });
-const kpiRowsOut = res => res.rows.map(x => ({ name: x.k.name, weight: `${+(x.w * 100).toFixed(1)}%`, target: Kpi.target(x.k), result: Kpi.fmtVal(x.k, x.v), rank: x.r }));
+const kpiRowsOut = res => res.rows.map(x => ({ name: x.k.name, weight: `${+(x.w * 100).toFixed(1)}%`, target: Kpi.target(x.k), result: Kpi.fmtVal(x.k, Kpi.rankedVal(x)), rank: x.r }));
 function agentOf(p) { return { name: gname(p), id: Core.cleanId(p.nid) || normSpace(p.nid) || '', team: p.team || '', teamName: DEP_NAMES[p.team] || '', brand: p.brand || '' }; }
 const rankChip = r => (r == null ? '<span class="rk na" title="No value">–</span>' : `<span class="rk r${r}">${r}</span>`);
 function kpiCardHtml(pid) {
@@ -1705,7 +1705,7 @@ function kpiCardHtml(pid) {
   const r = K.res, S = kpiSum(r);
   return `<section class="sec"><h3>KPI results · ${esc(K.card.title)}</h3>
     <div class="kpicard"><table><thead><tr><th>KPI</th><th class="r">Weight</th><th class="r">Target</th><th class="r">Result</th><th class="r">Ranking</th></tr></thead><tbody>
-    ${r.rows.map(x => `<tr><td>${esc(x.k.name)}</td><td class="r num">${+(x.w * 100).toFixed(1)}%</td><td class="r num">${esc(Kpi.target(x.k))}</td><td class="r num"><b>${esc(Kpi.fmtVal(x.k, x.v))}</b></td><td class="r">${rankChip(x.r)}</td></tr>`).join('')}
+    ${r.rows.map(x => `<tr><td>${esc(x.k.name)}</td><td class="r num">${+(x.w * 100).toFixed(1)}%</td><td class="r num">${esc(Kpi.target(x.k))}</td><td class="r num"><b>${esc(Kpi.fmtVal(x.k, Kpi.rankedVal(x)))}</b></td><td class="r">${rankChip(x.r)}</td></tr>`).join('')}
     </tbody></table>
     <div class="kpisum"><div><b>${esc(S.finalRank)}</b><span>Final ranking</span></div><div><b>${esc(S.finalPct)}</b><span>Final %</span></div><div><b>${S.actual ?? '–'} / ${S.sched ?? '–'}</b><span>Actual / scheduled days (${esc(S.daysPct)})</span></div>${srHidden() ? '' : `<div><b>${r.target ?? '–'}</b><span>Incentive target (SR)</span></div><div class="earned"><b>${r.earned ?? '–'}</b><span>Earned (SR)</span></div>`}</div>${r.elig && !r.elig.ok ? `<p class="hint warnline">Not eligible for the incentive: ${esc(r.elig.why.join(', '))}.${srHidden() ? '' : ` Calculated ${r.earnedCalc ?? '–'} SR; the senior manager can override it.`}</p>` : ''}</div>
     ${r.missing.length ? `<p class="hint warnline">Missing: ${esc(r.missing.join(', '))}. The final ranking uses the other KPIs until ${r.missing.length > 1 ? 'they arrive' : 'it arrives'}${kpiFileNow() ? '' : ' (drop the KPI file on Import)'}.</p>` : ''}
@@ -1766,7 +1766,7 @@ function renderKpiTab() {
   const head = `<tr><th><button class="linkbtn" data-ksort="name">Name</button></th><th>Team</th>${card ? card.kpis.map(k => `<th class="r" title="${esc(Kpi.bandText(k))}">${esc(k.name)}<br><small>${+(k.weight * 100).toFixed(1)}%</small></th>`).join('') : ''}<th class="r">Final ranking</th><th class="r">${sortBtn}</th><th class="r">Actual days %</th>${sr ? '<th class="r">Target SR</th><th class="r">Earned SR</th>' : ''}${card ? '' : '<th>Missing</th>'}</tr>`;
   const body = L.map(K => { const r = K.res;
     return `<tr><td><button class="linkbtn nm" data-open="${esc(K.m.p._id)}" data-agent="${esc(K.m.p._id)}" dir="auto">${esc(K.m.exp)}</button></td><td>${esc(K.m.p.team)}</td>
-      ${card ? r.rows.map(x => `<td class="r num">${esc(Kpi.fmtVal(x.k, x.v))} ${rankChip(x.r)}</td>`).join('') : ''}
+      ${card ? r.rows.map(x => `<td class="r num">${esc(Kpi.fmtVal(x.k, Kpi.rankedVal(x)))} ${rankChip(x.r)}</td>`).join('') : ''}
       <td class="r num">${r.finalRank == null ? '–' : r.finalRank.toFixed(2)}</td><td class="r num"><b>${pct1(r.finalPct)}</b></td><td class="r num">${pct1(r.daysPct)}</td>${sr ? `<td class="r num">${r.target ?? '–'}</td><td class="r num"><b>${r.earned ?? '–'}</b></td>` : ''}${card ? '' : `<td class="subtle">${esc(r.missing.join(', '))}</td>`}</tr>`; }).join('');
   el.innerHTML = `<div class="tablewrap histgrid kpigrid"><table><thead>${head}</thead><tbody>${body || '<tr><td colspan="10" class="empty">Nobody matches.</td></tr>'}</tbody></table></div>
     ${card ? `<p class="hint">${card.kpis.map(k => `<b>${esc(k.name)}</b> (${esc(Kpi.SRC[k.src] || k.src)}): ${esc(Kpi.bandText(k))}`).join('<br>')}</p>` : ''}`;
@@ -1799,7 +1799,7 @@ async function kpiExcel(list, name, single) {
     const K = list[0], r = K.res, W = new Sh('KPI card'); W.width(1, 30); W.width(2, 16);
     let row = 1; const put = (l, v, st, ls = lab) => { W.set(row, 1, l, ls); W.set(row, 2, v, st); row++; };
     put('ID', Core.cleanId(K.m.p.nid) || 'NA', val); put('Name', K.m.exp, val); put('Team', normSpace(K.m.p.brand), val);
-    for (const x of r.rows) { put(x.k.name, cellV(x.k, x.v), x.k.unit === 'pct' ? pc : val); put('Ranking', x.r ?? '–', rk); }
+    for (const x of r.rows) { put(x.k.name, cellV(x.k, Kpi.rankedVal(x)), x.k.unit === 'pct' ? pc : val); put('Ranking', x.r ?? '–', rk); }
     put('Final ranking %', r.finalRank, pc2); put('Final %', r.finalPct, pc); put('Scheduled day', r.sched, val, labY); put('Actual days', r.actual, val, labY); put('Actual Days %', r.daysPct, pc, labY);
     put('Incentive Target', srHidden() ? null : r.target, val, labY); put('Earned SR', srHidden() ? null : r.earned, val); put('Comment', r.missing.length ? 'Missing: ' + r.missing.join(', ') : '', val);
     W.logoAt(4, 1, 52, 8, 4); sheets.push(W);
@@ -1812,7 +1812,7 @@ async function kpiExcel(list, name, single) {
       L.sort((a, b) => a.m.exp.localeCompare(b.m.exp)).forEach((K, i) => {
         const r = K.res, R = i + 4; let c = 1;
         W.set(R, c++, Core.cleanId(K.m.p.nid) || 'NA', txt); W.set(R, c++, K.m.exp, txt); W.set(R, c++, normSpace(K.m.p.brand), num); W.set(R, c++, t, num);
-        for (const x of r.rows) { W.set(R, c++, cellV(x.k, x.v), x.k.unit === 'pct' ? npc : num); W.set(R, c++, x.r, num); }
+        for (const x of r.rows) { W.set(R, c++, cellV(x.k, Kpi.rankedVal(x)), x.k.unit === 'pct' ? npc : num); W.set(R, c++, x.r, num); }
         W.set(R, c++, r.finalRank, num); W.set(R, c++, r.finalPct, npc); W.set(R, c++, r.sched, num); W.set(R, c++, r.actual, num); W.set(R, c++, r.daysPct, npc); W.set(R, c++, srHidden() ? null : r.target, num); W.set(R, c++, srHidden() ? null : r.earned, num);
         W.set(R, c++, r.missing.length ? 'Missing: ' + r.missing.join(', ') : '', txt);
       });
@@ -1833,12 +1833,12 @@ function kpiEmailHtml(K) {
   const r = K.res, td = (t, o = {}) => `<td style="border:solid #BFBFBF 1.0pt;padding:2pt 6pt;${o.bg ? `background:${o.bg};` : ''}"><p class="MsoNormal" style="margin:0in;${o.c ? '' : 'text-align:center;'}font-family:Calibri,sans-serif;font-size:10.5pt;${o.color ? `color:${o.color};` : ''}">${o.b ? '<b>' : ''}${esc(t)}${o.b ? '</b>' : ''}</p></td>`;
   const lab = t => td(t, { bg: '#1F3864', color: '#FFFFFF', b: true }), rows = [];
   rows.push([lab('Name'), td(K.m.exp, { b: true })], [lab('Team'), td(`${normSpace(K.m.p.brand)} · ${K.m.p.team}`)]);
-  for (const x of r.rows) { rows.push([lab(x.k.name), td(Kpi.fmtVal(x.k, x.v), { b: true })]); rows.push([lab('Ranking'), td(x.r == null ? '–' : String(x.r), { bg: '#D9D9D9' })]); }
+  for (const x of r.rows) { rows.push([lab(x.k.name), td(Kpi.fmtVal(x.k, Kpi.rankedVal(x)), { b: true })]); rows.push([lab('Ranking'), td(x.r == null ? '–' : String(x.r), { bg: '#D9D9D9' })]); }
   rows.push([lab('Final ranking'), td(r.finalRank == null ? '–' : r.finalRank.toFixed(2), { bg: '#D9D9D9' })], [lab('Final %'), td(pct1(r.finalPct), { b: true })], [lab('Scheduled days'), td(r.sched ?? '–')], [lab('Actual days'), td(r.actual ?? '–')], [lab('Actual days %'), td(pct1(r.daysPct))], ...(srHidden() ? [] : [[lab('Incentive target'), td(r.target ?? '–')], [lab('Earned SR'), td(r.earned ?? '–', { b: true })]]));
   const t = `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse">${rows.map(x => `<tr>${x.join('')}</tr>`).join('')}</table>`;
   return `<html><head><meta charset="utf-8"></head><body><p class="MsoNormal" style="font-family:Calibri,sans-serif;font-size:11pt;margin:0 0 8pt"><b>KPI results – ${esc(kpiPeriod())}</b></p>${t}${state.logo && state.mailLogo ? '<p class="MsoNormal">&nbsp;</p>' + logoTag(state.logo.dataUrl) : ''}</body></html>`;
 }
-const kpiEmailText = K => [`KPI results – ${kpiPeriod()}`, `Name\t${K.m.exp}`, ...K.res.rows.flatMap(x => [`${x.k.name}\t${Kpi.fmtVal(x.k, x.v)}`, `Ranking\t${x.r ?? '–'}`]), `Final ranking\t${K.res.finalRank ?? '–'}`, `Final %\t${pct1(K.res.finalPct)}`, `Scheduled days\t${K.res.sched ?? '–'}`, `Actual days\t${K.res.actual ?? '–'}`, `Actual days %\t${pct1(K.res.daysPct)}`, ...(srHidden() ? [] : [`Incentive target\t${K.res.target ?? '–'}`, `Earned SR\t${K.res.earned ?? '–'}`])].join('\r\n');
+const kpiEmailText = K => [`KPI results – ${kpiPeriod()}`, `Name\t${K.m.exp}`, ...K.res.rows.flatMap(x => [`${x.k.name}\t${Kpi.fmtVal(x.k, Kpi.rankedVal(x))}`, `Ranking\t${x.r ?? '–'}`]), `Final ranking\t${K.res.finalRank ?? '–'}`, `Final %\t${pct1(K.res.finalPct)}`, `Scheduled days\t${K.res.sched ?? '–'}`, `Actual days\t${K.res.actual ?? '–'}`, `Actual days %\t${pct1(K.res.daysPct)}`, ...(srHidden() ? [] : [`Incentive target\t${K.res.target ?? '–'}`, `Earned SR\t${K.res.earned ?? '–'}`])].join('\r\n');
 async function kpiTemplate() {
   const S = new Writer2.Styles(), Sh = Writer2.Sheet, sheets = [];
   const hd = S.get({ font: { b: true, color: 'FFFFFFFF' }, fill: 'FF1F3864', border: 'FFFFFFFF', align: { h: 'center', wrap: true } });
@@ -2175,7 +2175,7 @@ function formDefaults(kind, pid) {
   const results = [], details = [];
   const K = state.kpi.get(pid);
   if (K) {   // only the scorecard KPIs, in the card's order
-    for (const x of K.res.rows) results.push({ on: true, metric: x.k.name, target: Kpi.target(x.k), result: Kpi.fmtVal(x.k, x.v), status: x.r == null ? 'No value' : `Ranking ${x.r} of 5` });
+    for (const x of K.res.rows) results.push({ on: true, metric: x.k.name, target: Kpi.target(x.k), result: Kpi.fmtVal(x.k, Kpi.rankedVal(x)), status: x.r == null ? 'No value' : `Ranking ${x.r} of 5` });
     results.push({ on: false, metric: 'Final % (scorecard)', target: '', result: pct1(K.res.finalPct), status: K.res.finalRank == null ? '' : `Ranking ${K.res.finalRank.toFixed(2)}` });
   } else if (m) {   // no scorecard for this team: the Genesys KPIs
     if (m.avg != null) results.push({ on: true, metric: 'Adherence', target: pct(set.target), result: pct(m.avg), status: m.avg < set.target ? 'Below target' : 'On target' });

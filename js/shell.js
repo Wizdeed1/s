@@ -277,7 +277,7 @@ const DEPT = [
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
     'The <b>Dashboard</b> and <b>WFM team › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
   ['senior', 'Senior manager', [
-    '<b>Supervisors</b>: set the one-to-ones deadline and the month close days, and keep the <b>incentive rules</b>: the scorecards, the bases, who is eligible and how the days and KPIs are counted.',
+    '<b>Supervisors</b>: set the one-to-ones deadline and the month close days, and keep the <b>incentive rules</b>: the scorecards, the bases, who is eligible and how the days and KPIs are counted. Percent KPIs and the Final % are rounded to a whole % before they count (94.99% → 95%); the days % is never rounded.',
     '<b>Results</b>: decide on eligibility where the rules say otherwise, adjust a result where needed (every change is logged), and <b>Finalize</b> the month.',
     '<b>Results › Reconcile with the old Excel</b>: drop the old final result (and the incentive or deduction workbook). The tool lines up every person and says why each number differs: an own base, an absence rule, a typing error in the old file. Each has a fix.',
     'Send the four emails from Supervisors: one-to-ones are ready, results for review to the VP, and the final result form.',

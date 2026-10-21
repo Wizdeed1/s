@@ -80,9 +80,11 @@ const MORE_CODES = [DC('Founding Day', 'Founding Day', 'Founding Day', same('Fou
 const CODES = [...DAY_CODES, ...MORE_CODES].map(d => d.code);
 /** a code's entry: the tool's own, a known leave, or any other leave counted by its name (the workbook column takes its name) */
 const dayCode = code => DAY_CODES.find(d => d.code === code) || MORE_CODES.find(d => d.code === code) || DC(code, code, code, same(code));
-// the defaults count exactly as the tool always did
+// the defaults count as the tool always did, except that percent KPIs and the final % are rounded to a whole % (94.99% → 95%), as the
+// old incentive files did. The days % is never rounded: the old files pay with the exact days. cv: 2 marks a section saved since then.
+const CV = 2;
 const COUNT0 = { sched: DAY_CODES.map(d => d.code), lateOver: 0, absentExtra: 0, absentPer: 'day', absentFlat: 0, countedMin: 0, eligDays: 'attended', missing: 'scale', edge: 'in',
-  rankDp: 2, valDp: -1, pctOf: 'rank5', pctTable: [], pctDp: -1, daysPct: 'ratio', money: 'round', attitude: 'attitude|abuse|hr action' };
+  rankDp: 2, valDp: 0, pctOf: 'rank5', pctTable: [], pctDp: 2, daysPct: 'ratio', money: 'round', attitude: 'attitude|abuse|hr action', cv: CV };
 const NORMED = new WeakSet();   // sections already made whole (they are never changed: an edit makes a new one)
 /** a saved 'count' section made whole and safe: anything missing or out of range takes the default */
 function normCount(c) {
@@ -98,11 +100,17 @@ function normCount(c) {
   try { new RegExp(attitude, 'i'); } catch (e) { attitude = D.attitude; }
   const n = { sched, lateOver: num(o.lateOver, 0, 1440, 0), absentExtra: num(o.absentExtra, 0, 31, 0), absentPer: one(o.absentPer, ['day', 'run'], 'day'), absentFlat: num(o.absentFlat, 0, 31, 0),
     countedMin: num(o.countedMin, 0, 31, 0), eligDays: one(o.eligDays, ['attended', 'counted'], 'attended'), missing: one(o.missing, ['scale', 'rank1', 'none'], 'scale'), edge: one(o.edge, ['in', 'out'], 'in'),
-    rankDp: num(o.rankDp, -1, 4, 2), valDp: num(o.valDp, -1, 4, -1), pctOf: one(o.pctOf, ['rank5', 'table'], 'rank5'), pctTable, pctDp: num(o.pctDp, -1, 6, -1),
-    daysPct: one(o.daysPct, ['ratio', 'full'], 'ratio'), money: one(o.money, ['round', 'floor', 'ceil'], 'round'), attitude };
+    rankDp: num(o.rankDp, -1, 4, 2), valDp: num(o.valDp, -1, 4, 0), pctOf: one(o.pctOf, ['rank5', 'table'], 'rank5'), pctTable, pctDp: num(o.pctDp, -1, 6, 2),
+    daysPct: one(o.daysPct, ['ratio', 'full'], 'ratio'), money: one(o.money, ['round', 'floor', 'ceil'], 'round'), attitude, cv: CV };
   NORMED.add(n); return n;
 }
-/** the fields of a 'count' section that differ from the defaults ({} when it counts as the tool always did) */
+/** a 'count' section as it was saved. One saved before the rounding defaults (no cv) had 'not rounded' as its default, so 'not
+    rounded' there takes today's default; anything saved since stays as it is */
+function fromSaved(c) {
+  if (!c || typeof c !== 'object' || +c.cv >= CV) return c;
+  return { ...c, cv: CV, ...(+c.valDp === -1 ? { valDp: COUNT0.valDp } : {}), ...(+c.pctDp === -1 ? { pctDp: COUNT0.pctDp } : {}) };
+}
+/** the fields of a 'count' section that differ from the defaults ({} when it counts with the defaults) */
 function countDiff(cfg) { const c = normCount(cfg), out = {}; for (const f of Object.keys(COUNT0)) if (JSON.stringify(c[f]) !== JSON.stringify(COUNT0[f])) out[f] = c[f]; return out; }
 /** which days count (the codes and the late limit): rows counted with other day rules are counted again */
 const dayRulesKey = cfg => { const c = normCount(cfg); return JSON.stringify([c.sched, c.lateOver]); };
@@ -165,7 +173,7 @@ function normValue(k, raw) {
 }
 const fmtVal = (k, v) => {
   if (v == null) return '–';
-  if (k.unit === 'pct') return (v * 100).toFixed(v * 100 % 1 ? 2 : 0) + '%';
+  if (k.unit === 'pct') { const p = Math.round(v * 10000) / 100; return p.toFixed(Number.isInteger(p) ? 0 : 2) + '%'; }   // 0.57 reads 57%, not 57.00%
   if (k.unit === 'sec') return String(Math.round(v * 10) / 10);
   return String(Math.round(v * 100) / 100);
 };
@@ -178,6 +186,10 @@ const bandText = k => {
 const target = k => (k.bands[0] == null ? '' : (k.dir === 'low' ? '≤ ' : '≥ ') + (k.unit === 'pct' ? `${+(k.bands[0] * 100).toFixed(2)}%` : `${+(+k.bands[0]).toFixed(2)}`));
 
 const roundTo = (x, dp) => { const f = Math.pow(10, dp); return Math.round(x * f) / f; };
+/** rounded half up as Excel shows it, on the 15 digits it keeps: 28.5% is 29%, though 0.285 × 100 is 28.499999999999996 */
+const roundXl = (x, dp) => { const f = Math.pow(10, dp); return Math.round(+(x * f).toPrecision(15)) / f; };
+/** the value a KPI was ranked with: rounded when the rules round percent KPIs */
+const rankedVal = x => (x.vr !== undefined ? x.vr : x.v);
 /**
  * score one person. vals: {adh, adhUnder, aht, tardy, file: {kpiId: value}} ; att: {sched, attended (or actual), absent, runs} ;
  * cfg: the month's 'count' rules (the defaults when left out). actual = the days counted (attended less any absence penalty),
@@ -187,7 +199,7 @@ function score(card, vals, att, base, cfg) {
   const c = normCount(cfg);
   const rows = card.kpis.map(k => {
     const v = k.src === 'file' ? (vals.file ? vals.file[k.id] ?? null : null) : (vals[k.src] ?? null);
-    const vr = c.valDp >= 0 && k.unit === 'pct' && v != null && Number.isFinite(v) ? roundTo(v * 100, c.valDp) / 100 : v;
+    const vr = c.valDp >= 0 && k.unit === 'pct' && v != null && Number.isFinite(v) ? roundXl(v * 100, c.valDp) / 100 : v;
     return vr === v ? { k, v, r: rank(k, v, c.edge), w: +k.weight || 0 } : { k, v, vr, r: rank(k, vr, c.edge), w: +k.weight || 0 };
   });
   const have = rows.filter(x => x.r != null), wSum = rows.reduce((a, x) => a + x.w, 0), wHave = have.reduce((a, x) => a + x.w, 0);
@@ -199,7 +211,7 @@ function score(card, vals, att, base, cfg) {
   const finalRank = fr == null ? null : c.rankDp >= 0 ? roundTo(fr, c.rankDp) : fr;
   let finalPct = finalRank == null ? null : finalRank / 5, tRow = null;
   if (finalRank != null && c.pctOf === 'table' && c.pctTable.length) { tRow = c.pctTable.find(x => finalRank >= x.min - 1e-9) || null; finalPct = tRow ? tRow.pct : 0; }
-  if (finalPct != null && c.pctDp >= 0) finalPct = roundTo(finalPct, c.pctDp);
+  if (finalPct != null && c.pctDp >= 0) finalPct = roundXl(finalPct, c.pctDp);
   const sched = att ? att.sched : null, attended = att ? (att.attended !== undefined ? att.attended : att.actual) : null;
   const absent = att && att.absent != null ? +att.absent || 0 : 0, runs = att && att.runs != null ? +att.runs || 0 : absent > 0 ? 1 : 0;
   const pen = penalty(attended, absent, runs, c), actual = pen.counted;
@@ -261,7 +273,7 @@ function validate(cards) {
   }
   return issues;
 }
-return { DEFAULTS: () => clone(DEFAULTS), SRC, rank, score, normValue, fmtVal, bandText, target, readFile, fileValue, key, validate,
-  COUNT0: () => clone(COUNT0), normCount, countDiff, countDays, penalty, dayRulesKey, DAY_CODES, CODES, dayCode, bandOf, bandVal };
+return { DEFAULTS: () => clone(DEFAULTS), SRC, rank, score, normValue, fmtVal, rankedVal, bandText, target, readFile, fileValue, key, validate,
+  COUNT0: () => clone(COUNT0), normCount, fromSaved, countDiff, countDays, penalty, dayRulesKey, DAY_CODES, CODES, dayCode, bandOf, bandVal };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Kpi;

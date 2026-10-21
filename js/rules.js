@@ -21,7 +21,7 @@ function countOf(c) {
   let n = countMemo.get(c); if (!n) { n = Kpi.normCount(c); countMemo.set(c, n); }
   return n;
 }
-/** how a month is counted (the defaults count as the tool always did) */
+/** how a month is counted (Kpi.normCount: the defaults when the set changes nothing) */
 function countFor(k) { return rulesFor(k === undefined ? rulesK() : k).count; }
 /** the month the page is looking at (its rules are the ones shown) */
 function rulesK() {
@@ -97,7 +97,7 @@ async function dropRules(from) {
 }
 /** the rules collection, live */
 function rulesLoaded(sn) {
-  const o = {}; sn.docs.forEach(d => { const x = d.data(); if (x && x.cards && x.cards.teams) { if (x.cards.teams) migrateCards(x.cards.teams); o[d.id] = { ...x, from: x.from || d.id }; } });
+  const o = {}; sn.docs.forEach(d => { const x = d.data(); if (x && x.cards && x.cards.teams) { if (x.cards.teams) migrateCards(x.cards.teams); o[d.id] = { ...x, from: x.from || d.id, ...(x.count ? { count: Kpi.fromSaved(x.count) } : {}) }; } });
   state.rules = o; state.rulesVer++; state.incModelCache = null;
   if (state.ctx) state.kpi = computeKpi();
   if (!$('dScore').hidden) renderScore();
@@ -130,7 +130,7 @@ function eligEditHtml() {
 }
 
 // ---------------------------------------------------------------- how it is counted: the 'count' section of the set being looked at
-// Every setting starts as the tool always counted. Only the senior manager or an admin changes them (canRules); each change is one
+// Every setting starts at the default. Only the senior manager or an admin changes them (canRules); each change is one
 // line in the rules' log (who and when), with Undo, and final months keep their frozen numbers.
 Object.assign(state, { cntOpen: false });
 const CNT_MISSING = { scale: 'left out; the other KPIs count as 100%', rank1: 'counts as ranking 1', none: 'no final % until every KPI has a value' };
@@ -165,12 +165,12 @@ function cntText(g, c) {
   if (g === 'attitude') return c.attitude ? c.attitude.split('|').map(s => s.trim()).filter(Boolean).join(', ') : 'none';
   return '';
 }
-/** the example under the settings: the same person counted with these rules (and as the tool always counted) */
+/** the example under the settings: the same person counted with these rules (and with the defaults) */
 function cntExample(c) {
   const k = (id, w) => ({ id, name: id, src: 'file', unit: 'pct', dir: 'high', weight: w, bands: [0.95, 0.9, 0.85, 0.8] }), card = { kpis: [k('a', 0.55), k('b', 0.45)] };
   const base = { ...BASES0, ...(ruleCards().bases || {}) }.Virgin, vals = { file: { a: 0.97, b: 0.91 } }, att = { sched: 23, attended: 20, absent: 2, runs: 2 };
   const r = Kpi.score(card, vals, att, base, c), d = Kpi.score(card, vals, att, base);
-  return `Example (base ${base} SR): 23 days scheduled, 20 attended, absent on 2 separate days, final ranking ${d.finalRank.toFixed(2)}. ${r.actual === 20 ? '20 days count' : `${plural(r.actual, 'day')} count after the absence penalty`} (${pct1(r.daysPct)}), final ${pct1(r.finalPct)}, earned ${r.earned} SR${r.earned !== d.earned ? `; ${d.earned} SR as the tool always counted` : ''}.`;
+  return `Example (base ${base} SR): 23 days scheduled, 20 attended, absent on 2 separate days, final ranking ${d.finalRank.toFixed(2)}. ${r.actual === 20 ? '20 days count' : `${plural(r.actual, 'day')} count after the absence penalty`} (${pct1(r.daysPct)}), final ${pct1(r.finalPct)}, earned ${r.earned} SR${r.earned !== d.earned ? `; ${d.earned} SR with the defaults` : ''}.`;
 }
 const cntSeg = (f, v, L, label) => `<div class="seg sm wrap" role="group" aria-label="${esc(label)}">${L.map(([x, l]) => `<button type="button" data-cntv="${f}|${x}" aria-pressed="${String(v) === String(x)}">${esc(l)}</button>`).join('')}</div>`;
 const cntSel = (f, v, L, label) => `<select class="cell" data-cnt="${f}" aria-label="${esc(label)}">${L.map(([x, l]) => `<option value="${x}"${String(v) === String(x) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
@@ -180,7 +180,7 @@ function countEditHtml() {
   const c = ruleCount(), diff = Object.keys(Kpi.countDiff(c)), row = (l, ctl, hint) => `<div class="cntrow"><span class="lbl">${esc(l)}</span><div class="cntctl">${ctl}${hint ? `<small>${hint}</small>` : ''}</div></div>`;
   const chips = `<div class="chips" role="group" aria-label="Codes that count as a scheduled day"><label class="chip"><input type="checkbox" checked disabled>Attend and late days</label>${Kpi.CODES.map(x => `<label class="chip"><input type="checkbox" data-cnt="sched" data-code="${esc(x)}"${c.sched.includes(x) ? ' checked' : ''}>${esc(x)}</label>`).join('')}</div>`;
   const table = c.pctOf === 'table' ? `<div class="cnttab">${c.pctTable.map((x, i) => `<div class="rowin"><label>From ranking <input type="number" class="cntin" min="0" max="5" step="0.01" data-cnt="tmin" data-i="${i}" value="${x.min}" aria-label="Row ${i + 1}: from ranking"></label><label>final % <input type="number" class="cntin" min="0" max="200" step="0.1" data-cnt="tpct" data-i="${i}" value="${+(x.pct * 100).toFixed(2)}" aria-label="Row ${i + 1}: final %"></label><button type="button" class="rowbtn danger" data-cntrow="del|${i}" aria-label="Remove row ${i + 1}">Remove</button></div>`).join('')}<button type="button" class="btn sm" data-cntrow="add">Add a row</button><small>A final ranking gets the final % of the first row it reaches; below every row, 0%.</small></div>` : '';
-  return `<details class="field cntrules" data-det="cnt"${state.cntOpen ? ' open' : ''}><summary><span class="lbl">How it is counted</span><span class="pill${diff.length ? ' warn' : ''}">${diff.length ? `${plural(diff.length, 'setting')} changed` : 'as the tool always counted'}</span></summary>
+  return `<details class="field cntrules" data-det="cnt"${state.cntOpen ? ' open' : ''}><summary><span class="lbl">How it is counted</span><span class="pill${diff.length ? ' warn' : ''}">${diff.length ? `${plural(diff.length, 'setting')} changed` : 'the defaults'}</span></summary>
     <div class="cntgrid">
     ${row('Scheduled days', chips, 'A scheduled day is a day attended (Attend or a late day) or a day with one of the ticked codes. Days attended ÷ days scheduled is the days %.')}
     ${row('Late days', `<label class="rowin">Late by more than ${cntNum('lateOver', c.lateOver, 'Minutes late that count as absent', 1440)} min counts as absent</label>`, '0 = a late day is a day attended. Its minutes count as tardiness either way.')}
@@ -188,11 +188,11 @@ function countEditHtml() {
     ${row('Fewest days for the incentive use', cntSeg('eligDays', c.eligDays, [['attended', 'days attended'], ['counted', 'counted days']], 'Fewest days for the incentive use'))}
     ${row('A KPI with no value', cntSeg('missing', c.missing, [['scale', 'is left out'], ['rank1', 'counts as ranking 1'], ['none', 'no final % yet']], 'A KPI with no value'), esc(cntText('missing', c)[0].toUpperCase() + cntText('missing', c).slice(1)) + '.')}
     ${row('A value exactly on a band', cntSeg('edge', c.edge, [['in', 'gets that ranking'], ['out', 'gets the ranking below']], 'A value exactly on a band'))}
-    ${row('Percent KPIs before ranking', cntSel('valDp', c.valDp, [[-1, 'not rounded'], [0, 'whole % (94.99% → 95%)'], [1, '1 decimal'], [2, '2 decimals']], 'Percent KPIs before ranking'))}
+    ${row('Percent KPIs before ranking', cntSel('valDp', c.valDp, [[0, 'whole % (94.99% → 95%)'], [1, '1 decimal'], [2, '2 decimals'], [-1, 'not rounded']], 'Percent KPIs before ranking'), 'Rounded as Excel shows them, half up: 94.5% → 95%, 94.49% → 94%. The ranking and the band use the rounded value.')}
     ${row('Final ranking', cntSel('rankDp', c.rankDp, [[2, '2 decimals'], [1, '1 decimal'], [0, 'whole number'], [3, '3 decimals'], [-1, 'not rounded']], 'Final ranking decimals'))}
     ${row('Final %', cntSeg('pctOf', c.pctOf, [['rank5', 'ranking ÷ 5'], ['table', 'from a table']], 'Final %') + table)}
-    ${row('Final % rounding', cntSel('pctDp', c.pctDp, [[-1, 'not rounded'], [2, 'whole %'], [3, '1 decimal'], [4, '2 decimals']], 'Final % rounding'))}
-    ${row('Days %', cntSeg('daysPct', c.daysPct, [['ratio', 'counted ÷ scheduled'], ['full', '100% when scheduled']], 'Days %'))}
+    ${row('Final % rounding', cntSel('pctDp', c.pctDp, [[2, 'whole %'], [3, '1 decimal'], [4, '2 decimals'], [-1, 'not rounded']], 'Final % rounding'), 'For example 95.6% (when a KPI is left out) counts as 96%.')}
+    ${row('Days %', cntSeg('daysPct', c.daysPct, [['ratio', 'counted ÷ scheduled'], ['full', '100% when scheduled']], 'Days %'), 'Never rounded: 20 ÷ 23 counts as 86.96…%, as in the old incentive files.')}
     ${row('Whole SR', cntSeg('money', c.money, [['round', 'rounded'], ['floor', 'rounded down'], ['ceil', 'rounded up']], 'Whole SR'), 'For the incentive target and the earned SR.')}
     ${row('Critical errors that stop the incentive', `<input class="cell" data-cnt="attitude" value="${esc(c.attitude)}" placeholder="none" aria-label="Critical error types that stop the incentive" spellcheck="false">`, 'Words in the quality team\'s critical error type, separated by |. Empty = none stops it.')}
     <p class="hint cntex" aria-live="polite">${esc(cntExample(c))}</p>
@@ -261,7 +261,7 @@ $('scoreBody').addEventListener('toggle', e => { if (e.target.matches && e.targe
 /** the first rules' fields as config/scorecards keeps them (the loader keeps every field a set has, so nothing is lost on reload) */
 function cardsFromDoc(d) {
   return { base: typeof d.base === 'number' ? d.base : 1000, bases: d.bases && typeof d.bases === 'object' ? d.bases : undefined, teams: d.teams, ...(d.elig && typeof d.elig === 'object' ? { elig: d.elig } : {}),
-    ...(d.count && typeof d.count === 'object' ? { count: d.count } : {}), ...(d.people && typeof d.people === 'object' ? { people: d.people } : {}), ...(Array.isArray(d.log) ? { log: d.log } : {}) };
+    ...(d.count && typeof d.count === 'object' ? { count: Kpi.fromSaved(d.count) } : {}), ...(d.people && typeof d.people === 'object' ? { people: d.people } : {}), ...(Array.isArray(d.log) ? { log: d.log } : {}) };
 }
 /** gives a person their own incentive base for the months of the set in force for month k (base null takes it away); logged */
 function setMonthBase(pid, base, src, k) { return setSetBase(rulesFor(k === undefined ? rulesK() : k).from, pid, base, src); }
@@ -297,7 +297,7 @@ function peopleBasesClick(e) {
 /** a Build-month KPI result (state.kpi) as a month row, for the explanation */
 function kpiRowOfK(K) {
   const res = K.res;
-  return { n: K.m.exp, kc: K.card.title, kpi: kpiTuples(res), kx: howLite(res), fr: res.finalRank, fin: res.finalPct, ks: res.sched, kat: res.attended, ka: res.actual, kt: res.target,
+  return { n: K.m.exp, kc: K.card.title, kpi: kpiTuples(res), kv: kvOf(res), kx: howLite(res), fr: res.finalRank, fin: res.finalPct, ks: res.sched, kat: res.attended, ka: res.actual, kt: res.target,
     earned: res.earned, earnedCalc: res.earnedCalc, base: res.how ? res.how.b : null, absent: res.absent, _el: res.elig };
 }
 const f2 = v => (v == null || !Number.isFinite(+v) ? '–' : (+v).toFixed(2));
@@ -323,9 +323,12 @@ function howHtml(r, k, o = {}) {
   // 1. each KPI: value, band, ranking, weight and points
   const mm = x ? x.mm : 'scale', miss = T.filter(t => t[4] == null).map(t => t[0]);
   if (T.length) {
-    const rows = T.map(([name, w, , val, rk, band]) => { const vr = x && x.vr && x.vr[name];
+    const card = cardOfRow(r), kOf = (name, i) => (card ? (card.kpis[i] && card.kpis[i].name === name ? card.kpis[i] : card.kpis.find(q => q.name === name)) : null);
+    const rows = T.map(([name, w, , val, rk, band], i) => {
+      // a KPI rounded before it was ranked reads 'what it was → what it counted as' (x.vr and r.kv are kept by KPI id)
+      const kk = kOf(name, i), vr = x && x.vr && kk ? x.vr[kk.id] : undefined, raw = vr != null && r.kv ? r.kv[kk.id] : undefined;
       const pts = rk != null ? f2(rk * w / 100) : mm === 'rank1' ? f2(w / 100) : '–';
-      return `<tr><td>${esc(name)}</td><td class="r num">${esc(val)}${vr != null ? ` <small>→ ${esc(pct(vr, 2))}</small>` : ''}</td><td>${rk == null ? '<span class="subtle">no value</span>' : esc(band || '–')}</td><td class="r">${rankChip(rk)}</td><td class="r num">${esc(w)}%</td><td class="r num">${pts}</td></tr>`; }).join('');
+      return `<tr><td>${esc(name)}</td><td class="r num">${vr != null ? `${esc(raw != null ? Kpi.fmtVal(kk, raw) : val)} <small>→ ${esc(Kpi.fmtVal(kk, vr))}</small>` : esc(val)}</td><td>${rk == null ? '<span class="subtle">no value</span>' : esc(band || '–')}</td><td class="r">${rankChip(rk)}</td><td class="r num">${esc(w)}%</td><td class="r num">${pts}</td></tr>`; }).join('');
     step('Each KPI', `<div class="tablewrap howtab"><table><thead><tr><th>KPI</th><th class="r">Result</th><th>Band reached</th><th class="r">Ranking</th><th class="r">Weight</th><th class="r">Points</th></tr></thead><tbody>${rows}</tbody></table></div>
       <p>Points = ranking × weight.${x && x.vd >= 0 ? ` Percent KPIs are rounded to ${x.vd ? plural(x.vd, 'decimal') : 'a whole %'} before they are ranked.` : ''}${x && x.ed === 'out' ? ' A value exactly on a band gets the ranking below.' : ''}</p>
       ${miss.length ? `<p class="hownote">${esc(andList(miss))} had no value: ${mm === 'rank1' ? `${miss.length > 1 ? 'they count' : 'it counts'} as ranking 1.` : mm === 'none' ? 'no final % until every KPI has one.' : `${miss.length > 1 ? 'they are' : 'it is'} left out, and the other weights (${esc(pct1(x ? x.ws : T.filter(t => t[4] != null).reduce((a, t) => a + t[1] / 100, 0)))}) count as 100%.`}</p>` : ''}`);

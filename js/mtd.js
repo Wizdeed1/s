@@ -23,7 +23,7 @@ function mtdProj(pid, k) {
   const res = Kpi.score(card, vals, att, baseOf(p, r, k), countFor(k)), el = eligibility(res, qRow(k, pid), null, k);
   const weak = res.rows.filter(x => x.r != null && x.r < 5).sort((a, b) => a.r - b.r || b.w - a.w)[0] || null;
   return { asOf, days: days.length, ND, fin: res.finalPct, earned: res.earned == null ? null : el.ok ? res.earned : 0, calc: res.earned, ok: el.ok, why: el.why, borrowed, minFinal: rulesFor(k).elig.minFinal,
-    weak: weak ? { name: weak.k.name, value: Kpi.fmtVal(weak.k, weak.v), target: Kpi.target(weak.k), rank: weak.r } : null, missing: res.missing };
+    weak: weak ? { name: weak.k.name, value: Kpi.fmtVal(weak.k, Kpi.rankedVal(weak)), target: Kpi.target(weak.k), rank: weak.r } : null, missing: res.missing };
 }
 /** the agents' pages follow the stored days (a few seconds after the month is saved from them) */
 let mtdT = 0;

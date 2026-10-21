@@ -11621,9 +11621,11 @@ const MORE_CODES = [DC('Founding Day', 'Founding Day', 'Founding Day', same('Fou
 const CODES = [...DAY_CODES, ...MORE_CODES].map(d => d.code);
 /** a code's entry: the tool's own, a known leave, or any other leave counted by its name (the workbook column takes its name) */
 const dayCode = code => DAY_CODES.find(d => d.code === code) || MORE_CODES.find(d => d.code === code) || DC(code, code, code, same(code));
-// the defaults count exactly as the tool always did
+// the defaults count as the tool always did, except that percent KPIs and the final % are rounded to a whole % (94.99% → 95%), as the
+// old incentive files did. The days % is never rounded: the old files pay with the exact days. cv: 2 marks a section saved since then.
+const CV = 2;
 const COUNT0 = { sched: DAY_CODES.map(d => d.code), lateOver: 0, absentExtra: 0, absentPer: 'day', absentFlat: 0, countedMin: 0, eligDays: 'attended', missing: 'scale', edge: 'in',
-  rankDp: 2, valDp: -1, pctOf: 'rank5', pctTable: [], pctDp: -1, daysPct: 'ratio', money: 'round', attitude: 'attitude|abuse|hr action' };
+  rankDp: 2, valDp: 0, pctOf: 'rank5', pctTable: [], pctDp: 2, daysPct: 'ratio', money: 'round', attitude: 'attitude|abuse|hr action', cv: CV };
 const NORMED = new WeakSet();   // sections already made whole (they are never changed: an edit makes a new one)
 /** a saved 'count' section made whole and safe: anything missing or out of range takes the default */
 function normCount(c) {
@@ -11639,11 +11641,17 @@ function normCount(c) {
   try { new RegExp(attitude, 'i'); } catch (e) { attitude = D.attitude; }
   const n = { sched, lateOver: num(o.lateOver, 0, 1440, 0), absentExtra: num(o.absentExtra, 0, 31, 0), absentPer: one(o.absentPer, ['day', 'run'], 'day'), absentFlat: num(o.absentFlat, 0, 31, 0),
     countedMin: num(o.countedMin, 0, 31, 0), eligDays: one(o.eligDays, ['attended', 'counted'], 'attended'), missing: one(o.missing, ['scale', 'rank1', 'none'], 'scale'), edge: one(o.edge, ['in', 'out'], 'in'),
-    rankDp: num(o.rankDp, -1, 4, 2), valDp: num(o.valDp, -1, 4, -1), pctOf: one(o.pctOf, ['rank5', 'table'], 'rank5'), pctTable, pctDp: num(o.pctDp, -1, 6, -1),
-    daysPct: one(o.daysPct, ['ratio', 'full'], 'ratio'), money: one(o.money, ['round', 'floor', 'ceil'], 'round'), attitude };
+    rankDp: num(o.rankDp, -1, 4, 2), valDp: num(o.valDp, -1, 4, 0), pctOf: one(o.pctOf, ['rank5', 'table'], 'rank5'), pctTable, pctDp: num(o.pctDp, -1, 6, 2),
+    daysPct: one(o.daysPct, ['ratio', 'full'], 'ratio'), money: one(o.money, ['round', 'floor', 'ceil'], 'round'), attitude, cv: CV };
   NORMED.add(n); return n;
 }
-/** the fields of a 'count' section that differ from the defaults ({} when it counts as the tool always did) */
+/** a 'count' section as it was saved. One saved before the rounding defaults (no cv) had 'not rounded' as its default, so 'not
+    rounded' there takes today's default; anything saved since stays as it is */
+function fromSaved(c) {
+  if (!c || typeof c !== 'object' || +c.cv >= CV) return c;
+  return { ...c, cv: CV, ...(+c.valDp === -1 ? { valDp: COUNT0.valDp } : {}), ...(+c.pctDp === -1 ? { pctDp: COUNT0.pctDp } : {}) };
+}
+/** the fields of a 'count' section that differ from the defaults ({} when it counts with the defaults) */
 function countDiff(cfg) { const c = normCount(cfg), out = {}; for (const f of Object.keys(COUNT0)) if (JSON.stringify(c[f]) !== JSON.stringify(COUNT0[f])) out[f] = c[f]; return out; }
 /** which days count (the codes and the late limit): rows counted with other day rules are counted again */
 const dayRulesKey = cfg => { const c = normCount(cfg); return JSON.stringify([c.sched, c.lateOver]); };
@@ -11706,7 +11714,7 @@ function normValue(k, raw) {
 }
 const fmtVal = (k, v) => {
   if (v == null) return '–';
-  if (k.unit === 'pct') return (v * 100).toFixed(v * 100 % 1 ? 2 : 0) + '%';
+  if (k.unit === 'pct') { const p = Math.round(v * 10000) / 100; return p.toFixed(Number.isInteger(p) ? 0 : 2) + '%'; }   // 0.57 reads 57%, not 57.00%
   if (k.unit === 'sec') return String(Math.round(v * 10) / 10);
   return String(Math.round(v * 100) / 100);
 };
@@ -11719,6 +11727,10 @@ const bandText = k => {
 const target = k => (k.bands[0] == null ? '' : (k.dir === 'low' ? '≤ ' : '≥ ') + (k.unit === 'pct' ? `${+(k.bands[0] * 100).toFixed(2)}%` : `${+(+k.bands[0]).toFixed(2)}`));
 
 const roundTo = (x, dp) => { const f = Math.pow(10, dp); return Math.round(x * f) / f; };
+/** rounded half up as Excel shows it, on the 15 digits it keeps: 28.5% is 29%, though 0.285 × 100 is 28.499999999999996 */
+const roundXl = (x, dp) => { const f = Math.pow(10, dp); return Math.round(+(x * f).toPrecision(15)) / f; };
+/** the value a KPI was ranked with: rounded when the rules round percent KPIs */
+const rankedVal = x => (x.vr !== undefined ? x.vr : x.v);
 /**
  * score one person. vals: {adh, adhUnder, aht, tardy, file: {kpiId: value}} ; att: {sched, attended (or actual), absent, runs} ;
  * cfg: the month's 'count' rules (the defaults when left out). actual = the days counted (attended less any absence penalty),
@@ -11728,7 +11740,7 @@ function score(card, vals, att, base, cfg) {
   const c = normCount(cfg);
   const rows = card.kpis.map(k => {
     const v = k.src === 'file' ? (vals.file ? vals.file[k.id] ?? null : null) : (vals[k.src] ?? null);
-    const vr = c.valDp >= 0 && k.unit === 'pct' && v != null && Number.isFinite(v) ? roundTo(v * 100, c.valDp) / 100 : v;
+    const vr = c.valDp >= 0 && k.unit === 'pct' && v != null && Number.isFinite(v) ? roundXl(v * 100, c.valDp) / 100 : v;
     return vr === v ? { k, v, r: rank(k, v, c.edge), w: +k.weight || 0 } : { k, v, vr, r: rank(k, vr, c.edge), w: +k.weight || 0 };
   });
   const have = rows.filter(x => x.r != null), wSum = rows.reduce((a, x) => a + x.w, 0), wHave = have.reduce((a, x) => a + x.w, 0);
@@ -11740,7 +11752,7 @@ function score(card, vals, att, base, cfg) {
   const finalRank = fr == null ? null : c.rankDp >= 0 ? roundTo(fr, c.rankDp) : fr;
   let finalPct = finalRank == null ? null : finalRank / 5, tRow = null;
   if (finalRank != null && c.pctOf === 'table' && c.pctTable.length) { tRow = c.pctTable.find(x => finalRank >= x.min - 1e-9) || null; finalPct = tRow ? tRow.pct : 0; }
-  if (finalPct != null && c.pctDp >= 0) finalPct = roundTo(finalPct, c.pctDp);
+  if (finalPct != null && c.pctDp >= 0) finalPct = roundXl(finalPct, c.pctDp);
   const sched = att ? att.sched : null, attended = att ? (att.attended !== undefined ? att.attended : att.actual) : null;
   const absent = att && att.absent != null ? +att.absent || 0 : 0, runs = att && att.runs != null ? +att.runs || 0 : absent > 0 ? 1 : 0;
   const pen = penalty(attended, absent, runs, c), actual = pen.counted;
@@ -11802,8 +11814,8 @@ function validate(cards) {
   }
   return issues;
 }
-return { DEFAULTS: () => clone(DEFAULTS), SRC, rank, score, normValue, fmtVal, bandText, target, readFile, fileValue, key, validate,
-  COUNT0: () => clone(COUNT0), normCount, countDiff, countDays, penalty, dayRulesKey, DAY_CODES, CODES, dayCode, bandOf, bandVal };
+return { DEFAULTS: () => clone(DEFAULTS), SRC, rank, score, normValue, fmtVal, rankedVal, bandText, target, readFile, fileValue, key, validate,
+  COUNT0: () => clone(COUNT0), normCount, fromSaved, countDiff, countDays, penalty, dayRulesKey, DAY_CODES, CODES, dayCode, bandOf, bandVal };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Kpi;
 
@@ -12901,7 +12913,7 @@ async function loadData(db) {
   try { const snap = await db.doc('config/ids').get(); if (snap.exists) { const d = snap.data() || {}; if (Array.isArray(d.rows)) { state.idsFile = { name: d.name || 'IDs file', at: d.at || '', rows: d.rows, keep: Array.isArray(d.keep) ? d.keep : [] }; state.idsAuto = true; refresh(); } } } catch (e) { /* none */ }
   if (!state.logo && Auth.team() && Auth.team().logo) { state.logo = Auth.team().logo; render(); }
   watchShared(db);   // history, final results and accounts stay live, so every role sees the same data
-  try { const snap = await db.doc('config/scorecards').get(); if (snap.exists) { const d = snap.data() || {}; if (d.teams && typeof d.teams === 'object') { migrateCards(d.teams); state.cards = { base: typeof d.base === 'number' ? d.base : 1000, bases: d.bases && typeof d.bases === 'object' ? d.bases : undefined, teams: d.teams, ...(d.elig && typeof d.elig === 'object' ? { elig: d.elig } : {}), ...(d.count && typeof d.count === 'object' ? { count: d.count } : {}), ...(d.people && typeof d.people === 'object' ? { people: d.people } : {}), ...(Array.isArray(d.log) ? { log: d.log } : {}) }; state.rulesVer++; state.incModelCache = null; refresh(); } } } catch (e) { /* defaults stay */ }
+  try { const snap = await db.doc('config/scorecards').get(); if (snap.exists) { const d = snap.data() || {}; if (d.teams && typeof d.teams === 'object') { migrateCards(d.teams); state.cards = { base: typeof d.base === 'number' ? d.base : 1000, bases: d.bases && typeof d.bases === 'object' ? d.bases : undefined, teams: d.teams, ...(d.elig && typeof d.elig === 'object' ? { elig: d.elig } : {}), ...(d.count && typeof d.count === 'object' ? { count: Kpi.fromSaved(d.count) } : {}), ...(d.people && typeof d.people === 'object' ? { people: d.people } : {}), ...(Array.isArray(d.log) ? { log: d.log } : {}) }; state.rulesVer++; state.incModelCache = null; refresh(); } } } catch (e) { /* defaults stay */ }
   try { const sn = await db.collection('kpi').get(); sn.docs.forEach(d => { const x = d.data(); if (x && Array.isArray(x.rows)) state.kpiFiles[d.id] = x; }); if (sn.docs.length) refresh(); } catch (e) { /* none */ }
   loadSnaps(); loadAttState();
   try { db.collection('forms').onSnapshot(sn => { state.forms = sn.docs.map(d => ({ ...d.data(), id: d.id })); if (!$('dPerson').hidden) renderPerson(); if (state.ws !== 'build') renderWs(); }, () => {}); } catch (e) { /* none */ }
@@ -15436,7 +15448,7 @@ function computeKpi() {
   return out;
 }
 const kpiSum = r => ({ finalRank: r.finalRank == null ? '–' : r.finalRank.toFixed(2), finalPct: pct1(r.finalPct), sched: r.sched, actual: r.actual, daysPct: pct1(r.daysPct), target: srHidden() ? '–' : r.target, earned: srHidden() ? '–' : r.earned, missing: r.missing.join(', ') });
-const kpiRowsOut = res => res.rows.map(x => ({ name: x.k.name, weight: `${+(x.w * 100).toFixed(1)}%`, target: Kpi.target(x.k), result: Kpi.fmtVal(x.k, x.v), rank: x.r }));
+const kpiRowsOut = res => res.rows.map(x => ({ name: x.k.name, weight: `${+(x.w * 100).toFixed(1)}%`, target: Kpi.target(x.k), result: Kpi.fmtVal(x.k, Kpi.rankedVal(x)), rank: x.r }));
 function agentOf(p) { return { name: gname(p), id: Core.cleanId(p.nid) || normSpace(p.nid) || '', team: p.team || '', teamName: DEP_NAMES[p.team] || '', brand: p.brand || '' }; }
 const rankChip = r => (r == null ? '<span class="rk na" title="No value">–</span>' : `<span class="rk r${r}">${r}</span>`);
 function kpiCardHtml(pid) {
@@ -15449,7 +15461,7 @@ function kpiCardHtml(pid) {
   const r = K.res, S = kpiSum(r);
   return `<section class="sec"><h3>KPI results · ${esc(K.card.title)}</h3>
     <div class="kpicard"><table><thead><tr><th>KPI</th><th class="r">Weight</th><th class="r">Target</th><th class="r">Result</th><th class="r">Ranking</th></tr></thead><tbody>
-    ${r.rows.map(x => `<tr><td>${esc(x.k.name)}</td><td class="r num">${+(x.w * 100).toFixed(1)}%</td><td class="r num">${esc(Kpi.target(x.k))}</td><td class="r num"><b>${esc(Kpi.fmtVal(x.k, x.v))}</b></td><td class="r">${rankChip(x.r)}</td></tr>`).join('')}
+    ${r.rows.map(x => `<tr><td>${esc(x.k.name)}</td><td class="r num">${+(x.w * 100).toFixed(1)}%</td><td class="r num">${esc(Kpi.target(x.k))}</td><td class="r num"><b>${esc(Kpi.fmtVal(x.k, Kpi.rankedVal(x)))}</b></td><td class="r">${rankChip(x.r)}</td></tr>`).join('')}
     </tbody></table>
     <div class="kpisum"><div><b>${esc(S.finalRank)}</b><span>Final ranking</span></div><div><b>${esc(S.finalPct)}</b><span>Final %</span></div><div><b>${S.actual ?? '–'} / ${S.sched ?? '–'}</b><span>Actual / scheduled days (${esc(S.daysPct)})</span></div>${srHidden() ? '' : `<div><b>${r.target ?? '–'}</b><span>Incentive target (SR)</span></div><div class="earned"><b>${r.earned ?? '–'}</b><span>Earned (SR)</span></div>`}</div>${r.elig && !r.elig.ok ? `<p class="hint warnline">Not eligible for the incentive: ${esc(r.elig.why.join(', '))}.${srHidden() ? '' : ` Calculated ${r.earnedCalc ?? '–'} SR; the senior manager can override it.`}</p>` : ''}</div>
     ${r.missing.length ? `<p class="hint warnline">Missing: ${esc(r.missing.join(', '))}. The final ranking uses the other KPIs until ${r.missing.length > 1 ? 'they arrive' : 'it arrives'}${kpiFileNow() ? '' : ' (drop the KPI file on Import)'}.</p>` : ''}
@@ -15510,7 +15522,7 @@ function renderKpiTab() {
   const head = `<tr><th><button class="linkbtn" data-ksort="name">Name</button></th><th>Team</th>${card ? card.kpis.map(k => `<th class="r" title="${esc(Kpi.bandText(k))}">${esc(k.name)}<br><small>${+(k.weight * 100).toFixed(1)}%</small></th>`).join('') : ''}<th class="r">Final ranking</th><th class="r">${sortBtn}</th><th class="r">Actual days %</th>${sr ? '<th class="r">Target SR</th><th class="r">Earned SR</th>' : ''}${card ? '' : '<th>Missing</th>'}</tr>`;
   const body = L.map(K => { const r = K.res;
     return `<tr><td><button class="linkbtn nm" data-open="${esc(K.m.p._id)}" data-agent="${esc(K.m.p._id)}" dir="auto">${esc(K.m.exp)}</button></td><td>${esc(K.m.p.team)}</td>
-      ${card ? r.rows.map(x => `<td class="r num">${esc(Kpi.fmtVal(x.k, x.v))} ${rankChip(x.r)}</td>`).join('') : ''}
+      ${card ? r.rows.map(x => `<td class="r num">${esc(Kpi.fmtVal(x.k, Kpi.rankedVal(x)))} ${rankChip(x.r)}</td>`).join('') : ''}
       <td class="r num">${r.finalRank == null ? '–' : r.finalRank.toFixed(2)}</td><td class="r num"><b>${pct1(r.finalPct)}</b></td><td class="r num">${pct1(r.daysPct)}</td>${sr ? `<td class="r num">${r.target ?? '–'}</td><td class="r num"><b>${r.earned ?? '–'}</b></td>` : ''}${card ? '' : `<td class="subtle">${esc(r.missing.join(', '))}</td>`}</tr>`; }).join('');
   el.innerHTML = `<div class="tablewrap histgrid kpigrid"><table><thead>${head}</thead><tbody>${body || '<tr><td colspan="10" class="empty">Nobody matches.</td></tr>'}</tbody></table></div>
     ${card ? `<p class="hint">${card.kpis.map(k => `<b>${esc(k.name)}</b> (${esc(Kpi.SRC[k.src] || k.src)}): ${esc(Kpi.bandText(k))}`).join('<br>')}</p>` : ''}`;
@@ -15543,7 +15555,7 @@ async function kpiExcel(list, name, single) {
     const K = list[0], r = K.res, W = new Sh('KPI card'); W.width(1, 30); W.width(2, 16);
     let row = 1; const put = (l, v, st, ls = lab) => { W.set(row, 1, l, ls); W.set(row, 2, v, st); row++; };
     put('ID', Core.cleanId(K.m.p.nid) || 'NA', val); put('Name', K.m.exp, val); put('Team', normSpace(K.m.p.brand), val);
-    for (const x of r.rows) { put(x.k.name, cellV(x.k, x.v), x.k.unit === 'pct' ? pc : val); put('Ranking', x.r ?? '–', rk); }
+    for (const x of r.rows) { put(x.k.name, cellV(x.k, Kpi.rankedVal(x)), x.k.unit === 'pct' ? pc : val); put('Ranking', x.r ?? '–', rk); }
     put('Final ranking %', r.finalRank, pc2); put('Final %', r.finalPct, pc); put('Scheduled day', r.sched, val, labY); put('Actual days', r.actual, val, labY); put('Actual Days %', r.daysPct, pc, labY);
     put('Incentive Target', srHidden() ? null : r.target, val, labY); put('Earned SR', srHidden() ? null : r.earned, val); put('Comment', r.missing.length ? 'Missing: ' + r.missing.join(', ') : '', val);
     W.logoAt(4, 1, 52, 8, 4); sheets.push(W);
@@ -15556,7 +15568,7 @@ async function kpiExcel(list, name, single) {
       L.sort((a, b) => a.m.exp.localeCompare(b.m.exp)).forEach((K, i) => {
         const r = K.res, R = i + 4; let c = 1;
         W.set(R, c++, Core.cleanId(K.m.p.nid) || 'NA', txt); W.set(R, c++, K.m.exp, txt); W.set(R, c++, normSpace(K.m.p.brand), num); W.set(R, c++, t, num);
-        for (const x of r.rows) { W.set(R, c++, cellV(x.k, x.v), x.k.unit === 'pct' ? npc : num); W.set(R, c++, x.r, num); }
+        for (const x of r.rows) { W.set(R, c++, cellV(x.k, Kpi.rankedVal(x)), x.k.unit === 'pct' ? npc : num); W.set(R, c++, x.r, num); }
         W.set(R, c++, r.finalRank, num); W.set(R, c++, r.finalPct, npc); W.set(R, c++, r.sched, num); W.set(R, c++, r.actual, num); W.set(R, c++, r.daysPct, npc); W.set(R, c++, srHidden() ? null : r.target, num); W.set(R, c++, srHidden() ? null : r.earned, num);
         W.set(R, c++, r.missing.length ? 'Missing: ' + r.missing.join(', ') : '', txt);
       });
@@ -15577,12 +15589,12 @@ function kpiEmailHtml(K) {
   const r = K.res, td = (t, o = {}) => `<td style="border:solid #BFBFBF 1.0pt;padding:2pt 6pt;${o.bg ? `background:${o.bg};` : ''}"><p class="MsoNormal" style="margin:0in;${o.c ? '' : 'text-align:center;'}font-family:Calibri,sans-serif;font-size:10.5pt;${o.color ? `color:${o.color};` : ''}">${o.b ? '<b>' : ''}${esc(t)}${o.b ? '</b>' : ''}</p></td>`;
   const lab = t => td(t, { bg: '#1F3864', color: '#FFFFFF', b: true }), rows = [];
   rows.push([lab('Name'), td(K.m.exp, { b: true })], [lab('Team'), td(`${normSpace(K.m.p.brand)} · ${K.m.p.team}`)]);
-  for (const x of r.rows) { rows.push([lab(x.k.name), td(Kpi.fmtVal(x.k, x.v), { b: true })]); rows.push([lab('Ranking'), td(x.r == null ? '–' : String(x.r), { bg: '#D9D9D9' })]); }
+  for (const x of r.rows) { rows.push([lab(x.k.name), td(Kpi.fmtVal(x.k, Kpi.rankedVal(x)), { b: true })]); rows.push([lab('Ranking'), td(x.r == null ? '–' : String(x.r), { bg: '#D9D9D9' })]); }
   rows.push([lab('Final ranking'), td(r.finalRank == null ? '–' : r.finalRank.toFixed(2), { bg: '#D9D9D9' })], [lab('Final %'), td(pct1(r.finalPct), { b: true })], [lab('Scheduled days'), td(r.sched ?? '–')], [lab('Actual days'), td(r.actual ?? '–')], [lab('Actual days %'), td(pct1(r.daysPct))], ...(srHidden() ? [] : [[lab('Incentive target'), td(r.target ?? '–')], [lab('Earned SR'), td(r.earned ?? '–', { b: true })]]));
   const t = `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse">${rows.map(x => `<tr>${x.join('')}</tr>`).join('')}</table>`;
   return `<html><head><meta charset="utf-8"></head><body><p class="MsoNormal" style="font-family:Calibri,sans-serif;font-size:11pt;margin:0 0 8pt"><b>KPI results – ${esc(kpiPeriod())}</b></p>${t}${state.logo && state.mailLogo ? '<p class="MsoNormal">&nbsp;</p>' + logoTag(state.logo.dataUrl) : ''}</body></html>`;
 }
-const kpiEmailText = K => [`KPI results – ${kpiPeriod()}`, `Name\t${K.m.exp}`, ...K.res.rows.flatMap(x => [`${x.k.name}\t${Kpi.fmtVal(x.k, x.v)}`, `Ranking\t${x.r ?? '–'}`]), `Final ranking\t${K.res.finalRank ?? '–'}`, `Final %\t${pct1(K.res.finalPct)}`, `Scheduled days\t${K.res.sched ?? '–'}`, `Actual days\t${K.res.actual ?? '–'}`, `Actual days %\t${pct1(K.res.daysPct)}`, ...(srHidden() ? [] : [`Incentive target\t${K.res.target ?? '–'}`, `Earned SR\t${K.res.earned ?? '–'}`])].join('\r\n');
+const kpiEmailText = K => [`KPI results – ${kpiPeriod()}`, `Name\t${K.m.exp}`, ...K.res.rows.flatMap(x => [`${x.k.name}\t${Kpi.fmtVal(x.k, Kpi.rankedVal(x))}`, `Ranking\t${x.r ?? '–'}`]), `Final ranking\t${K.res.finalRank ?? '–'}`, `Final %\t${pct1(K.res.finalPct)}`, `Scheduled days\t${K.res.sched ?? '–'}`, `Actual days\t${K.res.actual ?? '–'}`, `Actual days %\t${pct1(K.res.daysPct)}`, ...(srHidden() ? [] : [`Incentive target\t${K.res.target ?? '–'}`, `Earned SR\t${K.res.earned ?? '–'}`])].join('\r\n');
 async function kpiTemplate() {
   const S = new Writer2.Styles(), Sh = Writer2.Sheet, sheets = [];
   const hd = S.get({ font: { b: true, color: 'FFFFFFFF' }, fill: 'FF1F3864', border: 'FFFFFFFF', align: { h: 'center', wrap: true } });
@@ -15919,7 +15931,7 @@ function formDefaults(kind, pid) {
   const results = [], details = [];
   const K = state.kpi.get(pid);
   if (K) {   // only the scorecard KPIs, in the card's order
-    for (const x of K.res.rows) results.push({ on: true, metric: x.k.name, target: Kpi.target(x.k), result: Kpi.fmtVal(x.k, x.v), status: x.r == null ? 'No value' : `Ranking ${x.r} of 5` });
+    for (const x of K.res.rows) results.push({ on: true, metric: x.k.name, target: Kpi.target(x.k), result: Kpi.fmtVal(x.k, Kpi.rankedVal(x)), status: x.r == null ? 'No value' : `Ranking ${x.r} of 5` });
     results.push({ on: false, metric: 'Final % (scorecard)', target: '', result: pct1(K.res.finalPct), status: K.res.finalRank == null ? '' : `Ranking ${K.res.finalRank.toFixed(2)}` });
   } else if (m) {   // no scorecard for this team: the Genesys KPIs
     if (m.avg != null) results.push({ on: true, metric: 'Adherence', target: pct(set.target), result: pct(m.avg), status: m.avg < set.target ? 'Below target' : 'On target' });
@@ -17880,7 +17892,7 @@ function countOf(c) {
   let n = countMemo.get(c); if (!n) { n = Kpi.normCount(c); countMemo.set(c, n); }
   return n;
 }
-/** how a month is counted (the defaults count as the tool always did) */
+/** how a month is counted (Kpi.normCount: the defaults when the set changes nothing) */
 function countFor(k) { return rulesFor(k === undefined ? rulesK() : k).count; }
 /** the month the page is looking at (its rules are the ones shown) */
 function rulesK() {
@@ -17956,7 +17968,7 @@ async function dropRules(from) {
 }
 /** the rules collection, live */
 function rulesLoaded(sn) {
-  const o = {}; sn.docs.forEach(d => { const x = d.data(); if (x && x.cards && x.cards.teams) { if (x.cards.teams) migrateCards(x.cards.teams); o[d.id] = { ...x, from: x.from || d.id }; } });
+  const o = {}; sn.docs.forEach(d => { const x = d.data(); if (x && x.cards && x.cards.teams) { if (x.cards.teams) migrateCards(x.cards.teams); o[d.id] = { ...x, from: x.from || d.id, ...(x.count ? { count: Kpi.fromSaved(x.count) } : {}) }; } });
   state.rules = o; state.rulesVer++; state.incModelCache = null;
   if (state.ctx) state.kpi = computeKpi();
   if (!$('dScore').hidden) renderScore();
@@ -17989,7 +18001,7 @@ function eligEditHtml() {
 }
 
 // ---------------------------------------------------------------- how it is counted: the 'count' section of the set being looked at
-// Every setting starts as the tool always counted. Only the senior manager or an admin changes them (canRules); each change is one
+// Every setting starts at the default. Only the senior manager or an admin changes them (canRules); each change is one
 // line in the rules' log (who and when), with Undo, and final months keep their frozen numbers.
 Object.assign(state, { cntOpen: false });
 const CNT_MISSING = { scale: 'left out; the other KPIs count as 100%', rank1: 'counts as ranking 1', none: 'no final % until every KPI has a value' };
@@ -18024,12 +18036,12 @@ function cntText(g, c) {
   if (g === 'attitude') return c.attitude ? c.attitude.split('|').map(s => s.trim()).filter(Boolean).join(', ') : 'none';
   return '';
 }
-/** the example under the settings: the same person counted with these rules (and as the tool always counted) */
+/** the example under the settings: the same person counted with these rules (and with the defaults) */
 function cntExample(c) {
   const k = (id, w) => ({ id, name: id, src: 'file', unit: 'pct', dir: 'high', weight: w, bands: [0.95, 0.9, 0.85, 0.8] }), card = { kpis: [k('a', 0.55), k('b', 0.45)] };
   const base = { ...BASES0, ...(ruleCards().bases || {}) }.Virgin, vals = { file: { a: 0.97, b: 0.91 } }, att = { sched: 23, attended: 20, absent: 2, runs: 2 };
   const r = Kpi.score(card, vals, att, base, c), d = Kpi.score(card, vals, att, base);
-  return `Example (base ${base} SR): 23 days scheduled, 20 attended, absent on 2 separate days, final ranking ${d.finalRank.toFixed(2)}. ${r.actual === 20 ? '20 days count' : `${plural(r.actual, 'day')} count after the absence penalty`} (${pct1(r.daysPct)}), final ${pct1(r.finalPct)}, earned ${r.earned} SR${r.earned !== d.earned ? `; ${d.earned} SR as the tool always counted` : ''}.`;
+  return `Example (base ${base} SR): 23 days scheduled, 20 attended, absent on 2 separate days, final ranking ${d.finalRank.toFixed(2)}. ${r.actual === 20 ? '20 days count' : `${plural(r.actual, 'day')} count after the absence penalty`} (${pct1(r.daysPct)}), final ${pct1(r.finalPct)}, earned ${r.earned} SR${r.earned !== d.earned ? `; ${d.earned} SR with the defaults` : ''}.`;
 }
 const cntSeg = (f, v, L, label) => `<div class="seg sm wrap" role="group" aria-label="${esc(label)}">${L.map(([x, l]) => `<button type="button" data-cntv="${f}|${x}" aria-pressed="${String(v) === String(x)}">${esc(l)}</button>`).join('')}</div>`;
 const cntSel = (f, v, L, label) => `<select class="cell" data-cnt="${f}" aria-label="${esc(label)}">${L.map(([x, l]) => `<option value="${x}"${String(v) === String(x) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
@@ -18039,7 +18051,7 @@ function countEditHtml() {
   const c = ruleCount(), diff = Object.keys(Kpi.countDiff(c)), row = (l, ctl, hint) => `<div class="cntrow"><span class="lbl">${esc(l)}</span><div class="cntctl">${ctl}${hint ? `<small>${hint}</small>` : ''}</div></div>`;
   const chips = `<div class="chips" role="group" aria-label="Codes that count as a scheduled day"><label class="chip"><input type="checkbox" checked disabled>Attend and late days</label>${Kpi.CODES.map(x => `<label class="chip"><input type="checkbox" data-cnt="sched" data-code="${esc(x)}"${c.sched.includes(x) ? ' checked' : ''}>${esc(x)}</label>`).join('')}</div>`;
   const table = c.pctOf === 'table' ? `<div class="cnttab">${c.pctTable.map((x, i) => `<div class="rowin"><label>From ranking <input type="number" class="cntin" min="0" max="5" step="0.01" data-cnt="tmin" data-i="${i}" value="${x.min}" aria-label="Row ${i + 1}: from ranking"></label><label>final % <input type="number" class="cntin" min="0" max="200" step="0.1" data-cnt="tpct" data-i="${i}" value="${+(x.pct * 100).toFixed(2)}" aria-label="Row ${i + 1}: final %"></label><button type="button" class="rowbtn danger" data-cntrow="del|${i}" aria-label="Remove row ${i + 1}">Remove</button></div>`).join('')}<button type="button" class="btn sm" data-cntrow="add">Add a row</button><small>A final ranking gets the final % of the first row it reaches; below every row, 0%.</small></div>` : '';
-  return `<details class="field cntrules" data-det="cnt"${state.cntOpen ? ' open' : ''}><summary><span class="lbl">How it is counted</span><span class="pill${diff.length ? ' warn' : ''}">${diff.length ? `${plural(diff.length, 'setting')} changed` : 'as the tool always counted'}</span></summary>
+  return `<details class="field cntrules" data-det="cnt"${state.cntOpen ? ' open' : ''}><summary><span class="lbl">How it is counted</span><span class="pill${diff.length ? ' warn' : ''}">${diff.length ? `${plural(diff.length, 'setting')} changed` : 'the defaults'}</span></summary>
     <div class="cntgrid">
     ${row('Scheduled days', chips, 'A scheduled day is a day attended (Attend or a late day) or a day with one of the ticked codes. Days attended ÷ days scheduled is the days %.')}
     ${row('Late days', `<label class="rowin">Late by more than ${cntNum('lateOver', c.lateOver, 'Minutes late that count as absent', 1440)} min counts as absent</label>`, '0 = a late day is a day attended. Its minutes count as tardiness either way.')}
@@ -18047,11 +18059,11 @@ function countEditHtml() {
     ${row('Fewest days for the incentive use', cntSeg('eligDays', c.eligDays, [['attended', 'days attended'], ['counted', 'counted days']], 'Fewest days for the incentive use'))}
     ${row('A KPI with no value', cntSeg('missing', c.missing, [['scale', 'is left out'], ['rank1', 'counts as ranking 1'], ['none', 'no final % yet']], 'A KPI with no value'), esc(cntText('missing', c)[0].toUpperCase() + cntText('missing', c).slice(1)) + '.')}
     ${row('A value exactly on a band', cntSeg('edge', c.edge, [['in', 'gets that ranking'], ['out', 'gets the ranking below']], 'A value exactly on a band'))}
-    ${row('Percent KPIs before ranking', cntSel('valDp', c.valDp, [[-1, 'not rounded'], [0, 'whole % (94.99% → 95%)'], [1, '1 decimal'], [2, '2 decimals']], 'Percent KPIs before ranking'))}
+    ${row('Percent KPIs before ranking', cntSel('valDp', c.valDp, [[0, 'whole % (94.99% → 95%)'], [1, '1 decimal'], [2, '2 decimals'], [-1, 'not rounded']], 'Percent KPIs before ranking'), 'Rounded as Excel shows them, half up: 94.5% → 95%, 94.49% → 94%. The ranking and the band use the rounded value.')}
     ${row('Final ranking', cntSel('rankDp', c.rankDp, [[2, '2 decimals'], [1, '1 decimal'], [0, 'whole number'], [3, '3 decimals'], [-1, 'not rounded']], 'Final ranking decimals'))}
     ${row('Final %', cntSeg('pctOf', c.pctOf, [['rank5', 'ranking ÷ 5'], ['table', 'from a table']], 'Final %') + table)}
-    ${row('Final % rounding', cntSel('pctDp', c.pctDp, [[-1, 'not rounded'], [2, 'whole %'], [3, '1 decimal'], [4, '2 decimals']], 'Final % rounding'))}
-    ${row('Days %', cntSeg('daysPct', c.daysPct, [['ratio', 'counted ÷ scheduled'], ['full', '100% when scheduled']], 'Days %'))}
+    ${row('Final % rounding', cntSel('pctDp', c.pctDp, [[2, 'whole %'], [3, '1 decimal'], [4, '2 decimals'], [-1, 'not rounded']], 'Final % rounding'), 'For example 95.6% (when a KPI is left out) counts as 96%.')}
+    ${row('Days %', cntSeg('daysPct', c.daysPct, [['ratio', 'counted ÷ scheduled'], ['full', '100% when scheduled']], 'Days %'), 'Never rounded: 20 ÷ 23 counts as 86.96…%, as in the old incentive files.')}
     ${row('Whole SR', cntSeg('money', c.money, [['round', 'rounded'], ['floor', 'rounded down'], ['ceil', 'rounded up']], 'Whole SR'), 'For the incentive target and the earned SR.')}
     ${row('Critical errors that stop the incentive', `<input class="cell" data-cnt="attitude" value="${esc(c.attitude)}" placeholder="none" aria-label="Critical error types that stop the incentive" spellcheck="false">`, 'Words in the quality team\'s critical error type, separated by |. Empty = none stops it.')}
     <p class="hint cntex" aria-live="polite">${esc(cntExample(c))}</p>
@@ -18120,7 +18132,7 @@ $('scoreBody').addEventListener('toggle', e => { if (e.target.matches && e.targe
 /** the first rules' fields as config/scorecards keeps them (the loader keeps every field a set has, so nothing is lost on reload) */
 function cardsFromDoc(d) {
   return { base: typeof d.base === 'number' ? d.base : 1000, bases: d.bases && typeof d.bases === 'object' ? d.bases : undefined, teams: d.teams, ...(d.elig && typeof d.elig === 'object' ? { elig: d.elig } : {}),
-    ...(d.count && typeof d.count === 'object' ? { count: d.count } : {}), ...(d.people && typeof d.people === 'object' ? { people: d.people } : {}), ...(Array.isArray(d.log) ? { log: d.log } : {}) };
+    ...(d.count && typeof d.count === 'object' ? { count: Kpi.fromSaved(d.count) } : {}), ...(d.people && typeof d.people === 'object' ? { people: d.people } : {}), ...(Array.isArray(d.log) ? { log: d.log } : {}) };
 }
 /** gives a person their own incentive base for the months of the set in force for month k (base null takes it away); logged */
 function setMonthBase(pid, base, src, k) { return setSetBase(rulesFor(k === undefined ? rulesK() : k).from, pid, base, src); }
@@ -18156,7 +18168,7 @@ function peopleBasesClick(e) {
 /** a Build-month KPI result (state.kpi) as a month row, for the explanation */
 function kpiRowOfK(K) {
   const res = K.res;
-  return { n: K.m.exp, kc: K.card.title, kpi: kpiTuples(res), kx: howLite(res), fr: res.finalRank, fin: res.finalPct, ks: res.sched, kat: res.attended, ka: res.actual, kt: res.target,
+  return { n: K.m.exp, kc: K.card.title, kpi: kpiTuples(res), kv: kvOf(res), kx: howLite(res), fr: res.finalRank, fin: res.finalPct, ks: res.sched, kat: res.attended, ka: res.actual, kt: res.target,
     earned: res.earned, earnedCalc: res.earnedCalc, base: res.how ? res.how.b : null, absent: res.absent, _el: res.elig };
 }
 const f2 = v => (v == null || !Number.isFinite(+v) ? '–' : (+v).toFixed(2));
@@ -18182,9 +18194,12 @@ function howHtml(r, k, o = {}) {
   // 1. each KPI: value, band, ranking, weight and points
   const mm = x ? x.mm : 'scale', miss = T.filter(t => t[4] == null).map(t => t[0]);
   if (T.length) {
-    const rows = T.map(([name, w, , val, rk, band]) => { const vr = x && x.vr && x.vr[name];
+    const card = cardOfRow(r), kOf = (name, i) => (card ? (card.kpis[i] && card.kpis[i].name === name ? card.kpis[i] : card.kpis.find(q => q.name === name)) : null);
+    const rows = T.map(([name, w, , val, rk, band], i) => {
+      // a KPI rounded before it was ranked reads 'what it was → what it counted as' (x.vr and r.kv are kept by KPI id)
+      const kk = kOf(name, i), vr = x && x.vr && kk ? x.vr[kk.id] : undefined, raw = vr != null && r.kv ? r.kv[kk.id] : undefined;
       const pts = rk != null ? f2(rk * w / 100) : mm === 'rank1' ? f2(w / 100) : '–';
-      return `<tr><td>${esc(name)}</td><td class="r num">${esc(val)}${vr != null ? ` <small>→ ${esc(pct(vr, 2))}</small>` : ''}</td><td>${rk == null ? '<span class="subtle">no value</span>' : esc(band || '–')}</td><td class="r">${rankChip(rk)}</td><td class="r num">${esc(w)}%</td><td class="r num">${pts}</td></tr>`; }).join('');
+      return `<tr><td>${esc(name)}</td><td class="r num">${vr != null ? `${esc(raw != null ? Kpi.fmtVal(kk, raw) : val)} <small>→ ${esc(Kpi.fmtVal(kk, vr))}</small>` : esc(val)}</td><td>${rk == null ? '<span class="subtle">no value</span>' : esc(band || '–')}</td><td class="r">${rankChip(rk)}</td><td class="r num">${esc(w)}%</td><td class="r num">${pts}</td></tr>`; }).join('');
     step('Each KPI', `<div class="tablewrap howtab"><table><thead><tr><th>KPI</th><th class="r">Result</th><th>Band reached</th><th class="r">Ranking</th><th class="r">Weight</th><th class="r">Points</th></tr></thead><tbody>${rows}</tbody></table></div>
       <p>Points = ranking × weight.${x && x.vd >= 0 ? ` Percent KPIs are rounded to ${x.vd ? plural(x.vd, 'decimal') : 'a whole %'} before they are ranked.` : ''}${x && x.ed === 'out' ? ' A value exactly on a band gets the ranking below.' : ''}</p>
       ${miss.length ? `<p class="hownote">${esc(andList(miss))} had no value: ${mm === 'rank1' ? `${miss.length > 1 ? 'they count' : 'it counts'} as ranking 1.` : mm === 'none' ? 'no final % until every KPI has one.' : `${miss.length > 1 ? 'they are' : 'it is'} left out, and the other weights (${esc(pct1(x ? x.ws : T.filter(t => t[4] != null).reduce((a, t) => a + t[1] / 100, 0)))}) count as 100%.`}</p>` : ''}`);
@@ -18406,8 +18421,11 @@ function addModelKpi(rec) {
   }
   return rec;
 }
-/** a person's KPIs as the month's rows keep them: [name, weight %, target, result, ranking, the band it reached] */
-const kpiTuples = res => res.rows.map((x, i) => [x.k.name, Math.round(x.w * 1000) / 10, Kpi.target(x.k), Kpi.fmtVal(x.k, x.v), x.r, res.how && res.how.kpis[i] ? res.how.kpis[i].band : '']);
+/** a person's KPIs as the month's rows keep them: [name, weight %, target, result as it was ranked (rounded when the rules round
+    percent KPIs), ranking, the band it reached] */
+const kpiTuples = res => res.rows.map((x, i) => [x.k.name, Math.round(x.w * 1000) / 10, Kpi.target(x.k), Kpi.fmtVal(x.k, Kpi.rankedVal(x)), x.r, res.how && res.how.kpis[i] ? res.how.kpis[i].band : '']);
+/** each KPI's own value before any rounding, by KPI id */
+const kvOf = res => Object.fromEntries(res.rows.filter(z => z.v != null).map(z => [z.k.id, z.v]));
 /** every step of a score but the KPIs (the rows carry those), kept on the rows as kx for "How this was counted" */
 function howLite(res) {
   if (!res || !res.how) return null;
@@ -18457,7 +18475,7 @@ function liveRow(r, p, k, rec) {
   const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k);
   // ka = the days counted (after any absence penalty), kat = the days attended: kept apart so a penalty is never taken twice
   const { kat, kr, kab, kdr, ...y } = x, kept = s.again || res.sched != null ? countKept(res, x, k) : Object.fromEntries(Object.entries({ kat, kr, kab, kdr }).filter(([, v]) => v !== undefined));
-  return withAdj({ ...y, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: Object.fromEntries(res.rows.filter(z => z.v != null).map(z => [z.k.id, z.v])),
+  return withAdj({ ...y, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: kvOf(res),
     ks: res.sched ?? x.ks, ka: res.actual ?? x.ka, kt: res.target ?? x.kt, earnedCalc: res.earned ?? null, earned: res.earned == null ? x.earned : el.ok ? res.earned : 0, base: baseOf(p, x, k), _el: el,
     ...kept, kx: howLite(res) }, adj);
 }
@@ -24416,7 +24434,7 @@ function mtdProj(pid, k) {
   const res = Kpi.score(card, vals, att, baseOf(p, r, k), countFor(k)), el = eligibility(res, qRow(k, pid), null, k);
   const weak = res.rows.filter(x => x.r != null && x.r < 5).sort((a, b) => a.r - b.r || b.w - a.w)[0] || null;
   return { asOf, days: days.length, ND, fin: res.finalPct, earned: res.earned == null ? null : el.ok ? res.earned : 0, calc: res.earned, ok: el.ok, why: el.why, borrowed, minFinal: rulesFor(k).elig.minFinal,
-    weak: weak ? { name: weak.k.name, value: Kpi.fmtVal(weak.k, weak.v), target: Kpi.target(weak.k), rank: weak.r } : null, missing: res.missing };
+    weak: weak ? { name: weak.k.name, value: Kpi.fmtVal(weak.k, Kpi.rankedVal(weak)), target: Kpi.target(weak.k), rank: weak.r } : null, missing: res.missing };
 }
 /** the agents' pages follow the stored days (a few seconds after the month is saved from them) */
 let mtdT = 0;
@@ -25367,7 +25385,7 @@ const DEPT = [
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
     'The <b>Dashboard</b> and <b>WFM team › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
   ['senior', 'Senior manager', [
-    '<b>Supervisors</b>: set the one-to-ones deadline and the month close days, and keep the <b>incentive rules</b>: the scorecards, the bases, who is eligible and how the days and KPIs are counted.',
+    '<b>Supervisors</b>: set the one-to-ones deadline and the month close days, and keep the <b>incentive rules</b>: the scorecards, the bases, who is eligible and how the days and KPIs are counted. Percent KPIs and the Final % are rounded to a whole % before they count (94.99% → 95%); the days % is never rounded.',
     '<b>Results</b>: decide on eligibility where the rules say otherwise, adjust a result where needed (every change is logged), and <b>Finalize</b> the month.',
     '<b>Results › Reconcile with the old Excel</b>: drop the old final result (and the incentive or deduction workbook). The tool lines up every person and says why each number differs: an own base, an absence rule, a typing error in the old file. Each has a fix.',
     'Send the four emails from Supervisors: one-to-ones are ready, results for review to the VP, and the final result form.',

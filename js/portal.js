@@ -154,8 +154,11 @@ function addModelKpi(rec) {
   }
   return rec;
 }
-/** a person's KPIs as the month's rows keep them: [name, weight %, target, result, ranking, the band it reached] */
-const kpiTuples = res => res.rows.map((x, i) => [x.k.name, Math.round(x.w * 1000) / 10, Kpi.target(x.k), Kpi.fmtVal(x.k, x.v), x.r, res.how && res.how.kpis[i] ? res.how.kpis[i].band : '']);
+/** a person's KPIs as the month's rows keep them: [name, weight %, target, result as it was ranked (rounded when the rules round
+    percent KPIs), ranking, the band it reached] */
+const kpiTuples = res => res.rows.map((x, i) => [x.k.name, Math.round(x.w * 1000) / 10, Kpi.target(x.k), Kpi.fmtVal(x.k, Kpi.rankedVal(x)), x.r, res.how && res.how.kpis[i] ? res.how.kpis[i].band : '']);
+/** each KPI's own value before any rounding, by KPI id */
+const kvOf = res => Object.fromEntries(res.rows.filter(z => z.v != null).map(z => [z.k.id, z.v]));
 /** every step of a score but the KPIs (the rows carry those), kept on the rows as kx for "How this was counted" */
 function howLite(res) {
   if (!res || !res.how) return null;
@@ -205,7 +208,7 @@ function liveRow(r, p, k, rec) {
   const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k);
   // ka = the days counted (after any absence penalty), kat = the days attended: kept apart so a penalty is never taken twice
   const { kat, kr, kab, kdr, ...y } = x, kept = s.again || res.sched != null ? countKept(res, x, k) : Object.fromEntries(Object.entries({ kat, kr, kab, kdr }).filter(([, v]) => v !== undefined));
-  return withAdj({ ...y, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: Object.fromEntries(res.rows.filter(z => z.v != null).map(z => [z.k.id, z.v])),
+  return withAdj({ ...y, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: kvOf(res),
     ks: res.sched ?? x.ks, ka: res.actual ?? x.ka, kt: res.target ?? x.kt, earnedCalc: res.earned ?? null, earned: res.earned == null ? x.earned : el.ok ? res.earned : 0, base: baseOf(p, x, k), _el: el,
     ...kept, kx: howLite(res) }, adj);
 }

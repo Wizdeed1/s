@@ -1,7 +1,8 @@
 // How the incentive is counted (the 'count' section of the rules), Node only, synthetic values only.
-// 1. The defaults count exactly as v33 did: test/ref holds the v33 modules word for word (git 156a4ae), and the new code must give
-//    the same numbers for 10,000 random scores, the same scheduled and attended days for random months, and an incentive
-//    workbook whose every file is byte for byte the same.
+// 1. With 'not rounded' the rules count exactly as v33 did: test/ref holds the v33 modules word for word (git 156a4ae), and the new
+//    code must give the same numbers for 10,000 random scores, the same scheduled and attended days for random months, and an
+//    incentive workbook whose every file is byte for byte the same. The defaults are v33 with percent KPIs and the Final % rounded
+//    to a whole % (as the old incentive files did), checked against v33 on the rounded values.
 // 2. Other rules count as they say (the absence penalty that fits the old August file, missing KPIs, band edges, rounding).
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path');
@@ -20,7 +21,8 @@ const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
 const rng = seed => () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
 
-// ---------------------------------------------------------------- 1a. Kpi.score: the defaults give v33's numbers
+// ---------------------------------------------------------------- 1a. Kpi.score: 'not rounded' gives v33's numbers, the defaults v33's on whole %
+const V33 = { valDp: -1, pctDp: -1 };   // what v33 did: no rounding of percent KPIs or of the Final %
 const pick = (r, a) => a[Math.floor(r() * a.length)];
 const SCORE_KEYS = ['finalRank', 'finalPct', 'sched', 'actual', 'daysPct', 'target', 'earned', 'missing', 'complete', 'weightsOk'];
 const core = res => ({ ...Object.fromEntries(SCORE_KEYS.map(k => [k, res[k]])), rows: res.rows.map(x => [x.k.id, x.v, x.r, x.w]) });
@@ -33,7 +35,7 @@ function randomValue(r, k) {
   if (k.unit === 'min') return Math.floor(r() * 40);
   return Math.floor(r() * 10);   // days under target
 }
-ok('Kpi.score with the default rules gives v33\'s numbers (10,000 random people on every built-in scorecard)', () => {
+ok('Kpi.score with percent KPIs and the Final % not rounded gives v33\'s numbers (10,000 random people on every built-in scorecard)', () => {
   const r = rng(20261018), cards = Object.values(Kpi.DEFAULTS().teams);
   for (let i = 0; i < 10000; i++) {
     const card = pick(r, cards), vals = { file: {} };
@@ -42,15 +44,34 @@ ok('Kpi.score with the default rules gives v33\'s numbers (10,000 random people 
     const att = r() < 0.05 ? null : { sched, actual: sched ? Math.floor(r() * (sched + 1)) : pick(r, [0, 3, null]) };
     const base = pick(r, [500, 1000, 1600, 1545, null, undefined]);
     const want = core(Old.Kpi.score(card, vals, att, base));
-    assert.deepEqual(core(Kpi.score(card, vals, att, base)), want, `case ${i}`);
-    assert.deepEqual(core(Kpi.score(card, vals, att, base, Kpi.COUNT0())), want, `case ${i} with COUNT0`);
-    assert.deepEqual(core(Kpi.score(card, vals, att, base, Kpi.normCount({}))), want, `case ${i} with {}`);
-    assert.deepEqual(core(Kpi.score(card, vals, att, base, { junk: 1, rankDp: 'x', money: 'nope' })), want, `case ${i} with junk`);
+    assert.deepEqual(core(Kpi.score(card, vals, att, base, V33)), want, `case ${i}`);
+    assert.deepEqual(core(Kpi.score(card, vals, att, base, { ...Kpi.COUNT0(), ...V33 })), want, `case ${i} with COUNT0`);
+    assert.deepEqual(core(Kpi.score(card, vals, att, base, Kpi.normCount(V33))), want, `case ${i} normalised`);
+    assert.deepEqual(core(Kpi.score(card, vals, att, base, { junk: 1, rankDp: 'x', money: 'nope', ...V33 })), want, `case ${i} with junk`);
     if (att) {   // the new way callers pass the days (attended, absences, runs) changes nothing either while there is no penalty
       const a2 = { sched: att.sched, attended: att.actual, absent: Math.floor(r() * 4), runs: Math.floor(r() * 3) };
-      assert.deepEqual(core(Kpi.score(card, vals, a2, base, Kpi.COUNT0())), want, `case ${i} with attended`);
+      assert.deepEqual(core(Kpi.score(card, vals, a2, base, { ...Kpi.COUNT0(), ...V33 })), want, `case ${i} with attended`);
     }
     for (const k of card.kpis) { const v = randomValue(r, k); assert.equal(Kpi.rank(k, v), Old.Kpi.rank(k, v)); assert.equal(Kpi.rank(k, v, 'in'), Old.Kpi.rank(k, v)); }
+  }
+});
+ok('Kpi.score with the default rules is v33 on percent KPIs rounded to a whole % (half up, as Excel shows them), with the Final % rounded to a whole % and the days % exact (10,000 random people)', () => {
+  const r = rng(20261021), cards = Object.values(Kpi.DEFAULTS().teams), xl = (x, dp) => { const f = 10 ** dp; return Math.round(+(x * f).toPrecision(15)) / f; };
+  for (let i = 0; i < 10000; i++) {
+    const card = pick(r, cards), vals = { file: {} }, whole = { file: {} };
+    for (const k of card.kpis) {
+      const v = randomValue(r, k), w = k.unit === 'pct' && v != null ? xl(v * 100, 0) / 100 : v;
+      if (k.src === 'file') { vals.file[k.id] = v; whole.file[k.id] = w; } else { vals[k.src] = v; whole[k.src] = w; }
+    }
+    const sched = pick(r, [0, null, ...Array.from({ length: 31 }, (_, j) => j + 1)]);
+    const att = r() < 0.05 ? null : { sched, actual: sched ? Math.floor(r() * (sched + 1)) : pick(r, [0, 3, null]) };
+    const base = pick(r, [500, 1000, 1600, 1545, null]), B = base ?? 1000;
+    const o = Old.Kpi.score(card, whole, att, base), x = Kpi.score(card, vals, att, base), fp = o.finalPct == null ? null : xl(o.finalPct, 2);
+    assert.deepEqual(x.rows.map(z => z.r), o.rows.map(z => z.r), `case ${i}: rankings`);
+    assert.equal(x.finalRank, o.finalRank, `case ${i}: final ranking`);
+    assert.equal(x.finalPct, fp, `case ${i}: final %`);
+    assert.equal(x.daysPct, o.daysPct, `case ${i}: days %`); assert.equal(x.target, o.target, `case ${i}: target`);
+    assert.equal(x.earned, o.daysPct == null || fp == null ? null : Math.round(B * o.daysPct * fp + 1e-9), `case ${i}: earned`);
   }
 });
 ok('the band texts and targets read as before', () => {
@@ -161,9 +182,14 @@ ok('band edges, value and ranking decimals, the final % table and its decimals, 
   const lo = { ...k, unit: 'min', dir: 'low', bands: [4, 10, 15, 20] };
   assert.equal(Kpi.rank(lo, 4), 5); assert.equal(Kpi.rank(lo, 4, 'out'), 4);
   const c = { kpis: [k] };
-  assert.equal(Kpi.score(c, { file: { x: 0.949946 } }, null, 1000).finalRank, 4);
-  assert.equal(Kpi.score(c, { file: { x: 0.949946 } }, null, 1000, { valDp: 0 }).finalRank, 5, '94.9946% rounds to 95% before ranking');
-  assert.equal(Kpi.score(c, { file: { x: 0.949946 } }, null, 1000, { valDp: 2 }).finalRank, 4);
+  assert.equal(Kpi.score(c, { file: { x: 0.94962 } }, null, 1000).finalRank, 5, 'by default 94.962% rounds to 95% before ranking');
+  assert.equal(Kpi.score(c, { file: { x: 0.94962 } }, null, 1000, { valDp: -1 }).finalRank, 4, 'not rounded');
+  assert.equal(Kpi.score(c, { file: { x: 0.94962 } }, null, 1000, { valDp: 0 }).finalRank, 5);
+  assert.equal(Kpi.score(c, { file: { x: 0.94962 } }, null, 1000, { valDp: 2 }).finalRank, 4);
+  // half up as Excel shows it: 94.5% is 95%, 94.49% is 94%, and 28.5% is 29% (0.285 × 100 is 28.499999999999996 in floating point)
+  const one = v => Kpi.score(c, { file: { x: v } }, null, 1000).rows[0];
+  assert.deepEqual([one(0.945).r, one(0.9449).r, Kpi.rankedVal(one(0.285)), Kpi.rankedVal(one(0.97)), one(0.97).vr], [5, 4, 0.29, 0.97, undefined]);
+  assert.deepEqual([Kpi.score(c, { file: { x: 0.94962 } }, null, 1000).how.vd, Kpi.score(c, { file: { x: 0.94962 } }, null, 1000).how.pd], [0, 2]);
   const three = { kpis: [{ ...k, id: 'a', weight: 1 / 3 }, { ...k, id: 'b', weight: 1 / 3 }, { ...k, id: 'c', weight: 1 / 3 }] }, v3 = { file: { a: 0.97, b: 0.97, c: 0.91 } };
   assert.equal(Kpi.score(three, v3, null, 1000).finalRank, 4.67);
   assert.equal(Kpi.score(three, v3, null, 1000, { rankDp: 1 }).finalRank, 4.7);
@@ -172,11 +198,14 @@ ok('band edges, value and ranking decimals, the final % table and its decimals, 
   assert.equal(Kpi.score(three, v3, null, 1000, tab).finalPct, 1);
   assert.equal(Kpi.score(three, { file: { a: 0.91, b: 0.91, c: 0.97 } }, null, 1000, tab).finalPct, 0.9);
   assert.equal(Kpi.score(three, v3, null, 1000, { pctDp: 2 }).finalPct, 0.93);
+  assert.equal(Kpi.score(three, v3, null, 1000).finalPct, 0.93, 'by default 4.67 ÷ 5 = 93.4% counts as 93%');
+  assert.ok(Math.abs(Kpi.score(three, v3, null, 1000, { pctDp: -1 }).finalPct - 0.934) < 1e-12);
   const att = { sched: 23, attended: 20 };
   assert.equal(Kpi.score(three, v3, att, 1000, { daysPct: 'full' }).target, 1000);
-  assert.equal(Kpi.score(three, v3, att, 1000).earned, Math.round(1000 * 20 / 23 * 0.934 + 1e-9));
-  assert.equal(Kpi.score(three, v3, att, 1000, { money: 'floor' }).earned, Math.floor(1000 * 20 / 23 * 0.934));
-  assert.equal(Kpi.score(three, v3, att, 1000, { money: 'ceil' }).earned, Math.ceil(1000 * 20 / 23 * 0.934));
+  assert.equal(Kpi.score(three, v3, att, 1000).earned, Math.round(1000 * 20 / 23 * 0.93 + 1e-9), 'the days % stays 20 ÷ 23, not rounded');
+  assert.equal(Kpi.score(three, v3, att, 1000, { pctDp: -1 }).earned, Math.round(1000 * 20 / 23 * 0.934 + 1e-9));
+  assert.equal(Kpi.score(three, v3, att, 1000, { money: 'floor' }).earned, Math.floor(1000 * 20 / 23 * 0.93));
+  assert.equal(Kpi.score(three, v3, att, 1000, { money: 'ceil' }).earned, Math.ceil(1000 * 20 / 23 * 0.93));
 });
 ok('how: every step of a score is there to explain it', () => {
   const r = Kpi.score(card55, { file: { a: 0.97, b: 0.91 } }, { sched: 23, attended: 20, absent: 2, runs: 2 }, 1000, pen), h = r.how;
@@ -192,6 +221,21 @@ ok('normCount keeps a saved section safe: unknown values take the default, numbe
   assert.deepEqual(Kpi.countDiff(null), {}); assert.deepEqual(Kpi.countDiff({ absentExtra: 4 }), { absentExtra: 4 });
   assert.equal(Kpi.dayRulesKey(null), Kpi.dayRulesKey(Kpi.COUNT0())); assert.notEqual(Kpi.dayRulesKey({ lateOver: 30 }), Kpi.dayRulesKey(null));
   assert.equal(Kpi.normCount(c), c);
+});
+ok('rules saved before the rounding defaults follow them; rules saved since keep what they say', () => {
+  const old = Kpi.normCount(Kpi.fromSaved({ absentExtra: 4, countedMin: 1, valDp: -1, pctDp: -1, rankDp: 2 }));
+  assert.deepEqual([old.valDp, old.pctDp, old.absentExtra, old.cv], [0, 2, 4, 2]);
+  assert.deepEqual(Kpi.countDiff(old), { absentExtra: 4, countedMin: 1 });
+  const chosen = Kpi.normCount(Kpi.fromSaved({ valDp: 1, pctDp: 3 }));
+  assert.deepEqual([chosen.valDp, chosen.pctDp], [1, 3], 'a rounding picked by hand stays');
+  const since = Kpi.normCount(Kpi.fromSaved(JSON.parse(JSON.stringify(Kpi.normCount({ valDp: -1, pctDp: -1 })))));
+  assert.deepEqual([since.valDp, since.pctDp], [-1, -1], "'not rounded' picked since stays");
+  assert.equal(Kpi.fromSaved(null), null); assert.equal(Kpi.fromSaved(undefined), undefined);
+  assert.deepEqual([Kpi.COUNT0().valDp, Kpi.COUNT0().pctDp, Kpi.COUNT0().daysPct], [0, 2, 'ratio']);
+});
+ok('a percent reads as it is: 57%, not 57.00%', () => {
+  const k = { unit: 'pct' };
+  assert.deepEqual([0.57, 0.94962, 0.95, 0.9, 0.123456, 1, null].map(v => Kpi.fmtVal(k, v)), ['57%', '94.96%', '95%', '90%', '12.35%', '100%', '–']);
 });
 ok('the incentive workbook follows the rules: extra code columns, and Actual days less the absence penalty', async () => {
   const ctx = synthCtx(5), cfg = { sched: [...Kpi.COUNT0().sched, 'Exam', 'Paternity'], absentExtra: 4, countedMin: 1 };

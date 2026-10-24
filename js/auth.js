@@ -263,6 +263,8 @@ const Auth = (() => {
   // the shared folder's first screen: pick it, or allow it again
   function connectText() {
     const c = connectCb || {};
+    if (c.state === 'opening') return c.ask ? ['Allow the shared data', `Your browser asks before the tool may open <b>${esc(c.name || '')}</b>.`, 'Nothing leaves your computer and the shared folder.']
+      : ['Opening the shared data', `Reading <b>${esc(c.name || '')}</b>. The first time on a computer this can take a little while.`, 'Nothing leaves your computer and the shared folder.'];
     if (c.state === 'again') return ['Open the shared data', `The tool keeps its data in the folder <b>${esc(c.name || '')}</b>. Your browser asks once per visit before the tool may open it.`, 'Nothing leaves your computer and the shared folder.'];
     if (c.state === 'empty') return ['Set up the shared data here?', `<b>${esc(c.name || '')}</b> is empty. The tool can keep everyone's data in it, locked so it can only be read through the tool.`, 'Put the folder next to the HTML in the common folder, so everyone finds it.'];
     if (c.state === 'other') return ['This is not the data folder', `<b>${esc(c.name || '')}</b> has other files in it (the common folder?). The tool can make its data folder, <b>MC Data</b>, inside it, or you can choose the data folder itself.`, ''];
@@ -270,12 +272,14 @@ const Auth = (() => {
   }
   function connectBody() {
     const c = connectCb || {};
+    if (c.state === 'opening') return c.ask ? '<div class="connwait" role="status" aria-live="polite"><span class="spin" aria-hidden="true"></span><span id="connWait">Waiting for your answer: choose Allow (or Edit files) in the browser\'s box at the top of the window.</span></div><p class="hint" id="connHelp">No box? Look for a folder icon at the right end of the address bar, or use Choose a different folder below and pick the data folder again.</p>'
+      : '<div class="connwait" role="status" aria-live="polite"><span class="spin" aria-hidden="true"></span><span id="connWait">Checking the folder…</span></div><p class="hint" id="connHelp" hidden></p>';
     return c.state === 'again' ? '<button type="button" class="btn lg primary" data-conn="again">Open the shared data</button>'
       : c.state === 'empty' ? '<button type="button" class="btn lg primary" data-conn="create">Set up the shared data here</button><button type="button" class="btn" data-conn="pick">Choose another folder</button>'
       : c.state === 'other' ? '<button type="button" class="btn lg primary" data-conn="makesub">Make an "MC Data" folder in it</button><button type="button" class="btn" data-conn="pick">Choose another folder</button>'
       : '<button type="button" class="btn lg primary" data-conn="pick">Choose the data folder</button>';
   }
-  const connectLinks = () => '<button type="button" class="linkbtn" data-conn="local">Use this computer only</button>' + ((connectCb || {}).state === 'again' ? '<button type="button" class="linkbtn" data-conn="pick">Choose a different folder</button>' : '');
+  const connectLinks = () => '<button type="button" class="linkbtn" data-conn="local">Use this computer only</button>' + (['again', 'opening'].includes((connectCb || {}).state) ? '<button type="button" class="linkbtn" data-conn="pick">Choose a different folder</button>' : '');
   function connect(o) { connectCb = o; setMode('connect', o.msg || ''); }
   async function fillSpvChoices() {
     const sel = $('acSpv'); if (!sel) return;

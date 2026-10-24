@@ -54,7 +54,7 @@ function needItems() {
     { ok: !state.pending.length, block: true, t: state.pending.length ? `Reading ${plural(state.pending.length, 'file')}…` : 'No file is still being read' },
     { ok: allDets().length > 0 || state.attFiles.length > 0, block: true, t: allDets().length || state.attFiles.length ? 'At least one export or attendance file' : 'No export and no attendance file yet' },
     { ok: n === 4, block: false, t: n === 4 ? 'All four Genesys exports' : `${n} of 4 Genesys exports: ${KINDS.filter(k => !state.slots[k.kind]).map(k => k.title).join(', ')} missing, so ${n ? 'their sheets stay empty' : 'the sheets stay empty'}` },
-    { ok: state.attFiles.length > 0 || !!(state.attRes && state.attRes.auto), block: false, t: state.attFiles.length ? plural(state.attFiles.length, 'attendance sheet') : state.attRes && state.attRes.auto ? 'Attendance counted from Genesys' : 'No attendance sheets: the Attendance sheet is an empty grid to fill in Excel' },
+    { ok: state.attFiles.length > 0 || !!(state.attRes && state.attRes.auto), block: false, t: state.attFiles.length ? `${plural(state.attFiles.length, 'attendance file')}${state.attRes && state.attRes.genesys ? `, and ${plural(state.attRes.genesys, 'person', 'people')} from Genesys` : ''}` : state.attRes && state.attRes.auto ? 'Attendance counted from Genesys' : 'No attendance yet: the Attendance sheet is an empty grid to fill in Excel' },
   ];
 }
 function renderImpSide() {

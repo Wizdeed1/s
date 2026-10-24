@@ -9,10 +9,10 @@ function todayHidden() { const u = Auth.user(); return !!u && lsGet('mc-today-hi
 /** [{cls: late|soon|todo|info, t, s, go, btn}] for the person signed in */
 function todayItems() {
   const r = roleNow(), u = Auth.user() || {}, out = [], k = closeMonthNow(), haveK = !!(state.history[k] || state.finals[k]);
-  const add = (cls, t, s, go, btn) => out.push({ cls, t, s: s || '', go: go || '', btn: btn || '' });
+  const add = (cls, t, s, go, btn, mark) => out.push({ cls, t, s: s || '', go: go || '', btn: btn || '', mark: mark || '' });
   if (r === 'agent') { todayAgent(add); return out; }
   // the month close: my steps that are late or due in the next two days
-  if (wsMonths().length && r !== 'spv') for (const s of calSteps(k)) if (!s.done && s.roles.includes(r) && (s.st === 'late' || s.st === 'soon')) add(s.st, `${s.label} · ${ymLabel(k)}`, `${s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.days === 0 ? 'due today' : s.days === 1 ? 'due tomorrow' : `due ${fmtDue(s.due)}`}${s.note ? ' · ' + s.note : ''}`, ((g => (g ? g + '@' + k : ''))(calCanGo(s.go, true) ? s.go : wsOfNow().includes('cycle') ? 'cal' : '')));
+  if (wsMonths().length && r !== 'spv') for (const s of calSteps(k)) if (!s.done && s.roles.includes(r) && (s.st === 'late' || s.st === 'soon')) add(s.st, `${s.label} · ${ymLabel(k)}`, `${s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.days === 0 ? 'due today' : s.days === 1 ? 'due tomorrow' : `due ${fmtDue(s.due)}`}${s.note ? ' · ' + s.note : ''}`, calCanGo(s.go, true) ? s.go + '@' + k : '', '', s.can && (calMine(s) || canCycle()) && s.id !== 'objections' ? s.id : '');   // a step done outside the tool: Mark done
   if (r === 'spv' && u.pid) {
     const team = teamOf(u.pid).filter(p => p.status !== 'Inactive');
     if (haveK && team.length) {
@@ -149,7 +149,7 @@ function renderBellTodo(L0) {
   const sum = !L.length ? (ar ? 'لا شيء مطلوب منك اليوم.' : T('Nothing for you today.')) : [`${L.length === 1 ? T('1 thing') : T('{n} things', { n: L.length })}`, late ? (ar ? `${late} متأخر` : `${late} late`) : '', soon ? (ar ? `${soon} قريب` : `${soon} due soon`) : ''].filter(Boolean).join(' · ');
   if (!b) $('notesSub').textContent = sum;
   box.innerHTML = `<section class="sec todosec" aria-labelledby="h-todo"><h3 id="h-todo">${esc(ar ? 'المطلوب منك' : 'To do')} <span class="tdate">· ${esc(dt)}</span>${L.length ? ` <span class="badge${late || soon ? ' n' : ''}">${L.length}</span>` : ''}</h3>
-    ${L.length ? `<ul class="tlist">${L.slice(0, 30).map(x => `<li class="${x.cls}"><span class="tdot" aria-hidden="true"></span><span class="tli"><b dir="auto">${esc(x.t)}</b>${x.s ? `<small dir="auto">${esc(x.s)}</small>` : ''}</span>${x.go ? `<button class="btn sm${x.cls === 'late' ? ' primary' : ''}" data-tgo="${esc(x.go)}">${esc(T(x.btn || 'Open'))}</button>` : ''}</li>`).join('')}</ul>` : `<p class="subtle">${esc(sum)}</p>`}</section>`;
+    ${L.length ? `<ul class="tlist">${L.slice(0, 30).map(x => `<li class="${x.cls}"><span class="tdot" aria-hidden="true"></span><span class="tli"><b dir="auto">${esc(x.t)}</b>${x.s ? `<small dir="auto">${esc(x.s)}</small>` : ''}</span>${x.mark ? `<button class="btn sm ghost" data-calmark="${esc(x.mark)}" data-on="1" title="Done outside the tool">${esc(T('Mark done'))}</button>` : ''}${x.go ? `<button class="btn sm${x.cls === 'late' ? ' primary' : ''}" data-tgo="${esc(x.go)}">${esc(T(x.btn || 'Open'))}</button>` : ''}</li>`).join('')}</ul>` : `<p class="subtle">${esc(sum)}</p>`}</section>`;
 }
 function openBell() { openNotes(); renderBellTodo(); }
 const scrollTo_ = sel => setTimeout(() => { const el = document.querySelector(sel); if (el) { el.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); if (el.animate && !RM()) el.animate([{ boxShadow: '0 0 0 3px var(--focus)' }, { boxShadow: '0 0 0 0 transparent' }], { duration: 1400 }); } }, 120);
@@ -175,7 +175,7 @@ function todayGo(go) {
   if (kind === 'board') { state.teamTab = 'one'; here('team'); renderWs(); scrollTo_('#teamBody .board'); return; }
   if (kind === 'approvals') { state.teamTab = 'wait'; here('team'); renderWs(); scrollTo_('#teamBody .approvals'); return; }
   if (kind === 'finish') { here('team'); setTimeout(() => { const b = document.querySelector('#teamBar [data-spvdone]'); if (b) { b.focus(); b.scrollIntoView({ block: 'center' }); } }, 60); return; }
-  if (kind === 'cal') { state.calOpen = true; here('cycle'); if (state.ws === 'cycle') renderWs(); scrollTo_('#calCard'); return; }   // the steps, unfolded
+  if (kind === 'cal') { state.calDaysOpen = true; here('cycle'); if (state.ws === 'cycle') renderWs(); scrollTo_('#cycleBody .caldays'); return; }   // the month close's due days
   if (kind === 'qnames') { here('quality'); scrollTo_('#qualityBody .qnames'); return; }
   if (kind === 'accounts') { Auth.openAccounts(); return; }
   if (kind === 'sign') { openSign(x); return; }

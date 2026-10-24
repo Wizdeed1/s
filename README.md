@@ -8,8 +8,9 @@ This repository holds the v33 source restored from *MC Monthly Report Builder.md
 (Daylight)** visual design built on top of it, following Apple's Human Interface Guidelines, and the October 2026 additions
 below. Every calculation, output, email
 template, role, permission and storage format is the same as v33 **by default**: the new counting settings start at what
-v33 did (tests compare 10,000 synthetic people against the v33 code), and the only permission added on request is that the
-WFM analyst shares the Emails page with the WFM manager. The tool still sends nothing and makes no network request.
+v33 did (tests compare 10,000 synthetic people against the v33 code), and the only permissions added on request are that the
+WFM analyst shares the Emails page with the WFM manager and that the WFM team (and admins) can export and import all the data.
+The tool still sends nothing and makes no network request.
 
 **The built file:** [`final/MC Monthly Report Builder.html`](final/MC%20Monthly%20Report%20Builder.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
@@ -67,6 +68,17 @@ Option A was chosen from three samples and built by the rules of Apple's Human I
 | Manage accounts | Every account record in the data is listed, an old one with no username too; a search box and role chips with counts; **Edit** changes the name, username and email; access records left without an account, and account files that could not be read, are listed under **Records with no account** and can be removed. |
 | Report builder | Resting the pointer on a brand box (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay) shows its email small and whole beside it; the keyboard focus does too. |
 | Look and motion | Every page and tab rises in the first time it is shown in a visit, as the dashboard does; every box answers the pointer (panels deepen their shadow, tiles rise 2 px). Fields have a blue focus ring and lists are readable in dark. Nothing moves with reduced motion. |
+
+## October 2026, third round
+
+| Area | What you see now |
+|---|---|
+| Deduction attachment | **Save attachment** on the deduction email gives *MC Monthly Deduction - Sep 2026.xlsx* with two sheets only, laid out like the old Monthly Deduction file, values only: **Attendance Report** (each person's day codes for the month, late days as Attend with the minutes under Tardy, then the counts: AL, SL, Paternity, Compassionate, EID / National Day, ML, Unpaid, Absent, Attend, scheduled and actual days) and **Monthly Deduction** (each day's Sched., Actual and Diff in minutes, Diff in red when above 0, and the Total). Months saved from now on keep each day's scheduled and actual minutes for it (`ds`, `da` on the month's deduction rows); a month saved before shows its total only, and the sheet says how many people that is. |
+| Month close and Activity | The Supervisors page has no Month close card and no Activity box any more. The month close's due days stay as a settings card there (the senior manager sets them), each step's reminder is in the bell with **Mark done** (and Undo in the toast for a tick by mistake), and the dashboard keeps the senior manager's five steps. |
+| WFM team › Data | A **Keep** group with one tab, **Data**, for the WFM manager, the WFM analysts and admins (`js/backup.js`): **Export all data** puts every record the tool keeps (the roster, the months, results, forms, rules, settings, emails and the rest; the kept files only if ticked) in one *.mcbak* file locked with a password chosen there (PBKDF2-SHA256, 250,000 rounds, AES-GCM). Accounts, passwords and keys are never in it. **Import data** opens such a file with its password, shows what is in it by kind, then writes every record back (the same records are replaced, nothing else is removed). |
+| Attendance templates | For the departments whose supervisors take attendance by hand (**Settings › Attendance template for**: TS, MG, CT, QA, DE, WF by default), the tool makes one workbook a month for each supervisor (`js/atttpl.js`): **Attendance** has a row per exception only (Date, To for several days, Name from a list, ID filled in, Type from a list, Minutes late, Note), **Team** lists their people with their weekly days off (Fri, Sat unless changed), first and last day, and a hidden sheet names the month. Every day not written down counts as a working day; weekly days off count as OFF. **WFM team › Import › Attendance templates** downloads each supervisor's file for any month, or all as one .zip; a supervisor gets their own from **Team › Attendance › Get the template**. The filled file goes on Import like any attendance sheet; rows it cannot use (no date, another month, a name not on the Team sheet, a day written twice) are listed on the Import card. |
+| CC and SM from Genesys | CC and SM need no attendance sheet: their days come from the Schedule and the Agent Status Timeline, as their supervisors already take it from Genesys (signed on: Attend, or the late minutes; no sign-on: Absent; a leave in the schedule: that leave; no shift: OFF). With templates or sheets dropped, the people they list are taken from them and everyone else from Genesys; only people of the template departments that nothing covers are called missing. Genesys shows a sick day as absent, so supervisors still correct SL on Team › Attendance. |
+| Opening the shared data | Choosing MC Data now shows **Opening the shared data** with what it waits for and the seconds; after 10 seconds it says what usually holds it up (MC Data in OneDrive or SharePoint with its files not on the computer yet: *Always keep on this device*; a network drive). **Open the shared data** (the browser asks once per visit) shows **Allow the shared data** with where the browser's question is (a box at the top of the window, or an icon in the address bar) and *Choose a different folder* as a way out; an answer of no says so. A folder that does not answer in 20 seconds, a cancelled folder choice, a browser not allowed to open folders, and a data folder whose files cannot be read yet each say so with what to do, and the last is never offered to be set up again. Each file read gives up after 30 seconds, and other people's changes are looked for only after the sign-in, so a big folder no longer holds up the opening. |
 
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.
@@ -126,7 +138,9 @@ node test/accounts.cjs "final/MC Monthly Report Builder.html" test/shots        
 node test/nosched.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # no schedule: the model, the workbook, the setting, the Attendance tab's chips
 node test/peek.cjs "final/MC Monthly Report Builder.html" test/shots              # the brand box's email preview on hover and focus
 node test/rounding.cjs "final/MC Monthly Report Builder.html" test/shots /tmp/exports   # 94.99% counts as 95%, How this was counted, the rules' rounding, the exact days %, the Build month's KPI tab
-npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser
+node test/attflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots    # attendance templates out and back, CC and SM from Genesys, the two-sheet attachment, no Month close card
+node test/datafolder.cjs "final/MC Monthly Report Builder.html" test/shots           # a cancelled, slow, silent or unreadable data folder, allowing it again; WFM team › Data export and import
+npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template
 ```
 
 They load the page with `window.__NOLOCK__` and `window.__ROSTER__` (the existing test hooks) and `window.__mcUser`,

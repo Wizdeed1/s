@@ -378,6 +378,9 @@ function recognise(name, tables, opts = {}) {
   const feats = V.map(t => { const F = features(t); F.cands = sheetCands(F, opts, detBy.get(t.name) || (V.length === 1 ? dets.filter(d => d.kind !== 'error' && d.kind !== 'unknown') : null)); return F; });
   let cands = [...workbookCands(V, feats, all), ...feats.flatMap(F => F.cands)].filter(c => KINDS[c.kind] || c.kind === 'oldDeduction');
   cands = cands.map(c => (c.kind === 'oldDeduction' ? { ...c, kind: 'oldDeductionBook', score: c.score - 0.06, part: true } : c));
+  // the tool's own attendance template (Core.parseAttTemplate read it): the people are on its Team sheet
+  const tpl = dets.find(d => d && d.kind === 'attendance' && d.data && d.data.template);
+  if (tpl) cands.unshift({ kind: 'attendance', score: 0.99, reasons: [`The tool's attendance template${tpl.data.template.spv ? ` from ${tpl.data.template.spv}` : ''}: one row per late, absent, leave or day off, every other day a working day`], sheet: (V.find(t => /^team$/i.test(normSpace(t.name))) || {}).name || '' });
   // the best of each kind, highest first
   const best = new Map(); for (const c of cands.sort((a, b) => b.score - a.score)) if (!best.has(c.kind)) best.set(c.kind, c);
   let L = [...best.values()];

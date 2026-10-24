@@ -89,10 +89,7 @@ function renderCycle() {
     ${[['vp', 'VP (results for review)'], ['form', 'Final result form (to)'], ['senior', 'Senior manager (gets the supervisors\' "done" emails)'], ['mgmt', 'Management team (in copy)'], ['wfm', 'WFM (in copy of the supervisors\' emails)']].map(([f, l]) => `<div class="field"><span class="lbl">${esc(l)}</span><input class="cell" data-contact="${f}" value="${esc(C0[f] || '')}" spellcheck="false" placeholder="Name <name@company.com>"></div>`).join('')}
     <div class="field"><span class="lbl">Final result form: who signs (one per line: name | designation)</span><textarea class="cell" data-signers rows="4" spellcheck="false">${esc(signersNow().map(x => x.join(' | ')).join('\n'))}</textarea></div></div>
     <p class="hint">Supervisors' and agents' addresses come from the roster's Email column.</p></details>` : '';
-  // activity
-  const log = Object.values(state.cycleLog || {}).filter(x => x && x.k === k).sort((a, b) => String(b.at).localeCompare(String(a.at)));
-  const act = log.length ? `<details class="card wslog"><summary>Activity · ${plural(log.length, 'entry', 'entries')}</summary><ul class="ilist">${log.slice(0, 200).map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
-  body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${safeHtml(calCardHtml, k)}${editor}${contacts}${act}`;
+  body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${editor}${contacts}${safeHtml(calDaysHtml)}`;
   if (canCycle() && unseenDone().length && state.ws === 'cycle') { lsSet(seenKey(), new Date().toISOString()); cycleBadge(); }
   reveal(body);
 }

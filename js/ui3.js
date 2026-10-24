@@ -40,7 +40,7 @@ const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
 const REVIEW_TABS = ['checks', 'people', 'issues', 'preview', 'kpi', 'history'];
-const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
+const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
   step: 'import', tab: 'checks',
@@ -162,11 +162,30 @@ async function folderStart() {
   if (h && typeof h.queryPermission !== 'function') h = null;   // not a folder (left by something else)
   const on = folderOn = async kind => {
     if (kind === 'local') { try { sessionStorage.setItem(PREF, 'local'); } catch (e) { /* none */ } startLocal(); return; }
-    if (kind === 'again') { const f = folderNow || h; if (f && await FolderStore.permission(f, true)) openFolder(f); else Auth.connect({ state: f ? 'again' : 'new', name: f ? f.name : '', on, msg: f ? 'The browser did not allow the folder. Try again and choose Allow (or "Allow on every visit").' : '' }); return; }
+    if (kind === 'again') {
+      // the browser's question can sit unnoticed (or as an icon in the address bar): the screen says what it waits for
+      const f = folderNow || h; if (f) Auth.connect({ state: 'opening', name: f.name, on, ask: true });
+      if (f && await FolderStore.permission(f, true)) openFolder(f); else Auth.connect({ state: f ? 'again' : 'new', name: f ? f.name : '', on, msg: f ? 'The browser did not allow the folder. Try again and choose Allow (or "Allow on every visit").' : '' });
+      return;
+    }
     if (kind === 'pick') {
-      let d; try { d = await FolderStore.pick(); } catch (e) { if (e && e.name === 'AbortError') return; Auth.connect({ state: 'new', on, msg: 'This browser could not open the folder (' + ((e && e.message) || e) + ').' }); return; }
-      let what = await FolderStore.inspect(d);
-      if (what.kind !== 'store') { try { const sub = await d.getDirectoryHandle('MC Data'); const w2 = await FolderStore.inspect(sub); if (w2.kind === 'store') { d = sub; what = w2; } } catch (e) { /* no data folder inside */ } }
+      let d; try { d = await FolderStore.pick(); } catch (e) {
+        // cancelled, or "edit files" not allowed: say so, or the page looks stuck on the same screen
+        if (e && e.name === 'AbortError') { Auth.connect({ state: folderNow || h ? 'again' : 'new', name: (folderNow || h || {}).name || '', on, msg: 'No folder was opened. Choose the MC Data folder, then choose Edit files (or Allow) when the browser asks: the tool saves your work there.' }); return; }
+        Auth.connect({ state: 'new', on, msg: e && (e.name === 'NotAllowedError' || e.name === 'SecurityError') ? 'This browser is not allowed to open folders on this computer (a company setting). Ask IT to allow it for this file, or use this computer only.' : 'This browser could not open the folder (' + errText(e) + ').' }); return;
+      }
+      Auth.connect({ state: 'opening', name: d.name, on });
+      // a folder that does not answer, or whose data cannot be read yet, says so: it is never offered to be set up again
+      const look = dir => withTimeout(FolderStore.inspect(dir).catch(e => ({ kind: 'error', e })), 20000, { kind: 'timeout' });
+      const cant = (name, w) => `${w.kind === 'timeout' ? `${name} did not answer` : `Could not read ${name} (${errText(w.e)})`}. If it is in OneDrive or SharePoint, right-click it in File Explorer and choose Always keep on this device; if it is on a network drive, check that it opens in File Explorer. Then choose it again.`;
+      let what = await look(d);
+      if (what.kind === 'timeout' || what.kind === 'error') { Auth.connect({ state: 'new', on, msg: cant(d.name, what) }); return; }
+      if (what.kind !== 'store') {
+        let sub = null; try { sub = await withTimeout(d.getDirectoryHandle('MC Data'), 20000, null); } catch (e) { /* no data folder inside */ }
+        const w2 = sub ? await look(sub) : null;
+        if (w2 && (w2.kind === 'timeout' || w2.kind === 'error')) { Auth.connect({ state: 'new', on, msg: cant(`MC Data in ${d.name}`, w2) }); return; }
+        if (w2 && w2.kind === 'store') { d = sub; what = w2; }
+      }
       if (what.kind === 'store') { await withTimeout(FolderStore.remember(d), 3000); openFolder(d); return; }
       chosen = d; Auth.connect({ state: what.kind, name: d.name, on }); return;
     }
@@ -202,17 +221,27 @@ function openFolder(h) {
       else { state.rosterReady = true; render(); }
     });
   }
-  // the folder must answer before the sign-in: a folder out of reach says so (and is never taken for an empty one)
+  // the folder must answer before the sign-in: a folder out of reach says so (and is never taken for an empty one). Meanwhile the
+  // screen says what it is waiting for, with the seconds, so a slow folder never looks like a page that is stuck
   bootStep(`the shared data folder (${h.name})`, true);
-  const fail = msg => { if (Auth.mode() === 'loading' || Auth.mode() === 'connect') Auth.connect({ state: 'again', name: h.name, on: folderOn || (() => location.reload()), msg }); };
-  const away = `The data folder ${h.name} is not answering. Check that you can open it in File Explorer (network or VPN), then press Open the shared data.`;
+  const fail = msg => { clearInterval(tick); if (Auth.mode() === 'loading' || Auth.mode() === 'connect') Auth.connect({ state: 'again', name: h.name, on: folderOn || (() => location.reload()), msg }); };
+  const away = `The data folder ${h.name} is not answering. If it is in OneDrive or SharePoint, right-click it in File Explorer and choose Always keep on this device; if it is on a network drive (or VPN), check that it opens in File Explorer. Then press Open the shared data.`;
+  if (Auth.mode() === 'connect' || Auth.mode() === 'loading') Auth.connect({ state: 'opening', name: h.name, on: folderOn || (() => location.reload()) });
+  const t0 = Date.now(); let step = 'Checking the folder';
+  const tick = setInterval(() => {
+    const w = $('connWait'), hp = $('connHelp'); if (!w) { if (Auth.mode() !== 'connect') clearInterval(tick); return; }
+    const s = Math.round((Date.now() - t0) / 1000); w.textContent = `${step}… ${s} s`;
+    if (hp && s >= 10 && hp.hidden) { hp.hidden = false; hp.textContent = `Still waiting for ${h.name}. If it is in OneDrive or SharePoint, the files may still be downloading to this computer: right-click the folder in File Explorer and choose Always keep on this device. On a network drive, check that it opens in File Explorer.`; }
+  }, 1000);
   (async () => {
     const st = await withTimeout(FolderStore.check(h), 20000, 'timeout');
-    if (state.db !== db) return;   // another folder was opened meanwhile
+    if (state.db !== db) { clearInterval(tick); return; }   // another folder was opened meanwhile
     if (st === 'timeout') { fail(away); return; }
-    if (st === 'notstore') { FolderStore.forget().catch(() => {}); Auth.connect({ state: 'new', on: folderOn, msg: `${h.name} does not hold the tool's data. Choose the data folder (MC Data) in the common folder.` }); return; }
+    if (st === 'notstore') { clearInterval(tick); FolderStore.forget().catch(() => {}); Auth.connect({ state: 'new', on: folderOn, msg: `${h.name} does not hold the tool's data. Choose the data folder (MC Data) in the common folder.` }); return; }
     if (st !== 'ok') { fail(`Could not read the data folder ${h.name} (${st.replace(/^error: /, '')}). Check that you can open it in File Explorer, then press Open the shared data.`); return; }
+    step = 'Reading the accounts';
     const r = await withTimeout(Auth.start(db).then(() => 'ok', e => 'error: ' + errText(e)), 45000, 'timeout');
+    clearInterval(tick);
     if (state.db !== db) return;
     if (r === 'timeout') fail(away);
     else if (r !== 'ok') fail(`Could not read the accounts in ${h.name} (${r.replace(/^error: /, '')}). Check that you can open the folder in File Explorer, then press Open the shared data.`);
@@ -261,6 +290,7 @@ function applySettings(d) {
   if (Array.isArray(d.dedBrands)) s.dedBrands = d.dedBrands.filter(x => typeof x === 'string');
   if (Array.isArray(d.dedTeams)) s.dedTeams = d.dedTeams.filter(x => typeof x === 'string');
   if (Array.isArray(d.incFullAdhTeams)) s.incFullAdhTeams = d.incFullAdhTeams.filter(x => typeof x === 'string');
+  if (Array.isArray(d.attTplTeams)) s.attTplTeams = d.attTplTeams.filter(x => typeof x === 'string');
   if (typeof d.manager === 'string' && d.manager.trim()) s.manager = d.manager;
   if (typeof d.managerTitle === 'string' && d.managerTitle.trim()) s.managerTitle = d.managerTitle;
   if (Array.isArray(d.noAutoLink)) s.noAutoLink = d.noAutoLink.filter(x => typeof x === 'string');
@@ -326,6 +356,8 @@ function localDb() {
   const emit = path => { const s = path.split('/'), cs = new Set([s[0], s.slice(0, -1).join('/')]); for (const c of cs) (listeners.get(c) || []).forEach(f => setTimeout(() => f(qsnap(c)), 0)); };   // the record's own collection (a sub-collection too) and its top one
   return {
     local: true, persistent,
+    /** every record kept in this browser (WFM team › Data › Export): skip(c) leaves a top collection out */
+    dump: async skip => ({ records: Object.entries(data).filter(([p]) => !(skip && skip(p.split('/')[0]))).map(([path, body]) => ({ path, body: copy(body) })), bad: [] }),
     doc: path => ({
       id: path.split('/').pop(), path,
       get: async () => snapDoc(path.split('/').pop(), data[path]),
@@ -502,17 +534,18 @@ function refresh(o = {}) {
   loadAttState();
   state.ctx = dets.length || ad.length ? Glue.makeContext(dets, ros, state.settings, state.y, state.m) : null;
   state.attRes = null; state.incModelCache = null;
-  if (state.ctx && ad.length) {
-    const nm = list => new Map(list.map(x => [normName(x.name), x.days]));
-    state.attRes = Att.merge(ad, ros, { y: state.y, m: state.m, undo: state.attUndo, picks: state.attPicks, links: state.attLinks, adh: nm(state.ctx.rawAdh), sched: nm(state.ctx.rawSched), floor: state.settings.floor });
-    const fills = new Map(state.attRes.idFills.map(f => [f.pid, f.id]));
-    if (fills.size) state.ctx.roster = state.ctx.roster.map(p => (fills.has(p._id) ? { ...p, nid: fills.get(p._id) } : p));
-    overlayAttEdits(state.attRes.byPerson);
-    state.ctx.attendance = state.attRes.byPerson;
-  } else if (state.ctx) {   // no sheets from the supervisors: attendance from Genesys, with their corrections
+  if (state.ctx) {   // the supervisors' sheets and templates for the people they list, Genesys for everyone else (CC and SM), with the supervisors' corrections
     watchAttEdits(monthKey());
     const A = autoAttendance(state.ctx);
-    if (A) { state.attRes = A; state.ctx.attendance = A.byPerson; }
+    if (ad.length) {
+      const nm = list => new Map(list.map(x => [normName(x.name), x.days]));
+      const R = Att.merge(ad, ros, { y: state.y, m: state.m, undo: state.attUndo, picks: state.attPicks, links: state.attLinks, adh: nm(state.ctx.rawAdh), sched: nm(state.ctx.rawSched), floor: state.settings.floor });
+      const fills = new Map(R.idFills.map(f => [f.pid, f.id]));
+      if (fills.size) state.ctx.roster = state.ctx.roster.map(p => (fills.has(p._id) ? { ...p, nid: fills.get(p._id) } : p));
+      overlayAttEdits(R.byPerson);
+      state.attRes = A ? withGenesys(R, A) : R;
+    } else if (A) state.attRes = A;
+    if (state.attRes) state.ctx.attendance = state.attRes.byPerson;
   }
   state.perf = perfNow();
   state.model = state.ctx ? computeModel(state.ctx) : null;
@@ -1228,8 +1261,10 @@ function computeNotes() {
       body: `${u.idRaw ? 'ID ' + u.idRaw + ' · ' : ''}${u.src} · ${plural(u.filled, 'day')} filled. This attendance is left out until you add or link the person.`, unm: i }));
     for (const w of R.warns) add({ id: 'w:' + w.text, sev: 'warn', group: 'Attendance', title: w.text });
     if (R.cross.length) add({ id: 'cross', sev: 'warn', group: 'Attendance vs Genesys', title: `${plural(R.cross.length, 'day')} where the attendance and Genesys disagree`, body: 'Check these with the supervisors. Nothing was changed.', list: R.cross.map(x => x.text) });
-    if (R.missing.length) add({ id: 'missing', sev: 'info', group: 'Attendance', title: `${plural(R.missing.length, 'active person', 'active people')} with no attendance in any file`, body: 'They show with ⚠ in the incentive Attendance Report. Drop their supervisor\'s file, or fill them in Excel.', list: R.missing.map(p => `${p.name} (${p.team || '–'})`) });
+    if (R.missing.length) add({ id: 'missing', sev: 'info', group: 'Attendance', title: `${plural(R.missing.length, 'active person', 'active people')} with no attendance in any file`, body: `They show with ⚠ in the incentive Attendance Report. ${R.genesys != null ? 'Their supervisor has not sent the attendance template yet: drop it here when it comes.' : 'CC and SM come from the Schedule and the Agent Status Timeline; the other departments from their supervisor\'s attendance template. Drop what is missing, or fill them in Excel.'}`, list: R.missing.map(p => `${p.name} (${p.team || '–'})`) });
     if (R.partial.length) add({ id: 'partial', sev: 'info', group: 'Attendance', title: `${plural(R.partial.length, 'person', 'people')} with blank days`, list: R.partial.map(p => `${p.name}: ${plural(p.blank, 'blank day')}`) });
+    // the attendance templates: rows that could not be used (no date, a date in another month, a name not on the Team sheet)
+    for (const f of state.attFiles) for (const d of f.dets) { const T = d.data && d.data.template; if (T && T.warns.length) add({ id: 'tpl:' + f.name, sev: 'warn', group: 'Attendance files', title: `${f.name}: ${plural(T.warns.length, 'thing')} to look at in ${T.spv ? T.spv + '\'s' : 'the'} template`, body: 'Fix them in the file and drop it again, or correct the days on the Team page.', list: T.warns }); }
     const skipped = R.files.filter(f => !f.used);
     if (skipped.length) add({ id: 'skipped', sev: 'info', group: 'Attendance files', title: `${plural(skipped.length, 'tab')} skipped because the dates are not ${MONTH_LONG[state.m - 1]} ${state.y}`, list: skipped.map(f => `${f.file} · ${f.sheet}: ${f.reason}`) });
   }
@@ -1324,20 +1359,30 @@ function noteItemHtml(n, opts = {}) {
 }
 
 
+/** the sheets' result with Genesys filling in everyone they do not list: CC and SM come from Genesys with nothing to send, the other
+    departments from their supervisors' templates. "Missing" is someone of a template department in neither: for CC and SM, no day
+    in Genesys means no schedule this month (the no-schedule check names them) */
+function withGenesys(R, A) {
+  const byPerson = new Map(R.byPerson), gen = [], T = new Set(tplTeams());
+  for (const [pid, a] of A.byPerson) if (!byPerson.has(pid)) { byPerson.set(pid, a); gen.push(pid); }
+  const tardy = gen.reduce((s, pid) => s + (A.byPerson.get(pid).dayTardy || 0), 0);
+  return { ...R, byPerson, missing: R.missing.filter(p => !byPerson.has(p._id) && T.has(normSpace(p.team))), genesys: gen.length, last: A.last, stats: { ...R.stats, people: byPerson.size, tardy: R.stats.tardy + tardy } };
+}
+const tplBtn = () => (tplTeams().length ? '<button class="btn sm" id="attTplBtn">Attendance templates</button>' : '');
 function renderAttCard() {
   const el = $('attCard'), F = state.attFiles, R = state.attRes;
   if (!F.length && R && R.auto) {
     const ed = [...R.byPerson.values()].reduce((t, a) => t + (a.edited || 0), 0);
     el.classList.add('ready');
     el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-check"/></svg></span><h3>Attendance</h3></div><span class="pill good">From Genesys</span></div>
-      <p class="hint">Counted from the Schedule and the Agent Status Timeline: a scheduled day with a sign-on is Attend (or the late minutes), no sign-on is Absent, a leave in the schedule is that leave, no shift is OFF. Days after ${R.last} ${MON[state.m - 1]} stay empty until the next export. Supervisors correct their own team's days in their Team page; sick leave, which the schedule does not have, is corrected there.</p>
+      <p class="hint">Counted from the Schedule and the Agent Status Timeline, as the CC and SM supervisors did: a scheduled day with a sign-on is Attend (or the late minutes), no sign-on is Absent, a leave in the schedule is that leave, no shift is OFF. Days after ${R.last} ${MON[state.m - 1]} stay empty until the next export. Supervisors correct their own team's days in their Team page; sick leave, which the schedule does not have, is corrected there.${tplTeams().length ? ` ${esc(tplTeams().join(', '))} send the attendance template: drop the filled files here and they are used for the people they list.` : ''}</p>
       <div class="kv"><div><b>${R.stats.people}</b><span>people counted</span></div><div><b>${ed}</b><span>days corrected by supervisors</span></div><div><b>${(R.stats.tardy || 0).toLocaleString('en-US')}</b><span>late minutes</span></div><div><b>${R.last || '–'}</b><span>last day with data</span></div></div>
-      <div class="acts"><button class="btn sm" id="attPick">Use supervisors' sheets instead</button></div>`;
+      <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Add filled templates or sheets</button></div>`;
     return;
   }
   if (!F.length) { el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-file"/></svg></span><h3>Supervisors' attendance</h3></div><span class="pill">Optional</span></div>
-    <p class="hint">Drop each supervisor's attendance sheet (.xlsx or .xlsb), as many as you have. The right month's tab is picked by its dates, names and IDs are matched to the roster, and tardy minutes are counted from the day cells or the Tardy column. Everything goes into the Attendance sheet and the incentive file.</p>
-    <div class="acts"><button class="btn sm" id="attPick">Choose files</button></div>`; el.classList.remove('ready'); return; }
+    <p class="hint">CC and SM come from Genesys once the Schedule and the Agent Status Timeline are in. ${tplTeams().length ? `${esc(tplTeams().join(', '))} send the attendance template (one row per late, absent, leave or day off): make them with Attendance templates, then drop the filled files here. ` : ''}Older attendance sheets (.xlsx or .xlsb) work too: the right month's tab is picked by its dates and names and IDs are matched to the roster.</p>
+    <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Choose files</button></div>`; el.classList.remove('ready'); return; }
   el.classList.add('ready');
   const open = state.notes.filter(n => (n.sev === 'decide' || n.sev === 'warn') && /^Attendance/.test(n.group || '')).length;
   const fixes = R ? R.fixes.reduce((t, f) => t + (f.undoable === false ? 0 : f.count), 0) : 0;
@@ -1346,9 +1391,10 @@ function renderAttCard() {
     return `<li><div class="fname" dir="auto">${esc(f.name)}</div><div class="meta">${fmtSize(f.size)} · ${used.length ? `used ${esc(used.map(x => `${normSpace(x.sheet)} (${x.filled} people)`).join(', '))}` : 'no tab for this month'}${info.length > used.length ? ` · ${plural(info.length - used.length, 'tab')} for other months skipped` : ''}</div><button class="btn sm ghost" data-unatt="${esc(f.name)}">Remove</button></li>`;
   }).join('');
   el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-check"/></svg></span><h3>Supervisors' attendance</h3></div>${open ? `<span class="pill warn">${plural(open, 'item')} to check</span>` : '<span class="pill good">Ready</span>'}</div>
-    <div class="kv"><div><b>${F.length}</b><span>files</span></div><div><b>${R ? R.stats.people : 0}</b><span>people found</span></div><div><b>${(R ? R.stats.tardy : 0).toLocaleString('en-US')}</b><span>tardy minutes</span></div><div><b>${fixes.toLocaleString('en-US')}</b><span>cells fixed</span></div></div>
+    <div class="kv"><div><b>${F.length}</b><span>files</span></div><div><b>${R ? R.stats.people - (R.genesys || 0) : 0}</b><span>people in them</span></div><div><b>${R && R.genesys ? R.genesys : 0}</b><span>from Genesys</span></div><div><b>${(R ? R.stats.tardy : 0).toLocaleString('en-US')}</b><span>tardy minutes</span></div><div><b>${fixes.toLocaleString('en-US')}</b><span>cells fixed</span></div></div>
     <ul class="attfiles">${rows}</ul>
-    <div class="acts"><button class="btn sm" id="attPick">Add files</button><button class="btn sm ${open ? 'primary' : ''}" id="attNotes">Open the checks</button></div>`;
+    ${R && R.genesys ? `<p class="hint">Everyone the files do not list (CC and SM, ${plural(R.genesys, 'person', 'people')}) is counted from the Schedule and the Agent Status Timeline.</p>` : state.ctx && !(state.slots.schedule && state.slots.timeline) ? '<p class="hint">Add the Schedule and the Agent Status Timeline to count CC and SM from Genesys.</p>' : ''}
+    <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Add files</button><button class="btn sm ${open ? 'primary' : ''}" id="attNotes">Open the checks</button></div>`;
 }
 function renderIncExport() {
   const md = state.ctx ? incModel() : null, el = $('incCard');
@@ -1512,6 +1558,7 @@ function addModelDed(rec) {
     let ded = 0, base = 0; m.sch.forEach((sv, i) => { const av = m.act[i]; if (sv == null || av == null || av === 0) return; ded += Math.max(0, sv - av); base += sv; });
     const id = Core.cleanId((effP(m.p._id) || m.p).nid), r = (id && byId.get(id)) || byName.get(normName(m.p.name)) || byName.get(m.ek); if (!r) continue;
     r.ded = ded; if (base > 0) r.conf = Math.round((1 - ded / base) * 1e4) / 1e4;
+    const day = L => L.map(v => (v == null ? '' : Math.round(v))).join(','); r.ds = day(m.sch); r.da = day(m.act);   // each day's Sched. and Actual, for the email's workbook
   }
   return rec;
 }
@@ -2391,10 +2438,13 @@ function readReport(sheets) {
   CA.rows.forEach((r, i) => { if (i < 4 || r[0] == null || r[0] === '') return; calc.set(String(r[0]).toLowerCase(), { exp: normSpace(r[1]), status: normSpace(r[7]), shown: r[8], row: i }); });
   const totCol = (DE.rows[3] || []).findIndex(v => /^total \(min\)$/i.test(normSpace(v)));
   if (totCol < 0) return { error: 'The Deduction sheet has no "Total (min)" column.' };
+  const ND = Core.daysIn(y, m), dedCols = []; (DE.rows[3] || []).forEach((v, i) => { if (v instanceof Date && v.getUTCMonth() + 1 === m) dedCols.push([i, v.getUTCDate()]); });
+  const mins = (r, o) => { const out = new Array(ND).fill(null); for (const [ci, d] of dedCols) { const v = r[ci + o]; if (typeof v === 'number') out[d - 1] = v; } return out; };
   const ded = [];
   DE.rows.forEach((r, i) => {
     if (i < 5) return; const nm = normSpace(r[1]); if (!nm) return;
-    ded.push({ id: idText(r[0]), name: nm.replace(/^[⛔⚠]️?\s*/, ''), brand: normSpace(r[2]), team: normSpace(r[3]), total: typeof r[totCol] === 'number' ? Math.round(r[totCol]) : 0, inactive: nm.startsWith('⛔') });
+    ded.push({ id: idText(r[0]), name: nm.replace(/^[⛔⚠]️?\s*/, ''), brand: normSpace(r[2]), team: normSpace(r[3]), total: typeof r[totCol] === 'number' ? Math.round(r[totCol]) : 0, inactive: nm.startsWith('⛔'),
+      sched: dedCols.length ? mins(r, 0) : null, act: dedCols.length ? mins(r, 1) : null });
   });
   const att = [];
   AT.rows.forEach((r, i) => {
@@ -2405,6 +2455,7 @@ function readReport(sheets) {
       onRoster: !!c, shown: c ? c.shown !== 0 : true,
       days: dayCols.filter(([ci]) => normName(r[ci]) === 'absent').map(([, d]) => d),
       filled: dayCols.some(([ci]) => r[ci] != null && normSpace(r[ci]) !== ''),
+      vals: (() => { const out = new Array(ND).fill(null); for (const [ci, d] of dayCols) out[d - 1] = Att.normCode(r[ci]).v; return out; })(),
     });
   });
   return { y, m, ded, att, filled: att.filter(a => a.filled).length };
@@ -2487,7 +2538,7 @@ function mailModel(stage = state.mailStage) {
     if (snap) changes = dedDiff(snap.data, { ded, abs: abs ? abs.rows.map(a => ({ id: a.id, name: a.name, days: a.days })) : null });
     else warns.push('No review version saved for this month, so the changes since the review cannot be listed. Copy or download the review email first, or drop the workbook that was sent for review.');
   }
-  const attach = mailShared() ? { name: `MC Monthly Deduction - ${MON[m - 1]} ${y}.xlsx`, size: null } : r ? { name: state.wb.name, size: state.wb.size } : state.ctx ? { name: fileNameOut(), size: null } : null;
+  const attach = mailShared() || r || state.ctx ? { name: `MC Monthly Deduction - ${MON[m - 1]} ${y}.xlsx`, size: null } : null;   // Attendance Report and Monthly Deduction (dedMailData)
   return { kind: 'ded', stage, y, m, ded: dedRows, dedFull: ded, dedAll: ded.length, abs, warns, changes, snap, attach, deadline: dl[1] ? `${MON[dl[1] - 1]} ${ordinal(dl[2])}` : '', subject: subjectFor('ded', stage) };
 }
 const F = 'font-family:Calibri,sans-serif';
@@ -2660,13 +2711,36 @@ function curMail() {
 }
 async function attachmentBytes(inc) {
   if (inc) return incBytes();
-  if (mailShared()) {   // the deduction and the absences as a small workbook
-    const md = mailModel(state.mailStage), M = MON[md.m - 1];
-    return xlBytes([{ name: 'Deduction', title: `Conformance deduction - ${M} ${md.y}`, sub: stamp(ymKey(md.y, md.m)), cols: [{ h: 'ID', t: 'text', w: 13 }, { h: 'Name', t: 'text', w: 32 }, { h: 'Total deduction (min)', t: 'int' }], rows: md.dedFull.map(x => [x.id, x.name, x.total]) },
-      { name: 'Absenteeism', title: `Absenteeism - ${M} ${md.y}`, sub: stamp(ymKey(md.y, md.m)), cols: [{ h: 'ID', t: 'text', w: 13 }, { h: 'Name', t: 'text', w: 32 }, { h: 'Total absent', t: 'int' }, ...(md.abs ? md.abs.dates : []).map(d => ({ h: `${d}-${M}`, t: 'text', w: 9 }))], rows: md.abs ? md.abs.rows.map(a => [a.id, a.name, a.days.length, ...md.abs.dates.map(d => (a.days.includes(d) ? 'Absent' : ''))]) : [] }]);
-  }
-  if (state.wb) return state.wb.bytes;
-  return state.ctx ? xlLogo().then(lg => { state.ctx.logo = lg; return Writer2.build(state.ctx); }) : null;
+  const d = dedMailData(); return d ? Writer2.dedMail(d) : null;
+}
+/** the deduction email's workbook (Writer2.dedMail): everyone's days for the Attendance Report and, for the people in the deduction,
+    each day's Sched. and Actual, from the shared month, a dropped monthly report, or this page */
+function dedMailData() {
+  const { y, m } = mailMonth(), k = ymKey(y, m), ND = Core.daysIn(y, m), cfg = countFor(k), set = state.settings, r = state.wb && state.wb.report;
+  const inDed = x => set.dedBrands.includes(normSpace(x.brand)) && set.dedTeams.includes(normSpace(x.team));
+  const minutes = s => (s == null || s === '' ? null : String(s).split(',').map(v => (v === '' ? null : +v)));
+  let att = [], ded = [];
+  if (mailShared()) {
+    for (const x of liveRows(k)) {
+      const days = daysOfRow(x, ND), who = { id: idText(x.id), name: x.n, brand: normSpace(x.brand), team: normSpace(x.team) };
+      if (days.some(v => v != null)) att.push({ ...who, days });
+      if (inDed(x) && x.ded != null) ded.push({ ...who, sched: minutes(x.ds), act: minutes(x.da), total: Math.round(x.ded || 0) });
+    }
+  } else if (r) {
+    att = r.att.filter(a => a.shown && a.vals && a.vals.some(v => v != null)).map(a => ({ id: a.id, name: a.name, brand: a.brand, team: a.team, days: a.vals }));
+    ded = r.ded.map(x => ({ id: x.id, name: x.name, brand: x.brand, team: x.team, sched: x.sched, act: x.act, total: x.total }));
+  } else if (state.model) {
+    const A = state.ctx && state.ctx.attendance;
+    for (const x of state.model) {
+      if (!x.shown) continue;
+      const who = { id: idText(x.p.nid), name: x.exp, brand: normSpace(x.p.brand), team: normSpace(x.p.team) }, a = A ? A.get(x.p._id) : null;
+      if (a && a.days.some(v => v != null)) att.push({ ...who, days: a.days, tardyFile: a.tardyFile });
+      if (x.inDed) ded.push({ ...who, sched: x.sch, act: x.act, total: x.ded || 0 });
+    }
+  } else return null;
+  const order = x => (DEP_ORDER.indexOf(x.team) + 1 || 99), byDep = (a, b) => order(a) - order(b) || a.name.localeCompare(b.name);
+  att = att.map(a => { const c = Kpi.countDays(a.days, cfg); return { ...a, tardy: c.tardy || a.tardyFile || 0, sched: c.sched, actual: c.counted }; }).sort(byDep);
+  return { y, m, att, ded: ded.sort(byDep) };
 }
 function snapNow(kind) {
   if (kind === 'ded') { const md = mailModel('review'); saveSnap('ded', { ded: md.dedFull, abs: md.abs ? md.abs.rows.map(a => ({ id: a.id, name: a.name, days: a.days })) : null }); }
@@ -3437,7 +3511,7 @@ function fillSettings() {
   $('month').value = `${state.y}-${String(state.m).padStart(2, '0')}`;
   $('monthHelp').textContent = state.monthManual ? 'Set by you. Files dropped later will not change it.' : 'Detected from the exports. Change it if a file covers more than one month.';
   $('target').value = +(s.target * 100).toFixed(2); $('floor').value = +(s.floor * 100).toFixed(2); $('inactiveMin').value = s.inactiveMin; $('hideNoSched').checked = s.hideNoSched !== false;
-  chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES);
+  chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES); chips($('attTplTeams'), DEP_ORDER, 'attTplTeams', DEP_NAMES);
   $('mgrName').value = s.manager; $('mgrTitle').value = s.managerTitle; renderLogo();
   syncTheme();
   const u = Auth.user(); $('setSaved').textContent = state.db ? savedWhere() : 'Not saved in this view';
@@ -3445,7 +3519,7 @@ function fillSettings() {
   $('lockMins').value = String(Auth.lockMins()); $('lockMins').disabled = $('chgPw').disabled = $('lockNow2').disabled = $('signOut2').disabled = !u;
 }
 function chips(el, values, key, titles) {
-  el.innerHTML = values.map(v => `<label class="chip"${titles ? ` title="${esc(titles[v])}"` : ''}><input type="checkbox" value="${esc(v)}"${state.settings[key].includes(v) ? ' checked' : ''}>${esc(v)}</label>`).join('');
+  el.innerHTML = values.map(v => `<label class="chip"${titles ? ` title="${esc(titles[v] || v)}"` : ''}><input type="checkbox" value="${esc(v)}"${state.settings[key].includes(v) ? ' checked' : ''}>${esc(v)}</label>`).join('');
 }
 // the appearance: System (the first choice, as the computer is set), Light or Dark, kept in this browser as before (mc-theme).
 // The page carries the one it shows (data-theme), set before the first paint by js/theme_boot.html; System follows the computer live.
@@ -3854,6 +3928,7 @@ $('logoPick').addEventListener('click', () => $('logoPicker').click());
 $('logoPicker').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; setLogoFile(f); });
 $('logoRemove').addEventListener('click', () => { const old = state.logo; state.logo = BUILTIN_LOGO; logoPx = null; if (state.db) queueWrite('config/logo', () => state.db.doc('config/logo').delete()); renderLogo(); render(); toast('Back to the Beyond One logo', { label: 'Undo', fn: () => { state.logo = old; logoPx = null; if (state.db) queueWrite('config/logo', () => state.db.doc('config/logo').set(old)); renderLogo(); render(); } }); });
 $('incFull').addEventListener('change', () => { state.settings.incFullAdhTeams = [...$('incFull').querySelectorAll('input:checked')].map(i => i.value); refresh(); persistSettings(); });
+$('attTplTeams').addEventListener('change', () => { state.settings.attTplTeams = [...$('attTplTeams').querySelectorAll('input:checked')].map(i => i.value); refresh(); persistSettings(); });
 for (const [id, key] of [['mgrName', 'manager'], ['mgrTitle', 'managerTitle']]) $(id).addEventListener('change', e => { state.settings[key] = normSpace(e.target.value) || DEFAULTS[key]; e.target.value = state.settings[key]; persistSettings(); });
 
 // lock controls

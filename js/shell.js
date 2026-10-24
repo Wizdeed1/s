@@ -262,11 +262,13 @@ const DEPT = [
   ['user', 'WFM analyst', [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
-    'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' attendance sheets, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
+    'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
+    '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes each supervisor\'s file for the month (or all of them as one .zip): they write a row only for each late, absent, leave or day off, and every other day counts as a working day. Drop the filled files on Import.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
     '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it); the incentive data workbook is made too. People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
-    '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed); the incentive email comes from the build.',
+    '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction. The incentive email comes from the build.',
+    '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
   ['wfm', 'WFM manager', [
@@ -274,6 +276,7 @@ const DEPT = [
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
     'When a WFM analyst is on vacation, tick their name under <b>Vacation cover</b> on the WFM team page: you then have their tabs (Import, Review, Export, Report builder) until you untick it.',
+    '<b>WFM team › Data</b>: export all the data to one file locked with a password, or import such a file. Accounts and passwords are never in it.',
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
     'The <b>Dashboard</b> and <b>WFM team › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
   ['senior', 'Senior manager', [
@@ -285,7 +288,8 @@ const DEPT = [
   ['spv', 'Supervisor', [
     '<b>Team</b> shows your own agents with their numbers for the month; the header\'s month picker changes the month.',
     '<b>One-to-ones</b>: hold each one, fill in the form and send it to the agent; they add their part and sign the final.',
-    '<b>Attendance</b>: correct a day when Genesys is wrong (only an agent\'s supervisor can).',
+    '<b>Attendance</b>: correct a day when Genesys is wrong (only an agent\'s supervisor can). In CC and SM the days come from Genesys, which shows a sick day as absent: correct those to SL here.',
+    'TS, MG, CT, QA, DE and WF: <b>Attendance › Get the template</b> for the month. Write a row only for each day someone was late, absent, on leave or off on another day than their weekly days off (a From and To date for several days), and send the file to the WFM team. Every other day counts as a working day.',
     '<b>Objections</b>: answer your agents\' objections before the deadline, and correct the accepted ones.',
     '<b>Waiting for approval</b>: approve new agent accounts and link each one to their name.',
     'When every one-to-one is done, <b>Finish your team</b>: the senior manager is told straight away. The <b>bell</b> lists what is due.']],
@@ -310,8 +314,8 @@ const DEPT = [
   ['admin', 'Admin', [
     '<b>Manage accounts</b> (the account menu): give each person a role, link supervisors to their names and choose their agents, reset passwords and open access again.',
     '<b>Settings</b>: targets, the deduction scope, the logo, the sign-in lock time, and the scorecards.',
-    'Admins can do everything the analysts do on the WFM team page and see every page.',
-    'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome.']],
+    'Admins can do everything the analysts do on the WFM team page and see every page, <b>WFM team › Data</b> too (export and import all the data).',
+    'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome. Opening the shared data shows what it waits for: if it is slow on a computer, MC Data is often in OneDrive or SharePoint with its files not downloaded yet. Right-click it in File Explorer and choose <b>Always keep on this device</b>.']],
 ];
 let deptSel = '', deptRole = '';
 function renderDeptGuide(force) {

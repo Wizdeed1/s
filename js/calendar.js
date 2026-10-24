@@ -4,7 +4,7 @@
 // final (day 10). Every step has an owner and a due day the senior manager can change. Most steps tick themselves when the
 // tool sees them done; the others are ticked by hand. Late steps show in red, the next two days in amber, on the Supervisors
 // page and in each owner's Today list.
-Object.assign(state, { calCfg: null, calMarks: {}, calDaysOpen: false, calOpen: false });
+Object.assign(state, { calCfg: null, calMarks: {}, calDaysOpen: false });
 const CAL_STEPS = [
   { id: 'built', label: 'Month built from the Genesys exports', who: 'WFM analysts', roles: ['user', 'admin'], day: 2, go: 'step:import' },
   { id: 'kpi', label: 'KPI file in', who: 'WFM analysts', roles: ['user', 'admin'], day: 3, go: 'step:import' },
@@ -61,7 +61,7 @@ async function calMark(k, id, on) {
   state.calMarks[k] = next;
   try { await queueWrite('steps/' + k, () => state.db.doc('steps/' + k).set(next)); } catch (e) { toast(`Not saved (${(e && e.code) || 'error'}).`); }
   if (s && on !== 'auto') logCycle(k, `${on ? 'Ticked' : 'Unticked'} "${s.label}" by hand`);
-  if (state.ws !== 'build') renderWs(); else renderToday();
+  if (state.ws !== 'build') renderWs(); renderToday();   // the page, and the bell's list when it is open
 }
 /** a step the tool sees done somewhere it does not keep (the agents' pages updated, the final deduction email saved) */
 function calAuto(k, id) { if (!k || !state.db || ((state.calMarks[k] || {}).marks || {})[id]) return; calMark(k, id, 'auto').catch(() => {}); }
@@ -87,18 +87,12 @@ function spvDoneHtml(k) {
     ${L.length ? `<ul class="sdlist">${L.map(x => `<li${x.n && x.done === x.n ? ' class="all"' : ''}><button class="linkbtn nm" data-cyc="team" data-spv="${esc(x.s.pid)}">${esc(x.s.name)}</button><span class="pbar" aria-hidden="true"><i style="width:${x.n ? Math.round(x.done / x.n * 100) : 0}%"></i></span><span class="sdn"><b>${x.done}</b> of ${plural(x.n, 'agent')} finished</span></li>`).join('')}</ul>`
       : '<p class="hint">No supervisors yet: fill the Supervisor column in the roster.</p>'}</div>`;
 }
-/** the close of one month, step by step (the Supervisors page, folded away: the deadlines are in everyone's bell) */
-function calCardHtml(k) {
-  if (!k) return '';
-  const L = calSteps(k), n = L.filter(s => s.st === 'done').length, late = L.filter(s => s.st === 'late').length, soon = L.filter(s => s.st === 'soon').length, can = canCycle();
+/** the day of the next month each month-close step is due (the bell's deadlines): a settings card on the Supervisors page */
+function calDaysHtml() {
+  if (!canCycle()) return '';
   const D = calDays();
-  return `<details class="card calcard" id="calCard" data-det="cal"${state.calOpen ? ' open' : ''}><summary>Month close · ${esc(ymLabel(k))} · ${n}/${L.length} done${late ? ` · <span class="bad">${late} late</span>` : ''}${soon ? ` · <span class="warnt">${soon} due soon</span>` : ''}</summary>
-    <p class="cap">Who does what, by which day of ${esc(MONTH_LONG[+calDue(k, 'final').slice(5, 7) - 1])}. Most steps tick themselves when the tool sees them done; tick the others when they are done outside it.${k < closeMonthNow() ? ' This month is closed: a step the tool did not see shows as not recorded.' : ''}</p>
-    <div class="calbar" aria-hidden="true">${L.map(s => `<i class="${s.st}"></i>`).join('')}</div>
-    <ol class="callist">${L.map(s => `<li class="${s.st}"><span class="cdot" aria-hidden="true"></span><span class="cdue">${esc(fmtDue(s.due))}</span><span class="clab"><b>${esc(s.label)}</b><small>${esc(s.who)}${s.note ? ' · ' + esc(s.note) : ''}</small></span><span class="cst">${esc(calStateText(s))}</span>
-      <span class="cacts">${s.can && (calMine(s) || can) && s.id !== 'objections' ? (s.done && s.done.hand ? `<button class="btn sm ghost" data-calmark="${s.id}" data-on="">Untick</button>` : !s.done ? `<button class="btn sm ghost" data-calmark="${s.id}" data-on="1" title="Done outside the tool">Tick</button>` : '') : ''}${!s.done && s.st !== 'past' && calCanGo(s.go) ? `<button class="btn sm" data-tgo="${esc(s.go + '@' + k)}">Open</button>` : ''}</span></li>`).join('')}</ol>
-    ${can ? `<details class="caldays" data-det="caldays"${state.calDaysOpen ? ' open' : ''}><summary>Due days</summary><p class="hint">The day of the next month each step is due, for every month. The one-to-ones are due on the deadline set above when there is one.</p>
-      <div class="basegrid caldaygrid">${CAL_STEPS.map(s => `<label><span>${esc(s.label)}</span><input type="number" min="1" max="28" step="1" data-calday="${s.id}" value="${D[s.id]}" aria-label="Due day: ${esc(s.label)}"></label>`).join('')}</div></details>` : ''}</details>`;
+  return `<details class="card caldays" data-det="caldays"${state.calDaysOpen ? ' open' : ''}><summary>Due days</summary><p class="hint">The day of the next month each month-close step is due, for every month. Each step's deadline shows in the bell of the people who do it. The one-to-ones are due on the deadline set above when there is one.</p>
+    <div class="basegrid caldaygrid">${CAL_STEPS.map(s => `<label><span>${esc(s.label)}</span><input type="number" min="1" max="28" step="1" data-calday="${s.id}" value="${D[s.id]}" aria-label="Due day: ${esc(s.label)}"></label>`).join('')}</div></details>`;
 }
 function calCanGo(go, any) {
   const [kind, x] = String(go || '').split(':'), W = wsOfNow();
@@ -107,14 +101,16 @@ function calCanGo(go, any) {
   if (kind === 'wfm') return W.includes('wfm');
   return false;
 }
-// events (the card is on the Supervisors page; its buttons also work in the Today list)
+// events: Mark done on a step's line in the bell (the close month), and the due days
 document.addEventListener('click', e => {
   const m = e.target.closest && e.target.closest('[data-calmark]'); if (!m) return;
-  const k = m.closest('#today') ? closeMonthNow() : wsMonthNow(); calMark(k, m.dataset.calmark, !!m.dataset.on);
+  const k = m.closest('#today, #notesTodo') ? closeMonthNow() : wsMonthNow(), id = m.dataset.calmark, on = !!m.dataset.on, s = CAL_STEPS.find(x => x.id === id);
+  calMark(k, id, on);
+  if (on && s && state.db) toast(`Marked done: ${s.label}`, { label: 'Undo', fn: () => calMark(k, id, false) });   // the line leaves the bell: a tick by mistake is undone here
 });
 document.addEventListener('change', e => {
   const t = e.target; if (!t.matches || !t.matches('[data-calday]')) return;
   const v = Math.round(+t.value); if (!(v >= 1 && v <= 28)) { toast('Type a day from 1 to 28.'); renderWs(); return; }
   calSaveDays({ ...((state.calCfg && state.calCfg.days) || {}), [t.dataset.calday]: v });
 });
-document.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details[data-det="caldays"]')) state.calDaysOpen = d.open; if (d.matches && d.matches('details[data-det="cal"]')) state.calOpen = d.open; }, true);
+document.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details[data-det="caldays"]')) state.calDaysOpen = d.open; }, true);

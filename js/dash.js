@@ -148,8 +148,7 @@ function dashClose(k) {
     <div class="dcr"><svg class="rings" viewBox="0 0 160 160" role="img" aria-label="${esc(R.map(x => `${x.l}: ${x.d} of ${x.n}`).join('; '))}">${R.map(ring).join('')}</svg>
       <ul class="rleg">${R.map(x => `<li class="${x.c}"><span><i aria-hidden="true"></i>Senior manager's steps</span><b>${x.d}<small> of ${x.n} done</small></b></li>`).join('')}<li class="dcsum">${late ? `<span class="bad">${late} late</span>` : ''}${late && soon ? ' · ' : ''}${soon ? `${soon} due soon` : ''}${!late && !soon ? (open.length ? 'Nothing late' : 'All done') : ''}</li></ul></div>
     <ol class="dcsteps">${S.map(s => `<li class="${s.st}"><span class="dcd" aria-hidden="true"></span><span class="dl"><b>${esc(s.label)}</b><small>${esc(when(s))}${s.note ? ' · ' + esc(s.note) : ''}</small></span></li>`).join('')}</ol>
-    ${next ? `<div class="dcn ${next.st}"><span><small>Yours next · ${esc(when(next).toLowerCase())}</small><b>${esc(next.label)}</b></span>${calCanGo(next.go, true) ? `<button class="btn sm" data-tgo="${esc(next.go + '@' + k)}">Open</button>` : '<button class="btn sm" data-dopenbell>Deadlines</button>'}</div>` : ''}
-    ${wsOfNow().includes('cycle') ? '<div class="acts"><button class="btn sm ghost" data-tgo="cal">Every step</button></div>' : ''}</section>`;
+    ${next ? `<div class="dcn ${next.st}"><span><small>Yours next · ${esc(when(next).toLowerCase())}</small><b>${esc(next.label)}</b></span>${calCanGo(next.go, true) ? `<button class="btn sm" data-tgo="${esc(next.go + '@' + k)}">Open</button>` : '<button class="btn sm" data-dopenbell>Deadlines</button>'}</div>` : ''}</section>`;
 }
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-dopenbell]')) openBell(); });
 // ---- data status: how old each source is; no green without a source date

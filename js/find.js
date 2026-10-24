@@ -190,7 +190,7 @@ function findPages(role) {
   if (W.includes('cycle')) {
     add('cycle', 'Supervisors', 'supervisors page|cycle|progress|supervisors progress|spv scorecards|supervisor scorecards', 'Supervisors', go('cycle'));
     add('mail4', 'The four emails (one-to-ones ready, review, deadline warning, final result form)', 'four emails|one to ones ready|ready email|review email|results for review|deadline warning|final email|final form|final result form|signature|signatures|rasha|vp|ceo', 'Supervisors', go('cycle'));
-    add('calendar', 'Month close: who does what by which day', 'month close|calendar|close calendar|closing|deadlines|due days|timeline|late steps', 'Supervisors', () => todayGo('cal'));
+    if (canCycle()) add('calendar', 'Month close: the day each step is due', 'month close|calendar|close calendar|closing|deadlines|due days|timeline|late steps', 'Supervisors', () => todayGo('cal'));
     add('objsenior', 'Objections and the dispute rate per team', 'objections|objection|disputes|dispute rate|complaints|escalated', 'Supervisors', () => { setWs('cycle'); scrollTo_('#cycleBody .objcard'); });
     add('rules', 'Incentive rules (scorecards, bases, who earns it), in force from a month', 'incentive rules|rules|governance|bases|eligibility rules|minimum final|rule history|new rules', 'Supervisors', () => openRules());
   }

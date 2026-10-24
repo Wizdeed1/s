@@ -105,13 +105,15 @@ const FolderStore = (() => {
       const key = await keyOf(tag, false); if (!key) throw Object.assign(new Error('locked'), { code: 'locked' });
       return unseal(key, u8, p + '|' + tag);
     }
-    /** -> {body, sig} or null when there is no such record */
+    /** -> {body, sig} or null when there is no such record. A file that does not answer (still downloading from OneDrive, a network
+        drive that stalls) fails after a while instead of holding everything up; it is read again on the next look */
+    const slowly = (pr, ms) => { let t; return Promise.race([pr, new Promise((_, rej) => { t = setTimeout(() => rej(Object.assign(new Error('the file did not answer'), { code: 'timeout' })), ms); })]).finally(() => clearTimeout(t)); };
     async function readFile(p) {
       const s = segsOf(p), d = await dirFor(s.slice(0, -1), false); if (!d) return null;
       let fh; try { fh = await d.getFileHandle(fname(s[s.length - 1], p)); } catch (e) { if (e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError')) return null; throw e; }
-      const f = await fh.getFile(), sig = f.lastModified + ':' + f.size, c = cache.get(p);
+      const f = await slowly(fh.getFile(), 30000), sig = f.lastModified + ':' + f.size, c = cache.get(p);
       if (c && c.sig === sig) return c;
-      return { body: await decode(p, new Uint8Array(await f.arrayBuffer())), sig };
+      return { body: await decode(p, new Uint8Array(await slowly(f.arrayBuffer(), 30000))), sig };
     }
     async function writeFile(p, body) {
       const s = segsOf(p);
@@ -206,9 +208,29 @@ const FolderStore = (() => {
         await pool([...ids], 8, async id => { const p = pre + id, before = cache.get(p); try { const r = await readFile(p); if (r && (!before || before.sig !== r.sig)) { cache.set(p, r); emit(p); } } catch (e) { bad.set(p, (e && e.code) || 'error'); } });
       }
     }
-    function schedule() { clearTimeout(pollTimer); if (stopped) return; pollTimer = setTimeout(() => { poll().finally(schedule); }, document.hidden ? 30000 : 5000); }
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { poll(); schedule(); } });
-    schedule();
+    // other people's changes are looked for every few seconds once someone has signed in (before that the sign-in reads the
+    // accounts itself), so a big _changes folder never slows the opening of the folder
+    let watching = false;
+    /** every record in the folder, opened (for WFM team › Data › Export): skip(c) leaves a top collection out. -> { records, bad } */
+    async function dump(skip) {
+      const records = [], bad = [];
+      async function walk(dir, segs) {   // dir holds the records of the collection segs
+        for await (const [n, h] of dir.entries()) {
+          if (h.kind === 'file' && n.startsWith('d_') && /\.(mcd|json)$/.test(n)) {
+            const p = [...segs, decSeg(n.slice(2).replace(/\.(mcd|json)$/, ''))].join('/');
+            try { const r = await readFile(p); if (r) records.push({ path: p, body: copy(r.body) }); } catch (e) { bad.push({ path: p, code: (e && e.code) || 'error' }); }
+          } else if (h.kind === 'directory' && n.startsWith('d_') && n.endsWith('.sub')) {   // a record's own collections
+            const id = decSeg(n.slice(2, -4));
+            for await (const [c, sh] of h.entries()) if (sh.kind === 'directory') await walk(sh, [...segs, id, decSeg(c)]);
+          }
+        }
+      }
+      for await (const [n, h] of root.entries()) { if (h.kind !== 'directory' || n.startsWith('_') || n.startsWith('.')) continue; const c = decSeg(n); if (PLAIN.has(c) || (skip && skip(c))) continue; await walk(h, [c]); }
+      return { records, bad };
+    }
+    function schedule() { clearTimeout(pollTimer); if (stopped || !watching) return; pollTimer = setTimeout(() => { poll().finally(schedule); }, document.hidden ? 30000 : 5000); }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && watching) { poll(); schedule(); } });
+    const watch = () => { if (watching) return; watching = true; schedule(); };
     return {
       folder: true, local: false, persistent: true, name: root.name, me,
       doc: path => ({
@@ -238,19 +260,26 @@ const FolderStore = (() => {
         },
       }),
       /** keys from the sign-in: { dk, staff, ak: Map(pid -> key) } */
-      unlock(k) { if (k.dk) { K.dk = k.dk; K.staff = true; } if (k.ak) for (const [p, v] of k.ak) K.ak.set(p, v); },
+      unlock(k) { if (k.dk) { K.dk = k.dk; K.staff = true; } if (k.ak) for (const [p, v] of k.ak) K.ak.set(p, v); watch(); },
+      watch,
       hasDataKey: () => !!K.dk,
       agentKey: pid => akey(pid, true),
-      poll, rescan,
+      poll, rescan, dump,
       problems: () => [...bad.entries()].map(([p, code]) => ({ path: p, code })),
       stop() { stopped = true; clearTimeout(pollTimer); },
     };
   }
 
   // ---------------------------------------------------------------- connecting a folder
-  /** what is in a chosen folder: 'store' (ours), 'empty', or 'other' */
+  /** what is in a chosen folder: 'store' (ours), 'empty', or 'other'. The tool's mark there but not readable (OneDrive still
+      downloading it, a network drive that fails) throws: that folder is never taken for another one */
   async function inspect(dir) {
-    try { const m = await dir.getDirectoryHandle('meta'); const f = await m.getFileHandle('d_store.json'); const j = JSON.parse(dec.decode(new Uint8Array(await (await f.getFile()).arrayBuffer()))); if (j && j.app === APP) return { kind: 'store', info: j }; } catch (e) { /* not ours yet */ }
+    let f = null;
+    try { f = await (await dir.getDirectoryHandle('meta')).getFileHandle('d_store.json'); } catch (e) { /* not ours yet */ }
+    if (f) {
+      let j = null; try { j = JSON.parse(dec.decode(new Uint8Array(await (await f.getFile()).arrayBuffer()))); } catch (e) { if (!(e instanceof SyntaxError)) throw e; }
+      if (j && j.app === APP) return { kind: 'store', info: j };
+    }
     let n = 0; for await (const [name] of dir.entries()) { if (!name.startsWith('.')) n++; if (n > 0) break; }
     return { kind: n ? 'other' : 'empty' };
   }

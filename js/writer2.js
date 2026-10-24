@@ -106,7 +106,10 @@ class Sheet {
     let pr = 1;
     for (const r of this.cf) out.push(r.type === 'dup' ? `<conditionalFormatting sqref="${r.sqref}"><cfRule type="duplicateValues" dxfId="${r.dxfId}" priority="${pr++}"/></conditionalFormatting>`
       : `<conditionalFormatting sqref="${r.sqref}"><cfRule type="expression" dxfId="${r.dxfId}" priority="${pr++}"${r.stop ? ' stopIfTrue="1"' : ''}><formula>${esc(r.formula)}</formula></cfRule></conditionalFormatting>`);
-    if (this.dv.length) out.push(`<dataValidations count="${this.dv.length}">${this.dv.map(d => `<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="${d.sqref}"><formula1>${esc(d.list)}</formula1></dataValidation>`).join('')}</dataValidations>`);
+    // a list (d.list), or a date or whole number between f1 and f2 (d.type 'date' | 'whole'), with an optional error message
+    const dvXml = d => (d.type ? `<dataValidation type="${d.type}" operator="between" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''} sqref="${d.sqref}"><formula1>${esc(d.f1)}</formula1><formula2>${esc(d.f2)}</formula2></dataValidation>`
+      : `<dataValidation type="list" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''} sqref="${d.sqref}"><formula1>${esc(d.list)}</formula1></dataValidation>`);
+    if (this.dv.length) out.push(`<dataValidations count="${this.dv.length}">${this.dv.map(dvXml).join('')}</dataValidations>`);
     out.push('<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>' + (this._drawing ? '<drawing r:id="rId1"/>' : '') + '</worksheet>');
     return out.join('');
   }
@@ -662,6 +665,87 @@ async function build(ctx) {
 }
 function ymd(y, m, d) { return C.ymdSerial(y, m, d); }
 
-return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell };
+// ------------------------------------------------------------ the deduction email's attachment
+// Laid out like the old Monthly Deduction file: 'Attendance Report' (each day's code, the counts, scheduled and actual days) and
+// 'Monthly Deduction' (each day's Sched., Actual and Diff, and the total). Values only, so the two sheets stand on their own.
+const DED_SHOW = { AL: 'AL leave', SL: 'SL leaves', Paternity: 'Paternity leave', Marriage: 'Marriage leave', Exam: 'Exam leave' };
+const dedShowDay = v => (v == null || v === '' ? '' : typeof v === 'number' ? 'Attend' : DED_SHOW[v] || String(v));
+const DED_COUNTS = [['Tardy', 9], ['AL leave', 10], ['SL leaves', 10], ['Paternity leave', 11], ['Compassionate Leave', 13], ['EID / National Day', 12], ['ML', 7], ['Unpaid', 8], ['Absent', 8], ['Attend', 8], ['Scheduled days', 11], ['Actual days', 10]];
+/** a person's counts in the order of DED_COUNTS (Tardy, Scheduled days and Actual days come with the person) */
+function dedCounts(a) {
+  const n = re => a.days.filter(v => typeof v === 'string' && re.test(v)).length;
+  return [a.tardy || 0, n(/^al$/i), n(/^sl$/i), n(/^paternity/i), n(/^compassionate/i), n(/^(eid|national day|founding day)/i), n(/^ml$/i), n(/^unpaid/i), n(/^absent$/i),
+    a.days.filter(v => v === 'Attend' || typeof v === 'number').length, a.sched ?? '', a.actual ?? ''];
+}
+/**
+ * d: { y, m, att: [{ id, name, brand, team, days: [ND] (Attend, tardy minutes, OFF, AL, SL, Absent, other codes, null), tardy, sched, actual }],
+ *      ded: [{ id, name, brand, team, sched: [ND] | null, act: [ND] | null, total }] } -> xlsx bytes
+ */
+async function dedMail(d, opts = {}) {
+  const S = new Styles(), NAVY = 'FF1F3864', WHITE = 'FFFFFFFF', GRID = 'FFD9D9D9', TAB = 'FF375623';
+  const Y = d.y, M = d.m, ND = C.daysIn(Y, M), L = `${C.MON[M - 1]} - ${Y}`;
+  const title = S.get({ font: { sz: 16, b: true, color: NAVY } }), sub = S.get({ font: { sz: 9, i: true, color: 'FF7F7F7F' } });
+  const H = (fill, fmt) => S.get({ font: { b: true, color: WHITE }, fill, border: WHITE, align: { h: 'center', wrap: true }, ...(fmt ? { numFmt: fmt } : {}) });
+  const hdr = H(NAVY), hDate = H(NAVY, 'dd-mmm'), hDay = H(NAVY, 'ddd dd-mmm'), hSA = H('FF2F5597'), hDf = H('FFC65911'), hTot = H(TAB), hNote = H('FF595959'), hCnt = H('FF305496');
+  const cId = S.get({ font: {}, border: GRID, align: { h: 'center' }, numFmt: '0' }), cName = S.get({ font: {}, border: GRID, align: { h: 'left' } }), cC = S.get({ font: {}, border: GRID, align: { h: 'center' } });
+  const cCnt = S.get({ font: { b: true }, fill: 'FFF2F2F2', border: GRID, align: { h: 'center' } }), cDiff = S.get({ font: { b: true }, fill: 'FFFCEEE4', border: GRID, align: { h: 'center' } });
+  const cTot = S.get({ font: { sz: 11, b: true }, fill: 'FFF2F7EE', border: GRID, align: { h: 'center' } });
+  const LEG = [['AL leave', 'FF8DB4E2', 'FF1F3864'], ['SL leaves', 'FFA9D08E', 'FF274E13'], ['Absent', 'FFFF8B8B', 'FF9C0006'], ['National Day', 'FF00843D', WHITE], ['OFF', 'FFBFBFBF', 'FF262626']];
+  const leg = LEG.map(([t, fill, color]) => [t, S.get({ font: { b: true, color }, fill, border: WHITE, align: { h: 'center' } }), S.dxf({ color, fill })]);
+  const other = S.dxf({ color: 'FF5B2C6F', fill: 'FFE4DFEC' }), redB = S.dxf({ color: 'FFC00000', b: true });
+  const idOf = x => { const s = String(x.id ?? '').trim(); return /^\d{6,}$/.test(s) ? +s : s || 'NA'; };
+
+  // ---- Attendance Report
+  const A = new Sheet('Attendance Report'); A.tab = TAB;
+  A.set(1, 1, `MC Monthly Attendance - ${L}`, title); A.heights[1] = 30; A.heights[2] = 30;
+  const D0 = 5, CN = D0 + ND, NOTE = CN + DED_COUNTS.length, R0 = 3, RL = Math.max(R0, R0 + d.att.length - 1);
+  leg.forEach(([t, s], i) => { const c = D0 + 6 + i * 2; A.set(1, c, t, s); A.set(1, c + 1, null, s); A.merge(1, c, 1, c + 1); });   // the colours' legend, right of the title
+  [['ID', 14], ['Name', 32], ['Team', 11], ['Dep', 7]].forEach(([h, w], j) => { A.set(2, j + 1, h, hdr); A.width(j + 1, w); });
+  for (let i = 1; i <= ND; i++) { A.set(2, D0 + i - 1, ymd(Y, M, i), hDate); A.width(D0 + i - 1, 9.5); }
+  DED_COUNTS.forEach(([h, w], j) => { A.set(2, CN + j, h, j >= 10 ? hTot : hCnt); A.width(CN + j, w); });
+  A.set(2, NOTE, 'Review Notes', hNote); A.width(NOTE, 30);
+  d.att.forEach((a, i) => {
+    const r = R0 + i;
+    A.set(r, 1, idOf(a), cId); A.set(r, 2, a.name, cName); A.set(r, 3, a.brand || '', cC); A.set(r, 4, a.team || '', cC);
+    for (let k = 0; k < ND; k++) A.set(r, D0 + k, dedShowDay(a.days[k]), cC);
+    dedCounts(a).forEach((v, j) => A.set(r, CN + j, v, cCnt)); A.set(r, NOTE, null, cName);
+  });
+  const ag = `${ref(R0, D0)}:${ref(RL, CN - 1)}`, tl = ref(R0, D0);
+  leg.forEach(([t, , dx]) => A.addCF(ag, t === 'National Day' ? `LEFT(TRIM(${tl}),8)="National"` : `TRIM(${tl})="${t}"`, dx));
+  A.addCF(ag, `AND(${tl}<>"",${tl}<>"Attend")`, other);
+  A.freeze = [R0, D0]; A.filter = `A2:${ref(RL, NOTE)}`;
+
+  // ---- Monthly Deduction
+  const DE = new Sheet('Monthly Deduction'); DE.tab = TAB;
+  DE.set(1, 1, `MC Monthly Deduction - ${L}`, title);
+  const noDaily = d.ded.filter(x => !x.sched || !x.act).length;
+  DE.set(2, 1, `Sched. = scheduled work minutes. Actual = minutes signed on inside them. Diff = Sched. - Actual (0 if Actual is 0).${noDaily ? ` ${noDaily === 1 ? '1 person has' : `${noDaily} people have`} only a total: the month was saved before each day's minutes were kept.` : ''}`, sub);
+  Object.assign(DE.heights, { 1: 30, 2: 18, 3: 6, 4: 22, 5: 30 });
+  [['ID', 14], ['Name', 34], ['Team', 11], ['Dep', 8]].forEach(([h, w], j) => { DE.set(4, j + 1, h, hdr); DE.set(5, j + 1, null, hdr); DE.merge(4, j + 1, 5, j + 1); DE.width(j + 1, w); });
+  const E0 = 5, TOT = E0 + ND * 3, DN = TOT + 1, Q0 = 6, QL = Math.max(Q0, Q0 + d.ded.length - 1);
+  for (let i = 1; i <= ND; i++) {
+    const c = E0 + (i - 1) * 3;
+    DE.set(4, c, ymd(Y, M, i), hDay); DE.set(4, c + 1, null, hDay); DE.set(4, c + 2, null, hDay); DE.merge(4, c, 4, c + 2);
+    DE.set(5, c, 'Sched.', hSA); DE.set(5, c + 1, 'Actual', hSA); DE.set(5, c + 2, 'Diff (min)', hDf);
+    DE.width(c, 9); DE.width(c + 1, 9); DE.width(c + 2, 10.5);
+  }
+  DE.set(4, TOT, 'Total (min)', hTot); DE.set(5, TOT, null, hTot); DE.merge(4, TOT, 5, TOT); DE.width(TOT, 12);
+  DE.set(4, DN, 'Review Notes', hNote); DE.set(5, DN, null, hNote); DE.merge(4, DN, 5, DN); DE.width(DN, 30);
+  d.ded.forEach((x, i) => {
+    const r = Q0 + i; let tot = 0, any = false;
+    DE.set(r, 1, idOf(x), cId); DE.set(r, 2, x.name, cName); DE.set(r, 3, x.brand || '', cC); DE.set(r, 4, x.team || '', cC);
+    for (let k = 0; k < ND; k++) {
+      const c = E0 + k * 3, sv = x.sched ? x.sched[k] : null, av = x.act ? x.act[k] : null;
+      const dv = sv == null || av == null ? '' : av === 0 ? 0 : Math.max(0, sv - av); if (typeof dv === 'number') { tot += dv; any = true; }
+      DE.set(r, c, sv ?? '', cC); DE.set(r, c + 1, av ?? '', cC); DE.set(r, c + 2, dv, cDiff);
+    }
+    DE.set(r, TOT, any ? tot : x.total ?? '', cTot); DE.set(r, DN, null, cName);
+  });
+  for (let k = 0; k < ND; k++) { const c = E0 + k * 3 + 2, a = ref(Q0, c); DE.addCF(`${a}:${ref(QL, c)}`, `AND(ISNUMBER(${a}),${a}>0)`, redB); }
+  DE.freeze = [Q0, E0]; DE.filter = `A5:${ref(QL, DN)}`;
+  return pack([A, DE], S, {}, opts);
+}
+
+return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell, dedMail, dedShowDay };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Writer2;

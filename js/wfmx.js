@@ -4,14 +4,14 @@
 // Report builder (the analysts make the daily emails). Insight: Analytics (departments and months), Agents (every measure per
 // agent) and Interactions (the interactions export). Each role sees its own tabs; the senior manager reads.
 Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core', wfmAt: '' });
-const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions']];
+const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
 const WFM_STEPS = ['import', 'review', 'export'];   // the month's build, shown on the WFM team page
-const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Insight', ['analytics', 'agents', 'inter']]];
+const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Insight', ['analytics', 'agents', 'inter']], ['Keep', ['data']]];
 /** every email the WFM team sends, in one place shared by the WFM manager and the WFM analysts: the four daily brand emails and
     the month's deduction and absences emails. Both can edit them and send them (the tool copies them or opens them in Outlook). */
 const canWfmMail = () => hasRole('admin', 'wfm', 'user');
 Object.assign(state, { mailSub: '' });
-function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : true)); }
+function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'data' ? canBackup() : true)); }
 /** the tab now on screen: a step of the month's build, or a WFM tab */
 const wfmTabNow = () => (state.ws === 'build' ? (WFM_STEPS.includes(state.step) ? state.step : 'import') : state.wfmTab);
 /** the WFM team page's header: the title, the tabs of the role (with what each needs), and the actions of the tab */
@@ -51,6 +51,7 @@ const WFM_LEAD = {
   builder: 'Drop the day\'s exports: MC Leaders and the WFM Daily Review are made here, and the four brand emails go straight to the WFM manager.',
   emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction, absences and incentive emails. Edit them here and send them from Outlook; the tool never sends anything itself.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
+  data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
 function renderWfmWs() {
   if (state.wfmTab === 'dmail' || state.wfmTab === 'mail') { state.mailSub = state.wfmTab === 'dmail' ? 'daily' : 'month'; state.wfmTab = 'emails'; }   // older links: the two email pages are one now
@@ -65,7 +66,7 @@ function renderWfmWs() {
   const builder = t === 'builder', em = t === 'emails', dm = em && state.mailSub === 'daily', mm = em && !dm;
   $('wfmRb').hidden = !builder; $('wfmDm').hidden = !dm; $('wfmBody').hidden = builder || dm || mm;
   if (!mm) mountMail(false);
-  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (mm) renderMailWs();
+  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
   else if (builder) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; rbShow(); }
   else if (dm) { $('wfmBar').innerHTML = mailSubHtml(unsent) + '<div class="wsacts"></div>'; dmShow(); }
 }

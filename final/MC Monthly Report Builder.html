@@ -304,6 +304,8 @@ body:has(#lock:not([hidden])) .sidebar, body:has(#lock:not([hidden])) .tabbar, b
 .lockfoot { font-size: 12.5px; color: var(--muted); margin: 0; border-top: 1px solid var(--line); padding-top: 14px; }
 .lockfoot:empty { display: none; }
 .lockconnect { display: grid; gap: 8px; margin: 2px 0; }
+.connwait { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.connwait .spin { color: var(--accent); }
 .field small#userHint { line-height: 1.45; }
 
 /* ------------------------------------------------------------------------------------------------------------- the frame: the sidebar (a rail on laptops), the toolbar, the page */
@@ -2184,6 +2186,21 @@ p.prange { padding-top: 12px; }
 .attfilt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: -4px 0 14px; }
 .attfilt .teamchips .cnt { margin-left: 4px; font-size: 11.5px; color: inherit; opacity: .7; font-variant-numeric: tabular-nums; }
 
+/* the attendance template: a bar on the Team page's Attendance tab, and the drawer's list of supervisors */
+.tplbar { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap; padding: 12px 16px; margin-bottom: 12px; }
+.tplbar > div { display: grid; gap: 2px; min-width: 0; }
+.tplbar small { color: var(--muted); font-size: 12.5px; }
+.tpllist li .sg { color: var(--muted); }
+#attTplBody .grid2 { margin: 12px 0 4px; }
+#attTplBody .acts { margin-top: 12px; }
+
+/* WFM team › Data: export and import side by side */
+.bkgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.bkcard { display: grid; gap: 10px; }
+.bkcard h2 { margin: 0; }
+.bkinfo { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--sunk); }
+.bkinfo > span { color: var(--muted); font-size: 13px; }
+
 /* ------------------------------------------------------------------------------------------------------------- the Dashboard (Option A)
    The greeting as the large title, quick actions, then three rows: six KPI widgets beside the month close rings; the trend beside
    the data's freshness; what needs attention, the lowest adherence and the recent activity. Widgets on soft white panels. */
@@ -3274,6 +3291,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
     <div class="field"><span class="lbl" id="l-db">Deduction scope: brands</span><div class="chips" id="dedBrands" role="group" aria-labelledby="l-db"></div><small>Only these brands are listed in the Deduction sheet. Default Virgin.</small></div>
     <div class="field"><span class="lbl" id="l-dt">Deduction scope: teams</span><div class="chips" id="dedTeams" role="group" aria-labelledby="l-dt"></div><small>Default CC (Customer Care).</small></div>
     <div class="field"><span class="lbl" id="l-inc">Incentive: 100% adherence for</span><div class="chips" id="incFull" role="group" aria-labelledby="l-inc"></div><small>Teams with no Genesys adherence that still go in the incentive Adherence tab, at 100%. Default CT.</small></div>
+    <div class="field"><span class="lbl" id="l-atpl">Attendance template for</span><div class="chips" id="attTplTeams" role="group" aria-labelledby="l-atpl"></div><small>The departments whose supervisors send the attendance template (Import › Attendance templates). Everyone else, CC and SM included, comes from Genesys. Default TS, MG, CT, QA, DE, WF.</small></div>
     <div class="field"><span class="lbl">Logo on the app bar, forms and Excel files</span><div class="logostate" id="logoState"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="logoPick">Choose logo file</button><button class="btn sm ghost" id="logoRemove" hidden>Use the Beyond One logo</button></div>
       <input type="file" id="logoPicker" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
@@ -3367,6 +3385,11 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
   <div class="body" id="scoreBody"></div>
 </aside>
 
+<aside class="drawer wide" id="dAttTpl" role="dialog" aria-modal="true" aria-labelledby="h-atttpl" hidden>
+  <header><div><h2 id="h-atttpl">Attendance templates</h2><div class="sub" id="attTplSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="attTplBody"></div>
+</aside>
+
 <aside class="drawer wide" id="dHow" role="dialog" aria-modal="true" aria-labelledby="h-how" hidden>
   <header><div><h2 id="h-how">How this was counted</h2><div class="sub" id="howSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
   <div class="body" id="howBody"></div>
@@ -3419,14 +3442,14 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
       <h3>Every month</h3>
       <ol>
         <li>In Genesys Cloud, export the month's <b>Monthly Adherence</b>, <b>Agent Performance Summary</b>, <b>Schedule</b> (activities) and <b>Agent Status Timeline Summary</b>.</li>
-        <li>Drop all four on <b>Import</b>, with every supervisor's attendance sheet. Each card shows what was found. The bell at the top lists anything the tool fixed, anything you need to decide (for example two files that disagree on a day), and differences between the attendance and Genesys.</li>
+        <li>Drop all four on <b>Import</b>, with the supervisors' filled attendance templates (TS, MG, CT, QA, DE and WF: <b>Import › Attendance templates</b> makes each supervisor's file for the month, one row per late, absent, leave or day off; CC and SM need none, their days come from the Schedule and the Agent Status Timeline). Each card shows what was found. The bell at the top lists anything the tool fixed, anything you need to decide (for example two files that disagree on a day), and differences between the attendance and Genesys.</li>
         <li>On <b>Review</b>, open <b>Issues</b>: link each unknown name to a person as their system name, or add them. When a roster name is clearly one Genesys name, the tool links it by itself (the bell shows it, with Undo). Set people who left to Inactive in <b>People</b>.</li>
         <li><b>People</b> shows a card per agent with their Genesys name, National ID, brand, team and this month's numbers. Point at any agent, anywhere in the tool, for a quick profile; select the card for the full page, where you can edit their details, see their history chart and export it. Switch to <b>Table</b> to edit many people at once.</li>
         <li>Check <b>Preview</b>, then press <b>Build Excel</b>.</li>
         <li>Performance (optional): export the <b>Agent Performance Summary</b> a second time with every column (Answered, Handle, Avg Handle, Avg Talk, Avg Hold, Avg ACW, Held, Transferred, Outbound) and drop it on Import. <b>Preview</b> then shows each employee's performance with team totals and a sortable table (green at least 15% better than the team, red at least 15% worse), and each person's page compares them with their team. Times are weighted the way Genesys works them out. Exports of past months go to the history, so the person's chart can show answered, handle time, hold, ACW and transfer rate by month. An export with only voice also gives the AHT.</li>
         <li>Workforce and exceptions: with the Schedule and Agent Status Timeline in, every scheduled day of the month is judged with the same rules as the Daily WFM &amp; Performance Review (late after 0 min, no sign-on after 180 min, short of shift from 15 min, adherence 95%, AHT ceiling 2:30, high hold 45 s, at least 5 calls; leave days left out) and added up per employee: shifts, worked, no sign-on, late sign-ons and minutes, short of shift, break changes, time signed on, occupancy, conformance and exceptions. <b>Preview</b> shows the totals by team, the priority follow-up list with reasons and a sortable table; each person's page lists their days one by one. Late first call, calls under 10 s, longest calls and dropped calls need the daily Interactions export, so they stay in the daily email.</li>
         <li>Build the incentive data workbook too. Both files are filled in, including attendance and tardy minutes.</li>
-        <li>On <b>WFM team › Emails › Monthly emails</b>, pick Deduction or Incentive, then For review, and where the numbers come from: <b>Shared month</b> (with the supervisors' attendance corrections) or <b>This build</b> (the incentive always comes from the build). Use <b>Copy for Outlook</b> and paste into a new email, or <b>Download .eml</b> and open it in Outlook. The data sent for review is remembered. The WFM manager sends the deduction and absences emails from the same place, from the shared month.</li>
+        <li>On <b>WFM team › Emails › Monthly emails</b>, pick Deduction or Incentive, then For review, and where the numbers come from: <b>Shared month</b> (with the supervisors' attendance corrections) or <b>This build</b> (the incentive always comes from the build). Use <b>Copy for Outlook</b> and paste into a new email, or <b>Download .eml</b> and open it in Outlook. The data sent for review is remembered. The WFM manager sends the deduction and absences emails from the same place, from the shared month. The deduction email's attachment (<b>Save attachment</b>) is one workbook with the Attendance Report and the Monthly Deduction.</li>
         <li>Everything you drop on Import is kept (<b>Import › Saved uploads</b>), so signing out loses nothing: the month is back in Build when you sign in again. Pick a month there to load it, move a file to another month, replace or delete it.</li>
         <li>On vacation? The WFM manager ticks your name on the WFM team page (Vacation cover) and has your tabs until you are back; when the manager is away, you tick theirs.</li>
         <li>After the review deadline, drop any corrected files, open <b>Final</b>, and send. The final email lists what changed since the review.</li>
@@ -3465,7 +3488,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
     <section>
       <h3>Roles and pages</h3>
       <ul>
-        <li><b>Supervisor › Team</b>: their own agents (the roster's Supervisor column), the team's average of every KPI (their own KPIs as a supervisor), their supervisor scorecard, a one-to-one board, the month's attendance (counted from Genesys; only the supervisor can correct a day), the agents waiting for their approval, and <b>Finish my team</b>, which tells the senior manager in the tool and makes an email draft to him. It stays grey until every agent's one-to-one is done. The one-to-one: arrange it; an agent with an account fills in their part on their own page (what was discussed, the root cause, their comments, actions, the next review date) and sends it; the supervisor reads it, accepts or rejects it with a final comment and sends the final back; only then does the agent sign. For an agent without an account the supervisor fills in the form when they meet. Supervisors do not see the incentive amounts.</li>
+        <li><b>Supervisor › Team</b>: their own agents (the roster's Supervisor column), the team's average of every KPI (their own KPIs as a supervisor), their supervisor scorecard, a one-to-one board, the month's attendance (counted from Genesys for CC and SM, from the supervisor's attendance template for TS, MG, CT, QA, DE and WF; only the supervisor can correct a day), the agents waiting for their approval, and <b>Finish my team</b>, which tells the senior manager in the tool and makes an email draft to him. It stays grey until every agent's one-to-one is done. The one-to-one: arrange it; an agent with an account fills in their part on their own page (what was discussed, the root cause, their comments, actions, the next review date) and sends it; the supervisor reads it, accepts or rejects it with a final comment and sends the final back; only then does the agent sign. For an agent without an account the supervisor fills in the form when they meet. Supervisors do not see the incentive amounts.</li>
         <li><b>Senior manager › Supervisors</b>: the one-to-one deadline, which supervisors have finished (a notification and a count on the page button when one does), the supervisors' scorecards and their items (team averages, one-to-ones by the deadline, the quality team's leader items, or items he types), and the month's four emails: one-to-ones ready (to the supervisors), the deadline reminder (to those not finished), the results for review (“Hi All”: the ID, name, final % and earned SR of everyone on the incentive list who earned it, with the same table as an Excel file) and the final result form (his own form: everyone on the incentive list with their final % and earned SR, the month's total and the table the VP, HR Director, Finance Director and CEO sign, as an email and as the same Excel form). The <b>incentive list</b> on the same page says who is on those two, in order, with the names as the tool has them; add or remove people there. The emails carry no logo or name: Outlook adds your signature. <b>Results</b>: every agent; he decides who is eligible against the rules and finalizes the month.</li>
         <li><b>WFM</b>: Analytics by team, brand and month; Agents with every measure and the best and worst quarter marked; Daily with the stored days; <b>Report builder</b> (the WFM analysts: the day's exports, MC Leaders, the WFM Daily Review); <b>Daily emails</b> (the WFM manager: the four brand emails to send); Interactions from the interactions export; Emails with the deduction and absences emails (the WFM manager). The senior manager and the analysts read the rest of the page.</li>
         <li><b>Team page</b> for the senior manager, the WFM team and the admin: every team; the agents ranked lowest first (adherence, final %, exceptions, absence or tardiness), with a name search and the supervisor under each name.</li>
@@ -3476,8 +3499,8 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
     </section>
     <section>
       <h3>Closing a month</h3>
-      <p><b>Supervisors › Month close</b> shows who does what by which day of the next month: the month built from the exports (day 2), the KPI file and the EVAL (day 3), the results on the agents' pages and the ready email (day 5), the objections answered (day 8), the one-to-ones and the review (day 9), the final and the final emails (day 10). Most steps tick themselves when the tool sees them done; tick the others when they are done outside the tool. Late steps are red, the next two days amber. The senior manager can change the due days under <b>Due days</b>.</p>
-      <p><b>Today</b>, at the top of each person's first page, lists what is theirs to do now: their late month-close steps, one-to-ones to hold, objections to answer or fix, agents waiting for approval, forms waiting for a signature, last month's actions to check, a daily review not stored yet, names to link, accounts waiting. Each line opens the place to do it; <b>Hide for today</b> folds it to one line.</p>
+      <p>Each step of the close has its day of the next month: the month built from the exports (day 2), the KPI file and the EVAL (day 3), the results on the agents' pages and the ready email (day 5), the objections answered (day 8), the one-to-ones and the review (day 9), the final and the final emails (day 10). Most steps tick themselves when the tool sees them done; the <b>bell</b> reminds the person whose step it is when it is due soon or late, and <b>Mark done</b> there ticks a step done outside the tool. The senior manager changes the days under <b>Supervisors › Due days</b>; the dashboard shows the senior manager's own five steps.</p>
+      <p>The <b>bell</b> lists what is each person's to do now: their late or near month-close steps, one-to-ones to hold, objections to answer or fix, agents waiting for approval, forms waiting for a signature, last month's actions to check, a daily review not stored yet, names to link, accounts waiting. Each line opens the place to do it.</p>
     </section>
     <section>
       <h3>Objections</h3>
@@ -3511,7 +3534,8 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
         <li>The first person opens the HTML in Edge or Chrome, chooses the data folder, and makes the admin account. Everyone else opens the same HTML, chooses the same folder once (the browser remembers it), and makes an account with a username.</li>
         <li>The admin gives staff their role in Manage accounts, links supervisors to their name in the roster (only the operations team is listed) and ticks the agents each supervisor leads. Agents choose their supervisor when they sign up; the supervisor approves them.</li>
       </ol>
-      <p>The data files are locked: staff accounts open them with the team's key, an agent's account only the agent's own place, both unlocked by the person's password. Opened outside the tool, a file is unreadable. Anyone who can delete files in the common folder can still delete them, so keep the folder's permissions to the people who need it, and keep it in the usual IT backup. The tool picks up other people's changes every few seconds.</p>
+      <p>The data files are locked: staff accounts open them with the team's key, an agent's account only the agent's own place, both unlocked by the person's password. Opened outside the tool, a file is unreadable. Anyone who can delete files in the common folder can still delete them, so keep the folder's permissions to the people who need it, and keep it in the usual IT backup. Once you have signed in, the tool picks up other people's changes every few seconds.</p>
+      <p>Opening the shared data shows what it waits for, with the seconds. If it is slow on one computer, MC Data is often in OneDrive or SharePoint with its files not on that computer yet: right-click it in File Explorer and choose <b>Always keep on this device</b>. A folder choice cancelled, a folder that does not answer, or one whose files cannot be read yet each says so, with what to do.</p>
     </section>
     <section>
       <h3>Accounts</h3>
@@ -3519,7 +3543,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
     </section>
     <section>
       <h3>Your data</h3>
-      <p>Export files are read on your computer and never sent anywhere. What is kept: the roster, the months' results (one row per agent), the quality numbers, the forms and signatures, day totals of the daily data and of the interactions export (never the callers' numbers), the month's Genesys exports and attendance sheets as you dropped them (WFM team › Import › Saved uploads), so signing out loses nothing, and every workbook built (Export › Saved workbooks); only the WFM team opens them. A plain copy of a workbook goes to MC Data › MC Reports only when chosen in the build dialog: that copy is not locked. With the shared folder it is kept there, locked; otherwise in this browser on this computer. Use Export roster for a backup copy of the roster.</p>
+      <p>Export files are read on your computer and never sent anywhere. What is kept: the roster, the months' results (one row per agent), the quality numbers, the forms and signatures, day totals of the daily data and of the interactions export (never the callers' numbers), the month's Genesys exports and attendance sheets as you dropped them (WFM team › Import › Saved uploads), so signing out loses nothing, and every workbook built (Export › Saved workbooks); only the WFM team opens them. A plain copy of a workbook goes to MC Data › MC Reports only when chosen in the build dialog: that copy is not locked. With the shared folder it is kept there, locked; otherwise in this browser on this computer. Use Export roster for a backup copy of the roster. The WFM team and admins export everything to one file locked with a password, and import it back, on <b>WFM team › Data</b>; accounts and passwords are never in it.</p>
     </section>
   </div>
 </aside>
@@ -8875,7 +8899,7 @@ root.WFM = {
 const Core = (() => {
 
 // ============================================================ constants
-const DEP_ORDER = ['CC', 'SM', 'CT', 'MG', 'OP', 'TS', 'QA', 'WF'];
+const DEP_ORDER = ['CC', 'SM', 'CT', 'MG', 'OP', 'TS', 'QA', 'WF', 'DE'];   // DE last: the order of the departments before it is as it was
 const DEP_NAMES = { CC: 'Customer Care', SM: 'Social Media', CT: 'Complaint Team', MG: 'Management Group',
   OP: 'Operation Supervisors', TS: 'Tele-Sales', QA: 'Quality Assurance', WF: 'Workforce' };
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -9635,6 +9659,88 @@ function reviewMonth(days, T, perf) {
   return s;
 }
 
+// ============================================================ the supervisors' attendance template (AttTpl makes it in the page)
+// A month's exceptions only: one row per day someone was late, absent, on leave or off. Every other day of each person's dates is a
+// working day, and their weekly days off on the Team sheet are OFF. The hidden _mc sheet says it is the template and for which month.
+const ATT_TPL_MARK = 'mc-attendance-template';
+const ATT_TPL_TYPES = [['late', null], ['tardy', null], ['absent', 'Absent'], ['day off', 'OFF'], ['off', 'OFF'], ['al leave', 'AL'], ['annual leave', 'AL'], ['al', 'AL'],
+  ['sl leave', 'SL'], ['sick leave', 'SL'], ['sl', 'SL'], ['unpaid leave', 'Unpaid'], ['unpaid', 'Unpaid'], ['compassionate leave', 'Compassionate Leave'], ['paternity leave', 'Paternity'],
+  ['marriage leave', 'Marriage'], ['exam leave', 'Exam'], ['maternity leave', 'ML'], ['ml', 'ML'], ['eid', 'Eid'], ['national day', 'National Day'], ['founding day', 'Founding Day']];
+/** a Type cell -> the day code, null for Late (the minutes go on the day), undefined when it is empty; other words are kept */
+function attTplType(v) {
+  const s = normSpace(v).toLowerCase().replace(/\s+leaves$/, ' leave'); if (!s) return undefined;
+  const hit = ATT_TPL_TYPES.find(([t]) => t === s); return hit ? hit[1] : /late|tard/.test(s) ? null : normSpace(v);
+}
+/** the template's detection, or null when the workbook is not the template */
+function parseAttTemplate(all) {
+  const mc = (all || []).find(t => /^_mc$/i.test(normSpace(t.name)));
+  if (!mc || normSpace(((mc.rows || [])[0] || [])[0]) !== ATT_TPL_MARK) return null;
+  const kv = new Map((mc.rows || []).map(r => [normSpace((r || [])[0]).toLowerCase(), (r || [])[1]]));
+  const mk = normSpace(kv.get('month')).match(/^(\d{4})-(\d{1,2})$/); if (!mk) return null;
+  const Y = +mk[1], M = +mk[2], ND = daysIn(Y, M), warns = [];
+  const sheetOf = re => all.find(t => re.test(normSpace(t.name)));
+  const TE = sheetOf(/^team$/i), AT = sheetOf(/^attendance$/i);
+  if (!TE || !AT) return { kind: 'error', sheet: 'Attendance template', msg: 'This attendance template has lost its Team or Attendance sheet' };
+  // a date in the template's month -> its day; -1 for a date in another month; null when there is none
+  const dayOf = v => {
+    const p = parseHeaderDate(v); if (!p) return null;
+    const ok = x => x && x.m === M && (!x.y || x.y === Y) && x.d >= 1 && x.d <= ND;
+    return ok(p) ? p.d : ok(p.alt) ? p.alt.d : -1;
+  };
+  const col = (hdr, re) => hdr.findIndex(x => re.test(x));
+  // Team: everyone the month counts, their weekly days off and any first or last day
+  const th = headerRow(TE.rows, r => r.some(x => /^name$/i.test(x)) && r.some(x => /days off/i.test(x)));
+  if (th < 0) return { kind: 'error', sheet: 'Attendance template', msg: 'The Team sheet of this attendance template has no Name and Weekly days off headers' };
+  const H1 = TE.rows[th].map(cellStr), tc = { id: col(H1, /^id$|national/i), name: col(H1, /^name$/i), brand: col(H1, /^(brand|team)$/i), dep: col(H1, /^dep/i), off: col(H1, /days off/i), first: col(H1, /^first/i), last: col(H1, /^last/i) };
+  const offOf = v => { const s = normSpace(v).toLowerCase(); return new Set(s ? s.split(/[^a-z]+/).map(w => WD.findIndex(x => x.toLowerCase() === w.slice(0, 3))).filter(i => i >= 0) : []); };
+  const people = [];
+  for (const r of TE.rows.slice(th + 1)) {
+    if (!r) continue; const name = tc.name >= 0 ? normSpace(r[tc.name]) : '', id = tc.id >= 0 ? cleanId(r[tc.id]) : '';
+    if (!name && !id) continue;
+    const p = { name, id, idRaw: tc.id >= 0 ? normSpace(r[tc.id]) : '', brand: tc.brand >= 0 ? normTeam(r[tc.brand]) : '', dep: tc.dep >= 0 ? normDep(r[tc.dep]) : '', off: offOf(tc.off >= 0 ? r[tc.off] : ''),
+      first: tc.first >= 0 ? dayOf(r[tc.first]) : null, last: tc.last >= 0 ? dayOf(r[tc.last]) : null };
+    if (p.first === -1 || p.last === -1) warns.push(`${name || id}: a first or last day outside ${MON[M - 1]} ${Y} on the Team sheet was not used`);
+    people.push(p);
+  }
+  const offKeys = people.map(p => [...p.off].join(',')), common = offKeys.sort((a, b) => offKeys.filter(x => x === b).length - offKeys.filter(x => x === a).length)[0] || '';
+  const offDefault = new Set(common ? common.split(',').map(Number) : []);
+  const base = p => Array.from({ length: ND }, (_, i) => {
+    const d = i + 1; if ((p.first > 0 && d < p.first) || (p.last > 0 && d > p.last)) return null;
+    return p.off.has(new Date(Date.UTC(Y, M - 1, d)).getUTCDay()) ? 'OFF' : 'Attend';
+  });
+  const days = people.map(base);
+  // Attendance: the exceptions, in row order (a later row for the same day wins)
+  const ah = headerRow(AT.rows, r => r.some(x => /^date$/i.test(x)) && r.some(x => /^type$/i.test(x)));
+  let entries = 0;
+  if (ah >= 0) {
+    const H2 = AT.rows[ah].map(cellStr), ac = { date: col(H2, /^date$/i), to: col(H2, /^to\b/i), name: col(H2, /^name$/i), id: col(H2, /^id$|national/i), type: col(H2, /^type$/i), min: col(H2, /minute/i) };
+    const seen = new Map();
+    AT.rows.slice(ah + 1).forEach((r, j) => {
+      if (!r) return; const row = ah + j + 2, name = ac.name >= 0 ? normSpace(r[ac.name]) : '', id = ac.id >= 0 ? cleanId(r[ac.id]) : '', t = ac.type >= 0 ? r[ac.type] : null;
+      const raw = ac.date >= 0 ? r[ac.date] : null;
+      if (!name && !id && isBlank(raw) && isBlank(t)) return;
+      const who = name || id || `row ${row}`, code = attTplType(t), from = dayOf(raw), to = ac.to >= 0 ? dayOf(r[ac.to]) : null;
+      if (!name && !id) { warns.push(`Row ${row}: no name, so it was not used`); return; }
+      if (code === undefined) { warns.push(`Row ${row} (${who}): no type, so it was not used`); return; }
+      if (from == null) { warns.push(`Row ${row} (${who}): no date, so it was not used`); return; }
+      if (from === -1) { warns.push(`Row ${row} (${who}): the date is not in ${MON[M - 1]} ${Y}, so it was not used`); return; }
+      let i = people.findIndex(p => id && p.id === id); if (i < 0) i = people.findIndex(p => name && normName(p.name) === normName(name));
+      if (i < 0) { people.push({ name, id, idRaw: id, brand: '', dep: '', off: offDefault, first: null, last: null }); days.push(base(people[people.length - 1])); i = people.length - 1; warns.push(`${who} is not on the Team sheet: added, with the usual days off`); }
+      const end = code === null ? from : to > 0 ? Math.max(to, from) : to === -1 ? ND : from;
+      for (let d = from; d <= end; d++) {
+        const k = i + '|' + d; if (seen.has(k) && seen.get(k) !== row) warns.push(`${who}, ${d} ${MON[M - 1]}: rows ${seen.get(k)} and ${row} are for the same day; row ${row} is used`);
+        seen.set(k, row);
+        if (code === null) { const mins = Number(ac.min >= 0 ? r[ac.min] : NaN); if (!(mins > 0)) warns.push(`Row ${row} (${who}): Late with no minutes, so the day counts as attended`); days[i][d - 1] = mins > 0 ? Math.round(mins) : 'Attend'; }
+        else days[i][d - 1] = code;
+      }
+      entries++;
+    });
+  } else warns.push('The Attendance sheet has no Date and Type headers, so only the weekly days off were used');
+  const dates = Array.from({ length: ND }, (_, i) => ({ y: Y, m: M, d: i + 1 }));
+  return { kind: 'attendance', sheet: `${normSpace(AT.name)} (template)`, data: { dates, template: { month: `${Y}-${String(M).padStart(2, '0')}`, spv: normSpace(kv.get('supervisor')), entries, warns },
+    people: people.map((p, i) => ({ name: p.name, id: p.id, idRaw: p.idRaw, team: p.brand, dep: p.dep, status: '', tardyTotal: null, cells: days[i].map((v, k) => [dates[k], v]) })).filter(p => p.cells.some(([, v]) => v != null)) } };
+}
+
 /* Read one file into tables: every sheet with its state (hidden ones too), a CSV as one visible table. null: not a file the engine reads */
 async function readTables(name, buf) {
   const lower = name.toLowerCase();
@@ -9652,6 +9758,7 @@ function analyzeTables(name, all) {
   if (all == null) return /\.xls$/.test(lower) ? [{ kind: 'error', sheet: name, msg: 'Old .xls format - open it in Excel and save as .xlsx' }] : [{ kind: 'error', sheet: name, msg: 'Not a spreadsheet (use .xlsx or .csv)' }];
   if (/\.(csv|txt)$/.test(lower)) tables = all;
   else if (/\.(xlsx|xlsm)$/.test(lower)) {
+    const tpl = parseAttTemplate(all); if (tpl) return [tpl];   // the supervisors' attendance template: its month's every day, from the exceptions
     const roster = all.find(s => /^roster$/i.test(normSpace(s.name)));
     tables = roster ? [roster] : all.filter(s => s.state === 'visible');
   } else tables = all.filter(s => s.state === 'visible');
@@ -9810,7 +9917,7 @@ function buildModel(dets, settings, overrides = {}) {
 }
 
 return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, daysIn, ymdSerial, weekday, colName, ref, round6,
-  readZip, writeZip, crc32, readXlsx, readXlsb, parseCSV, parseHeaderDate, adhVal, ahtSeconds, normAtt, attCat, normDep, normTeam, normStatus,
+  readZip, writeZip, crc32, readXlsx, readXlsb, parseCSV, parseHeaderDate, adhVal, ahtSeconds, normAtt, attCat, normDep, normTeam, normStatus, parseAttTemplate, ATT_TPL_MARK,
   analyzeFile, readTables, analyzeTables, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
 })();
 if (typeof module !== 'undefined') module.exports = Core;
@@ -10195,6 +10302,9 @@ function recognise(name, tables, opts = {}) {
   const feats = V.map(t => { const F = features(t); F.cands = sheetCands(F, opts, detBy.get(t.name) || (V.length === 1 ? dets.filter(d => d.kind !== 'error' && d.kind !== 'unknown') : null)); return F; });
   let cands = [...workbookCands(V, feats, all), ...feats.flatMap(F => F.cands)].filter(c => KINDS[c.kind] || c.kind === 'oldDeduction');
   cands = cands.map(c => (c.kind === 'oldDeduction' ? { ...c, kind: 'oldDeductionBook', score: c.score - 0.06, part: true } : c));
+  // the tool's own attendance template (Core.parseAttTemplate read it): the people are on its Team sheet
+  const tpl = dets.find(d => d && d.kind === 'attendance' && d.data && d.data.template);
+  if (tpl) cands.unshift({ kind: 'attendance', score: 0.99, reasons: [`The tool's attendance template${tpl.data.template.spv ? ` from ${tpl.data.template.spv}` : ''}: one row per late, absent, leave or day off, every other day a working day`], sheet: (V.find(t => /^team$/i.test(normSpace(t.name))) || {}).name || '' });
   // the best of each kind, highest first
   const best = new Map(); for (const c of cands.sort((a, b) => b.score - a.score)) if (!best.has(c.kind)) best.set(c.kind, c);
   let L = [...best.values()];
@@ -10368,7 +10478,10 @@ class Sheet {
     let pr = 1;
     for (const r of this.cf) out.push(r.type === 'dup' ? `<conditionalFormatting sqref="${r.sqref}"><cfRule type="duplicateValues" dxfId="${r.dxfId}" priority="${pr++}"/></conditionalFormatting>`
       : `<conditionalFormatting sqref="${r.sqref}"><cfRule type="expression" dxfId="${r.dxfId}" priority="${pr++}"${r.stop ? ' stopIfTrue="1"' : ''}><formula>${esc(r.formula)}</formula></cfRule></conditionalFormatting>`);
-    if (this.dv.length) out.push(`<dataValidations count="${this.dv.length}">${this.dv.map(d => `<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="${d.sqref}"><formula1>${esc(d.list)}</formula1></dataValidation>`).join('')}</dataValidations>`);
+    // a list (d.list), or a date or whole number between f1 and f2 (d.type 'date' | 'whole'), with an optional error message
+    const dvXml = d => (d.type ? `<dataValidation type="${d.type}" operator="between" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''} sqref="${d.sqref}"><formula1>${esc(d.f1)}</formula1><formula2>${esc(d.f2)}</formula2></dataValidation>`
+      : `<dataValidation type="list" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''} sqref="${d.sqref}"><formula1>${esc(d.list)}</formula1></dataValidation>`);
+    if (this.dv.length) out.push(`<dataValidations count="${this.dv.length}">${this.dv.map(dvXml).join('')}</dataValidations>`);
     out.push('<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>' + (this._drawing ? '<drawing r:id="rId1"/>' : '') + '</worksheet>');
     return out.join('');
   }
@@ -10924,9 +11037,163 @@ async function build(ctx) {
 }
 function ymd(y, m, d) { return C.ymdSerial(y, m, d); }
 
-return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell };
+// ------------------------------------------------------------ the deduction email's attachment
+// Laid out like the old Monthly Deduction file: 'Attendance Report' (each day's code, the counts, scheduled and actual days) and
+// 'Monthly Deduction' (each day's Sched., Actual and Diff, and the total). Values only, so the two sheets stand on their own.
+const DED_SHOW = { AL: 'AL leave', SL: 'SL leaves', Paternity: 'Paternity leave', Marriage: 'Marriage leave', Exam: 'Exam leave' };
+const dedShowDay = v => (v == null || v === '' ? '' : typeof v === 'number' ? 'Attend' : DED_SHOW[v] || String(v));
+const DED_COUNTS = [['Tardy', 9], ['AL leave', 10], ['SL leaves', 10], ['Paternity leave', 11], ['Compassionate Leave', 13], ['EID / National Day', 12], ['ML', 7], ['Unpaid', 8], ['Absent', 8], ['Attend', 8], ['Scheduled days', 11], ['Actual days', 10]];
+/** a person's counts in the order of DED_COUNTS (Tardy, Scheduled days and Actual days come with the person) */
+function dedCounts(a) {
+  const n = re => a.days.filter(v => typeof v === 'string' && re.test(v)).length;
+  return [a.tardy || 0, n(/^al$/i), n(/^sl$/i), n(/^paternity/i), n(/^compassionate/i), n(/^(eid|national day|founding day)/i), n(/^ml$/i), n(/^unpaid/i), n(/^absent$/i),
+    a.days.filter(v => v === 'Attend' || typeof v === 'number').length, a.sched ?? '', a.actual ?? ''];
+}
+/**
+ * d: { y, m, att: [{ id, name, brand, team, days: [ND] (Attend, tardy minutes, OFF, AL, SL, Absent, other codes, null), tardy, sched, actual }],
+ *      ded: [{ id, name, brand, team, sched: [ND] | null, act: [ND] | null, total }] } -> xlsx bytes
+ */
+async function dedMail(d, opts = {}) {
+  const S = new Styles(), NAVY = 'FF1F3864', WHITE = 'FFFFFFFF', GRID = 'FFD9D9D9', TAB = 'FF375623';
+  const Y = d.y, M = d.m, ND = C.daysIn(Y, M), L = `${C.MON[M - 1]} - ${Y}`;
+  const title = S.get({ font: { sz: 16, b: true, color: NAVY } }), sub = S.get({ font: { sz: 9, i: true, color: 'FF7F7F7F' } });
+  const H = (fill, fmt) => S.get({ font: { b: true, color: WHITE }, fill, border: WHITE, align: { h: 'center', wrap: true }, ...(fmt ? { numFmt: fmt } : {}) });
+  const hdr = H(NAVY), hDate = H(NAVY, 'dd-mmm'), hDay = H(NAVY, 'ddd dd-mmm'), hSA = H('FF2F5597'), hDf = H('FFC65911'), hTot = H(TAB), hNote = H('FF595959'), hCnt = H('FF305496');
+  const cId = S.get({ font: {}, border: GRID, align: { h: 'center' }, numFmt: '0' }), cName = S.get({ font: {}, border: GRID, align: { h: 'left' } }), cC = S.get({ font: {}, border: GRID, align: { h: 'center' } });
+  const cCnt = S.get({ font: { b: true }, fill: 'FFF2F2F2', border: GRID, align: { h: 'center' } }), cDiff = S.get({ font: { b: true }, fill: 'FFFCEEE4', border: GRID, align: { h: 'center' } });
+  const cTot = S.get({ font: { sz: 11, b: true }, fill: 'FFF2F7EE', border: GRID, align: { h: 'center' } });
+  const LEG = [['AL leave', 'FF8DB4E2', 'FF1F3864'], ['SL leaves', 'FFA9D08E', 'FF274E13'], ['Absent', 'FFFF8B8B', 'FF9C0006'], ['National Day', 'FF00843D', WHITE], ['OFF', 'FFBFBFBF', 'FF262626']];
+  const leg = LEG.map(([t, fill, color]) => [t, S.get({ font: { b: true, color }, fill, border: WHITE, align: { h: 'center' } }), S.dxf({ color, fill })]);
+  const other = S.dxf({ color: 'FF5B2C6F', fill: 'FFE4DFEC' }), redB = S.dxf({ color: 'FFC00000', b: true });
+  const idOf = x => { const s = String(x.id ?? '').trim(); return /^\d{6,}$/.test(s) ? +s : s || 'NA'; };
+
+  // ---- Attendance Report
+  const A = new Sheet('Attendance Report'); A.tab = TAB;
+  A.set(1, 1, `MC Monthly Attendance - ${L}`, title); A.heights[1] = 30; A.heights[2] = 30;
+  const D0 = 5, CN = D0 + ND, NOTE = CN + DED_COUNTS.length, R0 = 3, RL = Math.max(R0, R0 + d.att.length - 1);
+  leg.forEach(([t, s], i) => { const c = D0 + 6 + i * 2; A.set(1, c, t, s); A.set(1, c + 1, null, s); A.merge(1, c, 1, c + 1); });   // the colours' legend, right of the title
+  [['ID', 14], ['Name', 32], ['Team', 11], ['Dep', 7]].forEach(([h, w], j) => { A.set(2, j + 1, h, hdr); A.width(j + 1, w); });
+  for (let i = 1; i <= ND; i++) { A.set(2, D0 + i - 1, ymd(Y, M, i), hDate); A.width(D0 + i - 1, 9.5); }
+  DED_COUNTS.forEach(([h, w], j) => { A.set(2, CN + j, h, j >= 10 ? hTot : hCnt); A.width(CN + j, w); });
+  A.set(2, NOTE, 'Review Notes', hNote); A.width(NOTE, 30);
+  d.att.forEach((a, i) => {
+    const r = R0 + i;
+    A.set(r, 1, idOf(a), cId); A.set(r, 2, a.name, cName); A.set(r, 3, a.brand || '', cC); A.set(r, 4, a.team || '', cC);
+    for (let k = 0; k < ND; k++) A.set(r, D0 + k, dedShowDay(a.days[k]), cC);
+    dedCounts(a).forEach((v, j) => A.set(r, CN + j, v, cCnt)); A.set(r, NOTE, null, cName);
+  });
+  const ag = `${ref(R0, D0)}:${ref(RL, CN - 1)}`, tl = ref(R0, D0);
+  leg.forEach(([t, , dx]) => A.addCF(ag, t === 'National Day' ? `LEFT(TRIM(${tl}),8)="National"` : `TRIM(${tl})="${t}"`, dx));
+  A.addCF(ag, `AND(${tl}<>"",${tl}<>"Attend")`, other);
+  A.freeze = [R0, D0]; A.filter = `A2:${ref(RL, NOTE)}`;
+
+  // ---- Monthly Deduction
+  const DE = new Sheet('Monthly Deduction'); DE.tab = TAB;
+  DE.set(1, 1, `MC Monthly Deduction - ${L}`, title);
+  const noDaily = d.ded.filter(x => !x.sched || !x.act).length;
+  DE.set(2, 1, `Sched. = scheduled work minutes. Actual = minutes signed on inside them. Diff = Sched. - Actual (0 if Actual is 0).${noDaily ? ` ${noDaily === 1 ? '1 person has' : `${noDaily} people have`} only a total: the month was saved before each day's minutes were kept.` : ''}`, sub);
+  Object.assign(DE.heights, { 1: 30, 2: 18, 3: 6, 4: 22, 5: 30 });
+  [['ID', 14], ['Name', 34], ['Team', 11], ['Dep', 8]].forEach(([h, w], j) => { DE.set(4, j + 1, h, hdr); DE.set(5, j + 1, null, hdr); DE.merge(4, j + 1, 5, j + 1); DE.width(j + 1, w); });
+  const E0 = 5, TOT = E0 + ND * 3, DN = TOT + 1, Q0 = 6, QL = Math.max(Q0, Q0 + d.ded.length - 1);
+  for (let i = 1; i <= ND; i++) {
+    const c = E0 + (i - 1) * 3;
+    DE.set(4, c, ymd(Y, M, i), hDay); DE.set(4, c + 1, null, hDay); DE.set(4, c + 2, null, hDay); DE.merge(4, c, 4, c + 2);
+    DE.set(5, c, 'Sched.', hSA); DE.set(5, c + 1, 'Actual', hSA); DE.set(5, c + 2, 'Diff (min)', hDf);
+    DE.width(c, 9); DE.width(c + 1, 9); DE.width(c + 2, 10.5);
+  }
+  DE.set(4, TOT, 'Total (min)', hTot); DE.set(5, TOT, null, hTot); DE.merge(4, TOT, 5, TOT); DE.width(TOT, 12);
+  DE.set(4, DN, 'Review Notes', hNote); DE.set(5, DN, null, hNote); DE.merge(4, DN, 5, DN); DE.width(DN, 30);
+  d.ded.forEach((x, i) => {
+    const r = Q0 + i; let tot = 0, any = false;
+    DE.set(r, 1, idOf(x), cId); DE.set(r, 2, x.name, cName); DE.set(r, 3, x.brand || '', cC); DE.set(r, 4, x.team || '', cC);
+    for (let k = 0; k < ND; k++) {
+      const c = E0 + k * 3, sv = x.sched ? x.sched[k] : null, av = x.act ? x.act[k] : null;
+      const dv = sv == null || av == null ? '' : av === 0 ? 0 : Math.max(0, sv - av); if (typeof dv === 'number') { tot += dv; any = true; }
+      DE.set(r, c, sv ?? '', cC); DE.set(r, c + 1, av ?? '', cC); DE.set(r, c + 2, dv, cDiff);
+    }
+    DE.set(r, TOT, any ? tot : x.total ?? '', cTot); DE.set(r, DN, null, cName);
+  });
+  for (let k = 0; k < ND; k++) { const c = E0 + k * 3 + 2, a = ref(Q0, c); DE.addCF(`${a}:${ref(QL, c)}`, `AND(ISNUMBER(${a}),${a}>0)`, redB); }
+  DE.freeze = [Q0, E0]; DE.filter = `A5:${ref(QL, DN)}`;
+  return pack([A, DE], S, {}, opts);
+}
+
+return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell, dedMail, dedShowDay };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Writer2;
+
+/* The supervisors' attendance template, for the departments that send their attendance (CC and SM come from Genesys). The tool
+   makes it for one month and one supervisor's team; the supervisor writes one row per exception (late, absent, a leave, a day off)
+   and the file is dropped on Import, where Core.parseAttTemplate reads it: every other day of the month is a working day. */
+'use strict';
+const AttTpl = ((C, W) => {
+const TYPES = ['Late', 'Absent', 'Day off', 'AL leave', 'SL leave', 'Unpaid leave', 'Compassionate leave', 'Paternity leave', 'Marriage leave', 'Exam leave', 'Maternity leave', 'Eid', 'National Day', 'Founding Day'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const fileName = (y, m, spv) => `Attendance - ${C.MON[m - 1]} ${y} - ${String(spv || 'Team').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`;
+/**
+ * o: { y, m, spv (the supervisor's name), spvPid, people: [{ id, name, brand, team }], offDays ('Fri, Sat'), rows (rows to fill),
+ *      extra (empty Team rows for new people), at, by, logo } -> xlsx bytes
+ */
+async function build(o) {
+  const Y = o.y, M = o.m, ND = C.daysIn(Y, M), MONTH = `${MONTHS[M - 1]} ${Y}`, people = o.people || [];
+  const S = new W.Styles(), NAVY = 'FF1F3864', WHITE = 'FFFFFFFF', GRID = 'FFBFBFBF', INP = 'FFFFF2CC', INK = 'FF000000';
+  const title = S.get({ font: { sz: 15, b: true, color: NAVY } }), help = S.get({ font: { sz: 10, color: 'FF404040' }, align: { h: 'left', v: 'top', wrap: true } });
+  const hdr = S.get({ font: { b: true, color: WHITE }, fill: NAVY, border: WHITE, align: { h: 'center', wrap: true } });
+  const inp = (h, numFmt) => S.get({ font: { sz: 11, color: INK }, fill: INP, border: GRID, align: { h }, ...(numFmt ? { numFmt } : {}) });
+  const iL = inp('left'), iC = inp('center'), iD = inp('center', 'dd-mmm-yyyy'), iN = inp('center', '0');
+  const cL = S.get({ font: { sz: 11, color: INK }, border: GRID, align: { h: 'left' } }), cC = S.get({ font: { sz: 11, color: INK }, border: GRID, align: { h: 'center' } });
+  const cId = S.get({ font: { sz: 11, color: INK }, border: GRID, align: { h: 'center' }, numFmt: '0' });
+  const auto = S.get({ font: { sz: 10, i: true, color: 'FF595959' }, fill: 'FFF2F2F2', border: GRID, align: { h: 'center' }, numFmt: '0' });
+  const first = String(C.ymdSerial(Y, M, 1)), last = String(C.ymdSerial(Y, M, ND)), inMonth = { errorTitle: 'Not in the month', error: `Type a day of ${MONTH}.` };
+  const T0 = 5, TL = T0 + people.length + (o.extra ?? 15) - 1;
+  const idCell = x => { const s = String(x ?? '').trim(); return /^\d{6,}$/.test(s) ? +s : s; };
+
+  // ---- Attendance: one row per exception
+  const A = new W.Sheet('Attendance'); A.tab = NAVY;
+  A.set(1, 1, `Attendance · ${MONTH} · ${o.spv || 'Team'}`, title); A.heights[1] = 28;
+  A.set(2, 1, `One row for each day someone was late, absent, on leave, or off on a day that is not one of their weekly days off (those are on the Team sheet). Every other day of ${MONTH} counts as a working day. A leave of several days: the first day in Date, the last in To.`, help);
+  A.merge(2, 1, 2, 7); A.heights[2] = 46;
+  A.set(3, 1, 'Late: type the minutes late. Pick the name from the list and the ID fills in by itself. When the month is done, send the file to the WFM team (or drop it on the tool\'s Import).', help);
+  A.merge(3, 1, 3, 7); A.heights[3] = 32;
+  [['Date', 14], ['To (several days)', 14], ['Name', 32], ['ID', 14], ['Type', 20], ['Minutes late', 12], ['Note', 34]].forEach(([h, w], j) => { A.set(4, j + 1, h, hdr); A.width(j + 1, w); });
+  A.heights[4] = 30;
+  const R0 = 5, RL = R0 + (o.rows ?? 300) - 1, teamName = `Team!$B$${T0}:$B$${TL}`, teamId = `Team!$A$${T0}:$A$${TL}`;
+  for (let r = R0; r <= RL; r++) {
+    A.set(r, 1, null, iD); A.set(r, 2, null, iD); A.set(r, 3, null, iL);
+    A.set(r, 4, '', auto, `IF(C${r}="","",IFERROR(INDEX(${teamId},MATCH(C${r},${teamName},0)),""))`);
+    A.set(r, 5, null, iL); A.set(r, 6, null, iN); A.set(r, 7, null, iL);
+  }
+  A.dv.push({ type: 'date', sqref: `A${R0}:B${RL}`, f1: first, f2: last, ...inMonth });
+  A.dv.push({ sqref: `C${R0}:C${RL}`, list: teamName, error: 'Pick a name from the Team sheet (add a new person there first).' });
+  A.dv.push({ sqref: `E${R0}:E${RL}`, list: `"${TYPES.join(',')}"`, error: 'Pick a type from the list.' });
+  A.dv.push({ type: 'whole', sqref: `F${R0}:F${RL}`, f1: '1', f2: '720', error: 'Minutes late: a whole number from 1 to 720.' });
+  A.freeze = [R0, 1];
+
+  // ---- Team: who the month counts, and their weekly days off
+  const TE = new W.Sheet('Team'); TE.tab = 'FF2F5597';
+  TE.set(1, 1, `Team · ${o.spv || ''} · ${MONTH}`, title); TE.heights[1] = 28;
+  TE.set(2, 1, 'Weekly days off: the weekdays each person is off every week (for example Fri, Sat). Leave it empty when the days off change from week to week, and write each day off on the Attendance sheet instead. First day and Last day: only for someone who joined or left during the month. Add a new person in an empty row.', help);
+  TE.merge(2, 1, 2, 7); TE.heights[2] = 58;
+  [['ID', 14], ['Name', 32], ['Brand', 12], ['Dep', 8], ['Weekly days off', 16], ['First day', 13], ['Last day', 13]].forEach(([h, w], j) => { TE.set(4, j + 1, h, hdr); TE.width(j + 1, w); });
+  TE.heights[4] = 30;
+  people.forEach((p, i) => {
+    const r = T0 + i;
+    TE.set(r, 1, idCell(p.id), cId); TE.set(r, 2, p.name, cL); TE.set(r, 3, p.brand || '', cC); TE.set(r, 4, p.team || '', cC);
+    TE.set(r, 5, o.offDays ?? 'Fri, Sat', iC); TE.set(r, 6, null, iD); TE.set(r, 7, null, iD);
+  });
+  for (let r = T0 + people.length; r <= TL; r++) [iN, iL, iC, iC, iC, iD, iD].forEach((s, j) => TE.set(r, j + 1, null, s));
+  TE.dv.push({ type: 'date', sqref: `F${T0}:G${TL}`, f1: first, f2: last, ...inMonth });
+  TE.freeze = [T0, 1];
+
+  // ---- what the file is (hidden): the tool knows the month and the team when it comes back
+  const X = new W.Sheet('_mc'); X.hidden = true;
+  [[C.ATT_TPL_MARK, 1], ['month', `${Y}-${String(M).padStart(2, '0')}`], ['supervisor', o.spv || ''], ['pid', o.spvPid || ''], ['made', o.at || ''], ['by', o.by || '']]
+    .forEach(([k, v], i) => { X.set(i + 1, 1, k); X.set(i + 1, 2, v); });
+  return W.pack([A, TE, X], S, {}, o.logo ? { logo: o.logo } : {});
+}
+return { build, fileName, TYPES };
+})(typeof Core !== 'undefined' ? Core : require('./core.js'), typeof Writer2 !== 'undefined' ? Writer2 : require('./writer2.js'));
+if (typeof module !== 'undefined') module.exports = AttTpl;
 
 /* glue: raw detections + roster -> writer context */
 const Glue = ((C) => {
@@ -12714,7 +12981,7 @@ const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
 const REVIEW_TABS = ['checks', 'people', 'issues', 'preview', 'kpi', 'history'];
-const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
+const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
   step: 'import', tab: 'checks',
@@ -12836,11 +13103,30 @@ async function folderStart() {
   if (h && typeof h.queryPermission !== 'function') h = null;   // not a folder (left by something else)
   const on = folderOn = async kind => {
     if (kind === 'local') { try { sessionStorage.setItem(PREF, 'local'); } catch (e) { /* none */ } startLocal(); return; }
-    if (kind === 'again') { const f = folderNow || h; if (f && await FolderStore.permission(f, true)) openFolder(f); else Auth.connect({ state: f ? 'again' : 'new', name: f ? f.name : '', on, msg: f ? 'The browser did not allow the folder. Try again and choose Allow (or "Allow on every visit").' : '' }); return; }
+    if (kind === 'again') {
+      // the browser's question can sit unnoticed (or as an icon in the address bar): the screen says what it waits for
+      const f = folderNow || h; if (f) Auth.connect({ state: 'opening', name: f.name, on, ask: true });
+      if (f && await FolderStore.permission(f, true)) openFolder(f); else Auth.connect({ state: f ? 'again' : 'new', name: f ? f.name : '', on, msg: f ? 'The browser did not allow the folder. Try again and choose Allow (or "Allow on every visit").' : '' });
+      return;
+    }
     if (kind === 'pick') {
-      let d; try { d = await FolderStore.pick(); } catch (e) { if (e && e.name === 'AbortError') return; Auth.connect({ state: 'new', on, msg: 'This browser could not open the folder (' + ((e && e.message) || e) + ').' }); return; }
-      let what = await FolderStore.inspect(d);
-      if (what.kind !== 'store') { try { const sub = await d.getDirectoryHandle('MC Data'); const w2 = await FolderStore.inspect(sub); if (w2.kind === 'store') { d = sub; what = w2; } } catch (e) { /* no data folder inside */ } }
+      let d; try { d = await FolderStore.pick(); } catch (e) {
+        // cancelled, or "edit files" not allowed: say so, or the page looks stuck on the same screen
+        if (e && e.name === 'AbortError') { Auth.connect({ state: folderNow || h ? 'again' : 'new', name: (folderNow || h || {}).name || '', on, msg: 'No folder was opened. Choose the MC Data folder, then choose Edit files (or Allow) when the browser asks: the tool saves your work there.' }); return; }
+        Auth.connect({ state: 'new', on, msg: e && (e.name === 'NotAllowedError' || e.name === 'SecurityError') ? 'This browser is not allowed to open folders on this computer (a company setting). Ask IT to allow it for this file, or use this computer only.' : 'This browser could not open the folder (' + errText(e) + ').' }); return;
+      }
+      Auth.connect({ state: 'opening', name: d.name, on });
+      // a folder that does not answer, or whose data cannot be read yet, says so: it is never offered to be set up again
+      const look = dir => withTimeout(FolderStore.inspect(dir).catch(e => ({ kind: 'error', e })), 20000, { kind: 'timeout' });
+      const cant = (name, w) => `${w.kind === 'timeout' ? `${name} did not answer` : `Could not read ${name} (${errText(w.e)})`}. If it is in OneDrive or SharePoint, right-click it in File Explorer and choose Always keep on this device; if it is on a network drive, check that it opens in File Explorer. Then choose it again.`;
+      let what = await look(d);
+      if (what.kind === 'timeout' || what.kind === 'error') { Auth.connect({ state: 'new', on, msg: cant(d.name, what) }); return; }
+      if (what.kind !== 'store') {
+        let sub = null; try { sub = await withTimeout(d.getDirectoryHandle('MC Data'), 20000, null); } catch (e) { /* no data folder inside */ }
+        const w2 = sub ? await look(sub) : null;
+        if (w2 && (w2.kind === 'timeout' || w2.kind === 'error')) { Auth.connect({ state: 'new', on, msg: cant(`MC Data in ${d.name}`, w2) }); return; }
+        if (w2 && w2.kind === 'store') { d = sub; what = w2; }
+      }
       if (what.kind === 'store') { await withTimeout(FolderStore.remember(d), 3000); openFolder(d); return; }
       chosen = d; Auth.connect({ state: what.kind, name: d.name, on }); return;
     }
@@ -12876,17 +13162,27 @@ function openFolder(h) {
       else { state.rosterReady = true; render(); }
     });
   }
-  // the folder must answer before the sign-in: a folder out of reach says so (and is never taken for an empty one)
+  // the folder must answer before the sign-in: a folder out of reach says so (and is never taken for an empty one). Meanwhile the
+  // screen says what it is waiting for, with the seconds, so a slow folder never looks like a page that is stuck
   bootStep(`the shared data folder (${h.name})`, true);
-  const fail = msg => { if (Auth.mode() === 'loading' || Auth.mode() === 'connect') Auth.connect({ state: 'again', name: h.name, on: folderOn || (() => location.reload()), msg }); };
-  const away = `The data folder ${h.name} is not answering. Check that you can open it in File Explorer (network or VPN), then press Open the shared data.`;
+  const fail = msg => { clearInterval(tick); if (Auth.mode() === 'loading' || Auth.mode() === 'connect') Auth.connect({ state: 'again', name: h.name, on: folderOn || (() => location.reload()), msg }); };
+  const away = `The data folder ${h.name} is not answering. If it is in OneDrive or SharePoint, right-click it in File Explorer and choose Always keep on this device; if it is on a network drive (or VPN), check that it opens in File Explorer. Then press Open the shared data.`;
+  if (Auth.mode() === 'connect' || Auth.mode() === 'loading') Auth.connect({ state: 'opening', name: h.name, on: folderOn || (() => location.reload()) });
+  const t0 = Date.now(); let step = 'Checking the folder';
+  const tick = setInterval(() => {
+    const w = $('connWait'), hp = $('connHelp'); if (!w) { if (Auth.mode() !== 'connect') clearInterval(tick); return; }
+    const s = Math.round((Date.now() - t0) / 1000); w.textContent = `${step}… ${s} s`;
+    if (hp && s >= 10 && hp.hidden) { hp.hidden = false; hp.textContent = `Still waiting for ${h.name}. If it is in OneDrive or SharePoint, the files may still be downloading to this computer: right-click the folder in File Explorer and choose Always keep on this device. On a network drive, check that it opens in File Explorer.`; }
+  }, 1000);
   (async () => {
     const st = await withTimeout(FolderStore.check(h), 20000, 'timeout');
-    if (state.db !== db) return;   // another folder was opened meanwhile
+    if (state.db !== db) { clearInterval(tick); return; }   // another folder was opened meanwhile
     if (st === 'timeout') { fail(away); return; }
-    if (st === 'notstore') { FolderStore.forget().catch(() => {}); Auth.connect({ state: 'new', on: folderOn, msg: `${h.name} does not hold the tool's data. Choose the data folder (MC Data) in the common folder.` }); return; }
+    if (st === 'notstore') { clearInterval(tick); FolderStore.forget().catch(() => {}); Auth.connect({ state: 'new', on: folderOn, msg: `${h.name} does not hold the tool's data. Choose the data folder (MC Data) in the common folder.` }); return; }
     if (st !== 'ok') { fail(`Could not read the data folder ${h.name} (${st.replace(/^error: /, '')}). Check that you can open it in File Explorer, then press Open the shared data.`); return; }
+    step = 'Reading the accounts';
     const r = await withTimeout(Auth.start(db).then(() => 'ok', e => 'error: ' + errText(e)), 45000, 'timeout');
+    clearInterval(tick);
     if (state.db !== db) return;
     if (r === 'timeout') fail(away);
     else if (r !== 'ok') fail(`Could not read the accounts in ${h.name} (${r.replace(/^error: /, '')}). Check that you can open the folder in File Explorer, then press Open the shared data.`);
@@ -12935,6 +13231,7 @@ function applySettings(d) {
   if (Array.isArray(d.dedBrands)) s.dedBrands = d.dedBrands.filter(x => typeof x === 'string');
   if (Array.isArray(d.dedTeams)) s.dedTeams = d.dedTeams.filter(x => typeof x === 'string');
   if (Array.isArray(d.incFullAdhTeams)) s.incFullAdhTeams = d.incFullAdhTeams.filter(x => typeof x === 'string');
+  if (Array.isArray(d.attTplTeams)) s.attTplTeams = d.attTplTeams.filter(x => typeof x === 'string');
   if (typeof d.manager === 'string' && d.manager.trim()) s.manager = d.manager;
   if (typeof d.managerTitle === 'string' && d.managerTitle.trim()) s.managerTitle = d.managerTitle;
   if (Array.isArray(d.noAutoLink)) s.noAutoLink = d.noAutoLink.filter(x => typeof x === 'string');
@@ -13000,6 +13297,8 @@ function localDb() {
   const emit = path => { const s = path.split('/'), cs = new Set([s[0], s.slice(0, -1).join('/')]); for (const c of cs) (listeners.get(c) || []).forEach(f => setTimeout(() => f(qsnap(c)), 0)); };   // the record's own collection (a sub-collection too) and its top one
   return {
     local: true, persistent,
+    /** every record kept in this browser (WFM team › Data › Export): skip(c) leaves a top collection out */
+    dump: async skip => ({ records: Object.entries(data).filter(([p]) => !(skip && skip(p.split('/')[0]))).map(([path, body]) => ({ path, body: copy(body) })), bad: [] }),
     doc: path => ({
       id: path.split('/').pop(), path,
       get: async () => snapDoc(path.split('/').pop(), data[path]),
@@ -13121,13 +13420,15 @@ const FolderStore = (() => {
       const key = await keyOf(tag, false); if (!key) throw Object.assign(new Error('locked'), { code: 'locked' });
       return unseal(key, u8, p + '|' + tag);
     }
-    /** -> {body, sig} or null when there is no such record */
+    /** -> {body, sig} or null when there is no such record. A file that does not answer (still downloading from OneDrive, a network
+        drive that stalls) fails after a while instead of holding everything up; it is read again on the next look */
+    const slowly = (pr, ms) => { let t; return Promise.race([pr, new Promise((_, rej) => { t = setTimeout(() => rej(Object.assign(new Error('the file did not answer'), { code: 'timeout' })), ms); })]).finally(() => clearTimeout(t)); };
     async function readFile(p) {
       const s = segsOf(p), d = await dirFor(s.slice(0, -1), false); if (!d) return null;
       let fh; try { fh = await d.getFileHandle(fname(s[s.length - 1], p)); } catch (e) { if (e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError')) return null; throw e; }
-      const f = await fh.getFile(), sig = f.lastModified + ':' + f.size, c = cache.get(p);
+      const f = await slowly(fh.getFile(), 30000), sig = f.lastModified + ':' + f.size, c = cache.get(p);
       if (c && c.sig === sig) return c;
-      return { body: await decode(p, new Uint8Array(await f.arrayBuffer())), sig };
+      return { body: await decode(p, new Uint8Array(await slowly(f.arrayBuffer(), 30000))), sig };
     }
     async function writeFile(p, body) {
       const s = segsOf(p);
@@ -13222,9 +13523,29 @@ const FolderStore = (() => {
         await pool([...ids], 8, async id => { const p = pre + id, before = cache.get(p); try { const r = await readFile(p); if (r && (!before || before.sig !== r.sig)) { cache.set(p, r); emit(p); } } catch (e) { bad.set(p, (e && e.code) || 'error'); } });
       }
     }
-    function schedule() { clearTimeout(pollTimer); if (stopped) return; pollTimer = setTimeout(() => { poll().finally(schedule); }, document.hidden ? 30000 : 5000); }
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { poll(); schedule(); } });
-    schedule();
+    // other people's changes are looked for every few seconds once someone has signed in (before that the sign-in reads the
+    // accounts itself), so a big _changes folder never slows the opening of the folder
+    let watching = false;
+    /** every record in the folder, opened (for WFM team › Data › Export): skip(c) leaves a top collection out. -> { records, bad } */
+    async function dump(skip) {
+      const records = [], bad = [];
+      async function walk(dir, segs) {   // dir holds the records of the collection segs
+        for await (const [n, h] of dir.entries()) {
+          if (h.kind === 'file' && n.startsWith('d_') && /\.(mcd|json)$/.test(n)) {
+            const p = [...segs, decSeg(n.slice(2).replace(/\.(mcd|json)$/, ''))].join('/');
+            try { const r = await readFile(p); if (r) records.push({ path: p, body: copy(r.body) }); } catch (e) { bad.push({ path: p, code: (e && e.code) || 'error' }); }
+          } else if (h.kind === 'directory' && n.startsWith('d_') && n.endsWith('.sub')) {   // a record's own collections
+            const id = decSeg(n.slice(2, -4));
+            for await (const [c, sh] of h.entries()) if (sh.kind === 'directory') await walk(sh, [...segs, id, decSeg(c)]);
+          }
+        }
+      }
+      for await (const [n, h] of root.entries()) { if (h.kind !== 'directory' || n.startsWith('_') || n.startsWith('.')) continue; const c = decSeg(n); if (PLAIN.has(c) || (skip && skip(c))) continue; await walk(h, [c]); }
+      return { records, bad };
+    }
+    function schedule() { clearTimeout(pollTimer); if (stopped || !watching) return; pollTimer = setTimeout(() => { poll().finally(schedule); }, document.hidden ? 30000 : 5000); }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && watching) { poll(); schedule(); } });
+    const watch = () => { if (watching) return; watching = true; schedule(); };
     return {
       folder: true, local: false, persistent: true, name: root.name, me,
       doc: path => ({
@@ -13254,19 +13575,26 @@ const FolderStore = (() => {
         },
       }),
       /** keys from the sign-in: { dk, staff, ak: Map(pid -> key) } */
-      unlock(k) { if (k.dk) { K.dk = k.dk; K.staff = true; } if (k.ak) for (const [p, v] of k.ak) K.ak.set(p, v); },
+      unlock(k) { if (k.dk) { K.dk = k.dk; K.staff = true; } if (k.ak) for (const [p, v] of k.ak) K.ak.set(p, v); watch(); },
+      watch,
       hasDataKey: () => !!K.dk,
       agentKey: pid => akey(pid, true),
-      poll, rescan,
+      poll, rescan, dump,
       problems: () => [...bad.entries()].map(([p, code]) => ({ path: p, code })),
       stop() { stopped = true; clearTimeout(pollTimer); },
     };
   }
 
   // ---------------------------------------------------------------- connecting a folder
-  /** what is in a chosen folder: 'store' (ours), 'empty', or 'other' */
+  /** what is in a chosen folder: 'store' (ours), 'empty', or 'other'. The tool's mark there but not readable (OneDrive still
+      downloading it, a network drive that fails) throws: that folder is never taken for another one */
   async function inspect(dir) {
-    try { const m = await dir.getDirectoryHandle('meta'); const f = await m.getFileHandle('d_store.json'); const j = JSON.parse(dec.decode(new Uint8Array(await (await f.getFile()).arrayBuffer()))); if (j && j.app === APP) return { kind: 'store', info: j }; } catch (e) { /* not ours yet */ }
+    let f = null;
+    try { f = await (await dir.getDirectoryHandle('meta')).getFileHandle('d_store.json'); } catch (e) { /* not ours yet */ }
+    if (f) {
+      let j = null; try { j = JSON.parse(dec.decode(new Uint8Array(await (await f.getFile()).arrayBuffer()))); } catch (e) { if (!(e instanceof SyntaxError)) throw e; }
+      if (j && j.app === APP) return { kind: 'store', info: j };
+    }
     let n = 0; for await (const [name] of dir.entries()) { if (!name.startsWith('.')) n++; if (n > 0) break; }
     return { kind: n ? 'other' : 'empty' };
   }
@@ -13562,6 +13890,8 @@ const Auth = (() => {
   // the shared folder's first screen: pick it, or allow it again
   function connectText() {
     const c = connectCb || {};
+    if (c.state === 'opening') return c.ask ? ['Allow the shared data', `Your browser asks before the tool may open <b>${esc(c.name || '')}</b>.`, 'Nothing leaves your computer and the shared folder.']
+      : ['Opening the shared data', `Reading <b>${esc(c.name || '')}</b>. The first time on a computer this can take a little while.`, 'Nothing leaves your computer and the shared folder.'];
     if (c.state === 'again') return ['Open the shared data', `The tool keeps its data in the folder <b>${esc(c.name || '')}</b>. Your browser asks once per visit before the tool may open it.`, 'Nothing leaves your computer and the shared folder.'];
     if (c.state === 'empty') return ['Set up the shared data here?', `<b>${esc(c.name || '')}</b> is empty. The tool can keep everyone's data in it, locked so it can only be read through the tool.`, 'Put the folder next to the HTML in the common folder, so everyone finds it.'];
     if (c.state === 'other') return ['This is not the data folder', `<b>${esc(c.name || '')}</b> has other files in it (the common folder?). The tool can make its data folder, <b>MC Data</b>, inside it, or you can choose the data folder itself.`, ''];
@@ -13569,12 +13899,14 @@ const Auth = (() => {
   }
   function connectBody() {
     const c = connectCb || {};
+    if (c.state === 'opening') return c.ask ? '<div class="connwait" role="status" aria-live="polite"><span class="spin" aria-hidden="true"></span><span id="connWait">Waiting for your answer: choose Allow (or Edit files) in the browser\'s box at the top of the window.</span></div><p class="hint" id="connHelp">No box? Look for a folder icon at the right end of the address bar, or use Choose a different folder below and pick the data folder again.</p>'
+      : '<div class="connwait" role="status" aria-live="polite"><span class="spin" aria-hidden="true"></span><span id="connWait">Checking the folder…</span></div><p class="hint" id="connHelp" hidden></p>';
     return c.state === 'again' ? '<button type="button" class="btn lg primary" data-conn="again">Open the shared data</button>'
       : c.state === 'empty' ? '<button type="button" class="btn lg primary" data-conn="create">Set up the shared data here</button><button type="button" class="btn" data-conn="pick">Choose another folder</button>'
       : c.state === 'other' ? '<button type="button" class="btn lg primary" data-conn="makesub">Make an "MC Data" folder in it</button><button type="button" class="btn" data-conn="pick">Choose another folder</button>'
       : '<button type="button" class="btn lg primary" data-conn="pick">Choose the data folder</button>';
   }
-  const connectLinks = () => '<button type="button" class="linkbtn" data-conn="local">Use this computer only</button>' + ((connectCb || {}).state === 'again' ? '<button type="button" class="linkbtn" data-conn="pick">Choose a different folder</button>' : '');
+  const connectLinks = () => '<button type="button" class="linkbtn" data-conn="local">Use this computer only</button>' + (['again', 'opening'].includes((connectCb || {}).state) ? '<button type="button" class="linkbtn" data-conn="pick">Choose a different folder</button>' : '');
   function connect(o) { connectCb = o; setMode('connect', o.msg || ''); }
   async function fillSpvChoices() {
     const sel = $('acSpv'); if (!sel) return;
@@ -14258,17 +14590,18 @@ function refresh(o = {}) {
   loadAttState();
   state.ctx = dets.length || ad.length ? Glue.makeContext(dets, ros, state.settings, state.y, state.m) : null;
   state.attRes = null; state.incModelCache = null;
-  if (state.ctx && ad.length) {
-    const nm = list => new Map(list.map(x => [normName(x.name), x.days]));
-    state.attRes = Att.merge(ad, ros, { y: state.y, m: state.m, undo: state.attUndo, picks: state.attPicks, links: state.attLinks, adh: nm(state.ctx.rawAdh), sched: nm(state.ctx.rawSched), floor: state.settings.floor });
-    const fills = new Map(state.attRes.idFills.map(f => [f.pid, f.id]));
-    if (fills.size) state.ctx.roster = state.ctx.roster.map(p => (fills.has(p._id) ? { ...p, nid: fills.get(p._id) } : p));
-    overlayAttEdits(state.attRes.byPerson);
-    state.ctx.attendance = state.attRes.byPerson;
-  } else if (state.ctx) {   // no sheets from the supervisors: attendance from Genesys, with their corrections
+  if (state.ctx) {   // the supervisors' sheets and templates for the people they list, Genesys for everyone else (CC and SM), with the supervisors' corrections
     watchAttEdits(monthKey());
     const A = autoAttendance(state.ctx);
-    if (A) { state.attRes = A; state.ctx.attendance = A.byPerson; }
+    if (ad.length) {
+      const nm = list => new Map(list.map(x => [normName(x.name), x.days]));
+      const R = Att.merge(ad, ros, { y: state.y, m: state.m, undo: state.attUndo, picks: state.attPicks, links: state.attLinks, adh: nm(state.ctx.rawAdh), sched: nm(state.ctx.rawSched), floor: state.settings.floor });
+      const fills = new Map(R.idFills.map(f => [f.pid, f.id]));
+      if (fills.size) state.ctx.roster = state.ctx.roster.map(p => (fills.has(p._id) ? { ...p, nid: fills.get(p._id) } : p));
+      overlayAttEdits(R.byPerson);
+      state.attRes = A ? withGenesys(R, A) : R;
+    } else if (A) state.attRes = A;
+    if (state.attRes) state.ctx.attendance = state.attRes.byPerson;
   }
   state.perf = perfNow();
   state.model = state.ctx ? computeModel(state.ctx) : null;
@@ -14984,8 +15317,10 @@ function computeNotes() {
       body: `${u.idRaw ? 'ID ' + u.idRaw + ' · ' : ''}${u.src} · ${plural(u.filled, 'day')} filled. This attendance is left out until you add or link the person.`, unm: i }));
     for (const w of R.warns) add({ id: 'w:' + w.text, sev: 'warn', group: 'Attendance', title: w.text });
     if (R.cross.length) add({ id: 'cross', sev: 'warn', group: 'Attendance vs Genesys', title: `${plural(R.cross.length, 'day')} where the attendance and Genesys disagree`, body: 'Check these with the supervisors. Nothing was changed.', list: R.cross.map(x => x.text) });
-    if (R.missing.length) add({ id: 'missing', sev: 'info', group: 'Attendance', title: `${plural(R.missing.length, 'active person', 'active people')} with no attendance in any file`, body: 'They show with ⚠ in the incentive Attendance Report. Drop their supervisor\'s file, or fill them in Excel.', list: R.missing.map(p => `${p.name} (${p.team || '–'})`) });
+    if (R.missing.length) add({ id: 'missing', sev: 'info', group: 'Attendance', title: `${plural(R.missing.length, 'active person', 'active people')} with no attendance in any file`, body: `They show with ⚠ in the incentive Attendance Report. ${R.genesys != null ? 'Their supervisor has not sent the attendance template yet: drop it here when it comes.' : 'CC and SM come from the Schedule and the Agent Status Timeline; the other departments from their supervisor\'s attendance template. Drop what is missing, or fill them in Excel.'}`, list: R.missing.map(p => `${p.name} (${p.team || '–'})`) });
     if (R.partial.length) add({ id: 'partial', sev: 'info', group: 'Attendance', title: `${plural(R.partial.length, 'person', 'people')} with blank days`, list: R.partial.map(p => `${p.name}: ${plural(p.blank, 'blank day')}`) });
+    // the attendance templates: rows that could not be used (no date, a date in another month, a name not on the Team sheet)
+    for (const f of state.attFiles) for (const d of f.dets) { const T = d.data && d.data.template; if (T && T.warns.length) add({ id: 'tpl:' + f.name, sev: 'warn', group: 'Attendance files', title: `${f.name}: ${plural(T.warns.length, 'thing')} to look at in ${T.spv ? T.spv + '\'s' : 'the'} template`, body: 'Fix them in the file and drop it again, or correct the days on the Team page.', list: T.warns }); }
     const skipped = R.files.filter(f => !f.used);
     if (skipped.length) add({ id: 'skipped', sev: 'info', group: 'Attendance files', title: `${plural(skipped.length, 'tab')} skipped because the dates are not ${MONTH_LONG[state.m - 1]} ${state.y}`, list: skipped.map(f => `${f.file} · ${f.sheet}: ${f.reason}`) });
   }
@@ -15080,20 +15415,30 @@ function noteItemHtml(n, opts = {}) {
 }
 
 
+/** the sheets' result with Genesys filling in everyone they do not list: CC and SM come from Genesys with nothing to send, the other
+    departments from their supervisors' templates. "Missing" is someone of a template department in neither: for CC and SM, no day
+    in Genesys means no schedule this month (the no-schedule check names them) */
+function withGenesys(R, A) {
+  const byPerson = new Map(R.byPerson), gen = [], T = new Set(tplTeams());
+  for (const [pid, a] of A.byPerson) if (!byPerson.has(pid)) { byPerson.set(pid, a); gen.push(pid); }
+  const tardy = gen.reduce((s, pid) => s + (A.byPerson.get(pid).dayTardy || 0), 0);
+  return { ...R, byPerson, missing: R.missing.filter(p => !byPerson.has(p._id) && T.has(normSpace(p.team))), genesys: gen.length, last: A.last, stats: { ...R.stats, people: byPerson.size, tardy: R.stats.tardy + tardy } };
+}
+const tplBtn = () => (tplTeams().length ? '<button class="btn sm" id="attTplBtn">Attendance templates</button>' : '');
 function renderAttCard() {
   const el = $('attCard'), F = state.attFiles, R = state.attRes;
   if (!F.length && R && R.auto) {
     const ed = [...R.byPerson.values()].reduce((t, a) => t + (a.edited || 0), 0);
     el.classList.add('ready');
     el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-check"/></svg></span><h3>Attendance</h3></div><span class="pill good">From Genesys</span></div>
-      <p class="hint">Counted from the Schedule and the Agent Status Timeline: a scheduled day with a sign-on is Attend (or the late minutes), no sign-on is Absent, a leave in the schedule is that leave, no shift is OFF. Days after ${R.last} ${MON[state.m - 1]} stay empty until the next export. Supervisors correct their own team's days in their Team page; sick leave, which the schedule does not have, is corrected there.</p>
+      <p class="hint">Counted from the Schedule and the Agent Status Timeline, as the CC and SM supervisors did: a scheduled day with a sign-on is Attend (or the late minutes), no sign-on is Absent, a leave in the schedule is that leave, no shift is OFF. Days after ${R.last} ${MON[state.m - 1]} stay empty until the next export. Supervisors correct their own team's days in their Team page; sick leave, which the schedule does not have, is corrected there.${tplTeams().length ? ` ${esc(tplTeams().join(', '))} send the attendance template: drop the filled files here and they are used for the people they list.` : ''}</p>
       <div class="kv"><div><b>${R.stats.people}</b><span>people counted</span></div><div><b>${ed}</b><span>days corrected by supervisors</span></div><div><b>${(R.stats.tardy || 0).toLocaleString('en-US')}</b><span>late minutes</span></div><div><b>${R.last || '–'}</b><span>last day with data</span></div></div>
-      <div class="acts"><button class="btn sm" id="attPick">Use supervisors' sheets instead</button></div>`;
+      <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Add filled templates or sheets</button></div>`;
     return;
   }
   if (!F.length) { el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-file"/></svg></span><h3>Supervisors' attendance</h3></div><span class="pill">Optional</span></div>
-    <p class="hint">Drop each supervisor's attendance sheet (.xlsx or .xlsb), as many as you have. The right month's tab is picked by its dates, names and IDs are matched to the roster, and tardy minutes are counted from the day cells or the Tardy column. Everything goes into the Attendance sheet and the incentive file.</p>
-    <div class="acts"><button class="btn sm" id="attPick">Choose files</button></div>`; el.classList.remove('ready'); return; }
+    <p class="hint">CC and SM come from Genesys once the Schedule and the Agent Status Timeline are in. ${tplTeams().length ? `${esc(tplTeams().join(', '))} send the attendance template (one row per late, absent, leave or day off): make them with Attendance templates, then drop the filled files here. ` : ''}Older attendance sheets (.xlsx or .xlsb) work too: the right month's tab is picked by its dates and names and IDs are matched to the roster.</p>
+    <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Choose files</button></div>`; el.classList.remove('ready'); return; }
   el.classList.add('ready');
   const open = state.notes.filter(n => (n.sev === 'decide' || n.sev === 'warn') && /^Attendance/.test(n.group || '')).length;
   const fixes = R ? R.fixes.reduce((t, f) => t + (f.undoable === false ? 0 : f.count), 0) : 0;
@@ -15102,9 +15447,10 @@ function renderAttCard() {
     return `<li><div class="fname" dir="auto">${esc(f.name)}</div><div class="meta">${fmtSize(f.size)} · ${used.length ? `used ${esc(used.map(x => `${normSpace(x.sheet)} (${x.filled} people)`).join(', '))}` : 'no tab for this month'}${info.length > used.length ? ` · ${plural(info.length - used.length, 'tab')} for other months skipped` : ''}</div><button class="btn sm ghost" data-unatt="${esc(f.name)}">Remove</button></li>`;
   }).join('');
   el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-check"/></svg></span><h3>Supervisors' attendance</h3></div>${open ? `<span class="pill warn">${plural(open, 'item')} to check</span>` : '<span class="pill good">Ready</span>'}</div>
-    <div class="kv"><div><b>${F.length}</b><span>files</span></div><div><b>${R ? R.stats.people : 0}</b><span>people found</span></div><div><b>${(R ? R.stats.tardy : 0).toLocaleString('en-US')}</b><span>tardy minutes</span></div><div><b>${fixes.toLocaleString('en-US')}</b><span>cells fixed</span></div></div>
+    <div class="kv"><div><b>${F.length}</b><span>files</span></div><div><b>${R ? R.stats.people - (R.genesys || 0) : 0}</b><span>people in them</span></div><div><b>${R && R.genesys ? R.genesys : 0}</b><span>from Genesys</span></div><div><b>${(R ? R.stats.tardy : 0).toLocaleString('en-US')}</b><span>tardy minutes</span></div><div><b>${fixes.toLocaleString('en-US')}</b><span>cells fixed</span></div></div>
     <ul class="attfiles">${rows}</ul>
-    <div class="acts"><button class="btn sm" id="attPick">Add files</button><button class="btn sm ${open ? 'primary' : ''}" id="attNotes">Open the checks</button></div>`;
+    ${R && R.genesys ? `<p class="hint">Everyone the files do not list (CC and SM, ${plural(R.genesys, 'person', 'people')}) is counted from the Schedule and the Agent Status Timeline.</p>` : state.ctx && !(state.slots.schedule && state.slots.timeline) ? '<p class="hint">Add the Schedule and the Agent Status Timeline to count CC and SM from Genesys.</p>' : ''}
+    <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Add files</button><button class="btn sm ${open ? 'primary' : ''}" id="attNotes">Open the checks</button></div>`;
 }
 function renderIncExport() {
   const md = state.ctx ? incModel() : null, el = $('incCard');
@@ -15268,6 +15614,7 @@ function addModelDed(rec) {
     let ded = 0, base = 0; m.sch.forEach((sv, i) => { const av = m.act[i]; if (sv == null || av == null || av === 0) return; ded += Math.max(0, sv - av); base += sv; });
     const id = Core.cleanId((effP(m.p._id) || m.p).nid), r = (id && byId.get(id)) || byName.get(normName(m.p.name)) || byName.get(m.ek); if (!r) continue;
     r.ded = ded; if (base > 0) r.conf = Math.round((1 - ded / base) * 1e4) / 1e4;
+    const day = L => L.map(v => (v == null ? '' : Math.round(v))).join(','); r.ds = day(m.sch); r.da = day(m.act);   // each day's Sched. and Actual, for the email's workbook
   }
   return rec;
 }
@@ -16147,10 +16494,13 @@ function readReport(sheets) {
   CA.rows.forEach((r, i) => { if (i < 4 || r[0] == null || r[0] === '') return; calc.set(String(r[0]).toLowerCase(), { exp: normSpace(r[1]), status: normSpace(r[7]), shown: r[8], row: i }); });
   const totCol = (DE.rows[3] || []).findIndex(v => /^total \(min\)$/i.test(normSpace(v)));
   if (totCol < 0) return { error: 'The Deduction sheet has no "Total (min)" column.' };
+  const ND = Core.daysIn(y, m), dedCols = []; (DE.rows[3] || []).forEach((v, i) => { if (v instanceof Date && v.getUTCMonth() + 1 === m) dedCols.push([i, v.getUTCDate()]); });
+  const mins = (r, o) => { const out = new Array(ND).fill(null); for (const [ci, d] of dedCols) { const v = r[ci + o]; if (typeof v === 'number') out[d - 1] = v; } return out; };
   const ded = [];
   DE.rows.forEach((r, i) => {
     if (i < 5) return; const nm = normSpace(r[1]); if (!nm) return;
-    ded.push({ id: idText(r[0]), name: nm.replace(/^[⛔⚠]️?\s*/, ''), brand: normSpace(r[2]), team: normSpace(r[3]), total: typeof r[totCol] === 'number' ? Math.round(r[totCol]) : 0, inactive: nm.startsWith('⛔') });
+    ded.push({ id: idText(r[0]), name: nm.replace(/^[⛔⚠]️?\s*/, ''), brand: normSpace(r[2]), team: normSpace(r[3]), total: typeof r[totCol] === 'number' ? Math.round(r[totCol]) : 0, inactive: nm.startsWith('⛔'),
+      sched: dedCols.length ? mins(r, 0) : null, act: dedCols.length ? mins(r, 1) : null });
   });
   const att = [];
   AT.rows.forEach((r, i) => {
@@ -16161,6 +16511,7 @@ function readReport(sheets) {
       onRoster: !!c, shown: c ? c.shown !== 0 : true,
       days: dayCols.filter(([ci]) => normName(r[ci]) === 'absent').map(([, d]) => d),
       filled: dayCols.some(([ci]) => r[ci] != null && normSpace(r[ci]) !== ''),
+      vals: (() => { const out = new Array(ND).fill(null); for (const [ci, d] of dayCols) out[d - 1] = Att.normCode(r[ci]).v; return out; })(),
     });
   });
   return { y, m, ded, att, filled: att.filter(a => a.filled).length };
@@ -16243,7 +16594,7 @@ function mailModel(stage = state.mailStage) {
     if (snap) changes = dedDiff(snap.data, { ded, abs: abs ? abs.rows.map(a => ({ id: a.id, name: a.name, days: a.days })) : null });
     else warns.push('No review version saved for this month, so the changes since the review cannot be listed. Copy or download the review email first, or drop the workbook that was sent for review.');
   }
-  const attach = mailShared() ? { name: `MC Monthly Deduction - ${MON[m - 1]} ${y}.xlsx`, size: null } : r ? { name: state.wb.name, size: state.wb.size } : state.ctx ? { name: fileNameOut(), size: null } : null;
+  const attach = mailShared() || r || state.ctx ? { name: `MC Monthly Deduction - ${MON[m - 1]} ${y}.xlsx`, size: null } : null;   // Attendance Report and Monthly Deduction (dedMailData)
   return { kind: 'ded', stage, y, m, ded: dedRows, dedFull: ded, dedAll: ded.length, abs, warns, changes, snap, attach, deadline: dl[1] ? `${MON[dl[1] - 1]} ${ordinal(dl[2])}` : '', subject: subjectFor('ded', stage) };
 }
 const F = 'font-family:Calibri,sans-serif';
@@ -16416,13 +16767,36 @@ function curMail() {
 }
 async function attachmentBytes(inc) {
   if (inc) return incBytes();
-  if (mailShared()) {   // the deduction and the absences as a small workbook
-    const md = mailModel(state.mailStage), M = MON[md.m - 1];
-    return xlBytes([{ name: 'Deduction', title: `Conformance deduction - ${M} ${md.y}`, sub: stamp(ymKey(md.y, md.m)), cols: [{ h: 'ID', t: 'text', w: 13 }, { h: 'Name', t: 'text', w: 32 }, { h: 'Total deduction (min)', t: 'int' }], rows: md.dedFull.map(x => [x.id, x.name, x.total]) },
-      { name: 'Absenteeism', title: `Absenteeism - ${M} ${md.y}`, sub: stamp(ymKey(md.y, md.m)), cols: [{ h: 'ID', t: 'text', w: 13 }, { h: 'Name', t: 'text', w: 32 }, { h: 'Total absent', t: 'int' }, ...(md.abs ? md.abs.dates : []).map(d => ({ h: `${d}-${M}`, t: 'text', w: 9 }))], rows: md.abs ? md.abs.rows.map(a => [a.id, a.name, a.days.length, ...md.abs.dates.map(d => (a.days.includes(d) ? 'Absent' : ''))]) : [] }]);
-  }
-  if (state.wb) return state.wb.bytes;
-  return state.ctx ? xlLogo().then(lg => { state.ctx.logo = lg; return Writer2.build(state.ctx); }) : null;
+  const d = dedMailData(); return d ? Writer2.dedMail(d) : null;
+}
+/** the deduction email's workbook (Writer2.dedMail): everyone's days for the Attendance Report and, for the people in the deduction,
+    each day's Sched. and Actual, from the shared month, a dropped monthly report, or this page */
+function dedMailData() {
+  const { y, m } = mailMonth(), k = ymKey(y, m), ND = Core.daysIn(y, m), cfg = countFor(k), set = state.settings, r = state.wb && state.wb.report;
+  const inDed = x => set.dedBrands.includes(normSpace(x.brand)) && set.dedTeams.includes(normSpace(x.team));
+  const minutes = s => (s == null || s === '' ? null : String(s).split(',').map(v => (v === '' ? null : +v)));
+  let att = [], ded = [];
+  if (mailShared()) {
+    for (const x of liveRows(k)) {
+      const days = daysOfRow(x, ND), who = { id: idText(x.id), name: x.n, brand: normSpace(x.brand), team: normSpace(x.team) };
+      if (days.some(v => v != null)) att.push({ ...who, days });
+      if (inDed(x) && x.ded != null) ded.push({ ...who, sched: minutes(x.ds), act: minutes(x.da), total: Math.round(x.ded || 0) });
+    }
+  } else if (r) {
+    att = r.att.filter(a => a.shown && a.vals && a.vals.some(v => v != null)).map(a => ({ id: a.id, name: a.name, brand: a.brand, team: a.team, days: a.vals }));
+    ded = r.ded.map(x => ({ id: x.id, name: x.name, brand: x.brand, team: x.team, sched: x.sched, act: x.act, total: x.total }));
+  } else if (state.model) {
+    const A = state.ctx && state.ctx.attendance;
+    for (const x of state.model) {
+      if (!x.shown) continue;
+      const who = { id: idText(x.p.nid), name: x.exp, brand: normSpace(x.p.brand), team: normSpace(x.p.team) }, a = A ? A.get(x.p._id) : null;
+      if (a && a.days.some(v => v != null)) att.push({ ...who, days: a.days, tardyFile: a.tardyFile });
+      if (x.inDed) ded.push({ ...who, sched: x.sch, act: x.act, total: x.ded || 0 });
+    }
+  } else return null;
+  const order = x => (DEP_ORDER.indexOf(x.team) + 1 || 99), byDep = (a, b) => order(a) - order(b) || a.name.localeCompare(b.name);
+  att = att.map(a => { const c = Kpi.countDays(a.days, cfg); return { ...a, tardy: c.tardy || a.tardyFile || 0, sched: c.sched, actual: c.counted }; }).sort(byDep);
+  return { y, m, att, ded: ded.sort(byDep) };
 }
 function snapNow(kind) {
   if (kind === 'ded') { const md = mailModel('review'); saveSnap('ded', { ded: md.dedFull, abs: md.abs ? md.abs.rows.map(a => ({ id: a.id, name: a.name, days: a.days })) : null }); }
@@ -17193,7 +17567,7 @@ function fillSettings() {
   $('month').value = `${state.y}-${String(state.m).padStart(2, '0')}`;
   $('monthHelp').textContent = state.monthManual ? 'Set by you. Files dropped later will not change it.' : 'Detected from the exports. Change it if a file covers more than one month.';
   $('target').value = +(s.target * 100).toFixed(2); $('floor').value = +(s.floor * 100).toFixed(2); $('inactiveMin').value = s.inactiveMin; $('hideNoSched').checked = s.hideNoSched !== false;
-  chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES);
+  chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES); chips($('attTplTeams'), DEP_ORDER, 'attTplTeams', DEP_NAMES);
   $('mgrName').value = s.manager; $('mgrTitle').value = s.managerTitle; renderLogo();
   syncTheme();
   const u = Auth.user(); $('setSaved').textContent = state.db ? savedWhere() : 'Not saved in this view';
@@ -17201,7 +17575,7 @@ function fillSettings() {
   $('lockMins').value = String(Auth.lockMins()); $('lockMins').disabled = $('chgPw').disabled = $('lockNow2').disabled = $('signOut2').disabled = !u;
 }
 function chips(el, values, key, titles) {
-  el.innerHTML = values.map(v => `<label class="chip"${titles ? ` title="${esc(titles[v])}"` : ''}><input type="checkbox" value="${esc(v)}"${state.settings[key].includes(v) ? ' checked' : ''}>${esc(v)}</label>`).join('');
+  el.innerHTML = values.map(v => `<label class="chip"${titles ? ` title="${esc(titles[v] || v)}"` : ''}><input type="checkbox" value="${esc(v)}"${state.settings[key].includes(v) ? ' checked' : ''}>${esc(v)}</label>`).join('');
 }
 // the appearance: System (the first choice, as the computer is set), Light or Dark, kept in this browser as before (mc-theme).
 // The page carries the one it shows (data-theme), set before the first paint by js/theme_boot.html; System follows the computer live.
@@ -17610,6 +17984,7 @@ $('logoPick').addEventListener('click', () => $('logoPicker').click());
 $('logoPicker').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; setLogoFile(f); });
 $('logoRemove').addEventListener('click', () => { const old = state.logo; state.logo = BUILTIN_LOGO; logoPx = null; if (state.db) queueWrite('config/logo', () => state.db.doc('config/logo').delete()); renderLogo(); render(); toast('Back to the Beyond One logo', { label: 'Undo', fn: () => { state.logo = old; logoPx = null; if (state.db) queueWrite('config/logo', () => state.db.doc('config/logo').set(old)); renderLogo(); render(); } }); });
 $('incFull').addEventListener('change', () => { state.settings.incFullAdhTeams = [...$('incFull').querySelectorAll('input:checked')].map(i => i.value); refresh(); persistSettings(); });
+$('attTplTeams').addEventListener('change', () => { state.settings.attTplTeams = [...$('attTplTeams').querySelectorAll('input:checked')].map(i => i.value); refresh(); persistSettings(); });
 for (const [id, key] of [['mgrName', 'manager'], ['mgrTitle', 'managerTitle']]) $(id).addEventListener('change', e => { state.settings[key] = normSpace(e.target.value) || DEFAULTS[key]; e.target.value = state.settings[key]; persistSettings(); });
 
 // lock controls
@@ -20244,7 +20619,7 @@ function renderTeam() {
   const tabsHtml = `<div class="tabs ttabs" role="tablist" aria-label="Team">${TABS.map(([v, l, n]) => `<button class="tab" role="tab" id="tt-${v}" aria-controls="tp-${v}" aria-selected="${v === tab}" tabindex="${v === tab ? 0 : -1}" data-ttab="${v}">${esc(l)}${n !== '' ? ` <span class="badge${v === 'wait' || (v === 'obj' && n) ? ' n' : ''}">${esc(String(n))}</span>` : ''}</button>`).join('')}</div>`;
   const panel = tab === 'agents' ? teamTableHtml(items, set, showSR, spv)
     : tab === 'one' ? board()
-    : tab === 'att' ? (attGridHtml(items, k, spv && !monthLocked(k)) || emptyCard('No attendance yet', 'The month\'s attendance shows here once the schedule and the sign-ons (or the attendance sheets) are in.'))
+    : tab === 'att' ? attTplBar(k) + (attGridHtml(items, k, spv && !monthLocked(k)) || emptyCard('No attendance yet', 'The month\'s attendance shows here once the schedule and the sign-ons (or the attendance sheets) are in.'))
     : tab === 'obj' ? (safeHtml(objTeamHtml, k, cur) || emptyCard('No objections', `Nobody in ${spv ? 'your team' : 'these agents'} questioned a number for ${ymLabel(k)}.`))
     : tab === 'calls' ? (teamInterHtml(items, k) || emptyCard('No calls for these agents', 'The interactions export has no calls for the agents shown.'))
     : tab === 'kpis' ? `${teamKpiHtml(R, deptRows, k)}${scoreCard()}${chart()}`
@@ -20413,7 +20788,7 @@ function attGridHtml(items, k, canEdit) {
     return `<tr><th class="an"><button class="linkbtn nm" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" dir="auto">${esc(x.exp)}</button></th>${cells}<td class="r num">${t.absent}</td><td class="r num">${t.tardy ? Math.round(t.tardy) : 0}</td><td class="r num">${t.al + t.sl + t.leave}</td><td class="r num">${t.sched ? `${t.attend}/${t.sched}` : '–'}</td></tr>`;
   }).join('');
   const nEd = [...edits.values()].reduce((a, e) => a + Object.keys((e && e.days) || {}).length, 0);
-  return `<div class="card attcard cvauto"><div class="cardhead"><div><h2>Attendance · ${esc(ymLabel(k))}</h2><p class="cap">Counted by the tool from the Genesys schedule and sign-ons: a missed shift is Absent, a late sign-on shows its minutes, a leave in the schedule shows as that leave. ${canEdit ? 'Select a day to correct it; only you, as the supervisor, can.' : monthLocked(k) ? 'The month is final.' : 'Only the agent\'s supervisor can correct it.'}${nEd ? ` ${plural(nEd, 'day')} corrected (dotted).` : ''}</p></div></div>
+  return `<div class="card attcard cvauto"><div class="cardhead"><div><h2>Attendance · ${esc(ymLabel(k))}</h2><p class="cap">CC and SM: counted by the tool from the Genesys schedule and sign-ons (a missed shift is Absent, a late sign-on shows its minutes, a leave in the schedule shows as that leave). ${tplTeams().length ? `${esc(tplTeams().join(', '))}: from the supervisor's attendance template. ` : ''}${canEdit ? 'Select a day to correct it; only you, as the supervisor, can.' : monthLocked(k) ? 'The month is final.' : 'Only the agent\'s supervisor can correct it.'}${nEd ? ` ${plural(nEd, 'day')} corrected (dotted).` : ''}</p></div></div>
     ${chipsHtml}
     ${L.length ? `<div class="tablewrap attgrid"><table><thead><tr><th class="an">Agent</th>${head}<th class="r">Abs</th><th class="r">Late</th><th class="r">Leave</th><th class="r">Days</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="subtle">Nobody in these departments.</p>'}</div>`;
 }
@@ -20634,10 +21009,7 @@ function renderCycle() {
     ${[['vp', 'VP (results for review)'], ['form', 'Final result form (to)'], ['senior', 'Senior manager (gets the supervisors\' "done" emails)'], ['mgmt', 'Management team (in copy)'], ['wfm', 'WFM (in copy of the supervisors\' emails)']].map(([f, l]) => `<div class="field"><span class="lbl">${esc(l)}</span><input class="cell" data-contact="${f}" value="${esc(C0[f] || '')}" spellcheck="false" placeholder="Name <name@company.com>"></div>`).join('')}
     <div class="field"><span class="lbl">Final result form: who signs (one per line: name | designation)</span><textarea class="cell" data-signers rows="4" spellcheck="false">${esc(signersNow().map(x => x.join(' | ')).join('\n'))}</textarea></div></div>
     <p class="hint">Supervisors' and agents' addresses come from the roster's Email column.</p></details>` : '';
-  // activity
-  const log = Object.values(state.cycleLog || {}).filter(x => x && x.k === k).sort((a, b) => String(b.at).localeCompare(String(a.at)));
-  const act = log.length ? `<details class="card wslog"><summary>Activity · ${plural(log.length, 'entry', 'entries')}</summary><ul class="ilist">${log.slice(0, 200).map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
-  body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${safeHtml(calCardHtml, k)}${editor}${contacts}${act}`;
+  body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${editor}${contacts}${safeHtml(calDaysHtml)}`;
   if (canCycle() && unseenDone().length && state.ws === 'cycle') { lsSet(seenKey(), new Date().toISOString()); cycleBadge(); }
   reveal(body);
 }
@@ -22579,14 +22951,14 @@ interPicker.addEventListener('change', async () => { const f = interPicker.files
 // Report builder (the analysts make the daily emails). Insight: Analytics (departments and months), Agents (every measure per
 // agent) and Interactions (the interactions export). Each role sees its own tabs; the senior manager reads.
 Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core', wfmAt: '' });
-const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions']];
+const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
 const WFM_STEPS = ['import', 'review', 'export'];   // the month's build, shown on the WFM team page
-const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Insight', ['analytics', 'agents', 'inter']]];
+const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Insight', ['analytics', 'agents', 'inter']], ['Keep', ['data']]];
 /** every email the WFM team sends, in one place shared by the WFM manager and the WFM analysts: the four daily brand emails and
     the month's deduction and absences emails. Both can edit them and send them (the tool copies them or opens them in Outlook). */
 const canWfmMail = () => hasRole('admin', 'wfm', 'user');
 Object.assign(state, { mailSub: '' });
-function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : true)); }
+function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'data' ? canBackup() : true)); }
 /** the tab now on screen: a step of the month's build, or a WFM tab */
 const wfmTabNow = () => (state.ws === 'build' ? (WFM_STEPS.includes(state.step) ? state.step : 'import') : state.wfmTab);
 /** the WFM team page's header: the title, the tabs of the role (with what each needs), and the actions of the tab */
@@ -22626,6 +22998,7 @@ const WFM_LEAD = {
   builder: 'Drop the day\'s exports: MC Leaders and the WFM Daily Review are made here, and the four brand emails go straight to the WFM manager.',
   emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction, absences and incentive emails. Edit them here and send them from Outlook; the tool never sends anything itself.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
+  data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
 function renderWfmWs() {
   if (state.wfmTab === 'dmail' || state.wfmTab === 'mail') { state.mailSub = state.wfmTab === 'dmail' ? 'daily' : 'month'; state.wfmTab = 'emails'; }   // older links: the two email pages are one now
@@ -22640,7 +23013,7 @@ function renderWfmWs() {
   const builder = t === 'builder', em = t === 'emails', dm = em && state.mailSub === 'daily', mm = em && !dm;
   $('wfmRb').hidden = !builder; $('wfmDm').hidden = !dm; $('wfmBody').hidden = builder || dm || mm;
   if (!mm) mountMail(false);
-  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (mm) renderMailWs();
+  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
   else if (builder) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; rbShow(); }
   else if (dm) { $('wfmBar').innerHTML = mailSubHtml(unsent) + '<div class="wsacts"></div>'; dmShow(); }
 }
@@ -23092,6 +23465,180 @@ $('repCard').addEventListener('click', async e => {
   try { await upDelNow(id, 'rep'); toast(`Deleted ${m.name}`); } catch (er) { toast(`Could not delete ${m.name} (${errText(er)})`); }
 });
 
+// ================================================================ ATTENDANCE TEMPLATES: for the departments whose supervisors send attendance
+// CC and SM come from Genesys (the Schedule and the Agent Status Timeline). The supervisors of the other departments (Settings: TS, MG,
+// CT, QA, DE, WF) fill one template a month (AttTpl): a row per late, absent, leave or day off; every other day is a working day.
+Object.assign(state, { tplMonth: '', tplOff: 'Fri, Sat', tplOwn: '' });
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const tplTeams = () => state.settings.attTplTeams || [];
+/** the people a template lists: active, in the template departments, in this supervisor's team ('' = no supervisor in the roster) */
+function tplPeople(spv) {
+  const T = new Set(tplTeams()), R = rosterRows(), ids = new Set(R.map(p => p._id));
+  return R.filter(p => p.status !== 'Inactive' && T.has(normSpace(p.team)) && (spv ? p.spv === spv : !p.spv || !ids.has(p.spv)));
+}
+/** each supervisor with someone in the template departments, then the people with no supervisor (when there are any) */
+function tplGroups() {
+  const out = supervisors().map(s => ({ pid: s.pid, name: s.name, people: tplPeople(s.pid) })).filter(g => g.people.length);
+  const none = tplPeople(''); if (none.length) out.push({ pid: '', name: 'No supervisor in the roster', people: none });
+  return out;
+}
+function tplMonths() {
+  const t = new Date(), S = new Set([monthKey(), ...wsMonths()]);
+  for (let i = -2; i <= 1; i++) { const d = new Date(t.getFullYear(), t.getMonth() + i, 1); S.add(ymKey(d.getFullYear(), d.getMonth() + 1)); }
+  return [...S].sort().reverse();
+}
+const tplMonthNow = () => (state.tplMonth && tplMonths().includes(state.tplMonth) ? state.tplMonth : isBuilder() ? monthKey() : wsMonthNow() || monthKey());
+function tplBytes(g, k) {
+  const [y, m] = k.split('-').map(Number);
+  const people = g.people.map(p => { const e = effP(p._id) || p; return { id: Core.cleanId(e.nid), name: gname(e) || p.name, brand: normSpace(p.brand), team: normSpace(p.team) }; }).sort((a, b) => a.name.localeCompare(b.name));
+  return AttTpl.build({ y, m, spv: g.name, spvPid: g.pid, people, offDays: normSpace(state.tplOff), at: new Date().toISOString(), by: whoNow() || '' });
+}
+async function tplDownload(pid, k) {
+  const g = tplGroups().find(x => x.pid === pid); if (!g) { toast('Nobody in this team is in the template departments.'); return; }
+  const [y, m] = k.split('-').map(Number);
+  try { await save(AttTpl.fileName(y, m, g.name), new Blob([await tplBytes(g, k)], { type: XLSX_MIME })); } catch (e) { toast('Could not make the template: ' + errText(e)); }
+}
+async function tplDownloadAll(k) {
+  const G = tplGroups(); if (!G.length) return;
+  const [y, m] = k.split('-').map(Number), files = [], used = new Set();
+  try {
+    for (const g of G) {
+      let fn = AttTpl.fileName(y, m, g.name); if (used.has(fn.toLowerCase())) fn = fn.replace(/\.xlsx$/, ` (${g.pid || 'more'}).xlsx`); used.add(fn.toLowerCase());
+      files.push({ name: fn, data: await tplBytes(g, k) });
+    }
+    await save(`Attendance templates - ${MON[m - 1]} ${y}.zip`, new Blob([await Core.writeZip(files)], { type: 'application/zip' }));
+  } catch (e) { toast('Could not make the templates: ' + errText(e)); }
+}
+/** the drawer: the month, the usual days off, and a template for each supervisor (only their own for a supervisor) */
+function renderAttTpl() {
+  const k = tplMonthNow(), own = state.tplOwn, all = tplGroups(), G = own ? all.filter(g => g.pid === own) : all, T = tplTeams();
+  $('attTplSub').textContent = `${ymLabel(k)} · ${T.length ? T.join(', ') : 'no departments chosen in Settings'}`;
+  const deps = g => [...new Set(g.people.map(p => normSpace(p.team)))].join(', ');
+  $('attTplBody').innerHTML = `<p class="hint">One file a month for each supervisor of ${esc(T.join(', ') || 'the template departments')}: they write one row for each day someone was late, absent, on leave or off on a day that is not one of their weekly days off. Every other day counts as a working day. CC and SM need nothing: their days come from Genesys (the Schedule and the Agent Status Timeline). The filled files go on Import with the other attendance files.</p>
+    <div class="grid2 tight top"><label class="field"><span class="lbl">Month</span><select class="cell" id="tplMonth" aria-label="Month">${tplMonths().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(ymLabel(x))}</option>`).join('')}</select></label>
+    <label class="field"><span class="lbl">Weekly days off</span><input class="cell" id="tplOff" value="${esc(state.tplOff)}" spellcheck="false" aria-describedby="tplOffH"><small id="tplOffH">Filled in for everyone on the Team sheet; the supervisor changes it for anyone whose days off differ, or empties it when they change every week.</small></label></div>
+    ${G.length ? `<ul class="ilist tpllist">${G.map(g => `<li><span class="nm" dir="auto">${esc(g.name)}</span><span class="sg">${plural(g.people.length, 'person', 'people')} · ${esc(deps(g))}</span><span class="sp"></span><button class="btn sm" data-tpldl="${esc(g.pid)}"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Download</button></li>`).join('')}</ul>
+      ${G.length > 1 ? `<div class="acts"><button class="btn primary" data-tplall><svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>All ${G.length} as one .zip</button></div>` : ''}`
+    : `<p class="subtle">${own ? 'Nobody in your team is in these departments: their days come from Genesys, so there is nothing to send.' : 'Nobody on the roster is in these departments yet. Check the Dep column of the roster, or the departments in Settings.'}</p>`}`;
+}
+function openAttTpl(own) { state.tplOwn = own || ''; renderAttTpl(); openDrawer('dAttTpl'); }
+/** on the Team page's Attendance tab: the template for the team being looked at */
+function attTplBar(k) {
+  const u = Auth.user() || {}, r = roleNow(), spv = r === 'spv' ? u.pid : state.wsSpv || '';
+  if (!(r === 'spv' || isBuilder())) return '';
+  const n = spv ? tplPeople(spv).length : tplGroups().reduce((a, g) => a + g.people.length, 0);
+  if (!n) return '';
+  return `<div class="card tplbar"><div><b>Attendance template</b><small>${plural(n, 'person', 'people')} in ${esc(tplTeams().join(', '))}${spv ? '' : ' across the teams'}: one row per late, absent, leave or day off; every other day counts as a working day.</small></div><button class="btn sm" data-tplopen="${esc(spv)}" data-tplk="${esc(k || '')}"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>${spv ? 'Get the template' : 'Templates'}</button></div>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-tpldl], [data-tplall], [data-tplopen], #attTplBtn'); if (!t) return;
+  if (t.id === 'attTplBtn') { openAttTpl(''); return; }
+  if (t.dataset.tplopen !== undefined) { if (t.dataset.tplk) state.tplMonth = t.dataset.tplk; openAttTpl(roleNow() === 'spv' ? (Auth.user() || {}).pid || '' : t.dataset.tplopen); return; }
+  if (t.dataset.tplall !== undefined) { tplDownloadAll(tplMonthNow()); return; }
+  tplDownload(t.dataset.tpldl, tplMonthNow());
+});
+document.addEventListener('change', e => {
+  const t = e.target; if (!t || !t.closest || !t.closest('#attTplBody')) return;
+  if (t.id === 'tplMonth') { state.tplMonth = t.value; renderAttTpl(); }
+  if (t.id === 'tplOff') state.tplOff = t.value;
+});
+
+// ================================================================ DATA: everything the tool keeps, out to one locked file and back (WFM team only)
+// Export: every record of the shared data (or of this browser), opened with the team's key, then locked again with a password chosen
+// here (PBKDF2 + AES-GCM), in one .mcbak file. Accounts, passwords and keys never go in it: everyone keeps their own sign-in.
+// Import: the file and its password, a look at what is in it, then every record written back (the same records are replaced).
+Object.assign(state, { bkFiles: false, bkIn: null, bkBusy: '' });
+const canBackup = () => hasRole('admin', 'wfm', 'user');
+const BK_SKIP = new Set(['accounts', 'meta', 'akeys', 'dir']), BK_FILES = new Set(['upmeta', 'upfile', 'repmeta', 'repfile']);
+const BK_ITER = 250000;
+const bkB64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+const bkUnB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function bkPipe(u8, ts) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(ts)).arrayBuffer()); }
+async function bkKey(pw, salt) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: BK_ITER }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+/** the records to export: everything but the sign-in and the keys, and the kept files only when asked */
+async function bkRecords() {
+  if (!state.db || typeof state.db.dump !== 'function') throw new Error('this view keeps no data the tool can export');
+  return state.db.dump(c => BK_SKIP.has(c) || (!state.bkFiles && BK_FILES.has(c)));
+}
+async function bkExport() {
+  const pw = $('bkPw').value, pw2 = $('bkPw2').value;
+  if (pw.length < 8) { toast('Choose a password of at least 8 characters for the file.'); $('bkPw').focus(); return; }
+  if (pw !== pw2) { toast('The two passwords are not the same.'); $('bkPw2').focus(); return; }
+  state.bkBusy = 'export'; renderBackupWs();
+  try {
+    const { records, bad } = await bkRecords();
+    const made = new Date().toISOString(), plain = new TextEncoder().encode(JSON.stringify({ app: 'mc-report-builder', v: 1, made, by: whoNow(), from: state.folder ? state.folder.name : 'this browser', records }));
+    const gz = typeof CompressionStream === 'function', body = gz ? await bkPipe(plain, new CompressionStream('gzip')) : plain;
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), key = await bkKey(pw, salt);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, body));
+    const file = { kind: 'mc-backup', v: 1, made, by: whoNow(), n: records.length, gz, kdf: { name: 'PBKDF2-SHA256', iter: BK_ITER, salt: bkB64(salt) }, iv: bkB64(iv), data: bkB64(ct) };
+    const ok = await save(`MC Data backup - ${made.slice(0, 10)}.mcbak`, new Blob([JSON.stringify(file)], { type: 'application/octet-stream' }));
+    if (ok) { $('bkPw').value = ''; $('bkPw2').value = ''; }
+    if (bad.length) toast(`${plural(bad.length, 'record')} could not be read and ${bad.length === 1 ? 'is' : 'are'} not in the file (${bad.slice(0, 2).map(b => b.path).join(', ')}).`);
+  } catch (e) { toast('Could not export the data: ' + errText(e)); }
+  finally { state.bkBusy = ''; renderBackupWs(); }
+}
+/** a chosen backup file, opened with its password: what is in it, before anything is written */
+async function bkOpen() {
+  const f = $('bkFile').files && $('bkFile').files[0], pw = $('bkInPw').value;
+  if (!f) { toast('Choose the .mcbak file first.'); return; }
+  if (!pw) { toast('Type the password the file was locked with.'); $('bkInPw').focus(); return; }
+  state.bkBusy = 'open'; renderBackupWs();
+  try {
+    let file; try { file = JSON.parse(await f.text()); } catch (e) { file = null; }
+    if (!file || file.kind !== 'mc-backup' || !file.data || !file.kdf) throw new Error(`${f.name} is not a backup made by this tool`);
+    let plain;
+    try { plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bkUnB64(file.iv) }, await bkKey(pw, bkUnB64(file.kdf.salt)), bkUnB64(file.data))); }
+    catch (e) { throw new Error('the password is not the one this file was locked with'); }
+    if (file.gz) plain = await bkPipe(plain, new DecompressionStream('gzip'));
+    const d = JSON.parse(new TextDecoder().decode(plain)), recs = (d.records || []).filter(r => r && typeof r.path === 'string' && r.path.split('/').length % 2 === 0 && !BK_SKIP.has(r.path.split('/')[0]));
+    const by = {}; for (const r of recs) { const c = r.path.split('/')[0]; by[c] = (by[c] || 0) + 1; }
+    state.bkIn = { name: f.name, made: d.made || file.made, by: d.by || file.by || '', from: d.from || '', recs, cols: Object.entries(by).sort((a, b) => b[1] - a[1]) };
+    $('bkInPw').value = '';
+  } catch (e) { state.bkIn = null; toast('Could not open the file: ' + errText(e)); }
+  finally { state.bkBusy = ''; renderBackupWs(); }
+}
+async function bkImport() {
+  const B = state.bkIn; if (!B) return;
+  if (!state.db) { toast('There is no data store open to import into.'); return; }
+  state.bkBusy = 'import'; renderBackupWs();
+  let done = 0, failed = 0, i = 0;
+  const run = async () => { while (i < B.recs.length) { const r = B.recs[i++]; try { await state.db.doc(r.path).set(r.body); done++; } catch (e) { failed++; } if ((done + failed) % 25 === 0) { const el = $('bkProg'); if (el) el.textContent = `${done + failed} of ${B.recs.length}…`; } } };
+  try { await Promise.all([run(), run(), run(), run()]); }
+  finally {
+    state.bkBusy = ''; state.bkIn = null; renderBackupWs();
+    toast(`Imported ${plural(done, 'record')}${failed ? `; ${failed} could not be written (only an admin can write some of them)` : ''}. Reload to see everything.`, { label: 'Reload', fn: () => location.reload() });
+  }
+}
+/** WFM team › Data */
+function renderBackupWs() {
+  const body = $('wfmBody'); if (!body || state.ws !== 'wfm' || state.wfmTab !== 'data') return;
+  $('wfmBar').innerHTML = '<div class="wsacts"></div>';
+  if (!canBackup()) { body.innerHTML = emptyCard('Only the WFM team', 'The WFM manager and the WFM analysts export and import the data.'); return; }
+  const B = state.bkIn, busy = state.bkBusy, where = state.folder ? `the shared data folder (${esc(state.folder.name)})` : 'this browser';
+  const dumpOk = state.db && typeof state.db.dump === 'function';
+  body.innerHTML = `<div class="bkgrid">
+    <section class="card bkcard"><h2>Export all data</h2><p class="cap">Everything the tool keeps in ${where}: the roster, the months and their results, the forms, the rules, the settings, the emails and the rest, in one file locked with a password you choose here. Accounts, passwords and keys are not in it: everyone keeps their own sign-in.</p>
+      ${dumpOk ? `<div class="grid2 tight"><label class="field"><span class="lbl">Password for the file</span><input class="cell" type="password" id="bkPw" autocomplete="new-password" placeholder="At least 8 characters"></label><label class="field"><span class="lbl">The password again</span><input class="cell" type="password" id="bkPw2" autocomplete="new-password"></label></div>
+      <label class="check"><input type="checkbox" id="bkFiles"${state.bkFiles ? ' checked' : ''}> Also the files kept with the tool (Uploads and Saved workbooks): a much bigger file</label>
+      <p class="hint">Keep the password safe: without it nobody can open the file, you included.</p>
+      <div class="acts"><button class="btn primary" id="bkGo"${busy ? ' disabled' : ''}>${busy === 'export' ? '<span class="spin" aria-hidden="true"></span>Exporting…' : '<svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>Export all data'}</button></div>` : '<p class="subtle">This view keeps no data the tool can export.</p>'}</section>
+    <section class="card bkcard"><h2>Import data</h2><p class="cap">A file from Export all data, into ${where}. The records in the file replace the same records here; nothing else is removed.</p>
+      ${B ? `<div class="bkinfo"><b dir="auto">${esc(B.name)}</b><span>Made ${esc(fmtWhen(B.made))}${B.by ? ` by ${esc(B.by)}` : ''}${B.from ? ` from ${esc(B.from)}` : ''} · ${plural(B.recs.length, 'record')}</span>
+          <ul class="ilist">${B.cols.slice(0, 12).map(([c, n]) => `<li><span class="nm">${esc(c)}</span><span class="sg">${plural(n, 'record')}</span></li>`).join('')}${B.cols.length > 12 ? `<li class="subtle">and ${B.cols.length - 12} more kinds</li>` : ''}</ul></div>
+        <div class="acts"><button class="btn" id="bkCancel"${busy ? ' disabled' : ''}>Cancel</button><button class="btn primary" id="bkImport"${busy ? ' disabled' : ''}>${busy === 'import' ? '<span class="spin" aria-hidden="true"></span>Importing <span id="bkProg"></span>' : `Import ${plural(B.recs.length, 'record')}`}</button></div>`
+      : `<div class="grid2 tight"><label class="field"><span class="lbl">The .mcbak file</span><input class="cell" type="file" id="bkFile" accept=".mcbak,application/octet-stream"></label><label class="field"><span class="lbl">Its password</span><input class="cell" type="password" id="bkInPw" autocomplete="off"></label></div>
+        <div class="acts"><button class="btn" id="bkOpen"${busy ? ' disabled' : ''}>${busy === 'open' ? '<span class="spin" aria-hidden="true"></span>Opening…' : 'Open the file'}</button></div>`}</section></div>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('#bkGo, #bkOpen, #bkImport, #bkCancel'); if (!t || !canBackup()) return;
+  if (t.id === 'bkGo') bkExport(); else if (t.id === 'bkOpen') bkOpen(); else if (t.id === 'bkImport') bkImport(); else { state.bkIn = null; renderBackupWs(); }
+});
+document.addEventListener('change', e => { if (e.target && e.target.id === 'bkFiles') state.bkFiles = e.target.checked; });
+
 // ================================================================ SEARCH: one box on every page that guesses what you want
 // Ctrl+K (or /) opens it, on every page and for every role. Type a line in plain words: a person, a measure, a month or a day,
 // a team, a brand, a supervisor or a page ("Tala AHT", "lowest adherence Virgin", "absent yesterday", "below target August",
@@ -23284,7 +23831,7 @@ function findPages(role) {
   if (W.includes('cycle')) {
     add('cycle', 'Supervisors', 'supervisors page|cycle|progress|supervisors progress|spv scorecards|supervisor scorecards', 'Supervisors', go('cycle'));
     add('mail4', 'The four emails (one-to-ones ready, review, deadline warning, final result form)', 'four emails|one to ones ready|ready email|review email|results for review|deadline warning|final email|final form|final result form|signature|signatures|rasha|vp|ceo', 'Supervisors', go('cycle'));
-    add('calendar', 'Month close: who does what by which day', 'month close|calendar|close calendar|closing|deadlines|due days|timeline|late steps', 'Supervisors', () => todayGo('cal'));
+    if (canCycle()) add('calendar', 'Month close: the day each step is due', 'month close|calendar|close calendar|closing|deadlines|due days|timeline|late steps', 'Supervisors', () => todayGo('cal'));
     add('objsenior', 'Objections and the dispute rate per team', 'objections|objection|disputes|dispute rate|complaints|escalated', 'Supervisors', () => { setWs('cycle'); scrollTo_('#cycleBody .objcard'); });
     add('rules', 'Incentive rules (scorecards, bases, who earns it), in force from a month', 'incentive rules|rules|governance|bases|eligibility rules|minimum final|rule history|new rules', 'Supervisors', () => openRules());
   }
@@ -23926,7 +24473,7 @@ function syncFindBtn() { const b = $('findBtn'); if (b) b.hidden = !wsOfNow().le
 // final (day 10). Every step has an owner and a due day the senior manager can change. Most steps tick themselves when the
 // tool sees them done; the others are ticked by hand. Late steps show in red, the next two days in amber, on the Supervisors
 // page and in each owner's Today list.
-Object.assign(state, { calCfg: null, calMarks: {}, calDaysOpen: false, calOpen: false });
+Object.assign(state, { calCfg: null, calMarks: {}, calDaysOpen: false });
 const CAL_STEPS = [
   { id: 'built', label: 'Month built from the Genesys exports', who: 'WFM analysts', roles: ['user', 'admin'], day: 2, go: 'step:import' },
   { id: 'kpi', label: 'KPI file in', who: 'WFM analysts', roles: ['user', 'admin'], day: 3, go: 'step:import' },
@@ -23983,7 +24530,7 @@ async function calMark(k, id, on) {
   state.calMarks[k] = next;
   try { await queueWrite('steps/' + k, () => state.db.doc('steps/' + k).set(next)); } catch (e) { toast(`Not saved (${(e && e.code) || 'error'}).`); }
   if (s && on !== 'auto') logCycle(k, `${on ? 'Ticked' : 'Unticked'} "${s.label}" by hand`);
-  if (state.ws !== 'build') renderWs(); else renderToday();
+  if (state.ws !== 'build') renderWs(); renderToday();   // the page, and the bell's list when it is open
 }
 /** a step the tool sees done somewhere it does not keep (the agents' pages updated, the final deduction email saved) */
 function calAuto(k, id) { if (!k || !state.db || ((state.calMarks[k] || {}).marks || {})[id]) return; calMark(k, id, 'auto').catch(() => {}); }
@@ -24009,18 +24556,12 @@ function spvDoneHtml(k) {
     ${L.length ? `<ul class="sdlist">${L.map(x => `<li${x.n && x.done === x.n ? ' class="all"' : ''}><button class="linkbtn nm" data-cyc="team" data-spv="${esc(x.s.pid)}">${esc(x.s.name)}</button><span class="pbar" aria-hidden="true"><i style="width:${x.n ? Math.round(x.done / x.n * 100) : 0}%"></i></span><span class="sdn"><b>${x.done}</b> of ${plural(x.n, 'agent')} finished</span></li>`).join('')}</ul>`
       : '<p class="hint">No supervisors yet: fill the Supervisor column in the roster.</p>'}</div>`;
 }
-/** the close of one month, step by step (the Supervisors page, folded away: the deadlines are in everyone's bell) */
-function calCardHtml(k) {
-  if (!k) return '';
-  const L = calSteps(k), n = L.filter(s => s.st === 'done').length, late = L.filter(s => s.st === 'late').length, soon = L.filter(s => s.st === 'soon').length, can = canCycle();
+/** the day of the next month each month-close step is due (the bell's deadlines): a settings card on the Supervisors page */
+function calDaysHtml() {
+  if (!canCycle()) return '';
   const D = calDays();
-  return `<details class="card calcard" id="calCard" data-det="cal"${state.calOpen ? ' open' : ''}><summary>Month close · ${esc(ymLabel(k))} · ${n}/${L.length} done${late ? ` · <span class="bad">${late} late</span>` : ''}${soon ? ` · <span class="warnt">${soon} due soon</span>` : ''}</summary>
-    <p class="cap">Who does what, by which day of ${esc(MONTH_LONG[+calDue(k, 'final').slice(5, 7) - 1])}. Most steps tick themselves when the tool sees them done; tick the others when they are done outside it.${k < closeMonthNow() ? ' This month is closed: a step the tool did not see shows as not recorded.' : ''}</p>
-    <div class="calbar" aria-hidden="true">${L.map(s => `<i class="${s.st}"></i>`).join('')}</div>
-    <ol class="callist">${L.map(s => `<li class="${s.st}"><span class="cdot" aria-hidden="true"></span><span class="cdue">${esc(fmtDue(s.due))}</span><span class="clab"><b>${esc(s.label)}</b><small>${esc(s.who)}${s.note ? ' · ' + esc(s.note) : ''}</small></span><span class="cst">${esc(calStateText(s))}</span>
-      <span class="cacts">${s.can && (calMine(s) || can) && s.id !== 'objections' ? (s.done && s.done.hand ? `<button class="btn sm ghost" data-calmark="${s.id}" data-on="">Untick</button>` : !s.done ? `<button class="btn sm ghost" data-calmark="${s.id}" data-on="1" title="Done outside the tool">Tick</button>` : '') : ''}${!s.done && s.st !== 'past' && calCanGo(s.go) ? `<button class="btn sm" data-tgo="${esc(s.go + '@' + k)}">Open</button>` : ''}</span></li>`).join('')}</ol>
-    ${can ? `<details class="caldays" data-det="caldays"${state.calDaysOpen ? ' open' : ''}><summary>Due days</summary><p class="hint">The day of the next month each step is due, for every month. The one-to-ones are due on the deadline set above when there is one.</p>
-      <div class="basegrid caldaygrid">${CAL_STEPS.map(s => `<label><span>${esc(s.label)}</span><input type="number" min="1" max="28" step="1" data-calday="${s.id}" value="${D[s.id]}" aria-label="Due day: ${esc(s.label)}"></label>`).join('')}</div></details>` : ''}</details>`;
+  return `<details class="card caldays" data-det="caldays"${state.calDaysOpen ? ' open' : ''}><summary>Due days</summary><p class="hint">The day of the next month each month-close step is due, for every month. Each step's deadline shows in the bell of the people who do it. The one-to-ones are due on the deadline set above when there is one.</p>
+    <div class="basegrid caldaygrid">${CAL_STEPS.map(s => `<label><span>${esc(s.label)}</span><input type="number" min="1" max="28" step="1" data-calday="${s.id}" value="${D[s.id]}" aria-label="Due day: ${esc(s.label)}"></label>`).join('')}</div></details>`;
 }
 function calCanGo(go, any) {
   const [kind, x] = String(go || '').split(':'), W = wsOfNow();
@@ -24029,17 +24570,19 @@ function calCanGo(go, any) {
   if (kind === 'wfm') return W.includes('wfm');
   return false;
 }
-// events (the card is on the Supervisors page; its buttons also work in the Today list)
+// events: Mark done on a step's line in the bell (the close month), and the due days
 document.addEventListener('click', e => {
   const m = e.target.closest && e.target.closest('[data-calmark]'); if (!m) return;
-  const k = m.closest('#today') ? closeMonthNow() : wsMonthNow(); calMark(k, m.dataset.calmark, !!m.dataset.on);
+  const k = m.closest('#today, #notesTodo') ? closeMonthNow() : wsMonthNow(), id = m.dataset.calmark, on = !!m.dataset.on, s = CAL_STEPS.find(x => x.id === id);
+  calMark(k, id, on);
+  if (on && s && state.db) toast(`Marked done: ${s.label}`, { label: 'Undo', fn: () => calMark(k, id, false) });   // the line leaves the bell: a tick by mistake is undone here
 });
 document.addEventListener('change', e => {
   const t = e.target; if (!t.matches || !t.matches('[data-calday]')) return;
   const v = Math.round(+t.value); if (!(v >= 1 && v <= 28)) { toast('Type a day from 1 to 28.'); renderWs(); return; }
   calSaveDays({ ...((state.calCfg && state.calCfg.days) || {}), [t.dataset.calday]: v });
 });
-document.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details[data-det="caldays"]')) state.calDaysOpen = d.open; if (d.matches && d.matches('details[data-det="cal"]')) state.calOpen = d.open; }, true);
+document.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details[data-det="caldays"]')) state.calDaysOpen = d.open; }, true);
 
 // ================================================================ OBJECTIONS: an agent questions a number, the supervisor answers, the senior manager decides
 // An agent raises an objection on their own page (a day of attendance or adherence, a KPI, the AHT, the quality result, the
@@ -24461,10 +25004,10 @@ function todayHidden() { const u = Auth.user(); return !!u && lsGet('mc-today-hi
 /** [{cls: late|soon|todo|info, t, s, go, btn}] for the person signed in */
 function todayItems() {
   const r = roleNow(), u = Auth.user() || {}, out = [], k = closeMonthNow(), haveK = !!(state.history[k] || state.finals[k]);
-  const add = (cls, t, s, go, btn) => out.push({ cls, t, s: s || '', go: go || '', btn: btn || '' });
+  const add = (cls, t, s, go, btn, mark) => out.push({ cls, t, s: s || '', go: go || '', btn: btn || '', mark: mark || '' });
   if (r === 'agent') { todayAgent(add); return out; }
   // the month close: my steps that are late or due in the next two days
-  if (wsMonths().length && r !== 'spv') for (const s of calSteps(k)) if (!s.done && s.roles.includes(r) && (s.st === 'late' || s.st === 'soon')) add(s.st, `${s.label} · ${ymLabel(k)}`, `${s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.days === 0 ? 'due today' : s.days === 1 ? 'due tomorrow' : `due ${fmtDue(s.due)}`}${s.note ? ' · ' + s.note : ''}`, ((g => (g ? g + '@' + k : ''))(calCanGo(s.go, true) ? s.go : wsOfNow().includes('cycle') ? 'cal' : '')));
+  if (wsMonths().length && r !== 'spv') for (const s of calSteps(k)) if (!s.done && s.roles.includes(r) && (s.st === 'late' || s.st === 'soon')) add(s.st, `${s.label} · ${ymLabel(k)}`, `${s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.days === 0 ? 'due today' : s.days === 1 ? 'due tomorrow' : `due ${fmtDue(s.due)}`}${s.note ? ' · ' + s.note : ''}`, calCanGo(s.go, true) ? s.go + '@' + k : '', '', s.can && (calMine(s) || canCycle()) && s.id !== 'objections' ? s.id : '');   // a step done outside the tool: Mark done
   if (r === 'spv' && u.pid) {
     const team = teamOf(u.pid).filter(p => p.status !== 'Inactive');
     if (haveK && team.length) {
@@ -24601,7 +25144,7 @@ function renderBellTodo(L0) {
   const sum = !L.length ? (ar ? 'لا شيء مطلوب منك اليوم.' : T('Nothing for you today.')) : [`${L.length === 1 ? T('1 thing') : T('{n} things', { n: L.length })}`, late ? (ar ? `${late} متأخر` : `${late} late`) : '', soon ? (ar ? `${soon} قريب` : `${soon} due soon`) : ''].filter(Boolean).join(' · ');
   if (!b) $('notesSub').textContent = sum;
   box.innerHTML = `<section class="sec todosec" aria-labelledby="h-todo"><h3 id="h-todo">${esc(ar ? 'المطلوب منك' : 'To do')} <span class="tdate">· ${esc(dt)}</span>${L.length ? ` <span class="badge${late || soon ? ' n' : ''}">${L.length}</span>` : ''}</h3>
-    ${L.length ? `<ul class="tlist">${L.slice(0, 30).map(x => `<li class="${x.cls}"><span class="tdot" aria-hidden="true"></span><span class="tli"><b dir="auto">${esc(x.t)}</b>${x.s ? `<small dir="auto">${esc(x.s)}</small>` : ''}</span>${x.go ? `<button class="btn sm${x.cls === 'late' ? ' primary' : ''}" data-tgo="${esc(x.go)}">${esc(T(x.btn || 'Open'))}</button>` : ''}</li>`).join('')}</ul>` : `<p class="subtle">${esc(sum)}</p>`}</section>`;
+    ${L.length ? `<ul class="tlist">${L.slice(0, 30).map(x => `<li class="${x.cls}"><span class="tdot" aria-hidden="true"></span><span class="tli"><b dir="auto">${esc(x.t)}</b>${x.s ? `<small dir="auto">${esc(x.s)}</small>` : ''}</span>${x.mark ? `<button class="btn sm ghost" data-calmark="${esc(x.mark)}" data-on="1" title="Done outside the tool">${esc(T('Mark done'))}</button>` : ''}${x.go ? `<button class="btn sm${x.cls === 'late' ? ' primary' : ''}" data-tgo="${esc(x.go)}">${esc(T(x.btn || 'Open'))}</button>` : ''}</li>`).join('')}</ul>` : `<p class="subtle">${esc(sum)}</p>`}</section>`;
 }
 function openBell() { openNotes(); renderBellTodo(); }
 const scrollTo_ = sel => setTimeout(() => { const el = document.querySelector(sel); if (el) { el.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); if (el.animate && !RM()) el.animate([{ boxShadow: '0 0 0 3px var(--focus)' }, { boxShadow: '0 0 0 0 transparent' }], { duration: 1400 }); } }, 120);
@@ -24627,7 +25170,7 @@ function todayGo(go) {
   if (kind === 'board') { state.teamTab = 'one'; here('team'); renderWs(); scrollTo_('#teamBody .board'); return; }
   if (kind === 'approvals') { state.teamTab = 'wait'; here('team'); renderWs(); scrollTo_('#teamBody .approvals'); return; }
   if (kind === 'finish') { here('team'); setTimeout(() => { const b = document.querySelector('#teamBar [data-spvdone]'); if (b) { b.focus(); b.scrollIntoView({ block: 'center' }); } }, 60); return; }
-  if (kind === 'cal') { state.calOpen = true; here('cycle'); if (state.ws === 'cycle') renderWs(); scrollTo_('#calCard'); return; }   // the steps, unfolded
+  if (kind === 'cal') { state.calDaysOpen = true; here('cycle'); if (state.ws === 'cycle') renderWs(); scrollTo_('#cycleBody .caldays'); return; }   // the month close's due days
   if (kind === 'qnames') { here('quality'); scrollTo_('#qualityBody .qnames'); return; }
   if (kind === 'accounts') { Auth.openAccounts(); return; }
   if (kind === 'sign') { openSign(x); return; }
@@ -25370,11 +25913,13 @@ const DEPT = [
   ['user', 'WFM analyst', [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
-    'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' attendance sheets, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
+    'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
+    '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes each supervisor\'s file for the month (or all of them as one .zip): they write a row only for each late, absent, leave or day off, and every other day counts as a working day. Drop the filled files on Import.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
     '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it); the incentive data workbook is made too. People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
-    '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed); the incentive email comes from the build.',
+    '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction. The incentive email comes from the build.',
+    '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
   ['wfm', 'WFM manager', [
@@ -25382,6 +25927,7 @@ const DEPT = [
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
     'When a WFM analyst is on vacation, tick their name under <b>Vacation cover</b> on the WFM team page: you then have their tabs (Import, Review, Export, Report builder) until you untick it.',
+    '<b>WFM team › Data</b>: export all the data to one file locked with a password, or import such a file. Accounts and passwords are never in it.',
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
     'The <b>Dashboard</b> and <b>WFM team › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
   ['senior', 'Senior manager', [
@@ -25393,7 +25939,8 @@ const DEPT = [
   ['spv', 'Supervisor', [
     '<b>Team</b> shows your own agents with their numbers for the month; the header\'s month picker changes the month.',
     '<b>One-to-ones</b>: hold each one, fill in the form and send it to the agent; they add their part and sign the final.',
-    '<b>Attendance</b>: correct a day when Genesys is wrong (only an agent\'s supervisor can).',
+    '<b>Attendance</b>: correct a day when Genesys is wrong (only an agent\'s supervisor can). In CC and SM the days come from Genesys, which shows a sick day as absent: correct those to SL here.',
+    'TS, MG, CT, QA, DE and WF: <b>Attendance › Get the template</b> for the month. Write a row only for each day someone was late, absent, on leave or off on another day than their weekly days off (a From and To date for several days), and send the file to the WFM team. Every other day counts as a working day.',
     '<b>Objections</b>: answer your agents\' objections before the deadline, and correct the accepted ones.',
     '<b>Waiting for approval</b>: approve new agent accounts and link each one to their name.',
     'When every one-to-one is done, <b>Finish your team</b>: the senior manager is told straight away. The <b>bell</b> lists what is due.']],
@@ -25418,8 +25965,8 @@ const DEPT = [
   ['admin', 'Admin', [
     '<b>Manage accounts</b> (the account menu): give each person a role, link supervisors to their names and choose their agents, reset passwords and open access again.',
     '<b>Settings</b>: targets, the deduction scope, the logo, the sign-in lock time, and the scorecards.',
-    'Admins can do everything the analysts do on the WFM team page and see every page.',
-    'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome.']],
+    'Admins can do everything the analysts do on the WFM team page and see every page, <b>WFM team › Data</b> too (export and import all the data).',
+    'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome. Opening the shared data shows what it waits for: if it is slow on a computer, MC Data is often in OneDrive or SharePoint with its files not downloaded yet. Right-click it in File Explorer and choose <b>Always keep on this device</b>.']],
 ];
 let deptSel = '', deptRole = '';
 function renderDeptGuide(force) {
@@ -25694,7 +26241,7 @@ function needItems() {
     { ok: !state.pending.length, block: true, t: state.pending.length ? `Reading ${plural(state.pending.length, 'file')}…` : 'No file is still being read' },
     { ok: allDets().length > 0 || state.attFiles.length > 0, block: true, t: allDets().length || state.attFiles.length ? 'At least one export or attendance file' : 'No export and no attendance file yet' },
     { ok: n === 4, block: false, t: n === 4 ? 'All four Genesys exports' : `${n} of 4 Genesys exports: ${KINDS.filter(k => !state.slots[k.kind]).map(k => k.title).join(', ')} missing, so ${n ? 'their sheets stay empty' : 'the sheets stay empty'}` },
-    { ok: state.attFiles.length > 0 || !!(state.attRes && state.attRes.auto), block: false, t: state.attFiles.length ? plural(state.attFiles.length, 'attendance sheet') : state.attRes && state.attRes.auto ? 'Attendance counted from Genesys' : 'No attendance sheets: the Attendance sheet is an empty grid to fill in Excel' },
+    { ok: state.attFiles.length > 0 || !!(state.attRes && state.attRes.auto), block: false, t: state.attFiles.length ? `${plural(state.attFiles.length, 'attendance file')}${state.attRes && state.attRes.genesys ? `, and ${plural(state.attRes.genesys, 'person', 'people')} from Genesys` : ''}` : state.attRes && state.attRes.auto ? 'Attendance counted from Genesys' : 'No attendance yet: the Attendance sheet is an empty grid to fill in Excel' },
   ];
 }
 function renderImpSide() {
@@ -26552,8 +27099,7 @@ function dashClose(k) {
     <div class="dcr"><svg class="rings" viewBox="0 0 160 160" role="img" aria-label="${esc(R.map(x => `${x.l}: ${x.d} of ${x.n}`).join('; '))}">${R.map(ring).join('')}</svg>
       <ul class="rleg">${R.map(x => `<li class="${x.c}"><span><i aria-hidden="true"></i>Senior manager's steps</span><b>${x.d}<small> of ${x.n} done</small></b></li>`).join('')}<li class="dcsum">${late ? `<span class="bad">${late} late</span>` : ''}${late && soon ? ' · ' : ''}${soon ? `${soon} due soon` : ''}${!late && !soon ? (open.length ? 'Nothing late' : 'All done') : ''}</li></ul></div>
     <ol class="dcsteps">${S.map(s => `<li class="${s.st}"><span class="dcd" aria-hidden="true"></span><span class="dl"><b>${esc(s.label)}</b><small>${esc(when(s))}${s.note ? ' · ' + esc(s.note) : ''}</small></span></li>`).join('')}</ol>
-    ${next ? `<div class="dcn ${next.st}"><span><small>Yours next · ${esc(when(next).toLowerCase())}</small><b>${esc(next.label)}</b></span>${calCanGo(next.go, true) ? `<button class="btn sm" data-tgo="${esc(next.go + '@' + k)}">Open</button>` : '<button class="btn sm" data-dopenbell>Deadlines</button>'}</div>` : ''}
-    ${wsOfNow().includes('cycle') ? '<div class="acts"><button class="btn sm ghost" data-tgo="cal">Every step</button></div>' : ''}</section>`;
+    ${next ? `<div class="dcn ${next.st}"><span><small>Yours next · ${esc(when(next).toLowerCase())}</small><b>${esc(next.label)}</b></span>${calCanGo(next.go, true) ? `<button class="btn sm" data-tgo="${esc(next.go + '@' + k)}">Open</button>` : '<button class="btn sm" data-dopenbell>Deadlines</button>'}</div>` : ''}</section>`;
 }
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-dopenbell]')) openBell(); });
 // ---- data status: how old each source is; no green without a source date

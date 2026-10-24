@@ -296,7 +296,7 @@ function renderTeam() {
   const tabsHtml = `<div class="tabs ttabs" role="tablist" aria-label="Team">${TABS.map(([v, l, n]) => `<button class="tab" role="tab" id="tt-${v}" aria-controls="tp-${v}" aria-selected="${v === tab}" tabindex="${v === tab ? 0 : -1}" data-ttab="${v}">${esc(l)}${n !== '' ? ` <span class="badge${v === 'wait' || (v === 'obj' && n) ? ' n' : ''}">${esc(String(n))}</span>` : ''}</button>`).join('')}</div>`;
   const panel = tab === 'agents' ? teamTableHtml(items, set, showSR, spv)
     : tab === 'one' ? board()
-    : tab === 'att' ? (attGridHtml(items, k, spv && !monthLocked(k)) || emptyCard('No attendance yet', 'The month\'s attendance shows here once the schedule and the sign-ons (or the attendance sheets) are in.'))
+    : tab === 'att' ? attTplBar(k) + (attGridHtml(items, k, spv && !monthLocked(k)) || emptyCard('No attendance yet', 'The month\'s attendance shows here once the schedule and the sign-ons (or the attendance sheets) are in.'))
     : tab === 'obj' ? (safeHtml(objTeamHtml, k, cur) || emptyCard('No objections', `Nobody in ${spv ? 'your team' : 'these agents'} questioned a number for ${ymLabel(k)}.`))
     : tab === 'calls' ? (teamInterHtml(items, k) || emptyCard('No calls for these agents', 'The interactions export has no calls for the agents shown.'))
     : tab === 'kpis' ? `${teamKpiHtml(R, deptRows, k)}${scoreCard()}${chart()}`
@@ -465,7 +465,7 @@ function attGridHtml(items, k, canEdit) {
     return `<tr><th class="an"><button class="linkbtn nm" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" dir="auto">${esc(x.exp)}</button></th>${cells}<td class="r num">${t.absent}</td><td class="r num">${t.tardy ? Math.round(t.tardy) : 0}</td><td class="r num">${t.al + t.sl + t.leave}</td><td class="r num">${t.sched ? `${t.attend}/${t.sched}` : '–'}</td></tr>`;
   }).join('');
   const nEd = [...edits.values()].reduce((a, e) => a + Object.keys((e && e.days) || {}).length, 0);
-  return `<div class="card attcard cvauto"><div class="cardhead"><div><h2>Attendance · ${esc(ymLabel(k))}</h2><p class="cap">Counted by the tool from the Genesys schedule and sign-ons: a missed shift is Absent, a late sign-on shows its minutes, a leave in the schedule shows as that leave. ${canEdit ? 'Select a day to correct it; only you, as the supervisor, can.' : monthLocked(k) ? 'The month is final.' : 'Only the agent\'s supervisor can correct it.'}${nEd ? ` ${plural(nEd, 'day')} corrected (dotted).` : ''}</p></div></div>
+  return `<div class="card attcard cvauto"><div class="cardhead"><div><h2>Attendance · ${esc(ymLabel(k))}</h2><p class="cap">CC and SM: counted by the tool from the Genesys schedule and sign-ons (a missed shift is Absent, a late sign-on shows its minutes, a leave in the schedule shows as that leave). ${tplTeams().length ? `${esc(tplTeams().join(', '))}: from the supervisor's attendance template. ` : ''}${canEdit ? 'Select a day to correct it; only you, as the supervisor, can.' : monthLocked(k) ? 'The month is final.' : 'Only the agent\'s supervisor can correct it.'}${nEd ? ` ${plural(nEd, 'day')} corrected (dotted).` : ''}</p></div></div>
     ${chipsHtml}
     ${L.length ? `<div class="tablewrap attgrid"><table><thead><tr><th class="an">Agent</th>${head}<th class="r">Abs</th><th class="r">Late</th><th class="r">Leave</th><th class="r">Days</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="subtle">Nobody in these departments.</p>'}</div>`;
 }

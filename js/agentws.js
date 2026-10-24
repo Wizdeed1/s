@@ -11,7 +11,8 @@ function loadAgentData(db, pid) {
   langLoad();
   if (!pid) { state.me = { pid: '', prof: null, months: {}, forms: {}, sigs: {}, objs: {}, replies: {}, err: 'Your account is not linked to your name yet. Ask your supervisor.' }; renderAll(); return; }
   state.me = { pid, prof: null, months: {}, forms: {}, sigs: {}, objs: {}, replies: {}, loaded: 0, got: new Set() };
-  const done = () => { state.me.loaded++; renderAll(); };
+  const poke = busyWatch(db, () => state.me && state.me.got && state.me.got.size >= 5);
+  const done = () => { state.me.loaded++; renderAll(); poke(); };
   const getProf = () => db.doc('agent/' + pid).get().then(s => { state.me.prof = s.exists ? s.data() : null; renderAll(); }, () => {});
   getProf(); setInterval(() => { if (!document.hidden) getProf(); }, 60000);
   const sub = (c, f) => { const got = () => state.me.got.add(f); try { db.collection(`agent/${pid}/${c}`).onSnapshot(sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); state.me[f] = o; got(); done(); }, () => { got(); done(); }); } catch (e) { got(); done(); } };

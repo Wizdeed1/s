@@ -105,6 +105,7 @@ async function readZip(buf) {
   const find = name => entries[name] || entries[Object.keys(entries).find(k => k.toLowerCase() === name.toLowerCase())];
   return {
     has: name => !!find(name),
+    names: () => Object.keys(entries),
     async text(name) {
       const e = find(name); if (!e) return null;
       const raw = e.method === 0 ? e.data : await inflateRaw(e.data);
@@ -765,7 +766,8 @@ function reviewMonth(days, T, perf) {
 
 // ============================================================ the supervisors' attendance template (AttTpl makes it in the page)
 // A month's exceptions only: one row per day someone was late, absent, on leave or off. Every other day of each person's dates is a
-// working day, and their weekly days off on the Team sheet are OFF. The hidden _mc sheet says it is the template and for which month.
+// working day, and their weekly days off on the Team sheet are OFF (inside a leave of several days too). The hidden _mc sheet says it
+// is the template, for which month, and for which department.
 const ATT_TPL_MARK = 'mc-attendance-template';
 const ATT_TPL_TYPES = [['late', null], ['tardy', null], ['absent', 'Absent'], ['day off', 'OFF'], ['off', 'OFF'], ['al leave', 'AL'], ['annual leave', 'AL'], ['al', 'AL'],
   ['sl leave', 'SL'], ['sick leave', 'SL'], ['sl', 'SL'], ['unpaid leave', 'Unpaid'], ['unpaid', 'Unpaid'], ['compassionate leave', 'Compassionate Leave'], ['paternity leave', 'Paternity'],
@@ -830,8 +832,9 @@ function parseAttTemplate(all) {
       if (from === -1) { warns.push(`Row ${row} (${who}): the date is not in ${MON[M - 1]} ${Y}, so it was not used`); return; }
       let i = people.findIndex(p => id && p.id === id); if (i < 0) i = people.findIndex(p => name && normName(p.name) === normName(name));
       if (i < 0) { people.push({ name, id, idRaw: id, brand: '', dep: '', off: offDefault, first: null, last: null }); days.push(base(people[people.length - 1])); i = people.length - 1; warns.push(`${who} is not on the Team sheet: added, with the usual days off`); }
-      const end = code === null ? from : to > 0 ? Math.max(to, from) : to === -1 ? ND : from;
+      const end = code === null ? from : to > 0 ? Math.max(to, from) : to === -1 ? ND : from, base0 = base(people[i]);
       for (let d = from; d <= end; d++) {
+        if (end > from && (base0[d - 1] === 'OFF' || base0[d - 1] == null)) continue;   // several days: the weekly days off (and days outside the person's dates) stay as they are
         const k = i + '|' + d; if (seen.has(k) && seen.get(k) !== row) warns.push(`${who}, ${d} ${MON[M - 1]}: rows ${seen.get(k)} and ${row} are for the same day; row ${row} is used`);
         seen.set(k, row);
         if (code === null) { const mins = Number(ac.min >= 0 ? r[ac.min] : NaN); if (!(mins > 0)) warns.push(`Row ${row} (${who}): Late with no minutes, so the day counts as attended`); days[i][d - 1] = mins > 0 ? Math.round(mins) : 'Attend'; }
@@ -841,7 +844,7 @@ function parseAttTemplate(all) {
     });
   } else warns.push('The Attendance sheet has no Date and Type headers, so only the weekly days off were used');
   const dates = Array.from({ length: ND }, (_, i) => ({ y: Y, m: M, d: i + 1 }));
-  return { kind: 'attendance', sheet: `${normSpace(AT.name)} (template)`, data: { dates, template: { month: `${Y}-${String(M).padStart(2, '0')}`, spv: normSpace(kv.get('supervisor')), entries, warns },
+  return { kind: 'attendance', sheet: `${normSpace(AT.name)} (template)`, data: { dates, template: { month: `${Y}-${String(M).padStart(2, '0')}`, dep: normSpace(kv.get('dep')), spv: normSpace(kv.get('supervisor')), entries, warns },
     people: people.map((p, i) => ({ name: p.name, id: p.id, idRaw: p.idRaw, team: p.brand, dep: p.dep, status: '', tardyTotal: null, cells: days[i].map((v, k) => [dates[k], v]) })).filter(p => p.cells.some(([, v]) => v != null)) } };
 }
 

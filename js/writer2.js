@@ -79,7 +79,7 @@ class Sheet {
   xml(selected) {
     const out = [];
     out.push('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">');
-    out.push(`<sheetPr>${this.tab ? `<tabColor rgb="${this.tab}"/>` : ''}</sheetPr>`);
+    out.push(`<sheetPr>${this.tab ? `<tabColor rgb="${this.tab}"/>` : ''}${this.print ? '<pageSetUpPr fitToPage="1"/>' : ''}</sheetPr>`);
     out.push(`<dimension ref="A1:${ref(this.maxR, this.maxC)}"/>`);
     let pane = '';
     if (this.freeze) {
@@ -106,11 +106,14 @@ class Sheet {
     let pr = 1;
     for (const r of this.cf) out.push(r.type === 'dup' ? `<conditionalFormatting sqref="${r.sqref}"><cfRule type="duplicateValues" dxfId="${r.dxfId}" priority="${pr++}"/></conditionalFormatting>`
       : `<conditionalFormatting sqref="${r.sqref}"><cfRule type="expression" dxfId="${r.dxfId}" priority="${pr++}"${r.stop ? ' stopIfTrue="1"' : ''}><formula>${esc(r.formula)}</formula></cfRule></conditionalFormatting>`);
-    // a list (d.list), or a date or whole number between f1 and f2 (d.type 'date' | 'whole'), with an optional error message
-    const dvXml = d => (d.type ? `<dataValidation type="${d.type}" operator="between" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''} sqref="${d.sqref}"><formula1>${esc(d.f1)}</formula1><formula2>${esc(d.f2)}</formula2></dataValidation>`
-      : `<dataValidation type="list" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''} sqref="${d.sqref}"><formula1>${esc(d.list)}</formula1></dataValidation>`);
+    // a list (d.list), or a date or whole number between f1 and f2 (d.type 'date' | 'whole'), with an optional error message, and an
+    // optional note shown when the cell is chosen (d.prompt, with d.promptTitle)
+    const tip = d => (d.prompt ? ` showInputMessage="1" promptTitle="${esc(String(d.promptTitle || '').slice(0, 32))}" prompt="${esc(String(d.prompt).slice(0, 255))}"` : '');
+    const dvXml = d => (d.type ? `<dataValidation type="${d.type}" operator="between" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''}${tip(d)} sqref="${d.sqref}"><formula1>${esc(d.f1)}</formula1><formula2>${esc(d.f2)}</formula2></dataValidation>`
+      : `<dataValidation type="list" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''}${tip(d)} sqref="${d.sqref}"><formula1>${esc(d.list)}</formula1></dataValidation>`);
     if (this.dv.length) out.push(`<dataValidations count="${this.dv.length}">${this.dv.map(dvXml).join('')}</dataValidations>`);
-    out.push('<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>' + (this._drawing ? '<drawing r:id="rId1"/>' : '') + '</worksheet>');
+    // this.print = { landscape }: printed as wide as one page (as many pages down as it needs)
+    out.push('<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>' + (this.print ? `<pageSetup orientation="${this.print.landscape ? 'landscape' : 'portrait'}" fitToWidth="1" fitToHeight="0"/>` : '') + (this._drawing ? '<drawing r:id="rId1"/>' : '') + '</worksheet>');
     return out.join('');
   }
   /** the company logo, floating at row r of column c (it never covers a formula; cells stay as they are) */
@@ -687,26 +690,26 @@ async function dedMail(d, opts = {}) {
   const title = S.get({ font: { sz: 16, b: true, color: NAVY } }), sub = S.get({ font: { sz: 9, i: true, color: 'FF7F7F7F' } });
   const H = (fill, fmt) => S.get({ font: { b: true, color: WHITE }, fill, border: WHITE, align: { h: 'center', wrap: true }, ...(fmt ? { numFmt: fmt } : {}) });
   const hdr = H(NAVY), hDate = H(NAVY, 'dd-mmm'), hDay = H(NAVY, 'ddd dd-mmm'), hSA = H('FF2F5597'), hDf = H('FFC65911'), hTot = H(TAB), hNote = H('FF595959'), hCnt = H('FF305496');
-  const cId = S.get({ font: {}, border: GRID, align: { h: 'center' }, numFmt: '0' }), cName = S.get({ font: {}, border: GRID, align: { h: 'left' } }), cC = S.get({ font: {}, border: GRID, align: { h: 'center' } });
+  const cName = S.get({ font: {}, border: GRID, align: { h: 'left' } }), cC = S.get({ font: {}, border: GRID, align: { h: 'center' } });
   const cCnt = S.get({ font: { b: true }, fill: 'FFF2F2F2', border: GRID, align: { h: 'center' } }), cDiff = S.get({ font: { b: true }, fill: 'FFFCEEE4', border: GRID, align: { h: 'center' } });
   const cTot = S.get({ font: { sz: 11, b: true }, fill: 'FFF2F7EE', border: GRID, align: { h: 'center' } });
   const LEG = [['AL leave', 'FF8DB4E2', 'FF1F3864'], ['SL leaves', 'FFA9D08E', 'FF274E13'], ['Absent', 'FFFF8B8B', 'FF9C0006'], ['National Day', 'FF00843D', WHITE], ['OFF', 'FFBFBFBF', 'FF262626']];
   const leg = LEG.map(([t, fill, color]) => [t, S.get({ font: { b: true, color }, fill, border: WHITE, align: { h: 'center' } }), S.dxf({ color, fill })]);
   const other = S.dxf({ color: 'FF5B2C6F', fill: 'FFE4DFEC' }), redB = S.dxf({ color: 'FFC00000', b: true });
-  const idOf = x => { const s = String(x.id ?? '').trim(); return /^\d{6,}$/.test(s) ? +s : s || 'NA'; };
+  // no National IDs in the email's workbook (the agents' privacy): each person by name, team and department
 
   // ---- Attendance Report
   const A = new Sheet('Attendance Report'); A.tab = TAB;
   A.set(1, 1, `MC Monthly Attendance - ${L}`, title); A.heights[1] = 30; A.heights[2] = 30;
-  const D0 = 5, CN = D0 + ND, NOTE = CN + DED_COUNTS.length, R0 = 3, RL = Math.max(R0, R0 + d.att.length - 1);
+  const D0 = 4, CN = D0 + ND, NOTE = CN + DED_COUNTS.length, R0 = 3, RL = Math.max(R0, R0 + d.att.length - 1);
   leg.forEach(([t, s], i) => { const c = D0 + 6 + i * 2; A.set(1, c, t, s); A.set(1, c + 1, null, s); A.merge(1, c, 1, c + 1); });   // the colours' legend, right of the title
-  [['ID', 14], ['Name', 32], ['Team', 11], ['Dep', 7]].forEach(([h, w], j) => { A.set(2, j + 1, h, hdr); A.width(j + 1, w); });
+  [['Name', 32], ['Team', 11], ['Dep', 7]].forEach(([h, w], j) => { A.set(2, j + 1, h, hdr); A.width(j + 1, w); });
   for (let i = 1; i <= ND; i++) { A.set(2, D0 + i - 1, ymd(Y, M, i), hDate); A.width(D0 + i - 1, 9.5); }
   DED_COUNTS.forEach(([h, w], j) => { A.set(2, CN + j, h, j >= 10 ? hTot : hCnt); A.width(CN + j, w); });
   A.set(2, NOTE, 'Review Notes', hNote); A.width(NOTE, 30);
   d.att.forEach((a, i) => {
     const r = R0 + i;
-    A.set(r, 1, idOf(a), cId); A.set(r, 2, a.name, cName); A.set(r, 3, a.brand || '', cC); A.set(r, 4, a.team || '', cC);
+    A.set(r, 1, a.name, cName); A.set(r, 2, a.brand || '', cC); A.set(r, 3, a.team || '', cC);
     for (let k = 0; k < ND; k++) A.set(r, D0 + k, dedShowDay(a.days[k]), cC);
     dedCounts(a).forEach((v, j) => A.set(r, CN + j, v, cCnt)); A.set(r, NOTE, null, cName);
   });
@@ -721,8 +724,8 @@ async function dedMail(d, opts = {}) {
   const noDaily = d.ded.filter(x => !x.sched || !x.act).length;
   DE.set(2, 1, `Sched. = scheduled work minutes. Actual = minutes signed on inside them. Diff = Sched. - Actual (0 if Actual is 0).${noDaily ? ` ${noDaily === 1 ? '1 person has' : `${noDaily} people have`} only a total: the month was saved before each day's minutes were kept.` : ''}`, sub);
   Object.assign(DE.heights, { 1: 30, 2: 18, 3: 6, 4: 22, 5: 30 });
-  [['ID', 14], ['Name', 34], ['Team', 11], ['Dep', 8]].forEach(([h, w], j) => { DE.set(4, j + 1, h, hdr); DE.set(5, j + 1, null, hdr); DE.merge(4, j + 1, 5, j + 1); DE.width(j + 1, w); });
-  const E0 = 5, TOT = E0 + ND * 3, DN = TOT + 1, Q0 = 6, QL = Math.max(Q0, Q0 + d.ded.length - 1);
+  [['Name', 34], ['Team', 11], ['Dep', 8]].forEach(([h, w], j) => { DE.set(4, j + 1, h, hdr); DE.set(5, j + 1, null, hdr); DE.merge(4, j + 1, 5, j + 1); DE.width(j + 1, w); });
+  const E0 = 4, TOT = E0 + ND * 3, DN = TOT + 1, Q0 = 6, QL = Math.max(Q0, Q0 + d.ded.length - 1);
   for (let i = 1; i <= ND; i++) {
     const c = E0 + (i - 1) * 3;
     DE.set(4, c, ymd(Y, M, i), hDay); DE.set(4, c + 1, null, hDay); DE.set(4, c + 2, null, hDay); DE.merge(4, c, 4, c + 2);
@@ -733,7 +736,7 @@ async function dedMail(d, opts = {}) {
   DE.set(4, DN, 'Review Notes', hNote); DE.set(5, DN, null, hNote); DE.merge(4, DN, 5, DN); DE.width(DN, 30);
   d.ded.forEach((x, i) => {
     const r = Q0 + i; let tot = 0, any = false;
-    DE.set(r, 1, idOf(x), cId); DE.set(r, 2, x.name, cName); DE.set(r, 3, x.brand || '', cC); DE.set(r, 4, x.team || '', cC);
+    DE.set(r, 1, x.name, cName); DE.set(r, 2, x.brand || '', cC); DE.set(r, 3, x.team || '', cC);
     for (let k = 0; k < ND; k++) {
       const c = E0 + k * 3, sv = x.sched ? x.sched[k] : null, av = x.act ? x.act[k] : null;
       const dv = sv == null || av == null ? '' : av === 0 ? 0 : Math.max(0, sv - av); if (typeof dv === 'number') { tot += dv; any = true; }
@@ -746,6 +749,40 @@ async function dedMail(d, opts = {}) {
   return pack([A, DE], S, {}, opts);
 }
 
-return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell, dedMail, dedShowDay };
+/** a workbook made elsewhere (a dropped incentive file), for an email: every column headed ID or National ID in the first rows is
+    emptied from its heading down (the agents' privacy). Everything else stays as it was; Excel rebuilds its calculation chain. */
+async function withoutIds(bytes) {
+  const z = await C.readZip(bytes), td = new TextDecoder(), te = new TextEncoder();
+  const ss = z.has('xl/sharedStrings.xml') ? await z.text('xl/sharedStrings.xml') : '';
+  const strs = [...ss.matchAll(/<si>([\s\S]*?)<\/si>/g)].map(m => [...m[1].matchAll(/<t(?:\s[^>]*)?>([^<]*)<\/t>/g)].map(x => x[1]).join(''));
+  const isId = t => /^(id|national id)$/i.test(String(t || '').replace(/&amp;/g, '&').trim());
+  const CELL = /<c r="([A-Z]+)(\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, files = []; let changed = false;
+  for (const n of z.names()) {
+    if (n.endsWith('/')) continue;
+    let data = await z.bytes(n);
+    if (/^xl\/worksheets\/[^/]+\.xml$/i.test(n)) {
+      let x = td.decode(data); const cols = new Map();
+      for (const [, col, row, attrs, inner] of x.matchAll(CELL)) {
+        if (+row > 8 || !inner || cols.has(col)) continue;
+        const t = /t="s"/.test(attrs) ? strs[+((inner.match(/<v>(\d+)<\/v>/) || [])[1])] : /t="(inlineStr|str)"/.test(attrs) ? (inner.match(/<(?:t|v)(?:\s[^>]*)?>([^<]*)<\/(?:t|v)>/) || [])[1] : null;
+        if (isId(t)) cols.set(col, +row);
+      }
+      if (cols.size) {
+        x = x.replace(CELL, (all, col, row, attrs) => (cols.has(col) && +row >= cols.get(col) ? `<c r="${col}${row}"${(attrs.match(/ s="\d+"/) || [''])[0]}/>` : all));
+        data = te.encode(x); changed = true;
+      }
+    }
+    files.push({ name: n, data });
+  }
+  if (!changed) return bytes;
+  const out = files.filter(f => !/^xl\/calcChain\.xml$/i.test(f.name)).map(f => {
+    if (f.name === '[Content_Types].xml') return { name: f.name, data: td.decode(f.data).replace(/<Override[^>]*calcChain\.xml"[^>]*\/>/g, '') };
+    if (/^xl\/_rels\/workbook\.xml\.rels$/i.test(f.name)) return { name: f.name, data: td.decode(f.data).replace(/<Relationship[^>]*calcChain\.xml"[^>]*\/>/g, '') };
+    return f;
+  });
+  return C.writeZip(out);
+}
+
+return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell, dedMail, dedShowDay, withoutIds };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Writer2;

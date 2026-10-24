@@ -224,6 +224,107 @@ class Doc {
   }
 }
 
+/** the one-to-one on one page: the same parts, tighter, every size times k (oneToOne tries a smaller k until it fits on one page) */
+class Compact extends Doc {
+  get k() { return this.f._k || 1; }
+  z(v) { return v * this.k; }
+  newPage() {
+    const P = this.pdf, z = v => this.z(v), y = M - 12, lg = this.f.logo; P.addPage(); this.pageNo = P.pages.length;
+    if (lg) { const h = z(28), w = Math.min(z(130), h * lg.w / lg.h), hh = w * lg.h / lg.w; P.image(M, y + (h - hh) / 2, w, hh); }
+    P.text(PW - M, y + z(12), this.title.toUpperCase(), { size: z(13), bold: true, color: NAVY, align: 'right' });
+    P.text(PW - M, y + z(23), 'Supervisor and agent one-to-one', { size: z(7.6), color: GREY, align: 'right' });
+    if (!lg) P.text(M, y + z(17), 'Member Care', { size: z(10), bold: true, color: NAVY });
+    P.rect(M, y + z(30), CW, 1.4, { fill: NAVY });
+    this.y = y + z(38);
+  }
+  heading(t, keep = 30) { const P = this.pdf, h = this.z(13); this.need(this.z(keep)); P.rect(M, this.y, CW, h, { fill: BAND }); P.rect(M, this.y, 3, h, { fill: NAVY }); P.text(M + 8, this.y + this.z(9.2), t.toUpperCase(), { size: this.z(7.4), bold: true, color: NAVY }); this.y += h + this.z(4); }
+  grid(pairs, cols = 4) {
+    const P = this.pdf, z = v => this.z(v), cw = CW / cols, rows = Math.ceil(pairs.length / cols);
+    for (let r = 0; r < rows; r++) {
+      const cells = pairs.slice(r * cols, r * cols + cols), lines = cells.map(([, v]) => wrap(v || '', cw - 10, z(8.6), false));
+      const h = Math.max(z(21), z(12.5) + Math.max(...lines.map(l => l.length)) * z(9.8));
+      this.need(h);
+      cells.forEach(([l], c) => {
+        const x = M + c * cw; P.rect(x, this.y, cw, h, { stroke: LINE });
+        P.text(x + 5, this.y + z(7.6), l.toUpperCase(), { size: z(5.8), bold: true, color: GREY });
+        lines[c].forEach((ln, i) => P.text(x + 5, this.y + z(16.4) + i * z(9.8), ln, { size: z(8.4), color: INK }));
+      });
+      for (let c = cells.length; c < cols; c++) P.rect(M + c * cw, this.y, cw, h, { stroke: LINE });
+      this.y += h;
+    }
+    this.y += z(5);
+  }
+  checks(items, cols, label) {
+    const P = this.pdf, z = v => this.z(v), lw = label ? z(96) : 0, cw = (CW - lw) / cols;
+    for (let i = 0; i < items.length; i += cols) {
+      this.need(z(14));
+      if (label && !i) P.text(M, this.y + z(7.4), label, { size: z(7.4), bold: true, color: NAVY });
+      items.slice(i, i + cols).forEach(([l, on], c) => { const x = M + lw + c * cw; P.check(x + 2, this.y, z(8.6), on); P.text(x + z(15), this.y + z(7.4), l, { size: z(8.4), bold: !!on, color: INK }); });
+      this.y += z(14);
+    }
+    this.y += z(2);
+  }
+  table(head, widths, rows, o = {}) {
+    const P = this.pdf, z = v => this.z(v), ws = widths.map(w => w * CW), pad = 4;
+    const hdr = () => { const h = z(13.5); P.rect(M, this.y, CW, h, { fill: NAVY }); let x = M; head.forEach((t, i) => { P.text(x + pad, this.y + z(9.3), t, { size: z(7.4), bold: true, color: '#ffffff' }); x += ws[i]; }); this.y += h; };
+    this.need(z(30)); hdr();
+    rows.forEach((r, ri) => {
+      const cells = r.map((v, i) => wrap(typeof v === 'object' && v ? v.t : v, ws[i] - 2 * pad, z(8), typeof v === 'object' && v && v.b));
+      const h = Math.max(z(o.minH ? o.minH * 0.75 : 12.5), z(4.5) + Math.max(...cells.map(c => c.length)) * z(9.4));
+      if (this.need(h)) hdr();
+      if (ri % 2) P.rect(M, this.y, CW, h, { fill: '#F7F9FC' });
+      let x = M;
+      r.forEach((v, i) => {
+        const o2 = typeof v === 'object' && v ? v : {};
+        cells[i].forEach((ln, n) => P.text(x + pad, this.y + z(9) + n * z(9.4), ln, { size: z(8), bold: !!o2.b, color: o2.c || INK }));
+        P.rect(x, this.y, ws[i], h, { stroke: LINE }); x += ws[i];
+      });
+      this.y += h;
+    });
+    this.y += z(5);
+  }
+  /** boxes side by side, as high as the longest text: [[label, text, minH]] */
+  boxes(list) {
+    const P = this.pdf, z = v => this.z(v), gap = 10, bw = (CW - gap * (list.length - 1)) / list.length, lh = z(10);
+    const L = list.map(([, t]) => wrap(t || '', bw - 12, z(8.6), false));
+    const h = Math.max(...list.map(([, , mh], i) => Math.max(z(mh || 30), z(9) + L[i].length * lh + z(4))));
+    this.need(z(10.5) + h);
+    list.forEach(([label], i) => P.text(M + i * (bw + gap), this.y + z(7), label, { size: z(7.4), bold: true, color: NAVY }));
+    this.y += z(10.5);
+    list.forEach((b, i) => { const x = M + i * (bw + gap); P.rect(x, this.y, bw, h, { stroke: LINE }); L[i].forEach((ln, n) => P.text(x + 6, this.y + z(11) + n * lh, ln, { size: z(8.6), color: INK })); });
+    this.y += h + z(6);
+  }
+  box(label, text, minH = 40) { this.boxes([[label, text, minH * 0.7]]); }
+  para(t, o = {}) {
+    const z = v => this.z(v), sz = z((o.size || 9.2) * 0.9), lh = z(10.2), lines = wrap(t, CW, sz, o.bold);
+    this.need(lines.length * lh + z(3));
+    lines.forEach(l => { this.pdf.text(M, this.y + z(8), l, { size: sz, color: o.color || INK, bold: o.bold, italic: o.italic }); this.y += lh; });
+    this.y += z(3);
+  }
+  signatures(list, title) {
+    const P = this.pdf, z = v => this.z(v), gap = 12, cw = (CW - gap * (list.length - 1)) / list.length, h = z(60);
+    this.need(h + z(4) + (title ? z(17) : 0));
+    if (title) this.heading(title, 0);
+    list.forEach((s, i) => {
+      const x = M + i * (cw + gap);
+      P.rect(x, this.y, cw, h, { stroke: LINE }); P.rect(x, this.y, cw, z(12.5), { fill: BAND });
+      P.text(x + 5, this.y + z(8.8), wrap(s.role, cw - 10, z(7), true)[0].toUpperCase(), { size: z(7), bold: true, color: NAVY });
+      P.text(x + 5, this.y + z(23), 'Name', { size: z(6.2), color: GREY });
+      P.text(x + z(44), this.y + z(23), wrap(s.name || '', cw - z(50), z(8.6), true)[0] || '', { size: z(8.6), bold: true, color: INK });
+      P.text(x + 5, this.y + z(40), 'Signature', { size: z(6.2), color: GREY }); P.line(x + z(44), this.y + z(41), x + cw - 6, this.y + z(41), { color: '#8c8c8c' });
+      P.text(x + 5, this.y + z(54), 'Date', { size: z(6.2), color: GREY }); P.line(x + z(44), this.y + z(55), x + cw - 6, this.y + z(55), { color: '#8c8c8c' });
+      if (s.sig) {   // signed in the tool: the drawn signature on the line (or the typed name), and the day
+        const g = s.sig, bx = x + z(46), bw = cw - z(52), by = this.y + z(26), bh = z(14);
+        if (g.img && g.img.w && g.img.h) { const nm = P.addImage(g.img), r = Math.min(bw / g.img.w, bh / g.img.h); P.image(bx, by + (bh - g.img.h * r), g.img.w * r, g.img.h * r, nm); }
+        else if (g.typed) { const sz = Math.max(6.5, Math.min(z(11), z(11) * bw / Math.max(1, textW(g.typed, z(11), false)))); P.text(bx, by + z(12), g.typed, { size: sz, italic: true, color: NAVY }); }
+        if (g.date) P.text(x + z(46), this.y + z(53.5), g.date, { size: z(7.8), color: INK });
+        if (g.note) P.text(x + cw - 6, this.y + z(53.5), g.note, { size: z(5.8), color: GREY, align: 'right' });
+      }
+    });
+    this.y += h + z(4);
+  }
+}
+
 function agentGrid(d, f, extra) {
   const a = f.agent;
   d.grid([['Agent name', a.name], ['National ID', a.id || '—'], ['Team', a.teamName ? `${a.team} – ${a.teamName}` : a.team],
@@ -255,7 +356,31 @@ function followUp(d, f) {
   if (acts.length) d.table(["Last month's action", 'Owner', 'Due', 'Done?'], [0.52, 0.16, 0.14, 0.18], acts.map(a => { const x = ST[a.status] || ['Not checked', GREY]; return [a.action, a.owner || '', fmtDate(a.due) || '', { t: x[0], b: true, c: x[1] }]; }));
   if (kp.length) d.table(['KPI', m ? `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]} ${y}` : 'Before', 'Now', 'Change'], [0.42, 0.18, 0.18, 0.22], kp.map(x => [x.metric, x.before || '–', { t: x.after || '–', b: true }, { t: x.better === true ? 'Better' : x.better === false ? 'Worse' : x.same ? 'Same' : '–', b: x.better != null, c: x.better === true ? GREEN : x.better === false ? RED : INK }]));
 }
+/** the one-to-one on one A4 page: the parts of the full form, tighter, at a size k that fits */
+function oneToOnePage(f, k) {
+  const d = new Compact({ ...f, kind: '1to1', _k: k });
+  d.heading('Agent details'); agentGrid(d, f);
+  d.checks(TOPICS.map(([key, l]) => [l, !!(f.topics && f.topics[key])]), 2, 'Topics discussed');
+  d.heading(`Results – ${f.period || ''}`); resultsTable(d, f);
+  followUp(d, f);
+  d.heading('Discussion');
+  d.boxes([[byAg(f, 'discussion', 'What was discussed'), f.discussion, 54]]);
+  d.boxes([[byAg(f, 'rootCause', 'Root cause'), f.rootCause, 42], [byAg(f, 'agentComments', "Agent's comments"), f.agentComments, 42]]);
+  d.heading('Agreed actions');
+  const ag = new Set(f.agentRows || []), acts = (f.actions || []).map((a, i) => ({ ...(a || {}), mine: ag.has(i) })).filter(a => a.action || a.owner || a.due);
+  d.table(['Action', 'Owner', 'Due date'], [0.6, 0.2, 0.2], (acts.length ? acts : [{}, {}]).map(a => [(a.action || '') + (a.mine ? ' (agent)' : ''), a.owner || '', fmtDate(a.due) || '']), { minH: acts.length ? 17 : 20 });
+  d.y -= d.z(2); d.para(`Next review date: ${fmtDate(f.reviewDate) || '____________________'}${(f.byAgent || []).includes('reviewDate') ? ' (written by the agent)' : ''}`, { size: 9, bold: true });
+  verdictPart(d, f);
+  if (f.agentSig && f.agentSig.comment) d.boxes([["Agent's comment when signing", f.agentSig.comment, 20]]);
+  d.signatures([{ role: 'Agent', name: f.agent.name, sig: f.agentSig || null }, { role: 'Supervisor', name: f.supervisor, sig: f.spvSig || null }], 'Signatures');
+  if (f.agentSig) d.para(`Signed electronically by the agent in the MC tool on ${f.agentSig.when || f.agentSig.date || ''}${f.agentSig.ref ? ` · signature ${f.agentSig.ref}` : ''}.`, { size: 7.6, color: GREY });
+  return d;
+}
 async function oneToOne(f) {
+  for (const k of [1, 0.92, 0.85]) { const d = oneToOnePage(f, k); if (d.pdf.pages.length === 1) { d.footer(); return d.pdf.bytes(); } }
+  return oneToOneFull(f);   // more writing than one page holds even at the smallest size: the full form, over two pages
+}
+async function oneToOneFull(f) {
   const d = new Doc({ ...f, kind: '1to1' });
   d.heading('Agent details'); agentGrid(d, f);
   d.checks(TOPICS.map(([k, l]) => [l, !!(f.topics && f.topics[k])]), 2, 'Topics discussed');

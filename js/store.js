@@ -138,18 +138,24 @@ const FolderStore = (() => {
       const out = []; for await (const [n, h] of d.entries()) if (h.kind === 'file' && n.startsWith('d_') && /\.(mcd|json)$/.test(n)) out.push(decSeg(n.slice(2).replace(/\.(mcd|json)$/, '')));
       return out;
     }
+    // the first read of each collection, for the page's "still reading" pill: collections being read, and files read so far
+    let readN = 0; const busyFns = new Set();
+    const busyNow = () => ({ open: loading.size, read: readN }), busyEmit = () => busyFns.forEach(f => { try { f(busyNow()); } catch (e) { /* the listener's own problem */ } });
     async function loadCollection(c) {
       if (loaded.has(c)) return; if (loading.has(c)) return loading.get(c);
       const p = (async () => {
-        const ids = await listNames(segsOf(c));
-        await pool(ids, 8, async id => {
-          const path = c + '/' + id;
-          try { const r = await readFile(path); if (r) { cache.set(path, r); bad.delete(path); } }
-          catch (e) { bad.set(path, (e && e.code) || 'error'); }
-        });
-        loaded.add(c); loading.delete(c);
+        try {
+          const ids = await listNames(segsOf(c));
+          await pool(ids, 8, async id => {
+            const path = c + '/' + id;
+            try { const r = await readFile(path); if (r) { cache.set(path, r); bad.delete(path); } }
+            catch (e) { bad.set(path, (e && e.code) || 'error'); }
+            readN++; busyEmit();
+          });
+          loaded.add(c);
+        } finally { loading.delete(c); busyEmit(); }
       })();
-      loading.set(c, p); return p;
+      loading.set(c, p); busyEmit(); return p;
     }
     function snap(c) {
       const pre = c + '/', docs = [];
@@ -265,6 +271,8 @@ const FolderStore = (() => {
       hasDataKey: () => !!K.dk,
       agentKey: pid => akey(pid, true),
       poll, rescan, dump,
+      /** fn({ open, read }) now and on every change of the first reads; returns the call that stops it */
+      onBusy(fn) { busyFns.add(fn); try { fn(busyNow()); } catch (e) { /* the listener's own problem */ } return () => busyFns.delete(fn); },
       problems: () => [...bad.entries()].map(([p, code]) => ({ path: p, code })),
       stop() { stopped = true; clearTimeout(pollTimer); },
     };

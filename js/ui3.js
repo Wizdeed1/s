@@ -250,6 +250,7 @@ function openFolder(h) {
 /** the shared data: settings, roster, history, forms… (straight away outside the shared folder; after sign-in inside it) */
 async function loadData(db) {
   state.db = db;
+  const poke = busyWatch(db, () => state.rosterReady);   // the "still reading" pill until the first reads are in
   try {
     const snap = await db.doc('config/settings').get();
     if (snap.exists) { applySettings(snap.data()); refresh(); }
@@ -278,6 +279,7 @@ async function loadData(db) {
     const ids = new Set(state.roster.map(p => p._id)); for (const id of [...state.sel]) if (!ids.has(id)) state.sel.delete(id);
     if (tableHasFocus()) { state.pendingRender = true; refresh({ table: false }); }
     else refresh();
+    poke();
     upRestore();   // the month's saved files back in Build, once a visit
   }, e => { state.rosterMsg = 'The saved roster could not be loaded (' + ((e && e.code) || 'error') + '). Reload the page to try again.'; state.rosterReady = true; refresh(); });
 }
@@ -715,6 +717,7 @@ function renderBadges() {
 // ---- import
 function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); }
 function renderPending() {
+  Busy.set('parse', state.pending.length ? `Reading ${plural(state.pending.length, 'file')}…` : '');
   $('pending').innerHTML = state.pending.map(p => `<li><div class="row"><b>${esc(p.name)}</b><span>${fmtSize(p.size)}</span></div><div class="progress" role="progressbar" aria-label="Reading ${esc(p.name)}"><i></i></div><div class="hint">Reading and recognising the columns…</div></li>`).join('');
 }
 function renderSlots() {
@@ -2710,8 +2713,15 @@ function curMail() {
   };
 }
 async function attachmentBytes(inc) {
-  if (inc) return incBytes();
+  if (inc) return incMailBytes();
   const d = dedMailData(); return d ? Writer2.dedMail(d) : null;
+}
+/** the incentive email's workbook: Build's, without the National IDs (the agents' privacy); a dropped workbook with its ID columns emptied */
+async function incMailBytes() {
+  if (state.incWb) return Writer2.withoutIds(state.incWb.bytes);
+  if (!state.ctx) return null;
+  state.ctx.logo = await xlLogo();
+  return WriterInc.build(state.ctx, { model: incModel(), noIds: true });
 }
 /** the deduction email's workbook (Writer2.dedMail): everyone's days for the Attendance Report and, for the people in the deduction,
     each day's Sched. and Actual, from the shared month, a dropped monthly report, or this page */

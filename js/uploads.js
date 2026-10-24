@@ -127,12 +127,15 @@ async function upPutBack(upId) {
 async function upLoadMonth(k, how) {
   const M = UP.list.filter(m => m.k === k); if (!M.length) return;
   const files = [];
-  for (const m of M) { const b = await upBytes(m.id).catch(() => null); if (!b) continue; const f = new File([b], m.name, { type: m.type || '' }); f.__up = m; files.push(f); }
+  Busy.set('restore', `Opening the saved files of ${ymLabel(k)}…`);
+  try { for (const m of M) { const b = await upBytes(m.id).catch(() => null); if (!b) continue; const f = new File([b], m.name, { type: m.type || '' }); f.__up = m; files.push(f); } }
+  finally { Busy.set('restore', ''); }
   if (!files.length) { toast(`The saved files of ${ymLabel(k)} could not be read.`); return; }
   if (how === 'auto' && (Object.keys(state.slots).length || state.attFiles.length || state.pending.length)) return;   // files were dropped while these were read: they win
   state.slots = {}; state.attFiles = [];
   const [y, m] = k.split('-').map(Number); state.y = y; state.m = m;
-  await addFiles(files, { restore: true });
+  Busy.set('restore', `${how === 'auto' ? 'Putting' : 'Loading'} ${ymLabel(k)} ${how === 'auto' ? 'back in' : 'into'} Build: ${plural(files.length, 'saved file')}…`);
+  try { await addFiles(files, { restore: true }); } finally { Busy.set('restore', ''); }
   if (monthKey() !== k) { state.y = y; state.m = m; refresh(); }
   impLogAdd('read', `${how === 'auto' ? 'Put back' : 'Loaded'} ${ymLabel(k)} from the saved uploads: ${plural(files.length, 'file')}`);
   toast(how === 'auto' ? `${ymLabel(k)} is back in Build: ${plural(files.length, 'saved file')}, as you left it.` : `${ymLabel(k)} loaded into Build: ${plural(files.length, 'file')}.`);

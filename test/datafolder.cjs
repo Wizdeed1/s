@@ -4,6 +4,7 @@
 // 2. The folder set up, the first account (the admin), the roster.
 // 3. WFM team › Data: Export all data, locked with a password (opened here in Node: the records, and no accounts or keys);
 //    a roster record deleted, then Import with a wrong password (refused) and the right one (the record is back).
+// 3b. Signed in again on a slowish folder: "Reading the shared data… N files" at the top of the page until it is all in.
 // 4. A slow folder: "Opening the shared data" with the seconds, the OneDrive hint after 10 s, then the sign-in.
 // 5. A folder that does not answer at all: after 20 s, what to check and Open the shared data again.
 // 6. The data folder chosen while its files cannot be read yet: an error, never "set it up here".
@@ -92,6 +93,21 @@ async function openBackup(file, pw) {
   await p.waitForFunction(() => /^Imported/.test(document.getElementById('toastMsg').textContent), null, { timeout: 60000 });
   const back = await p.evaluate(async () => { const s = await window.__mc.state.db.doc('roster/p0').get(); return s.exists ? s.data().name : ''; });
   ok(back === name0 && /Imported \d+ records/.test(await p.textContent('#toastMsg')), `Import: the deleted record is back (${await p.textContent('#toastMsg')})`);
+  // ---- 3b. after the sign-in on a slowish folder: the page says it is still reading, then the pill goes
+  await flags({ 't-slow': '150' });
+  await p.goto(URL);
+  await p.waitForFunction(() => { const v = el => el && el.offsetParent !== null; return v(document.getElementById('pwCur')) || v(document.querySelector('[data-conn="again"]')); }, null, { timeout: 60000 });
+  if (await p.isVisible('[data-conn="again"]').catch(() => false)) { await p.click('[data-conn="again"]'); await p.waitForFunction(() => document.getElementById('pwCur').offsetParent !== null, null, { timeout: 60000 }); }
+  if (await p.isVisible('#acEmail')) await p.fill('#acEmail', 'sara.k');
+  await p.fill('#pwCur', pw); await p.click('#lockGo');
+  await p.waitForFunction(() => document.getElementById('lock').hidden, null, { timeout: 60000 });
+  await p.waitForFunction(() => !document.getElementById('busy').hidden, null, { timeout: 15000 }).catch(() => {});
+  const pill = await p.evaluate(() => ({ on: !document.getElementById('busy').hidden, t: document.getElementById('busyMsg').textContent }));
+  ok(pill.on && /^Reading the shared data…/.test(pill.t), `after the sign-in, while the files open: "${pill.t}"`);
+  await p.screenshot({ path: path.join(out, 'reading-pill.png') });
+  await p.waitForFunction(() => document.getElementById('busy').hidden && window.__mc.state.roster.length > 100, null, { timeout: 120000 }).catch(() => {});
+  ok(await p.evaluate(() => document.getElementById('busy').hidden && window.__mc.state.roster.length > 100), 'then the pill goes, with the roster in');
+
   // ---- 4. a slow folder: the screen says what it waits for, with the seconds
   await flags({ 't-slow': '2500' });
   const t0 = Date.now(); await p.goto(URL);

@@ -54,6 +54,7 @@ function renderCycle() {
   $('cycleBar').innerHTML = `${monthSelHtml(k, 'data-wsmonth')}${k ? `<label class="wsfield"><span>One-to-ones due</span><input type="date" class="cell" data-deadline value="${esc(C.deadline || '')}" ${can ? '' : 'disabled'} aria-label="Deadline for the one-to-ones"></label>` : ''}
     <div class="wsacts">${can && k ? '<button class="btn sm" data-cyc="publish" title="Copy each agent\'s latest numbers and forms to their own page">Update the agents\' pages</button>' : ''}<button class="btn sm" data-rulesopen title="KPIs, weights, bands, bases and who earns the incentive, in force from a month">Incentive rules</button><button class="btn sm" data-x="cycle"${k ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Supervisors Excel</button></div>`;
   const body = $('cycleBody');
+  if (!k && stillReading()) { body.innerHTML = emptyCard('Reading the shared data…', 'The months appear here in a moment.'); return; }
   if (!k) { body.innerHTML = emptyCard('No months yet', 'The month appears here as soon as the WFM team starts building it.'); return; }
   const R = cycleRows(k), doneN = R.filter(r => r.done).length, prev = state.cycleSeenPrev;
   const dl = C.deadline, days = dl ? Math.ceil((new Date(dl + 'T23:59:59') - Date.now()) / 86400000) : null;

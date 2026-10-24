@@ -85,23 +85,27 @@ async function build(ctx, opt = {}) {
   const ymd = d => C.ymdSerial(Y, M, d);
   const sheets = [];
 
+  // opt.noIds (the copy attached to the incentive email): no National ID column; every column after it moves one to the left
+  const o = opt.noIds ? 1 : 0, cc = n => n - o, L_ = n => C.colName(cc(n));
+
   // ---------------- Attendance Report
   const AR = new Sheet('Attendance Report'); AR.tab = NAVY; AR.defH = 14.4; AR.heights[1] = 17.4;
   AR.set(1, 1, `MC Monthly Attendance - ${L}`, st.title);
-  ['ID', 'Name', 'Team', 'Dep'].forEach((h, j) => AR.set(2, j + 1, h, st.hd()));
+  ['ID', 'Name', 'Team', 'Dep'].slice(o).forEach((h, j) => AR.set(2, j + 1, h, st.hd()));
   const dHead = S.get({ font: A({ sz: 9, b: true, color: WHITE }), fill: GREY, border: thin, align: { h: 'center', v: 'center' }, numFmt: 'dd\\-mmm' });
-  for (let d = 1; d <= ND; d++) { AR.set(2, 4 + d, ymd(d), dHead); AR.width(4 + d, 11); }
-  const T0 = 5 + ND;   // Tardy column
+  for (let d = 1; d <= ND; d++) { AR.set(2, cc(4 + d), ymd(d), dHead); AR.width(cc(4 + d), 11); }
+  const T0 = cc(5 + ND);   // Tardy column
   const CNT = md.count || K.COUNT0(), CODES = CNT.sched.map(K.dayCode), iAbs = CNT.sched.indexOf('Absent');
   const PEN = CNT.absentExtra > 0 || CNT.absentFlat > 0;   // an absence penalty: Actual days = Attend less the days taken off
   const TH = ['Tardy', ...CODES.map(c => c.head), 'Attend', 'Scheduled days', 'Actual days', 'Review Notes'];
   TH.forEach((h, j) => { AR.set(2, T0 + j, h, st.hd(h === 'Review Notes' ? BLUE : GREY)); AR.width(T0 + j, TWD[h] ?? 12); });
-  [[1, 11.55], [2, 35.11], [3, 10.44], [4, 8.89]].forEach(([c, w]) => AR.width(c, w));
-  const fd = C.colName(5), ld = C.colName(4 + ND);
+  [[1, 11.55], [2, 35.11], [3, 10.44], [4, 8.89]].slice(o).forEach(([c, w]) => AR.width(cc(c), w));
+  const fd = L_(5), ld = L_(4 + ND), aName = L_(2);
   md.att.forEach((r, i) => {
     const R = 3 + i, rg = `${fd}${R}:${ld}${R}`;
-    AR.set(R, 1, r.id, st.cell); AR.set(R, 2, r.mark + r.name, st.cell); AR.set(R, 3, r.brand, st.cell); AR.set(R, 4, r.team, st.cell);
-    r.days.forEach((v, j) => AR.set(R, 5 + j, v === '' ? null : v, st.day));
+    if (!o) AR.set(R, 1, r.id, st.cell);
+    AR.set(R, cc(2), r.mark + r.name, st.cell); AR.set(R, cc(3), r.brand, st.cell); AR.set(R, cc(4), r.team, st.cell);
+    r.days.forEach((v, j) => AR.set(R, cc(5 + j), v === '' ? null : v, st.day));
     AR.set(R, T0, r.tardy || 0, st.tot);
     CODES.forEach((c, j) => AR.set(R, T0 + 1 + j, r.counts[j], st.tot, `COUNTIF(${rg},"${c.crit}")`));
     const cA = T0 + 1 + CODES.length;
@@ -116,33 +120,34 @@ async function build(ctx, opt = {}) {
     AR.set(R, cA + 3, null, st.tot);
   });
   const lastA = Math.max(502, md.att.length + 2), lastCol = T0 + TH.length - 1;
-  AR.addCF(`A3:D${lastA} ${C.ref(3, T0)}:${C.ref(lastA, lastCol)}`, '$A3<>""', dx.border);
-  AR.addCF(`B3:B${lastA}`, 'LEFT(B3,1)="⚠"', dx.warn); AR.addCF(`B3:B${lastA}`, 'LEFT(B3,1)="⛔"', dx.off);
+  AR.addCF(`A3:${L_(4)}${lastA} ${C.ref(3, T0)}:${C.ref(lastA, lastCol)}`, '$A3<>""', dx.border);
+  AR.addCF(`${aName}3:${aName}${lastA}`, `LEFT(${aName}3,1)="⚠"`, dx.warn); AR.addCF(`${aName}3:${aName}${lastA}`, `LEFT(${aName}3,1)="⛔"`, dx.off);
   const grid = `${fd}3:${ld}${Math.max(112, md.att.length + 2)}`, tl = `${fd}3`;
   [['Exam', dx.exam], ['National Day', dx.nd], ['AL', dx.al], ['Absent', dx.absent], ['SL', dx.sl], ['OFF', dx.offDay]].forEach(([v, x]) => AR.addCF(grid, `${tl}="${v}"`, x));
-  AR.freeze = [3, 5]; AR.filter = `A2:${C.ref(lastA, lastCol)}`;
+  AR.freeze = [3, cc(5)]; AR.filter = `A2:${C.ref(lastA, lastCol)}`;
   sheets.push(AR);
 
   // ---------------- Adherence -In Detail
   const AD = new Sheet('Adherence -In Detail'); AD.tab = NAVY; AD.defH = 14.4; AD.heights[1] = 17.4; AD.heights[5] = 28.05;
   AD.set(1, 1, `MC Monthly Adherence - ${L}`, st.title);
   const hdW = st.hd(GREY, { wrap: true });
-  [['ID', 13], ['Member Care champions', 35.22], ['Team', 9]].forEach(([h, w], j) => { AD.set(4, j + 1, h, hdW); AD.set(5, j + 1, null, hdW); AD.merge(4, j + 1, 5, j + 1); AD.width(j + 1, w); });
+  [['ID', 13], ['Member Care champions', 35.22], ['Team', 9]].slice(o).forEach(([h, w], j) => { AD.set(4, j + 1, h, hdW); AD.set(5, j + 1, null, hdW); AD.merge(4, j + 1, 5, j + 1); AD.width(j + 1, w); });
   const dHeadW = S.get({ font: A({ sz: 9, b: true, color: WHITE }), fill: GREY, border: thin, align: { h: 'center', v: 'center', wrap: true }, numFmt: 'dd\\-mmm' });
   const sub = S.get({ font: A({ sz: 8, b: true, color: WHITE }), fill: GREY, border: thin, align: { h: 'center', v: 'center', wrap: true } });
-  for (let d = 1; d <= ND; d++) { AD.set(4, 3 + d, ymd(d), dHeadW); AD.set(5, 3 + d, 'Adherence (%)', sub); AD.width(3 + d, 7.44); }
-  const AV = 4 + ND; AD.set(4, AV, 'Avr.', hdW); AD.set(5, AV, null, hdW); AD.merge(4, AV, 5, AV); AD.width(AV, 10.22);
-  const dfirst = C.colName(4), dlast = C.colName(3 + ND);
+  for (let d = 1; d <= ND; d++) { AD.set(4, cc(3 + d), ymd(d), dHeadW); AD.set(5, cc(3 + d), 'Adherence (%)', sub); AD.width(cc(3 + d), 7.44); }
+  const AV = cc(4 + ND); AD.set(4, AV, 'Avr.', hdW); AD.set(5, AV, null, hdW); AD.merge(4, AV, 5, AV); AD.width(AV, 10.22);
+  const dfirst = L_(4), dlast = L_(3 + ND), dName = L_(2);
   md.det.forEach((r, i) => {
     const R = 6 + i;
-    AD.set(R, 1, r.id, st.cell); AD.set(R, 2, r.mark + r.name, st.cell); AD.set(R, 3, r.brand, st.cell);
-    r.vals.forEach((v, j) => AD.set(R, 4 + j, v, st.pctDay));
+    if (!o) AD.set(R, 1, r.id, st.cell);
+    AD.set(R, cc(2), r.mark + r.name, st.cell); AD.set(R, cc(3), r.brand, st.cell);
+    r.vals.forEach((v, j) => AD.set(R, cc(4 + j), v, st.pctDay));
     AD.set(R, AV, r.avg, st.pctDay, `IFERROR(AVERAGE(${dfirst}${R}:${dlast}${R}),"NA")`);
   });
   const lastD = Math.max(305, md.det.length + 5);
-  AD.addCF(`A6:C${lastD} ${C.ref(6, AV)}:${C.ref(lastD, AV)}`, '$A6<>""', dx.border);
-  AD.addCF(`B6:B${lastD}`, 'LEFT(B6,1)="⚠"', dx.warn); AD.addCF(`B6:B${lastD}`, 'LEFT(B6,1)="⛔"', dx.off);
-  AD.freeze = [6, 4]; AD.filter = `A5:${C.ref(lastD, AV)}`;
+  AD.addCF(`A6:${L_(3)}${lastD} ${C.ref(6, AV)}:${C.ref(lastD, AV)}`, '$A6<>""', dx.border);
+  AD.addCF(`${dName}6:${dName}${lastD}`, `LEFT(${dName}6,1)="⚠"`, dx.warn); AD.addCF(`${dName}6:${dName}${lastD}`, `LEFT(${dName}6,1)="⛔"`, dx.off);
+  AD.freeze = [6, cc(4)]; AD.filter = `A5:${C.ref(lastD, AV)}`;
   sheets.push(AD);
   const AVL = C.colName(AV);
 
@@ -150,32 +155,35 @@ async function build(ctx, opt = {}) {
   const AH = new Sheet('Adherence'); AH.tab = NAVY; AH.defH = 14.4; AH.heights[1] = 17.4;
   AH.set(1, 1, `MC Monthly Adherence - ${L}`, st.title);
   const hdL = (fill = GREY) => st.hd(fill, { border: { l: LINE, r: LINE, t: LINE }, wrap: true });
-  [['ID', 13], ['Name', 37], ['Team', 10], ['Adherence', 12]].forEach(([h, w], j) => { AH.set(4, j + 1, h, hdL()); AH.width(j + 1, w); });
+  [['ID', 13], ['Name', 37], ['Team', 10], ['Adherence', 12]].slice(o).forEach(([h, w], j) => { AH.set(4, j + 1, h, hdL()); AH.width(j + 1, w); });
+  const hName = L_(2);
   md.adh.forEach((r, i) => {
     const R = 5 + i; AH.heights[R] = 18;
-    AH.set(R, 1, r.id, st.plain); AH.set(R, 2, r.mark + r.name, st.plain); AH.set(R, 3, r.brand, st.plain);
-    if (r.full) AH.set(R, 4, 1, st.pct10);
-    else AH.set(R, 4, r.avg, st.pct10, `IFERROR(INDEX('Adherence -In Detail'!$${AVL}:$${AVL},MATCH(B${R},'Adherence -In Detail'!$B:$B,0)),"NA")`);
+    if (!o) AH.set(R, 1, r.id, st.plain);
+    AH.set(R, cc(2), r.mark + r.name, st.plain); AH.set(R, cc(3), r.brand, st.plain);
+    if (r.full) AH.set(R, cc(4), 1, st.pct10);
+    else AH.set(R, cc(4), r.avg, st.pct10, `IFERROR(INDEX('Adherence -In Detail'!$${AVL}:$${AVL},MATCH(${hName}${R},'Adherence -In Detail'!$${dName}:$${dName},0)),"NA")`);
   });
   const lastH = Math.max(302, md.adh.length + 4);
-  AH.addCF(`A5:D${lastH}`, '$A5<>""', dx.border);
-  AH.addCF(`B5:B${lastH}`, 'LEFT(B5,1)="⚠"', dx.warn); AH.addCF(`B5:B${lastH}`, 'LEFT(B5,1)="⛔"', dx.off);
-  AH.cf.push({ sqref: `B5:B${lastH}`, dxfId: dx.dup, type: 'dup' }, { sqref: `A5:A${lastH}`, dxfId: dx.dup, type: 'dup' });
+  AH.addCF(`A5:${L_(4)}${lastH}`, '$A5<>""', dx.border);
+  AH.addCF(`${hName}5:${hName}${lastH}`, `LEFT(${hName}5,1)="⚠"`, dx.warn); AH.addCF(`${hName}5:${hName}${lastH}`, `LEFT(${hName}5,1)="⛔"`, dx.off);
+  AH.cf.push({ sqref: `${hName}5:${hName}${lastH}`, dxfId: dx.dup, type: 'dup' }, ...(o ? [] : [{ sqref: `A5:A${lastH}`, dxfId: dx.dup, type: 'dup' }]));
   AH.freeze = [5, 1];
   sheets.push(AH);
 
   // ---------------- AHT
   const HT = new Sheet('AHT'); HT.tab = NAVY; HT.defH = 14.4; HT.heights[1] = 17.4;
   HT.set(1, 1, `MC Monthly AHT - ${L}`, st.title);
-  [['ID', 15, GREY], ['Name', 30, BLUE], ['AHT', 10, BLUE], ['Team', 9, GREY], ['Duplicate Check', 25.89, GREY]].forEach(([h, w, f], j) => { HT.set(4, j + 1, h, hdL(f)); HT.width(j + 1, w); });
+  [['ID', 15, GREY], ['Name', 30, BLUE], ['AHT', 10, BLUE], ['Team', 9, GREY], ['Duplicate Check', 25.89, GREY]].slice(o).forEach(([h, w, f], j) => { HT.set(4, j + 1, h, hdL(f)); HT.width(j + 1, w); });
   md.aht.forEach((r, i) => {
     const R = 5 + i; HT.heights[R] = 18;
-    HT.set(R, 1, r.id, st.plain); HT.set(R, 2, r.mark + r.name, st.plain); HT.set(R, 3, Math.round(r.sec * 1000) / 1000, st.num);
-    HT.set(R, 4, r.brand, st.plain); HT.set(R, 5, r.dup, st.dupC);
+    if (!o) HT.set(R, 1, r.id, st.plain);
+    HT.set(R, cc(2), r.mark + r.name, st.plain); HT.set(R, cc(3), Math.round(r.sec * 1000) / 1000, st.num);
+    HT.set(R, cc(4), r.brand, st.plain); HT.set(R, cc(5), r.dup, st.dupC);
   });
-  const lastT = Math.max(276, md.aht.length + 4);
-  HT.addCF(`A5:E${lastT}`, 'LEFT($B5,1)="⛔"', dx.off, true); HT.addCF(`A5:E${lastT}`, '$B5<>""', dx.border);
-  HT.addCF(`B5:B${lastT}`, 'LEFT(B5,1)="⚠"', dx.warn); HT.addCF(`A5:E${lastT}`, '$E5<>""', dx.dupNote);
+  const lastT = Math.max(276, md.aht.length + 4), tName = L_(2), tLast = L_(5);
+  HT.addCF(`A5:${tLast}${lastT}`, `LEFT($${tName}5,1)="⛔"`, dx.off, true); HT.addCF(`A5:${tLast}${lastT}`, `$${tName}5<>""`, dx.border);
+  HT.addCF(`${tName}5:${tName}${lastT}`, `LEFT(${tName}5,1)="⚠"`, dx.warn); HT.addCF(`A5:${tLast}${lastT}`, `$${tLast}5<>""`, dx.dupNote);
   HT.freeze = [5, 1];
   sheets.push(HT);
 

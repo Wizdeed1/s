@@ -964,6 +964,12 @@ table input.cell, table select.cell, table textarea.cell { border-color: transpa
 .toast:not([hidden]) { animation: toastIn var(--t-small) var(--ease-out) both; }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px); } to { transform: translate(-50%, 0); } }
 .toast button { border: 0; background: none; color: var(--toast-act); font: 600 13px/1 var(--text); cursor: pointer; padding: 6px 6px; white-space: nowrap; }
+/* still reading: a quiet pill under the toolbar, on every page, until the shared data, the saved files or the dropped files are in */
+.busy { position: fixed; left: calc(50% + var(--side-cur) / 2); top: calc(64px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); z-index: var(--z-toast); display: flex; gap: 10px; align-items: center; width: max-content; max-width: min(520px, calc(100vw - 32px));
+  padding: 8px 14px 8px 12px; border: 1px solid var(--toast-line); border-radius: 999px; background: var(--toast-bg); -webkit-backdrop-filter: var(--mat-blur); backdrop-filter: var(--mat-blur); color: var(--toast-ink); font-size: 13px; line-height: 1.4; box-shadow: var(--shadow-pop); font-variant-numeric: tabular-nums; pointer-events: none; }
+.busy .spin { width: 13px; height: 13px; color: var(--toast-act); }
+.busy:not([hidden]) { animation: busyIn var(--t-small) var(--ease-out) both; }
+@keyframes busyIn { from { opacity: 0; transform: translate(-50%, -8px); } to { transform: translate(-50%, 0); } }
 
 /* ------------------------------------------------------------------------------------------------------------- search: one box on every page (Ctrl K opens it at once: a palette used all day does not animate) */
 body.findon { overflow: hidden; }
@@ -2186,11 +2192,16 @@ p.prange { padding-top: 12px; }
 .attfilt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: -4px 0 14px; }
 .attfilt .teamchips .cnt { margin-left: 4px; font-size: 11.5px; color: inherit; opacity: .7; font-variant-numeric: tabular-nums; }
 
-/* the attendance template: a bar on the Team page's Attendance tab, and the drawer's list of supervisors */
+/* the attendance template: a bar on the Team page's Attendance tab, and the drawer's list of departments */
 .tplbar { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap; padding: 12px 16px; margin-bottom: 12px; }
 .tplbar > div { display: grid; gap: 2px; min-width: 0; }
 .tplbar small { color: var(--muted); font-size: 12.5px; }
-.tpllist li .sg { color: var(--muted); }
+.tpllist li { flex-wrap: nowrap; gap: 12px; }
+.tpldep { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--accent-fill); color: var(--on-accent); font: 700 13px/1 var(--display); letter-spacing: .02em; }
+.tplwho { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.tplwho b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tplwho small { color: var(--muted); font-size: 12.5px; }
+.tplnote { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--info-bg); }
 #attTplBody .grid2 { margin: 12px 0 4px; }
 #attTplBody .acts { margin-top: 12px; }
 
@@ -2570,7 +2581,7 @@ details[open] > :not(summary) { animation: openIn var(--t-small) var(--ease-out)
   *, *::before, *::after { scroll-behavior: auto !important; }
   .drawer, .drawer.out, .sheet-more, .dlgbox, .dlg.out .dlgbox { animation-name: fadeIn !important; animation-duration: 120ms !important; }
   .drawer.out, .dlg.out .dlgbox { animation-name: fadeOut !important; }
-  .menu, .acctmenu, .pop.in, .attpop, .toast:not([hidden]), .lockcard, .rbfile, .rbsent, details[open] > :not(summary), .view.enter, .view.stepin, .chk.open .chkbody { animation-name: fadeIn !important; animation-duration: 120ms !important; }
+  .menu, .acctmenu, .pop.in, .attpop, .toast:not([hidden]), .busy:not([hidden]), .lockcard, .rbfile, .rbsent, details[open] > :not(summary), .view.enter, .view.stepin, .chk.open .chkbody { animation-name: fadeIn !important; animation-duration: 120ms !important; }
   .chk.rise, #dashBody.intro .kpi { animation: none !important; }
   #dashBody.intro .dline, #dashBody.intro .dpt, #dashBody.intro .dglow { animation: none !important; stroke-dashoffset: 0 !important; }
   #dashBody.intro .greet::after, #success.sweep::after, .step .n.glow, .tlist li.fresh .tdot { display: none; animation: none !important; }
@@ -3442,21 +3453,21 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
       <h3>Every month</h3>
       <ol>
         <li>In Genesys Cloud, export the month's <b>Monthly Adherence</b>, <b>Agent Performance Summary</b>, <b>Schedule</b> (activities) and <b>Agent Status Timeline Summary</b>.</li>
-        <li>Drop all four on <b>Import</b>, with the supervisors' filled attendance templates (TS, MG, CT, QA, DE and WF: <b>Import › Attendance templates</b> makes each supervisor's file for the month, one row per late, absent, leave or day off; CC and SM need none, their days come from the Schedule and the Agent Status Timeline). Each card shows what was found. The bell at the top lists anything the tool fixed, anything you need to decide (for example two files that disagree on a day), and differences between the attendance and Genesys.</li>
+        <li>Drop all four on <b>Import</b>, with the supervisors' filled attendance templates (TS, MG, CT, QA, DE and WF: <b>Import › Attendance templates</b> makes one file per department for the month, which opens on How to fill: one row per late, absent, leave or day off; CC and SM need none, their days come from the Schedule and the Agent Status Timeline). Each card shows what was found. The bell at the top lists anything the tool fixed, anything you need to decide (for example two files that disagree on a day), and differences between the attendance and Genesys.</li>
         <li>On <b>Review</b>, open <b>Issues</b>: link each unknown name to a person as their system name, or add them. When a roster name is clearly one Genesys name, the tool links it by itself (the bell shows it, with Undo). Set people who left to Inactive in <b>People</b>.</li>
         <li><b>People</b> shows a card per agent with their Genesys name, National ID, brand, team and this month's numbers. Point at any agent, anywhere in the tool, for a quick profile; select the card for the full page, where you can edit their details, see their history chart and export it. Switch to <b>Table</b> to edit many people at once.</li>
         <li>Check <b>Preview</b>, then press <b>Build Excel</b>.</li>
         <li>Performance (optional): export the <b>Agent Performance Summary</b> a second time with every column (Answered, Handle, Avg Handle, Avg Talk, Avg Hold, Avg ACW, Held, Transferred, Outbound) and drop it on Import. <b>Preview</b> then shows each employee's performance with team totals and a sortable table (green at least 15% better than the team, red at least 15% worse), and each person's page compares them with their team. Times are weighted the way Genesys works them out. Exports of past months go to the history, so the person's chart can show answered, handle time, hold, ACW and transfer rate by month. An export with only voice also gives the AHT.</li>
         <li>Workforce and exceptions: with the Schedule and Agent Status Timeline in, every scheduled day of the month is judged with the same rules as the Daily WFM &amp; Performance Review (late after 0 min, no sign-on after 180 min, short of shift from 15 min, adherence 95%, AHT ceiling 2:30, high hold 45 s, at least 5 calls; leave days left out) and added up per employee: shifts, worked, no sign-on, late sign-ons and minutes, short of shift, break changes, time signed on, occupancy, conformance and exceptions. <b>Preview</b> shows the totals by team, the priority follow-up list with reasons and a sortable table; each person's page lists their days one by one. Late first call, calls under 10 s, longest calls and dropped calls need the daily Interactions export, so they stay in the daily email.</li>
         <li>Build the incentive data workbook too. Both files are filled in, including attendance and tardy minutes.</li>
-        <li>On <b>WFM team › Emails › Monthly emails</b>, pick Deduction or Incentive, then For review, and where the numbers come from: <b>Shared month</b> (with the supervisors' attendance corrections) or <b>This build</b> (the incentive always comes from the build). Use <b>Copy for Outlook</b> and paste into a new email, or <b>Download .eml</b> and open it in Outlook. The data sent for review is remembered. The WFM manager sends the deduction and absences emails from the same place, from the shared month. The deduction email's attachment (<b>Save attachment</b>) is one workbook with the Attendance Report and the Monthly Deduction.</li>
+        <li>On <b>WFM team › Emails › Monthly emails</b>, pick Deduction or Incentive, then For review, and where the numbers come from: <b>Shared month</b> (with the supervisors' attendance corrections) or <b>This build</b> (the incentive always comes from the build). Use <b>Copy for Outlook</b> and paste into a new email, or <b>Download .eml</b> and open it in Outlook. The data sent for review is remembered. The WFM manager sends the deduction and absences emails from the same place, from the shared month. The deduction email's attachment (<b>Save attachment</b>) is one workbook with the Attendance Report and the Monthly Deduction; the emails' workbooks carry no National IDs.</li>
         <li>Everything you drop on Import is kept (<b>Import › Saved uploads</b>), so signing out loses nothing: the month is back in Build when you sign in again. Pick a month there to load it, move a file to another month, replace or delete it.</li>
         <li>On vacation? The WFM manager ticks your name on the WFM team page (Vacation cover) and has your tabs until you are back; when the manager is away, you tick theirs.</li>
         <li>After the review deadline, drop any corrected files, open <b>Final</b>, and send. The final email lists what changed since the review.</li>
         <li>The daily emails are built into the tool. A WFM analyst drops the day's exports on <b>WFM team › Report builder</b> (on a Sunday, Thursday to Saturday): MC Leaders and the WFM Daily Review are made and sent from there, and Virgin Postpaid, Virgin Mobile, FRiENDi Mobile and FRiENDi Pay appear straight away on the WFM manager's <b>WFM team › Daily emails</b>, where he writes the SLA insight, checks them and sends them (Copy for Outlook or Open in Outlook), then marks each one sent. The emails are made by the same parts as Member Care Report Builder 14, so they look exactly as before. Every day dropped is kept for everyone; building the WFM Daily Review also keeps each agent's day, and a month without monthly exports is shown from the stored days.</li>
         <li>Supervisors: drop the <b>Teams Distribution</b> email (.msg) on Import, or paste its table with <b>Review › People › Supervisors…</b>. The tool shows who changes team before anything is saved; names it cannot match are listed so you can fix them in the roster's Supervisor column.</li>
         <li>Saving: while you build a month, its results are saved to the shared history by themselves, a few seconds after each change (the line at the top says when). A month already in the history from an older file is kept until you replace it in <b>Review › History</b>, and a month the senior manager has finalized is never overwritten.</li>
-        <li>For a one-to-one, open a person and use <b>One-to-one form</b>, then <b>Final form</b> after the investigation. Both download as PDF.</li>
+        <li>For a one-to-one, open a person and use <b>One-to-one form</b>, then <b>Final form</b> after the investigation. Both download as PDF; the one-to-one fits on one page (only a very long discussion runs on to a second).</li>
         <li>KPI results: drop the monthly KPI file (DRC-CSAT, Quality, Empowerment, FCR…) on Import. Adherence, AHT, days under target and tardiness come from the exports and the attendance. <b>Review › KPI results</b> shows every agent's ranking, final %, incentive target and earned SR, with PDF cards, Excel and a copy-for-email card. Scorecards are in Settings.</li>
         <li>History: drop the past monthly incentive files (MC_all_team_incentive _data) and the Genesys exports of past months (AHT, Agent Performance, Monthly Adherence, Schedule, Agent Status Timeline) on Import or in <b>Review › History</b>. Each file goes to its own month; a month still running is left out. The incentive file's values are kept, and the Genesys exports fill the gaps and add deduction minutes and conformance (only for agents whose schedule covers the whole month, so drop all the schedule files that touch a month together). Each person's page shows their months as a chart, and <b>Review › History</b> shows everyone side by side. The month you send as final is added by itself.</li>
       </ol>
@@ -3535,6 +3546,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
         <li>The admin gives staff their role in Manage accounts, links supervisors to their name in the roster (only the operations team is listed) and ticks the agents each supervisor leads. Agents choose their supervisor when they sign up; the supervisor approves them.</li>
       </ol>
       <p>The data files are locked: staff accounts open them with the team's key, an agent's account only the agent's own place, both unlocked by the person's password. Opened outside the tool, a file is unreadable. Anyone who can delete files in the common folder can still delete them, so keep the folder's permissions to the people who need it, and keep it in the usual IT backup. Once you have signed in, the tool picks up other people's changes every few seconds.</p>
+      <p>After the sign-in, a pill at the top of the page says when the tool is still reading the shared data (with the files read so far), putting the month's saved files back in Build, or reading dropped files; pages still filling say so instead of looking empty.</p>
       <p>Opening the shared data shows what it waits for, with the seconds. If it is slow on one computer, MC Data is often in OneDrive or SharePoint with its files not on that computer yet: right-click it in File Explorer and choose <b>Always keep on this device</b>. A folder choice cancelled, a folder that does not answer, or one whose files cannot be read yet each says so, with what to do.</p>
     </section>
     <section>
@@ -3561,6 +3573,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button id="toastAct" hidden>Undo</button></div>
+<div class="busy" id="busy" role="status" aria-live="polite" hidden><span class="spin" aria-hidden="true"></span><span id="busyMsg"></span></div>
 <div class="tt" id="tt" role="tooltip" hidden></div>
 <div class="pop" id="pop" role="tooltip" hidden></div>
 <script id="rb-data" type="text/plain">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</script>
@@ -9001,6 +9014,7 @@ async function readZip(buf) {
   const find = name => entries[name] || entries[Object.keys(entries).find(k => k.toLowerCase() === name.toLowerCase())];
   return {
     has: name => !!find(name),
+    names: () => Object.keys(entries),
     async text(name) {
       const e = find(name); if (!e) return null;
       const raw = e.method === 0 ? e.data : await inflateRaw(e.data);
@@ -9661,7 +9675,8 @@ function reviewMonth(days, T, perf) {
 
 // ============================================================ the supervisors' attendance template (AttTpl makes it in the page)
 // A month's exceptions only: one row per day someone was late, absent, on leave or off. Every other day of each person's dates is a
-// working day, and their weekly days off on the Team sheet are OFF. The hidden _mc sheet says it is the template and for which month.
+// working day, and their weekly days off on the Team sheet are OFF (inside a leave of several days too). The hidden _mc sheet says it
+// is the template, for which month, and for which department.
 const ATT_TPL_MARK = 'mc-attendance-template';
 const ATT_TPL_TYPES = [['late', null], ['tardy', null], ['absent', 'Absent'], ['day off', 'OFF'], ['off', 'OFF'], ['al leave', 'AL'], ['annual leave', 'AL'], ['al', 'AL'],
   ['sl leave', 'SL'], ['sick leave', 'SL'], ['sl', 'SL'], ['unpaid leave', 'Unpaid'], ['unpaid', 'Unpaid'], ['compassionate leave', 'Compassionate Leave'], ['paternity leave', 'Paternity'],
@@ -9726,8 +9741,9 @@ function parseAttTemplate(all) {
       if (from === -1) { warns.push(`Row ${row} (${who}): the date is not in ${MON[M - 1]} ${Y}, so it was not used`); return; }
       let i = people.findIndex(p => id && p.id === id); if (i < 0) i = people.findIndex(p => name && normName(p.name) === normName(name));
       if (i < 0) { people.push({ name, id, idRaw: id, brand: '', dep: '', off: offDefault, first: null, last: null }); days.push(base(people[people.length - 1])); i = people.length - 1; warns.push(`${who} is not on the Team sheet: added, with the usual days off`); }
-      const end = code === null ? from : to > 0 ? Math.max(to, from) : to === -1 ? ND : from;
+      const end = code === null ? from : to > 0 ? Math.max(to, from) : to === -1 ? ND : from, base0 = base(people[i]);
       for (let d = from; d <= end; d++) {
+        if (end > from && (base0[d - 1] === 'OFF' || base0[d - 1] == null)) continue;   // several days: the weekly days off (and days outside the person's dates) stay as they are
         const k = i + '|' + d; if (seen.has(k) && seen.get(k) !== row) warns.push(`${who}, ${d} ${MON[M - 1]}: rows ${seen.get(k)} and ${row} are for the same day; row ${row} is used`);
         seen.set(k, row);
         if (code === null) { const mins = Number(ac.min >= 0 ? r[ac.min] : NaN); if (!(mins > 0)) warns.push(`Row ${row} (${who}): Late with no minutes, so the day counts as attended`); days[i][d - 1] = mins > 0 ? Math.round(mins) : 'Attend'; }
@@ -9737,7 +9753,7 @@ function parseAttTemplate(all) {
     });
   } else warns.push('The Attendance sheet has no Date and Type headers, so only the weekly days off were used');
   const dates = Array.from({ length: ND }, (_, i) => ({ y: Y, m: M, d: i + 1 }));
-  return { kind: 'attendance', sheet: `${normSpace(AT.name)} (template)`, data: { dates, template: { month: `${Y}-${String(M).padStart(2, '0')}`, spv: normSpace(kv.get('supervisor')), entries, warns },
+  return { kind: 'attendance', sheet: `${normSpace(AT.name)} (template)`, data: { dates, template: { month: `${Y}-${String(M).padStart(2, '0')}`, dep: normSpace(kv.get('dep')), spv: normSpace(kv.get('supervisor')), entries, warns },
     people: people.map((p, i) => ({ name: p.name, id: p.id, idRaw: p.idRaw, team: p.brand, dep: p.dep, status: '', tardyTotal: null, cells: days[i].map((v, k) => [dates[k], v]) })).filter(p => p.cells.some(([, v]) => v != null)) } };
 }
 
@@ -10451,7 +10467,7 @@ class Sheet {
   xml(selected) {
     const out = [];
     out.push('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">');
-    out.push(`<sheetPr>${this.tab ? `<tabColor rgb="${this.tab}"/>` : ''}</sheetPr>`);
+    out.push(`<sheetPr>${this.tab ? `<tabColor rgb="${this.tab}"/>` : ''}${this.print ? '<pageSetUpPr fitToPage="1"/>' : ''}</sheetPr>`);
     out.push(`<dimension ref="A1:${ref(this.maxR, this.maxC)}"/>`);
     let pane = '';
     if (this.freeze) {
@@ -10478,11 +10494,14 @@ class Sheet {
     let pr = 1;
     for (const r of this.cf) out.push(r.type === 'dup' ? `<conditionalFormatting sqref="${r.sqref}"><cfRule type="duplicateValues" dxfId="${r.dxfId}" priority="${pr++}"/></conditionalFormatting>`
       : `<conditionalFormatting sqref="${r.sqref}"><cfRule type="expression" dxfId="${r.dxfId}" priority="${pr++}"${r.stop ? ' stopIfTrue="1"' : ''}><formula>${esc(r.formula)}</formula></cfRule></conditionalFormatting>`);
-    // a list (d.list), or a date or whole number between f1 and f2 (d.type 'date' | 'whole'), with an optional error message
-    const dvXml = d => (d.type ? `<dataValidation type="${d.type}" operator="between" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''} sqref="${d.sqref}"><formula1>${esc(d.f1)}</formula1><formula2>${esc(d.f2)}</formula2></dataValidation>`
-      : `<dataValidation type="list" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''} sqref="${d.sqref}"><formula1>${esc(d.list)}</formula1></dataValidation>`);
+    // a list (d.list), or a date or whole number between f1 and f2 (d.type 'date' | 'whole'), with an optional error message, and an
+    // optional note shown when the cell is chosen (d.prompt, with d.promptTitle)
+    const tip = d => (d.prompt ? ` showInputMessage="1" promptTitle="${esc(String(d.promptTitle || '').slice(0, 32))}" prompt="${esc(String(d.prompt).slice(0, 255))}"` : '');
+    const dvXml = d => (d.type ? `<dataValidation type="${d.type}" operator="between" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''}${tip(d)} sqref="${d.sqref}"><formula1>${esc(d.f1)}</formula1><formula2>${esc(d.f2)}</formula2></dataValidation>`
+      : `<dataValidation type="list" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''}${tip(d)} sqref="${d.sqref}"><formula1>${esc(d.list)}</formula1></dataValidation>`);
     if (this.dv.length) out.push(`<dataValidations count="${this.dv.length}">${this.dv.map(dvXml).join('')}</dataValidations>`);
-    out.push('<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>' + (this._drawing ? '<drawing r:id="rId1"/>' : '') + '</worksheet>');
+    // this.print = { landscape }: printed as wide as one page (as many pages down as it needs)
+    out.push('<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>' + (this.print ? `<pageSetup orientation="${this.print.landscape ? 'landscape' : 'portrait'}" fitToWidth="1" fitToHeight="0"/>` : '') + (this._drawing ? '<drawing r:id="rId1"/>' : '') + '</worksheet>');
     return out.join('');
   }
   /** the company logo, floating at row r of column c (it never covers a formula; cells stay as they are) */
@@ -11059,26 +11078,26 @@ async function dedMail(d, opts = {}) {
   const title = S.get({ font: { sz: 16, b: true, color: NAVY } }), sub = S.get({ font: { sz: 9, i: true, color: 'FF7F7F7F' } });
   const H = (fill, fmt) => S.get({ font: { b: true, color: WHITE }, fill, border: WHITE, align: { h: 'center', wrap: true }, ...(fmt ? { numFmt: fmt } : {}) });
   const hdr = H(NAVY), hDate = H(NAVY, 'dd-mmm'), hDay = H(NAVY, 'ddd dd-mmm'), hSA = H('FF2F5597'), hDf = H('FFC65911'), hTot = H(TAB), hNote = H('FF595959'), hCnt = H('FF305496');
-  const cId = S.get({ font: {}, border: GRID, align: { h: 'center' }, numFmt: '0' }), cName = S.get({ font: {}, border: GRID, align: { h: 'left' } }), cC = S.get({ font: {}, border: GRID, align: { h: 'center' } });
+  const cName = S.get({ font: {}, border: GRID, align: { h: 'left' } }), cC = S.get({ font: {}, border: GRID, align: { h: 'center' } });
   const cCnt = S.get({ font: { b: true }, fill: 'FFF2F2F2', border: GRID, align: { h: 'center' } }), cDiff = S.get({ font: { b: true }, fill: 'FFFCEEE4', border: GRID, align: { h: 'center' } });
   const cTot = S.get({ font: { sz: 11, b: true }, fill: 'FFF2F7EE', border: GRID, align: { h: 'center' } });
   const LEG = [['AL leave', 'FF8DB4E2', 'FF1F3864'], ['SL leaves', 'FFA9D08E', 'FF274E13'], ['Absent', 'FFFF8B8B', 'FF9C0006'], ['National Day', 'FF00843D', WHITE], ['OFF', 'FFBFBFBF', 'FF262626']];
   const leg = LEG.map(([t, fill, color]) => [t, S.get({ font: { b: true, color }, fill, border: WHITE, align: { h: 'center' } }), S.dxf({ color, fill })]);
   const other = S.dxf({ color: 'FF5B2C6F', fill: 'FFE4DFEC' }), redB = S.dxf({ color: 'FFC00000', b: true });
-  const idOf = x => { const s = String(x.id ?? '').trim(); return /^\d{6,}$/.test(s) ? +s : s || 'NA'; };
+  // no National IDs in the email's workbook (the agents' privacy): each person by name, team and department
 
   // ---- Attendance Report
   const A = new Sheet('Attendance Report'); A.tab = TAB;
   A.set(1, 1, `MC Monthly Attendance - ${L}`, title); A.heights[1] = 30; A.heights[2] = 30;
-  const D0 = 5, CN = D0 + ND, NOTE = CN + DED_COUNTS.length, R0 = 3, RL = Math.max(R0, R0 + d.att.length - 1);
+  const D0 = 4, CN = D0 + ND, NOTE = CN + DED_COUNTS.length, R0 = 3, RL = Math.max(R0, R0 + d.att.length - 1);
   leg.forEach(([t, s], i) => { const c = D0 + 6 + i * 2; A.set(1, c, t, s); A.set(1, c + 1, null, s); A.merge(1, c, 1, c + 1); });   // the colours' legend, right of the title
-  [['ID', 14], ['Name', 32], ['Team', 11], ['Dep', 7]].forEach(([h, w], j) => { A.set(2, j + 1, h, hdr); A.width(j + 1, w); });
+  [['Name', 32], ['Team', 11], ['Dep', 7]].forEach(([h, w], j) => { A.set(2, j + 1, h, hdr); A.width(j + 1, w); });
   for (let i = 1; i <= ND; i++) { A.set(2, D0 + i - 1, ymd(Y, M, i), hDate); A.width(D0 + i - 1, 9.5); }
   DED_COUNTS.forEach(([h, w], j) => { A.set(2, CN + j, h, j >= 10 ? hTot : hCnt); A.width(CN + j, w); });
   A.set(2, NOTE, 'Review Notes', hNote); A.width(NOTE, 30);
   d.att.forEach((a, i) => {
     const r = R0 + i;
-    A.set(r, 1, idOf(a), cId); A.set(r, 2, a.name, cName); A.set(r, 3, a.brand || '', cC); A.set(r, 4, a.team || '', cC);
+    A.set(r, 1, a.name, cName); A.set(r, 2, a.brand || '', cC); A.set(r, 3, a.team || '', cC);
     for (let k = 0; k < ND; k++) A.set(r, D0 + k, dedShowDay(a.days[k]), cC);
     dedCounts(a).forEach((v, j) => A.set(r, CN + j, v, cCnt)); A.set(r, NOTE, null, cName);
   });
@@ -11093,8 +11112,8 @@ async function dedMail(d, opts = {}) {
   const noDaily = d.ded.filter(x => !x.sched || !x.act).length;
   DE.set(2, 1, `Sched. = scheduled work minutes. Actual = minutes signed on inside them. Diff = Sched. - Actual (0 if Actual is 0).${noDaily ? ` ${noDaily === 1 ? '1 person has' : `${noDaily} people have`} only a total: the month was saved before each day's minutes were kept.` : ''}`, sub);
   Object.assign(DE.heights, { 1: 30, 2: 18, 3: 6, 4: 22, 5: 30 });
-  [['ID', 14], ['Name', 34], ['Team', 11], ['Dep', 8]].forEach(([h, w], j) => { DE.set(4, j + 1, h, hdr); DE.set(5, j + 1, null, hdr); DE.merge(4, j + 1, 5, j + 1); DE.width(j + 1, w); });
-  const E0 = 5, TOT = E0 + ND * 3, DN = TOT + 1, Q0 = 6, QL = Math.max(Q0, Q0 + d.ded.length - 1);
+  [['Name', 34], ['Team', 11], ['Dep', 8]].forEach(([h, w], j) => { DE.set(4, j + 1, h, hdr); DE.set(5, j + 1, null, hdr); DE.merge(4, j + 1, 5, j + 1); DE.width(j + 1, w); });
+  const E0 = 4, TOT = E0 + ND * 3, DN = TOT + 1, Q0 = 6, QL = Math.max(Q0, Q0 + d.ded.length - 1);
   for (let i = 1; i <= ND; i++) {
     const c = E0 + (i - 1) * 3;
     DE.set(4, c, ymd(Y, M, i), hDay); DE.set(4, c + 1, null, hDay); DE.set(4, c + 2, null, hDay); DE.merge(4, c, 4, c + 2);
@@ -11105,7 +11124,7 @@ async function dedMail(d, opts = {}) {
   DE.set(4, DN, 'Review Notes', hNote); DE.set(5, DN, null, hNote); DE.merge(4, DN, 5, DN); DE.width(DN, 30);
   d.ded.forEach((x, i) => {
     const r = Q0 + i; let tot = 0, any = false;
-    DE.set(r, 1, idOf(x), cId); DE.set(r, 2, x.name, cName); DE.set(r, 3, x.brand || '', cC); DE.set(r, 4, x.team || '', cC);
+    DE.set(r, 1, x.name, cName); DE.set(r, 2, x.brand || '', cC); DE.set(r, 3, x.team || '', cC);
     for (let k = 0; k < ND; k++) {
       const c = E0 + k * 3, sv = x.sched ? x.sched[k] : null, av = x.act ? x.act[k] : null;
       const dv = sv == null || av == null ? '' : av === 0 ? 0 : Math.max(0, sv - av); if (typeof dv === 'number') { tot += dv; any = true; }
@@ -11118,78 +11137,162 @@ async function dedMail(d, opts = {}) {
   return pack([A, DE], S, {}, opts);
 }
 
-return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell, dedMail, dedShowDay };
+/** a workbook made elsewhere (a dropped incentive file), for an email: every column headed ID or National ID in the first rows is
+    emptied from its heading down (the agents' privacy). Everything else stays as it was; Excel rebuilds its calculation chain. */
+async function withoutIds(bytes) {
+  const z = await C.readZip(bytes), td = new TextDecoder(), te = new TextEncoder();
+  const ss = z.has('xl/sharedStrings.xml') ? await z.text('xl/sharedStrings.xml') : '';
+  const strs = [...ss.matchAll(/<si>([\s\S]*?)<\/si>/g)].map(m => [...m[1].matchAll(/<t(?:\s[^>]*)?>([^<]*)<\/t>/g)].map(x => x[1]).join(''));
+  const isId = t => /^(id|national id)$/i.test(String(t || '').replace(/&amp;/g, '&').trim());
+  const CELL = /<c r="([A-Z]+)(\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, files = []; let changed = false;
+  for (const n of z.names()) {
+    if (n.endsWith('/')) continue;
+    let data = await z.bytes(n);
+    if (/^xl\/worksheets\/[^/]+\.xml$/i.test(n)) {
+      let x = td.decode(data); const cols = new Map();
+      for (const [, col, row, attrs, inner] of x.matchAll(CELL)) {
+        if (+row > 8 || !inner || cols.has(col)) continue;
+        const t = /t="s"/.test(attrs) ? strs[+((inner.match(/<v>(\d+)<\/v>/) || [])[1])] : /t="(inlineStr|str)"/.test(attrs) ? (inner.match(/<(?:t|v)(?:\s[^>]*)?>([^<]*)<\/(?:t|v)>/) || [])[1] : null;
+        if (isId(t)) cols.set(col, +row);
+      }
+      if (cols.size) {
+        x = x.replace(CELL, (all, col, row, attrs) => (cols.has(col) && +row >= cols.get(col) ? `<c r="${col}${row}"${(attrs.match(/ s="\d+"/) || [''])[0]}/>` : all));
+        data = te.encode(x); changed = true;
+      }
+    }
+    files.push({ name: n, data });
+  }
+  if (!changed) return bytes;
+  const out = files.filter(f => !/^xl\/calcChain\.xml$/i.test(f.name)).map(f => {
+    if (f.name === '[Content_Types].xml') return { name: f.name, data: td.decode(f.data).replace(/<Override[^>]*calcChain\.xml"[^>]*\/>/g, '') };
+    if (/^xl\/_rels\/workbook\.xml\.rels$/i.test(f.name)) return { name: f.name, data: td.decode(f.data).replace(/<Relationship[^>]*calcChain\.xml"[^>]*\/>/g, '') };
+    return f;
+  });
+  return C.writeZip(out);
+}
+
+return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell, dedMail, dedShowDay, withoutIds };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Writer2;
 
 /* The supervisors' attendance template, for the departments that send their attendance (CC and SM come from Genesys). The tool
-   makes it for one month and one supervisor's team; the supervisor writes one row per exception (late, absent, a leave, a day off)
-   and the file is dropped on Import, where Core.parseAttTemplate reads it: every other day of the month is a working day. */
+   makes it for one month and one department (one supervisor's part of it when the department has several); the supervisor writes
+   one row per exception (late, absent, a leave, a day off) and the file is dropped on Import, where Core.parseAttTemplate reads it:
+   every other day of the month is a working day. It looks like the tool's other workbooks: the title (and the logo) in row 1, a
+   line under it, navy headings in row 4, yellow cells to fill, and a How to fill sheet first. */
 'use strict';
 const AttTpl = ((C, W) => {
 const TYPES = ['Late', 'Absent', 'Day off', 'AL leave', 'SL leave', 'Unpaid leave', 'Compassionate leave', 'Paternity leave', 'Marriage leave', 'Exam leave', 'Maternity leave', 'Eid', 'National Day', 'Founding Day'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const fileName = (y, m, spv) => `Attendance - ${C.MON[m - 1]} ${y} - ${String(spv || 'Team').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`;
+const safe = s => String(s || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+/** Attendance - Oct 2026 - TS.xlsx, or - CT - Ghada S..xlsx for one supervisor's part of a department */
+const fileName = (y, m, dep, spv) => `Attendance - ${C.MON[m - 1]} ${y} - ${[safe(dep), safe(spv)].filter(Boolean).join(' - ') || 'Team'}.xlsx`;
+/** what each type is for (the How to fill sheet) */
+const USE = [['Late', 'Came late. Write the minutes late (1 to 720). Always one day: leave To empty.'], ['Absent', 'Did not come, with no approved leave.'],
+  ['Day off', 'Off on a day that is not one of their weekly days off (a swapped day, for example).'], ['AL leave', 'Annual leave.'], ['SL leave', 'Sick leave.'],
+  ['Unpaid leave', 'Unpaid leave.'], ['Compassionate leave', 'Compassionate leave.'], ['Paternity, marriage, exam or maternity leave', 'That leave: Paternity leave, Marriage leave, Exam leave or Maternity leave in the list.'],
+  ['Eid · National Day · Founding Day', 'Off for the public holiday.']];
 /**
- * o: { y, m, spv (the supervisor's name), spvPid, people: [{ id, name, brand, team }], offDays ('Fri, Sat'), rows (rows to fill),
- *      extra (empty Team rows for new people), at, by, logo } -> xlsx bytes
+ * o: { y, m, dep (the department code), depName, spv (the supervisor's name, or ''), spvPid, people: [{ id, name, brand, team }],
+ *      offDays ('Fri, Sat'), rows (rows to fill), extra (empty Team rows for new people), at, by, logo } -> xlsx bytes
  */
 async function build(o) {
-  const Y = o.y, M = o.m, ND = C.daysIn(Y, M), MONTH = `${MONTHS[M - 1]} ${Y}`, people = o.people || [];
-  const S = new W.Styles(), NAVY = 'FF1F3864', WHITE = 'FFFFFFFF', GRID = 'FFBFBFBF', INP = 'FFFFF2CC', INK = 'FF000000';
-  const title = S.get({ font: { sz: 15, b: true, color: NAVY } }), help = S.get({ font: { sz: 10, color: 'FF404040' }, align: { h: 'left', v: 'top', wrap: true } });
+  const Y = o.y, M = o.m, ND = C.daysIn(Y, M), MONTH = `${MONTHS[M - 1]} ${Y}`, MON = C.MON[M - 1], people = o.people || [];
+  const DEP = [o.dep, o.depName].filter(Boolean).join(' – '), WHO = [DEP, o.spv].filter(Boolean).join(' · ') || 'Team', OFF = o.offDays ?? 'Fri, Sat';
+  const S = new W.Styles(), NAVY = 'FF1F3864', WHITE = 'FFFFFFFF', GRID = 'FFD9D9D9', INP = 'FFFFF2CC', INK = 'FF262626';
+  const title = S.get({ font: { sz: 16, b: true, color: NAVY } }), sub = S.get({ font: { sz: 9, i: true, color: 'FF7F7F7F' } });
   const hdr = S.get({ font: { b: true, color: WHITE }, fill: NAVY, border: WHITE, align: { h: 'center', wrap: true } });
-  const inp = (h, numFmt) => S.get({ font: { sz: 11, color: INK }, fill: INP, border: GRID, align: { h }, ...(numFmt ? { numFmt } : {}) });
+  const hdrL = S.get({ font: { b: true, color: WHITE }, fill: NAVY, border: WHITE, align: { h: 'left', wrap: true } });
+  const inp = (h, numFmt) => S.get({ font: { name: 'Calibri', sz: 11, color: 'FF000000' }, fill: INP, border: GRID, align: { h }, ...(numFmt ? { numFmt } : {}) });
   const iL = inp('left'), iC = inp('center'), iD = inp('center', 'dd-mmm-yyyy'), iN = inp('center', '0');
   const cL = S.get({ font: { sz: 11, color: INK }, border: GRID, align: { h: 'left' } }), cC = S.get({ font: { sz: 11, color: INK }, border: GRID, align: { h: 'center' } });
   const cId = S.get({ font: { sz: 11, color: INK }, border: GRID, align: { h: 'center' }, numFmt: '0' });
-  const auto = S.get({ font: { sz: 10, i: true, color: 'FF595959' }, fill: 'FFF2F2F2', border: GRID, align: { h: 'center' }, numFmt: '0' });
+  const auto = S.get({ font: { sz: 10, i: true, color: 'FF808080' }, fill: 'FFF2F2F2', border: GRID, align: { h: 'center' }, numFmt: '0' });
   const first = String(C.ymdSerial(Y, M, 1)), last = String(C.ymdSerial(Y, M, ND)), inMonth = { errorTitle: 'Not in the month', error: `Type a day of ${MONTH}.` };
   const T0 = 5, TL = T0 + people.length + (o.extra ?? 15) - 1;
   const idCell = x => { const s = String(x ?? '').trim(); return /^\d{6,}$/.test(s) ? +s : s; };
+  const frame = (sh, t, s) => { sh.set(1, 1, t, title); sh.set(2, 1, s, sub); Object.assign(sh.heights, { 1: 30, 2: 18, 3: 6, 4: 30 }); };
+
+  // ---- How to fill: the first sheet the supervisor sees
+  const H = new W.Sheet('How to fill'); H.tab = 'FFC65911'; H.print = { landscape: true };
+  frame(H, 'How to fill the attendance template', `${WHO} · ${MONTH}`);
+  [4, 26, 16, 22, 20, 13, 40].forEach((w, j) => H.width(j + 1, w));
+  const sec = (r, t) => { H.set(r, 1, t, hdrL); for (let c = 2; c <= 7; c++) H.set(r, c, null, hdrL); H.merge(r, 1, r, 7); H.heights[r] = 22; };
+  const num = S.get({ font: { sz: 12, b: true, color: NAVY }, align: { h: 'center', v: 'top' } }), step = S.get({ font: { sz: 11, color: INK }, align: { h: 'left', v: 'top', wrap: true } });
+  const steps = [
+    `Write a row only for a day that was not a normal working day: late, absent, a leave, or a day off that is not one of the person's weekly days off.`,
+    `Every other day of ${MONTH} counts as a working day by itself. Do not write the normal days, and do not write the weekly days off: they are on the Team sheet (${OFF} unless changed there).`,
+    'Several days in a row (a leave): the first day in Date and the last day in To (several days). The weekly days off inside stay days off. One day: leave To empty.',
+    'Late: choose Late and write the minutes in Minutes late. Late is always one day.',
+    'Pick the name and the type from the lists; the ID fills in by itself. Someone new: add them on the Team sheet first.',
+    'Different weekly days off, or someone who joined or left this month: change it on the Team sheet (Weekly days off, First day, Last day).',
+    'When the month is done, save the file and send it to the WFM team.',
+  ];
+  sec(4, 'In short');
+  steps.forEach((t, i) => { const r = 5 + i; H.set(r, 1, i + 1, num); H.set(r, 2, t, step); H.merge(r, 2, r, 7); H.heights[r] = 16 * Math.ceil(t.length / 140) + 3; });
+  let r = 5 + steps.length + 1;
+  sec(r, 'Examples'); r++;
+  ['Date', 'To (several days)', 'Name', 'Type', 'Minutes late', 'What it means'].forEach((h, j) => H.set(r, j + 2, h, hdr)); H.heights[r] = 30; r++;
+  const exS = numFmt => S.get({ font: { sz: 11, color: INK }, fill: 'FFFFF8E1', border: GRID, align: { h: 'center' }, numFmt }), ex = exS('dd-mmm-yyyy'), exN = exS('0');
+  const exL = S.get({ font: { sz: 11, color: INK }, fill: 'FFFFF8E1', border: GRID, align: { h: 'left' } });
+  const means = S.get({ font: { sz: 10, i: true, color: 'FF595959' }, border: GRID, align: { h: 'left', wrap: true } });
+  const D = d => C.ymdSerial(Y, M, d);
+  [[D(15), null, 'Late', 15, `15 minutes late on 15 ${MON}.`], [D(3), null, 'Absent', null, `Absent on 3 ${MON}.`], [D(7), D(10), 'AL leave', null, `Annual leave from 7 to 10 ${MON}.`],
+    [D(20), D(22), 'SL leave', null, `Sick leave from 20 to 22 ${MON}.`], [D(12), null, 'Day off', null, `Off on 12 ${MON} instead of a usual day off.`]]
+    .forEach(([a, b, t, mn, w]) => { H.set(r, 2, a, ex); H.set(r, 3, b, ex); H.set(r, 4, 'The person\'s name', exL); H.set(r, 5, t, exL); H.set(r, 6, mn, exN); H.set(r, 7, w, means); r++; });
+  r++;
+  sec(r, 'Types'); r++;
+  H.set(r, 2, 'Type', hdr); H.set(r, 3, 'Use it for', hdrL); for (let c = 4; c <= 7; c++) H.set(r, c, null, hdrL); H.merge(r, 3, r, 7); r++;
+  const tyS = S.get({ font: { sz: 11, b: true, color: INK }, border: GRID, align: { h: 'left', wrap: true } }), useS = S.get({ font: { sz: 11, color: INK }, border: GRID, align: { h: 'left', wrap: true } });
+  USE.forEach(([t, u]) => { H.set(r, 2, t, tyS); H.set(r, 3, u, useS); for (let c = 4; c <= 7; c++) H.set(r, c, null, useS); H.merge(r, 3, r, 7); H.heights[r] = t.length > 30 ? 32 : 18; r++; });
+  r++;
+  sec(r, 'Good to know'); r++;
+  [`Dates must be days of ${MONTH}: Excel refuses any other date.`, 'Two rows for the same person and day: the lower row counts.',
+    'A yellow cell turns amber or red when something is missing: Late without minutes, a To date before the Date.',
+    'Do not rename the sheets or delete rows above the headings: the tool reads them when the file comes back.']
+    .forEach(t => { H.set(r, 1, '•', num); H.set(r, 2, t, step); H.merge(r, 2, r, 7); H.heights[r] = 18; r++; });
 
   // ---- Attendance: one row per exception
-  const A = new W.Sheet('Attendance'); A.tab = NAVY;
-  A.set(1, 1, `Attendance · ${MONTH} · ${o.spv || 'Team'}`, title); A.heights[1] = 28;
-  A.set(2, 1, `One row for each day someone was late, absent, on leave, or off on a day that is not one of their weekly days off (those are on the Team sheet). Every other day of ${MONTH} counts as a working day. A leave of several days: the first day in Date, the last in To.`, help);
-  A.merge(2, 1, 2, 7); A.heights[2] = 46;
-  A.set(3, 1, 'Late: type the minutes late. Pick the name from the list and the ID fills in by itself. When the month is done, send the file to the WFM team (or drop it on the tool\'s Import).', help);
-  A.merge(3, 1, 3, 7); A.heights[3] = 32;
+  const A = new W.Sheet('Attendance'); A.tab = NAVY; A.print = { landscape: true };
+  frame(A, `Attendance · ${MONTH} · ${WHO}`, 'Only the exceptions: late, absent, a leave or a day off. Every other day counts as a working day. How to fill: the first sheet.');
   [['Date', 14], ['To (several days)', 14], ['Name', 32], ['ID', 14], ['Type', 20], ['Minutes late', 12], ['Note', 34]].forEach(([h, w], j) => { A.set(4, j + 1, h, hdr); A.width(j + 1, w); });
-  A.heights[4] = 30;
   const R0 = 5, RL = R0 + (o.rows ?? 300) - 1, teamName = `Team!$B$${T0}:$B$${TL}`, teamId = `Team!$A$${T0}:$A$${TL}`;
-  for (let r = R0; r <= RL; r++) {
-    A.set(r, 1, null, iD); A.set(r, 2, null, iD); A.set(r, 3, null, iL);
-    A.set(r, 4, '', auto, `IF(C${r}="","",IFERROR(INDEX(${teamId},MATCH(C${r},${teamName},0)),""))`);
-    A.set(r, 5, null, iL); A.set(r, 6, null, iN); A.set(r, 7, null, iL);
+  for (let i = R0; i <= RL; i++) {
+    A.set(i, 1, null, iD); A.set(i, 2, null, iD); A.set(i, 3, null, iL);
+    A.set(i, 4, '', auto, `IF(C${i}="","",IFERROR(INDEX(${teamId},MATCH(C${i},${teamName},0)),""))`);
+    A.set(i, 5, null, iL); A.set(i, 6, null, iN); A.set(i, 7, null, iL);
   }
-  A.dv.push({ type: 'date', sqref: `A${R0}:B${RL}`, f1: first, f2: last, ...inMonth });
-  A.dv.push({ sqref: `C${R0}:C${RL}`, list: teamName, error: 'Pick a name from the Team sheet (add a new person there first).' });
-  A.dv.push({ sqref: `E${R0}:E${RL}`, list: `"${TYPES.join(',')}"`, error: 'Pick a type from the list.' });
-  A.dv.push({ type: 'whole', sqref: `F${R0}:F${RL}`, f1: '1', f2: '720', error: 'Minutes late: a whole number from 1 to 720.' });
+  A.dv.push({ type: 'date', sqref: `A${R0}:A${RL}`, f1: first, f2: last, ...inMonth, promptTitle: 'Date', prompt: `The day, or the first day of a leave of several days. A day of ${MONTH}.` });
+  A.dv.push({ type: 'date', sqref: `B${R0}:B${RL}`, f1: first, f2: last, ...inMonth, promptTitle: 'To (several days)', prompt: 'Only for several days in a row: the last day. Leave it empty for one day, and for Late.' });
+  A.dv.push({ sqref: `C${R0}:C${RL}`, list: teamName, error: 'Pick a name from the Team sheet (add a new person there first).', promptTitle: 'Name', prompt: 'Pick the name from the list. Someone new: add them on the Team sheet first.' });
+  A.dv.push({ sqref: `E${R0}:E${RL}`, list: `"${TYPES.join(',')}"`, error: 'Pick a type from the list.', promptTitle: 'Type', prompt: 'Late, Absent, Day off, or the leave. What each one is for: the How to fill sheet.' });
+  A.dv.push({ type: 'whole', sqref: `F${R0}:F${RL}`, f1: '1', f2: '720', error: 'Minutes late: a whole number from 1 to 720.', promptTitle: 'Minutes late', prompt: 'Only for Late: the minutes late, from 1 to 720.' });
+  const amber = S.dxf({ color: 'FF9C5700', fill: 'FFFFEB9C' }), red = S.dxf({ color: 'FF9C0006', fill: 'FFFFC7CE' });
+  A.addCF(`F${R0}:F${RL}`, `AND($E${R0}="Late",$F${R0}="")`, amber);
+  A.addCF(`B${R0}:B${RL}`, `AND($B${R0}<>"",$A${R0}<>"",$B${R0}<$A${R0})`, red);
+  A.addCF(`B${R0}:B${RL}`, `AND($E${R0}="Late",$B${R0}<>"")`, amber);
+  A.addCF(`F${R0}:F${RL}`, `AND($F${R0}<>"",$E${R0}<>"Late")`, amber);
   A.freeze = [R0, 1];
 
   // ---- Team: who the month counts, and their weekly days off
-  const TE = new W.Sheet('Team'); TE.tab = 'FF2F5597';
-  TE.set(1, 1, `Team · ${o.spv || ''} · ${MONTH}`, title); TE.heights[1] = 28;
-  TE.set(2, 1, 'Weekly days off: the weekdays each person is off every week (for example Fri, Sat). Leave it empty when the days off change from week to week, and write each day off on the Attendance sheet instead. First day and Last day: only for someone who joined or left during the month. Add a new person in an empty row.', help);
-  TE.merge(2, 1, 2, 7); TE.heights[2] = 58;
+  const TE = new W.Sheet('Team'); TE.tab = 'FF2F5597'; TE.print = { landscape: false };
+  frame(TE, `Team · ${WHO} · ${MONTH}`, 'Weekly days off: the weekdays each person is off every week (empty when they change every week: then write each day off on the Attendance sheet). First day and Last day: only for someone who joined or left this month. Add a new person in an empty row.');
   [['ID', 14], ['Name', 32], ['Brand', 12], ['Dep', 8], ['Weekly days off', 16], ['First day', 13], ['Last day', 13]].forEach(([h, w], j) => { TE.set(4, j + 1, h, hdr); TE.width(j + 1, w); });
-  TE.heights[4] = 30;
   people.forEach((p, i) => {
-    const r = T0 + i;
-    TE.set(r, 1, idCell(p.id), cId); TE.set(r, 2, p.name, cL); TE.set(r, 3, p.brand || '', cC); TE.set(r, 4, p.team || '', cC);
-    TE.set(r, 5, o.offDays ?? 'Fri, Sat', iC); TE.set(r, 6, null, iD); TE.set(r, 7, null, iD);
+    const row = T0 + i;
+    TE.set(row, 1, idCell(p.id), cId); TE.set(row, 2, p.name, cL); TE.set(row, 3, p.brand || '', cC); TE.set(row, 4, p.team || o.dep || '', cC);
+    TE.set(row, 5, OFF, iC); TE.set(row, 6, null, iD); TE.set(row, 7, null, iD);
   });
-  for (let r = T0 + people.length; r <= TL; r++) [iN, iL, iC, iC, iC, iD, iD].forEach((s, j) => TE.set(r, j + 1, null, s));
-  TE.dv.push({ type: 'date', sqref: `F${T0}:G${TL}`, f1: first, f2: last, ...inMonth });
+  for (let i = T0 + people.length; i <= TL; i++) [iN, iL, iC, iC, iC, iD, iD].forEach((s, j) => TE.set(i, j + 1, null, s));
+  TE.dv.push({ type: 'date', sqref: `F${T0}:G${TL}`, f1: first, f2: last, ...inMonth, promptTitle: 'First day / Last day', prompt: 'Only for someone who joined or left during the month. Days before the first day or after the last day are not counted.' });
   TE.freeze = [T0, 1];
 
   // ---- what the file is (hidden): the tool knows the month and the team when it comes back
   const X = new W.Sheet('_mc'); X.hidden = true;
-  [[C.ATT_TPL_MARK, 1], ['month', `${Y}-${String(M).padStart(2, '0')}`], ['supervisor', o.spv || ''], ['pid', o.spvPid || ''], ['made', o.at || ''], ['by', o.by || '']]
+  [[C.ATT_TPL_MARK, 1], ['month', `${Y}-${String(M).padStart(2, '0')}`], ['dep', o.dep || ''], ['supervisor', o.spv || ''], ['pid', o.spvPid || ''], ['made', o.at || ''], ['by', o.by || '']]
     .forEach(([k, v], i) => { X.set(i + 1, 1, k); X.set(i + 1, 2, v); });
-  return W.pack([A, TE, X], S, {}, o.logo ? { logo: o.logo } : {});
+  if (o.logo) for (const sh of [H, A, TE]) sh.titleLogo();
+  return W.pack([H, A, TE, X], S, {}, o.logo ? { logo: o.logo } : {});
 }
 return { build, fileName, TYPES };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'), typeof Writer2 !== 'undefined' ? Writer2 : require('./writer2.js'));
@@ -12173,23 +12276,27 @@ async function build(ctx, opt = {}) {
   const ymd = d => C.ymdSerial(Y, M, d);
   const sheets = [];
 
+  // opt.noIds (the copy attached to the incentive email): no National ID column; every column after it moves one to the left
+  const o = opt.noIds ? 1 : 0, cc = n => n - o, L_ = n => C.colName(cc(n));
+
   // ---------------- Attendance Report
   const AR = new Sheet('Attendance Report'); AR.tab = NAVY; AR.defH = 14.4; AR.heights[1] = 17.4;
   AR.set(1, 1, `MC Monthly Attendance - ${L}`, st.title);
-  ['ID', 'Name', 'Team', 'Dep'].forEach((h, j) => AR.set(2, j + 1, h, st.hd()));
+  ['ID', 'Name', 'Team', 'Dep'].slice(o).forEach((h, j) => AR.set(2, j + 1, h, st.hd()));
   const dHead = S.get({ font: A({ sz: 9, b: true, color: WHITE }), fill: GREY, border: thin, align: { h: 'center', v: 'center' }, numFmt: 'dd\\-mmm' });
-  for (let d = 1; d <= ND; d++) { AR.set(2, 4 + d, ymd(d), dHead); AR.width(4 + d, 11); }
-  const T0 = 5 + ND;   // Tardy column
+  for (let d = 1; d <= ND; d++) { AR.set(2, cc(4 + d), ymd(d), dHead); AR.width(cc(4 + d), 11); }
+  const T0 = cc(5 + ND);   // Tardy column
   const CNT = md.count || K.COUNT0(), CODES = CNT.sched.map(K.dayCode), iAbs = CNT.sched.indexOf('Absent');
   const PEN = CNT.absentExtra > 0 || CNT.absentFlat > 0;   // an absence penalty: Actual days = Attend less the days taken off
   const TH = ['Tardy', ...CODES.map(c => c.head), 'Attend', 'Scheduled days', 'Actual days', 'Review Notes'];
   TH.forEach((h, j) => { AR.set(2, T0 + j, h, st.hd(h === 'Review Notes' ? BLUE : GREY)); AR.width(T0 + j, TWD[h] ?? 12); });
-  [[1, 11.55], [2, 35.11], [3, 10.44], [4, 8.89]].forEach(([c, w]) => AR.width(c, w));
-  const fd = C.colName(5), ld = C.colName(4 + ND);
+  [[1, 11.55], [2, 35.11], [3, 10.44], [4, 8.89]].slice(o).forEach(([c, w]) => AR.width(cc(c), w));
+  const fd = L_(5), ld = L_(4 + ND), aName = L_(2);
   md.att.forEach((r, i) => {
     const R = 3 + i, rg = `${fd}${R}:${ld}${R}`;
-    AR.set(R, 1, r.id, st.cell); AR.set(R, 2, r.mark + r.name, st.cell); AR.set(R, 3, r.brand, st.cell); AR.set(R, 4, r.team, st.cell);
-    r.days.forEach((v, j) => AR.set(R, 5 + j, v === '' ? null : v, st.day));
+    if (!o) AR.set(R, 1, r.id, st.cell);
+    AR.set(R, cc(2), r.mark + r.name, st.cell); AR.set(R, cc(3), r.brand, st.cell); AR.set(R, cc(4), r.team, st.cell);
+    r.days.forEach((v, j) => AR.set(R, cc(5 + j), v === '' ? null : v, st.day));
     AR.set(R, T0, r.tardy || 0, st.tot);
     CODES.forEach((c, j) => AR.set(R, T0 + 1 + j, r.counts[j], st.tot, `COUNTIF(${rg},"${c.crit}")`));
     const cA = T0 + 1 + CODES.length;
@@ -12204,33 +12311,34 @@ async function build(ctx, opt = {}) {
     AR.set(R, cA + 3, null, st.tot);
   });
   const lastA = Math.max(502, md.att.length + 2), lastCol = T0 + TH.length - 1;
-  AR.addCF(`A3:D${lastA} ${C.ref(3, T0)}:${C.ref(lastA, lastCol)}`, '$A3<>""', dx.border);
-  AR.addCF(`B3:B${lastA}`, 'LEFT(B3,1)="⚠"', dx.warn); AR.addCF(`B3:B${lastA}`, 'LEFT(B3,1)="⛔"', dx.off);
+  AR.addCF(`A3:${L_(4)}${lastA} ${C.ref(3, T0)}:${C.ref(lastA, lastCol)}`, '$A3<>""', dx.border);
+  AR.addCF(`${aName}3:${aName}${lastA}`, `LEFT(${aName}3,1)="⚠"`, dx.warn); AR.addCF(`${aName}3:${aName}${lastA}`, `LEFT(${aName}3,1)="⛔"`, dx.off);
   const grid = `${fd}3:${ld}${Math.max(112, md.att.length + 2)}`, tl = `${fd}3`;
   [['Exam', dx.exam], ['National Day', dx.nd], ['AL', dx.al], ['Absent', dx.absent], ['SL', dx.sl], ['OFF', dx.offDay]].forEach(([v, x]) => AR.addCF(grid, `${tl}="${v}"`, x));
-  AR.freeze = [3, 5]; AR.filter = `A2:${C.ref(lastA, lastCol)}`;
+  AR.freeze = [3, cc(5)]; AR.filter = `A2:${C.ref(lastA, lastCol)}`;
   sheets.push(AR);
 
   // ---------------- Adherence -In Detail
   const AD = new Sheet('Adherence -In Detail'); AD.tab = NAVY; AD.defH = 14.4; AD.heights[1] = 17.4; AD.heights[5] = 28.05;
   AD.set(1, 1, `MC Monthly Adherence - ${L}`, st.title);
   const hdW = st.hd(GREY, { wrap: true });
-  [['ID', 13], ['Member Care champions', 35.22], ['Team', 9]].forEach(([h, w], j) => { AD.set(4, j + 1, h, hdW); AD.set(5, j + 1, null, hdW); AD.merge(4, j + 1, 5, j + 1); AD.width(j + 1, w); });
+  [['ID', 13], ['Member Care champions', 35.22], ['Team', 9]].slice(o).forEach(([h, w], j) => { AD.set(4, j + 1, h, hdW); AD.set(5, j + 1, null, hdW); AD.merge(4, j + 1, 5, j + 1); AD.width(j + 1, w); });
   const dHeadW = S.get({ font: A({ sz: 9, b: true, color: WHITE }), fill: GREY, border: thin, align: { h: 'center', v: 'center', wrap: true }, numFmt: 'dd\\-mmm' });
   const sub = S.get({ font: A({ sz: 8, b: true, color: WHITE }), fill: GREY, border: thin, align: { h: 'center', v: 'center', wrap: true } });
-  for (let d = 1; d <= ND; d++) { AD.set(4, 3 + d, ymd(d), dHeadW); AD.set(5, 3 + d, 'Adherence (%)', sub); AD.width(3 + d, 7.44); }
-  const AV = 4 + ND; AD.set(4, AV, 'Avr.', hdW); AD.set(5, AV, null, hdW); AD.merge(4, AV, 5, AV); AD.width(AV, 10.22);
-  const dfirst = C.colName(4), dlast = C.colName(3 + ND);
+  for (let d = 1; d <= ND; d++) { AD.set(4, cc(3 + d), ymd(d), dHeadW); AD.set(5, cc(3 + d), 'Adherence (%)', sub); AD.width(cc(3 + d), 7.44); }
+  const AV = cc(4 + ND); AD.set(4, AV, 'Avr.', hdW); AD.set(5, AV, null, hdW); AD.merge(4, AV, 5, AV); AD.width(AV, 10.22);
+  const dfirst = L_(4), dlast = L_(3 + ND), dName = L_(2);
   md.det.forEach((r, i) => {
     const R = 6 + i;
-    AD.set(R, 1, r.id, st.cell); AD.set(R, 2, r.mark + r.name, st.cell); AD.set(R, 3, r.brand, st.cell);
-    r.vals.forEach((v, j) => AD.set(R, 4 + j, v, st.pctDay));
+    if (!o) AD.set(R, 1, r.id, st.cell);
+    AD.set(R, cc(2), r.mark + r.name, st.cell); AD.set(R, cc(3), r.brand, st.cell);
+    r.vals.forEach((v, j) => AD.set(R, cc(4 + j), v, st.pctDay));
     AD.set(R, AV, r.avg, st.pctDay, `IFERROR(AVERAGE(${dfirst}${R}:${dlast}${R}),"NA")`);
   });
   const lastD = Math.max(305, md.det.length + 5);
-  AD.addCF(`A6:C${lastD} ${C.ref(6, AV)}:${C.ref(lastD, AV)}`, '$A6<>""', dx.border);
-  AD.addCF(`B6:B${lastD}`, 'LEFT(B6,1)="⚠"', dx.warn); AD.addCF(`B6:B${lastD}`, 'LEFT(B6,1)="⛔"', dx.off);
-  AD.freeze = [6, 4]; AD.filter = `A5:${C.ref(lastD, AV)}`;
+  AD.addCF(`A6:${L_(3)}${lastD} ${C.ref(6, AV)}:${C.ref(lastD, AV)}`, '$A6<>""', dx.border);
+  AD.addCF(`${dName}6:${dName}${lastD}`, `LEFT(${dName}6,1)="⚠"`, dx.warn); AD.addCF(`${dName}6:${dName}${lastD}`, `LEFT(${dName}6,1)="⛔"`, dx.off);
+  AD.freeze = [6, cc(4)]; AD.filter = `A5:${C.ref(lastD, AV)}`;
   sheets.push(AD);
   const AVL = C.colName(AV);
 
@@ -12238,32 +12346,35 @@ async function build(ctx, opt = {}) {
   const AH = new Sheet('Adherence'); AH.tab = NAVY; AH.defH = 14.4; AH.heights[1] = 17.4;
   AH.set(1, 1, `MC Monthly Adherence - ${L}`, st.title);
   const hdL = (fill = GREY) => st.hd(fill, { border: { l: LINE, r: LINE, t: LINE }, wrap: true });
-  [['ID', 13], ['Name', 37], ['Team', 10], ['Adherence', 12]].forEach(([h, w], j) => { AH.set(4, j + 1, h, hdL()); AH.width(j + 1, w); });
+  [['ID', 13], ['Name', 37], ['Team', 10], ['Adherence', 12]].slice(o).forEach(([h, w], j) => { AH.set(4, j + 1, h, hdL()); AH.width(j + 1, w); });
+  const hName = L_(2);
   md.adh.forEach((r, i) => {
     const R = 5 + i; AH.heights[R] = 18;
-    AH.set(R, 1, r.id, st.plain); AH.set(R, 2, r.mark + r.name, st.plain); AH.set(R, 3, r.brand, st.plain);
-    if (r.full) AH.set(R, 4, 1, st.pct10);
-    else AH.set(R, 4, r.avg, st.pct10, `IFERROR(INDEX('Adherence -In Detail'!$${AVL}:$${AVL},MATCH(B${R},'Adherence -In Detail'!$B:$B,0)),"NA")`);
+    if (!o) AH.set(R, 1, r.id, st.plain);
+    AH.set(R, cc(2), r.mark + r.name, st.plain); AH.set(R, cc(3), r.brand, st.plain);
+    if (r.full) AH.set(R, cc(4), 1, st.pct10);
+    else AH.set(R, cc(4), r.avg, st.pct10, `IFERROR(INDEX('Adherence -In Detail'!$${AVL}:$${AVL},MATCH(${hName}${R},'Adherence -In Detail'!$${dName}:$${dName},0)),"NA")`);
   });
   const lastH = Math.max(302, md.adh.length + 4);
-  AH.addCF(`A5:D${lastH}`, '$A5<>""', dx.border);
-  AH.addCF(`B5:B${lastH}`, 'LEFT(B5,1)="⚠"', dx.warn); AH.addCF(`B5:B${lastH}`, 'LEFT(B5,1)="⛔"', dx.off);
-  AH.cf.push({ sqref: `B5:B${lastH}`, dxfId: dx.dup, type: 'dup' }, { sqref: `A5:A${lastH}`, dxfId: dx.dup, type: 'dup' });
+  AH.addCF(`A5:${L_(4)}${lastH}`, '$A5<>""', dx.border);
+  AH.addCF(`${hName}5:${hName}${lastH}`, `LEFT(${hName}5,1)="⚠"`, dx.warn); AH.addCF(`${hName}5:${hName}${lastH}`, `LEFT(${hName}5,1)="⛔"`, dx.off);
+  AH.cf.push({ sqref: `${hName}5:${hName}${lastH}`, dxfId: dx.dup, type: 'dup' }, ...(o ? [] : [{ sqref: `A5:A${lastH}`, dxfId: dx.dup, type: 'dup' }]));
   AH.freeze = [5, 1];
   sheets.push(AH);
 
   // ---------------- AHT
   const HT = new Sheet('AHT'); HT.tab = NAVY; HT.defH = 14.4; HT.heights[1] = 17.4;
   HT.set(1, 1, `MC Monthly AHT - ${L}`, st.title);
-  [['ID', 15, GREY], ['Name', 30, BLUE], ['AHT', 10, BLUE], ['Team', 9, GREY], ['Duplicate Check', 25.89, GREY]].forEach(([h, w, f], j) => { HT.set(4, j + 1, h, hdL(f)); HT.width(j + 1, w); });
+  [['ID', 15, GREY], ['Name', 30, BLUE], ['AHT', 10, BLUE], ['Team', 9, GREY], ['Duplicate Check', 25.89, GREY]].slice(o).forEach(([h, w, f], j) => { HT.set(4, j + 1, h, hdL(f)); HT.width(j + 1, w); });
   md.aht.forEach((r, i) => {
     const R = 5 + i; HT.heights[R] = 18;
-    HT.set(R, 1, r.id, st.plain); HT.set(R, 2, r.mark + r.name, st.plain); HT.set(R, 3, Math.round(r.sec * 1000) / 1000, st.num);
-    HT.set(R, 4, r.brand, st.plain); HT.set(R, 5, r.dup, st.dupC);
+    if (!o) HT.set(R, 1, r.id, st.plain);
+    HT.set(R, cc(2), r.mark + r.name, st.plain); HT.set(R, cc(3), Math.round(r.sec * 1000) / 1000, st.num);
+    HT.set(R, cc(4), r.brand, st.plain); HT.set(R, cc(5), r.dup, st.dupC);
   });
-  const lastT = Math.max(276, md.aht.length + 4);
-  HT.addCF(`A5:E${lastT}`, 'LEFT($B5,1)="⛔"', dx.off, true); HT.addCF(`A5:E${lastT}`, '$B5<>""', dx.border);
-  HT.addCF(`B5:B${lastT}`, 'LEFT(B5,1)="⚠"', dx.warn); HT.addCF(`A5:E${lastT}`, '$E5<>""', dx.dupNote);
+  const lastT = Math.max(276, md.aht.length + 4), tName = L_(2), tLast = L_(5);
+  HT.addCF(`A5:${tLast}${lastT}`, `LEFT($${tName}5,1)="⛔"`, dx.off, true); HT.addCF(`A5:${tLast}${lastT}`, `$${tName}5<>""`, dx.border);
+  HT.addCF(`${tName}5:${tName}${lastT}`, `LEFT(${tName}5,1)="⚠"`, dx.warn); HT.addCF(`A5:${tLast}${lastT}`, `$${tLast}5<>""`, dx.dupNote);
   HT.freeze = [5, 1];
   sheets.push(HT);
 
@@ -12501,6 +12612,107 @@ class Doc {
   }
 }
 
+/** the one-to-one on one page: the same parts, tighter, every size times k (oneToOne tries a smaller k until it fits on one page) */
+class Compact extends Doc {
+  get k() { return this.f._k || 1; }
+  z(v) { return v * this.k; }
+  newPage() {
+    const P = this.pdf, z = v => this.z(v), y = M - 12, lg = this.f.logo; P.addPage(); this.pageNo = P.pages.length;
+    if (lg) { const h = z(28), w = Math.min(z(130), h * lg.w / lg.h), hh = w * lg.h / lg.w; P.image(M, y + (h - hh) / 2, w, hh); }
+    P.text(PW - M, y + z(12), this.title.toUpperCase(), { size: z(13), bold: true, color: NAVY, align: 'right' });
+    P.text(PW - M, y + z(23), 'Supervisor and agent one-to-one', { size: z(7.6), color: GREY, align: 'right' });
+    if (!lg) P.text(M, y + z(17), 'Member Care', { size: z(10), bold: true, color: NAVY });
+    P.rect(M, y + z(30), CW, 1.4, { fill: NAVY });
+    this.y = y + z(38);
+  }
+  heading(t, keep = 30) { const P = this.pdf, h = this.z(13); this.need(this.z(keep)); P.rect(M, this.y, CW, h, { fill: BAND }); P.rect(M, this.y, 3, h, { fill: NAVY }); P.text(M + 8, this.y + this.z(9.2), t.toUpperCase(), { size: this.z(7.4), bold: true, color: NAVY }); this.y += h + this.z(4); }
+  grid(pairs, cols = 4) {
+    const P = this.pdf, z = v => this.z(v), cw = CW / cols, rows = Math.ceil(pairs.length / cols);
+    for (let r = 0; r < rows; r++) {
+      const cells = pairs.slice(r * cols, r * cols + cols), lines = cells.map(([, v]) => wrap(v || '', cw - 10, z(8.6), false));
+      const h = Math.max(z(21), z(12.5) + Math.max(...lines.map(l => l.length)) * z(9.8));
+      this.need(h);
+      cells.forEach(([l], c) => {
+        const x = M + c * cw; P.rect(x, this.y, cw, h, { stroke: LINE });
+        P.text(x + 5, this.y + z(7.6), l.toUpperCase(), { size: z(5.8), bold: true, color: GREY });
+        lines[c].forEach((ln, i) => P.text(x + 5, this.y + z(16.4) + i * z(9.8), ln, { size: z(8.4), color: INK }));
+      });
+      for (let c = cells.length; c < cols; c++) P.rect(M + c * cw, this.y, cw, h, { stroke: LINE });
+      this.y += h;
+    }
+    this.y += z(5);
+  }
+  checks(items, cols, label) {
+    const P = this.pdf, z = v => this.z(v), lw = label ? z(96) : 0, cw = (CW - lw) / cols;
+    for (let i = 0; i < items.length; i += cols) {
+      this.need(z(14));
+      if (label && !i) P.text(M, this.y + z(7.4), label, { size: z(7.4), bold: true, color: NAVY });
+      items.slice(i, i + cols).forEach(([l, on], c) => { const x = M + lw + c * cw; P.check(x + 2, this.y, z(8.6), on); P.text(x + z(15), this.y + z(7.4), l, { size: z(8.4), bold: !!on, color: INK }); });
+      this.y += z(14);
+    }
+    this.y += z(2);
+  }
+  table(head, widths, rows, o = {}) {
+    const P = this.pdf, z = v => this.z(v), ws = widths.map(w => w * CW), pad = 4;
+    const hdr = () => { const h = z(13.5); P.rect(M, this.y, CW, h, { fill: NAVY }); let x = M; head.forEach((t, i) => { P.text(x + pad, this.y + z(9.3), t, { size: z(7.4), bold: true, color: '#ffffff' }); x += ws[i]; }); this.y += h; };
+    this.need(z(30)); hdr();
+    rows.forEach((r, ri) => {
+      const cells = r.map((v, i) => wrap(typeof v === 'object' && v ? v.t : v, ws[i] - 2 * pad, z(8), typeof v === 'object' && v && v.b));
+      const h = Math.max(z(o.minH ? o.minH * 0.75 : 12.5), z(4.5) + Math.max(...cells.map(c => c.length)) * z(9.4));
+      if (this.need(h)) hdr();
+      if (ri % 2) P.rect(M, this.y, CW, h, { fill: '#F7F9FC' });
+      let x = M;
+      r.forEach((v, i) => {
+        const o2 = typeof v === 'object' && v ? v : {};
+        cells[i].forEach((ln, n) => P.text(x + pad, this.y + z(9) + n * z(9.4), ln, { size: z(8), bold: !!o2.b, color: o2.c || INK }));
+        P.rect(x, this.y, ws[i], h, { stroke: LINE }); x += ws[i];
+      });
+      this.y += h;
+    });
+    this.y += z(5);
+  }
+  /** boxes side by side, as high as the longest text: [[label, text, minH]] */
+  boxes(list) {
+    const P = this.pdf, z = v => this.z(v), gap = 10, bw = (CW - gap * (list.length - 1)) / list.length, lh = z(10);
+    const L = list.map(([, t]) => wrap(t || '', bw - 12, z(8.6), false));
+    const h = Math.max(...list.map(([, , mh], i) => Math.max(z(mh || 30), z(9) + L[i].length * lh + z(4))));
+    this.need(z(10.5) + h);
+    list.forEach(([label], i) => P.text(M + i * (bw + gap), this.y + z(7), label, { size: z(7.4), bold: true, color: NAVY }));
+    this.y += z(10.5);
+    list.forEach((b, i) => { const x = M + i * (bw + gap); P.rect(x, this.y, bw, h, { stroke: LINE }); L[i].forEach((ln, n) => P.text(x + 6, this.y + z(11) + n * lh, ln, { size: z(8.6), color: INK })); });
+    this.y += h + z(6);
+  }
+  box(label, text, minH = 40) { this.boxes([[label, text, minH * 0.7]]); }
+  para(t, o = {}) {
+    const z = v => this.z(v), sz = z((o.size || 9.2) * 0.9), lh = z(10.2), lines = wrap(t, CW, sz, o.bold);
+    this.need(lines.length * lh + z(3));
+    lines.forEach(l => { this.pdf.text(M, this.y + z(8), l, { size: sz, color: o.color || INK, bold: o.bold, italic: o.italic }); this.y += lh; });
+    this.y += z(3);
+  }
+  signatures(list, title) {
+    const P = this.pdf, z = v => this.z(v), gap = 12, cw = (CW - gap * (list.length - 1)) / list.length, h = z(60);
+    this.need(h + z(4) + (title ? z(17) : 0));
+    if (title) this.heading(title, 0);
+    list.forEach((s, i) => {
+      const x = M + i * (cw + gap);
+      P.rect(x, this.y, cw, h, { stroke: LINE }); P.rect(x, this.y, cw, z(12.5), { fill: BAND });
+      P.text(x + 5, this.y + z(8.8), wrap(s.role, cw - 10, z(7), true)[0].toUpperCase(), { size: z(7), bold: true, color: NAVY });
+      P.text(x + 5, this.y + z(23), 'Name', { size: z(6.2), color: GREY });
+      P.text(x + z(44), this.y + z(23), wrap(s.name || '', cw - z(50), z(8.6), true)[0] || '', { size: z(8.6), bold: true, color: INK });
+      P.text(x + 5, this.y + z(40), 'Signature', { size: z(6.2), color: GREY }); P.line(x + z(44), this.y + z(41), x + cw - 6, this.y + z(41), { color: '#8c8c8c' });
+      P.text(x + 5, this.y + z(54), 'Date', { size: z(6.2), color: GREY }); P.line(x + z(44), this.y + z(55), x + cw - 6, this.y + z(55), { color: '#8c8c8c' });
+      if (s.sig) {   // signed in the tool: the drawn signature on the line (or the typed name), and the day
+        const g = s.sig, bx = x + z(46), bw = cw - z(52), by = this.y + z(26), bh = z(14);
+        if (g.img && g.img.w && g.img.h) { const nm = P.addImage(g.img), r = Math.min(bw / g.img.w, bh / g.img.h); P.image(bx, by + (bh - g.img.h * r), g.img.w * r, g.img.h * r, nm); }
+        else if (g.typed) { const sz = Math.max(6.5, Math.min(z(11), z(11) * bw / Math.max(1, textW(g.typed, z(11), false)))); P.text(bx, by + z(12), g.typed, { size: sz, italic: true, color: NAVY }); }
+        if (g.date) P.text(x + z(46), this.y + z(53.5), g.date, { size: z(7.8), color: INK });
+        if (g.note) P.text(x + cw - 6, this.y + z(53.5), g.note, { size: z(5.8), color: GREY, align: 'right' });
+      }
+    });
+    this.y += h + z(4);
+  }
+}
+
 function agentGrid(d, f, extra) {
   const a = f.agent;
   d.grid([['Agent name', a.name], ['National ID', a.id || '—'], ['Team', a.teamName ? `${a.team} – ${a.teamName}` : a.team],
@@ -12532,7 +12744,31 @@ function followUp(d, f) {
   if (acts.length) d.table(["Last month's action", 'Owner', 'Due', 'Done?'], [0.52, 0.16, 0.14, 0.18], acts.map(a => { const x = ST[a.status] || ['Not checked', GREY]; return [a.action, a.owner || '', fmtDate(a.due) || '', { t: x[0], b: true, c: x[1] }]; }));
   if (kp.length) d.table(['KPI', m ? `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]} ${y}` : 'Before', 'Now', 'Change'], [0.42, 0.18, 0.18, 0.22], kp.map(x => [x.metric, x.before || '–', { t: x.after || '–', b: true }, { t: x.better === true ? 'Better' : x.better === false ? 'Worse' : x.same ? 'Same' : '–', b: x.better != null, c: x.better === true ? GREEN : x.better === false ? RED : INK }]));
 }
+/** the one-to-one on one A4 page: the parts of the full form, tighter, at a size k that fits */
+function oneToOnePage(f, k) {
+  const d = new Compact({ ...f, kind: '1to1', _k: k });
+  d.heading('Agent details'); agentGrid(d, f);
+  d.checks(TOPICS.map(([key, l]) => [l, !!(f.topics && f.topics[key])]), 2, 'Topics discussed');
+  d.heading(`Results – ${f.period || ''}`); resultsTable(d, f);
+  followUp(d, f);
+  d.heading('Discussion');
+  d.boxes([[byAg(f, 'discussion', 'What was discussed'), f.discussion, 54]]);
+  d.boxes([[byAg(f, 'rootCause', 'Root cause'), f.rootCause, 42], [byAg(f, 'agentComments', "Agent's comments"), f.agentComments, 42]]);
+  d.heading('Agreed actions');
+  const ag = new Set(f.agentRows || []), acts = (f.actions || []).map((a, i) => ({ ...(a || {}), mine: ag.has(i) })).filter(a => a.action || a.owner || a.due);
+  d.table(['Action', 'Owner', 'Due date'], [0.6, 0.2, 0.2], (acts.length ? acts : [{}, {}]).map(a => [(a.action || '') + (a.mine ? ' (agent)' : ''), a.owner || '', fmtDate(a.due) || '']), { minH: acts.length ? 17 : 20 });
+  d.y -= d.z(2); d.para(`Next review date: ${fmtDate(f.reviewDate) || '____________________'}${(f.byAgent || []).includes('reviewDate') ? ' (written by the agent)' : ''}`, { size: 9, bold: true });
+  verdictPart(d, f);
+  if (f.agentSig && f.agentSig.comment) d.boxes([["Agent's comment when signing", f.agentSig.comment, 20]]);
+  d.signatures([{ role: 'Agent', name: f.agent.name, sig: f.agentSig || null }, { role: 'Supervisor', name: f.supervisor, sig: f.spvSig || null }], 'Signatures');
+  if (f.agentSig) d.para(`Signed electronically by the agent in the MC tool on ${f.agentSig.when || f.agentSig.date || ''}${f.agentSig.ref ? ` · signature ${f.agentSig.ref}` : ''}.`, { size: 7.6, color: GREY });
+  return d;
+}
 async function oneToOne(f) {
+  for (const k of [1, 0.92, 0.85]) { const d = oneToOnePage(f, k); if (d.pdf.pages.length === 1) { d.footer(); return d.pdf.bytes(); } }
+  return oneToOneFull(f);   // more writing than one page holds even at the smallest size: the full form, over two pages
+}
+async function oneToOneFull(f) {
   const d = new Doc({ ...f, kind: '1to1' });
   d.heading('Agent details'); agentGrid(d, f);
   d.checks(TOPICS.map(([k, l]) => [l, !!(f.topics && f.topics[k])]), 2, 'Topics discussed');
@@ -13191,6 +13427,7 @@ function openFolder(h) {
 /** the shared data: settings, roster, history, forms… (straight away outside the shared folder; after sign-in inside it) */
 async function loadData(db) {
   state.db = db;
+  const poke = busyWatch(db, () => state.rosterReady);   // the "still reading" pill until the first reads are in
   try {
     const snap = await db.doc('config/settings').get();
     if (snap.exists) { applySettings(snap.data()); refresh(); }
@@ -13219,6 +13456,7 @@ async function loadData(db) {
     const ids = new Set(state.roster.map(p => p._id)); for (const id of [...state.sel]) if (!ids.has(id)) state.sel.delete(id);
     if (tableHasFocus()) { state.pendingRender = true; refresh({ table: false }); }
     else refresh();
+    poke();
     upRestore();   // the month's saved files back in Build, once a visit
   }, e => { state.rosterMsg = 'The saved roster could not be loaded (' + ((e && e.code) || 'error') + '). Reload the page to try again.'; state.rosterReady = true; refresh(); });
 }
@@ -13453,18 +13691,24 @@ const FolderStore = (() => {
       const out = []; for await (const [n, h] of d.entries()) if (h.kind === 'file' && n.startsWith('d_') && /\.(mcd|json)$/.test(n)) out.push(decSeg(n.slice(2).replace(/\.(mcd|json)$/, '')));
       return out;
     }
+    // the first read of each collection, for the page's "still reading" pill: collections being read, and files read so far
+    let readN = 0; const busyFns = new Set();
+    const busyNow = () => ({ open: loading.size, read: readN }), busyEmit = () => busyFns.forEach(f => { try { f(busyNow()); } catch (e) { /* the listener's own problem */ } });
     async function loadCollection(c) {
       if (loaded.has(c)) return; if (loading.has(c)) return loading.get(c);
       const p = (async () => {
-        const ids = await listNames(segsOf(c));
-        await pool(ids, 8, async id => {
-          const path = c + '/' + id;
-          try { const r = await readFile(path); if (r) { cache.set(path, r); bad.delete(path); } }
-          catch (e) { bad.set(path, (e && e.code) || 'error'); }
-        });
-        loaded.add(c); loading.delete(c);
+        try {
+          const ids = await listNames(segsOf(c));
+          await pool(ids, 8, async id => {
+            const path = c + '/' + id;
+            try { const r = await readFile(path); if (r) { cache.set(path, r); bad.delete(path); } }
+            catch (e) { bad.set(path, (e && e.code) || 'error'); }
+            readN++; busyEmit();
+          });
+          loaded.add(c);
+        } finally { loading.delete(c); busyEmit(); }
       })();
-      loading.set(c, p); return p;
+      loading.set(c, p); busyEmit(); return p;
     }
     function snap(c) {
       const pre = c + '/', docs = [];
@@ -13580,6 +13824,8 @@ const FolderStore = (() => {
       hasDataKey: () => !!K.dk,
       agentKey: pid => akey(pid, true),
       poll, rescan, dump,
+      /** fn({ open, read }) now and on every change of the first reads; returns the call that stops it */
+      onBusy(fn) { busyFns.add(fn); try { fn(busyNow()); } catch (e) { /* the listener's own problem */ } return () => busyFns.delete(fn); },
       problems: () => [...bad.entries()].map(([p, code]) => ({ path: p, code })),
       stop() { stopped = true; clearTimeout(pollTimer); },
     };
@@ -14771,6 +15017,7 @@ function renderBadges() {
 // ---- import
 function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); }
 function renderPending() {
+  Busy.set('parse', state.pending.length ? `Reading ${plural(state.pending.length, 'file')}…` : '');
   $('pending').innerHTML = state.pending.map(p => `<li><div class="row"><b>${esc(p.name)}</b><span>${fmtSize(p.size)}</span></div><div class="progress" role="progressbar" aria-label="Reading ${esc(p.name)}"><i></i></div><div class="hint">Reading and recognising the columns…</div></li>`).join('');
 }
 function renderSlots() {
@@ -16766,8 +17013,15 @@ function curMail() {
   };
 }
 async function attachmentBytes(inc) {
-  if (inc) return incBytes();
+  if (inc) return incMailBytes();
   const d = dedMailData(); return d ? Writer2.dedMail(d) : null;
+}
+/** the incentive email's workbook: Build's, without the National IDs (the agents' privacy); a dropped workbook with its ID columns emptied */
+async function incMailBytes() {
+  if (state.incWb) return Writer2.withoutIds(state.incWb.bytes);
+  if (!state.ctx) return null;
+  state.ctx.logo = await xlLogo();
+  return WriterInc.build(state.ctx, { model: incModel(), noIds: true });
 }
 /** the deduction email's workbook (Writer2.dedMail): everyone's days for the Attendance Report and, for the people in the deduction,
     each day's Sched. and Actual, from the shared month, a dropped monthly report, or this page */
@@ -20566,6 +20820,7 @@ function renderTeam() {
   if (spv && !u.pid && !(u.scope && scopeCount(u.scope))) { body.innerHTML = emptyCard('Not linked yet', 'Your admin links your account to your name in the roster; your team then shows here.'); return; }
   const wait = spv ? waitingHtml(u.pid) : '', nWait = spv ? waitingList(u.pid).length : 0;
   if (spv && !P.length) { body.innerHTML = wait + emptyCard('No agents yet', 'Nobody in the roster has you as their supervisor yet. The WFM team fills the Supervisor column in the roster, or imports the Teams Distribution.'); return; }
+  if (!k && stillReading()) { body.innerHTML = wait + emptyCard('Reading the shared data…', 'The months and your team\'s numbers appear here in a moment.'); return; }
   if (!k) { body.innerHTML = wait + emptyCard('No months yet', isBuilder() ? 'Build a month on Import; it is saved here by itself as you work.' : 'Your WFM team has not saved a month yet. It appears here as soon as they start building it.'); return; }
   if (monthLocked(k)) loadFrozen(k);
   const map = rowsByPid(k), locked = monthLocked(k) && !isSenior(), canForm = !locked && (spv || r === 'admin');   // the supervisors arrange; the senior manager and the WFM analysts look
@@ -20974,6 +21229,7 @@ function renderCycle() {
   $('cycleBar').innerHTML = `${monthSelHtml(k, 'data-wsmonth')}${k ? `<label class="wsfield"><span>One-to-ones due</span><input type="date" class="cell" data-deadline value="${esc(C.deadline || '')}" ${can ? '' : 'disabled'} aria-label="Deadline for the one-to-ones"></label>` : ''}
     <div class="wsacts">${can && k ? '<button class="btn sm" data-cyc="publish" title="Copy each agent\'s latest numbers and forms to their own page">Update the agents\' pages</button>' : ''}<button class="btn sm" data-rulesopen title="KPIs, weights, bands, bases and who earns the incentive, in force from a month">Incentive rules</button><button class="btn sm" data-x="cycle"${k ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Supervisors Excel</button></div>`;
   const body = $('cycleBody');
+  if (!k && stillReading()) { body.innerHTML = emptyCard('Reading the shared data…', 'The months appear here in a moment.'); return; }
   if (!k) { body.innerHTML = emptyCard('No months yet', 'The month appears here as soon as the WFM team starts building it.'); return; }
   const R = cycleRows(k), doneN = R.filter(r => r.done).length, prev = state.cycleSeenPrev;
   const dl = C.deadline, days = dl ? Math.ceil((new Date(dl + 'T23:59:59') - Date.now()) / 86400000) : null;
@@ -21329,7 +21585,8 @@ function loadAgentData(db, pid) {
   langLoad();
   if (!pid) { state.me = { pid: '', prof: null, months: {}, forms: {}, sigs: {}, objs: {}, replies: {}, err: 'Your account is not linked to your name yet. Ask your supervisor.' }; renderAll(); return; }
   state.me = { pid, prof: null, months: {}, forms: {}, sigs: {}, objs: {}, replies: {}, loaded: 0, got: new Set() };
-  const done = () => { state.me.loaded++; renderAll(); };
+  const poke = busyWatch(db, () => state.me && state.me.got && state.me.got.size >= 5);
+  const done = () => { state.me.loaded++; renderAll(); poke(); };
   const getProf = () => db.doc('agent/' + pid).get().then(s => { state.me.prof = s.exists ? s.data() : null; renderAll(); }, () => {});
   getProf(); setInterval(() => { if (!document.hidden) getProf(); }, 60000);
   const sub = (c, f) => { const got = () => state.me.got.add(f); try { db.collection(`agent/${pid}/${c}`).onSnapshot(sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); state.me[f] = o; got(); done(); }, () => { got(); done(); }); } catch (e) { got(); done(); } };
@@ -23352,12 +23609,15 @@ async function upPutBack(upId) {
 async function upLoadMonth(k, how) {
   const M = UP.list.filter(m => m.k === k); if (!M.length) return;
   const files = [];
-  for (const m of M) { const b = await upBytes(m.id).catch(() => null); if (!b) continue; const f = new File([b], m.name, { type: m.type || '' }); f.__up = m; files.push(f); }
+  Busy.set('restore', `Opening the saved files of ${ymLabel(k)}…`);
+  try { for (const m of M) { const b = await upBytes(m.id).catch(() => null); if (!b) continue; const f = new File([b], m.name, { type: m.type || '' }); f.__up = m; files.push(f); } }
+  finally { Busy.set('restore', ''); }
   if (!files.length) { toast(`The saved files of ${ymLabel(k)} could not be read.`); return; }
   if (how === 'auto' && (Object.keys(state.slots).length || state.attFiles.length || state.pending.length)) return;   // files were dropped while these were read: they win
   state.slots = {}; state.attFiles = [];
   const [y, m] = k.split('-').map(Number); state.y = y; state.m = m;
-  await addFiles(files, { restore: true });
+  Busy.set('restore', `${how === 'auto' ? 'Putting' : 'Loading'} ${ymLabel(k)} ${how === 'auto' ? 'back in' : 'into'} Build: ${plural(files.length, 'saved file')}…`);
+  try { await addFiles(files, { restore: true }); } finally { Busy.set('restore', ''); }
   if (monthKey() !== k) { state.y = y; state.m = m; refresh(); }
   impLogAdd('read', `${how === 'auto' ? 'Put back' : 'Loaded'} ${ymLabel(k)} from the saved uploads: ${plural(files.length, 'file')}`);
   toast(how === 'auto' ? `${ymLabel(k)} is back in Build: ${plural(files.length, 'saved file')}, as you left it.` : `${ymLabel(k)} loaded into Build: ${plural(files.length, 'file')}.`);
@@ -23467,20 +23727,30 @@ $('repCard').addEventListener('click', async e => {
 
 // ================================================================ ATTENDANCE TEMPLATES: for the departments whose supervisors send attendance
 // CC and SM come from Genesys (the Schedule and the Agent Status Timeline). The supervisors of the other departments (Settings: TS, MG,
-// CT, QA, DE, WF) fill one template a month (AttTpl): a row per late, absent, leave or day off; every other day is a working day.
+// CT, QA, DE, WF) fill one template a month (AttTpl): a row per late, absent, leave or day off; every other day is a working day. There
+// is one template per department; a department whose people have more than one supervisor in the roster gets one per supervisor.
 Object.assign(state, { tplMonth: '', tplOff: 'Fri, Sat', tplOwn: '' });
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const tplTeams = () => state.settings.attTplTeams || [];
-/** the people a template lists: active, in the template departments, in this supervisor's team ('' = no supervisor in the roster) */
-function tplPeople(spv) {
-  const T = new Set(tplTeams()), R = rosterRows(), ids = new Set(R.map(p => p._id));
-  return R.filter(p => p.status !== 'Inactive' && T.has(normSpace(p.team)) && (spv ? p.spv === spv : !p.spv || !ids.has(p.spv)));
-}
-/** each supervisor with someone in the template departments, then the people with no supervisor (when there are any) */
+/** [{ key, dep, pid, spv, split, people }]: each template department in the Settings order, one supervisor's part of it when split */
 function tplGroups() {
-  const out = supervisors().map(s => ({ pid: s.pid, name: s.name, people: tplPeople(s.pid) })).filter(g => g.people.length);
-  const none = tplPeople(''); if (none.length) out.push({ pid: '', name: 'No supervisor in the roster', people: none });
+  const T = tplTeams(), R = rosterRows(), names = new Map(supervisors().map(s => [s.pid, s.name])), by = new Map(T.map(d => [d, []]));
+  for (const p of R) if (p.status !== 'Inactive' && by.has(normSpace(p.team))) by.get(normSpace(p.team)).push(p);
+  const spvOf = p => (p.spv && names.has(p.spv) ? p.spv : ''), out = [];
+  for (const [dep, P] of by) {
+    if (!P.length) continue;
+    const S = [...new Set(P.map(spvOf))].sort((a, b) => (a ? 0 : 1) - (b ? 0 : 1) || String(names.get(a)).localeCompare(String(names.get(b))));
+    if (S.length === 1) out.push({ key: dep, dep, pid: S[0], spv: S[0] ? names.get(S[0]) : '', split: false, people: P });
+    else for (const s of S) out.push({ key: `${dep}|${s}`, dep, pid: s, spv: s ? names.get(s) : 'No supervisor in the roster', split: true, people: P.filter(p => spvOf(p) === s) });
+  }
   return out;
+}
+/** a supervisor's templates: their own parts; every department's when their account is not linked to any agent yet; none when their
+    team is all in the departments that come from Genesys */
+function tplFor(pid) {
+  const G = tplGroups(), own = G.filter(g => g.pid === pid);
+  if (own.length) return { list: own, why: 'own' };
+  return teamOf(pid).some(p => p.status !== 'Inactive') ? { list: [], why: 'genesys' } : { list: G, why: 'unlinked' };
 }
 function tplMonths() {
   const t = new Date(), S = new Set([monthKey(), ...wsMonths()]);
@@ -23488,53 +23758,64 @@ function tplMonths() {
   return [...S].sort().reverse();
 }
 const tplMonthNow = () => (state.tplMonth && tplMonths().includes(state.tplMonth) ? state.tplMonth : isBuilder() ? monthKey() : wsMonthNow() || monthKey());
-function tplBytes(g, k) {
+const tplFile = (g, y, m) => AttTpl.fileName(y, m, g.dep, g.split ? g.spv : '');
+async function tplBytes(g, k) {
   const [y, m] = k.split('-').map(Number);
   const people = g.people.map(p => { const e = effP(p._id) || p; return { id: Core.cleanId(e.nid), name: gname(e) || p.name, brand: normSpace(p.brand), team: normSpace(p.team) }; }).sort((a, b) => a.name.localeCompare(b.name));
-  return AttTpl.build({ y, m, spv: g.name, spvPid: g.pid, people, offDays: normSpace(state.tplOff), at: new Date().toISOString(), by: whoNow() || '' });
+  let logo = null; try { logo = await xlLogo(); } catch (e) { logo = null; }
+  return AttTpl.build({ y, m, dep: g.dep, depName: DEP_NAMES[g.dep] || '', spv: g.spv, spvPid: g.pid, people, offDays: normSpace(state.tplOff), at: new Date().toISOString(), by: whoNow() || '', logo });
 }
-async function tplDownload(pid, k) {
-  const g = tplGroups().find(x => x.pid === pid); if (!g) { toast('Nobody in this team is in the template departments.'); return; }
+async function tplDownload(key, k) {
+  const g = tplGroups().find(x => x.key === key); if (!g) { toast('Nobody in this department is on the roster any more.'); return; }
   const [y, m] = k.split('-').map(Number);
-  try { await save(AttTpl.fileName(y, m, g.name), new Blob([await tplBytes(g, k)], { type: XLSX_MIME })); } catch (e) { toast('Could not make the template: ' + errText(e)); }
+  try { await save(tplFile(g, y, m), new Blob([await tplBytes(g, k)], { type: XLSX_MIME })); } catch (e) { toast('Could not make the template: ' + errText(e)); }
 }
-async function tplDownloadAll(k) {
-  const G = tplGroups(); if (!G.length) return;
+async function tplDownloadAll(k, G) {
+  if (!G.length) return;
   const [y, m] = k.split('-').map(Number), files = [], used = new Set();
   try {
     for (const g of G) {
-      let fn = AttTpl.fileName(y, m, g.name); if (used.has(fn.toLowerCase())) fn = fn.replace(/\.xlsx$/, ` (${g.pid || 'more'}).xlsx`); used.add(fn.toLowerCase());
+      let fn = tplFile(g, y, m); if (used.has(fn.toLowerCase())) fn = fn.replace(/\.xlsx$/, ` (${g.pid || 'more'}).xlsx`); used.add(fn.toLowerCase());
       files.push({ name: fn, data: await tplBytes(g, k) });
     }
     await save(`Attendance templates - ${MON[m - 1]} ${y}.zip`, new Blob([await Core.writeZip(files)], { type: 'application/zip' }));
   } catch (e) { toast('Could not make the templates: ' + errText(e)); }
 }
-/** the drawer: the month, the usual days off, and a template for each supervisor (only their own for a supervisor) */
+/** the templates the drawer lists: every one for the WFM team, a supervisor's own (see tplFor) */
+function tplShown() {
+  if (state.tplOwn) return tplFor(state.tplOwn);
+  return { list: tplGroups(), why: 'all' };
+}
+/** the drawer: the month, the usual days off, and a template for each department */
 function renderAttTpl() {
-  const k = tplMonthNow(), own = state.tplOwn, all = tplGroups(), G = own ? all.filter(g => g.pid === own) : all, T = tplTeams();
+  const k = tplMonthNow(), T = tplTeams(), { list: G, why } = tplShown();
   $('attTplSub').textContent = `${ymLabel(k)} · ${T.length ? T.join(', ') : 'no departments chosen in Settings'}`;
-  const deps = g => [...new Set(g.people.map(p => normSpace(p.team)))].join(', ');
-  $('attTplBody').innerHTML = `<p class="hint">One file a month for each supervisor of ${esc(T.join(', ') || 'the template departments')}: they write one row for each day someone was late, absent, on leave or off on a day that is not one of their weekly days off. Every other day counts as a working day. CC and SM need nothing: their days come from Genesys (the Schedule and the Agent Status Timeline). The filled files go on Import with the other attendance files.</p>
+  const depName = d => (DEP_NAMES[d] ? `${d} · ${DEP_NAMES[d]}` : d);
+  const note = why === 'unlinked' ? '<p class="hint tplnote">Your account is not linked to your agents in the roster yet, so every department is here: download your department\'s template.</p>' : '';
+  $('attTplBody').innerHTML = `<p class="hint">One file a month for each department of ${esc(T.join(', ') || 'the template departments')}: the supervisor writes one row for each day someone was late, absent, on leave or off on a day that is not one of their weekly days off. Every other day counts as a working day. Each file opens on <b>How to fill</b>, with examples. CC and SM need nothing: their days come from Genesys. The filled files go on Import with the other attendance files.</p>
     <div class="grid2 tight top"><label class="field"><span class="lbl">Month</span><select class="cell" id="tplMonth" aria-label="Month">${tplMonths().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(ymLabel(x))}</option>`).join('')}</select></label>
     <label class="field"><span class="lbl">Weekly days off</span><input class="cell" id="tplOff" value="${esc(state.tplOff)}" spellcheck="false" aria-describedby="tplOffH"><small id="tplOffH">Filled in for everyone on the Team sheet; the supervisor changes it for anyone whose days off differ, or empties it when they change every week.</small></label></div>
-    ${G.length ? `<ul class="ilist tpllist">${G.map(g => `<li><span class="nm" dir="auto">${esc(g.name)}</span><span class="sg">${plural(g.people.length, 'person', 'people')} · ${esc(deps(g))}</span><span class="sp"></span><button class="btn sm" data-tpldl="${esc(g.pid)}"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Download</button></li>`).join('')}</ul>
+    ${note}${G.length ? `<ul class="ilist tpllist">${G.map(g => `<li><span class="tpldep" aria-hidden="true">${esc(g.dep)}</span><span class="tplwho"><b dir="auto">${esc(depName(g.dep))}${g.split ? ` · ${esc(g.spv)}` : ''}</b><small dir="auto">${plural(g.people.length, 'person', 'people')}${!g.split && g.spv ? ` · ${esc(g.spv)}` : ''}</small></span><button class="btn sm" data-tpldl="${esc(g.key)}" aria-label="Download the ${esc(g.dep)} template${g.split ? ` for ${esc(g.spv)}` : ''}"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Download</button></li>`).join('')}</ul>
       ${G.length > 1 ? `<div class="acts"><button class="btn primary" data-tplall><svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>All ${G.length} as one .zip</button></div>` : ''}`
-    : `<p class="subtle">${own ? 'Nobody in your team is in these departments: their days come from Genesys, so there is nothing to send.' : 'Nobody on the roster is in these departments yet. Check the Dep column of the roster, or the departments in Settings.'}</p>`}`;
+    : `<p class="subtle">${why === 'genesys' ? 'Your team\'s days come from Genesys (CC and SM), so there is nothing to send.' : 'Nobody on the roster is in these departments yet. Check the Dep column of the roster, or the departments in Settings.'}</p>`}`;
 }
 function openAttTpl(own) { state.tplOwn = own || ''; renderAttTpl(); openDrawer('dAttTpl'); }
-/** on the Team page's Attendance tab: the template for the team being looked at */
+/** on the Team page's Attendance tab: the templates for the team being looked at */
 function attTplBar(k) {
   const u = Auth.user() || {}, r = roleNow(), spv = r === 'spv' ? u.pid : state.wsSpv || '';
-  if (!(r === 'spv' || isBuilder())) return '';
-  const n = spv ? tplPeople(spv).length : tplGroups().reduce((a, g) => a + g.people.length, 0);
-  if (!n) return '';
-  return `<div class="card tplbar"><div><b>Attendance template</b><small>${plural(n, 'person', 'people')} in ${esc(tplTeams().join(', '))}${spv ? '' : ' across the teams'}: one row per late, absent, leave or day off; every other day counts as a working day.</small></div><button class="btn sm" data-tplopen="${esc(spv)}" data-tplk="${esc(k || '')}"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>${spv ? 'Get the template' : 'Templates'}</button></div>`;
+  if (!(r === 'spv' || isBuilder()) || !tplTeams().length) return '';
+  const { list, why } = spv ? tplFor(spv) : { list: tplGroups(), why: 'all' };
+  if (!list.length) return '';
+  const deps = [...new Set(list.map(g => g.dep))].join(', '), n = list.reduce((a, g) => a + g.people.length, 0);
+  const what = why === 'unlinked' ? `Every department's template (${esc(deps)}): download your department's.` : `${plural(n, 'person', 'people')} in ${esc(deps)}: one row per late, absent, leave or day off; every other day counts as a working day.`;
+  return `<div class="card tplbar"><div><b>Attendance template</b><small>${what}</small></div><button class="btn sm" data-tplopen="${esc(spv)}" data-tplk="${esc(k || '')}"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>${spv ? 'Get the template' : 'Templates'}</button></div>`;
 }
 document.addEventListener('click', e => {
   const t = e.target.closest && e.target.closest('[data-tpldl], [data-tplall], [data-tplopen], #attTplBtn'); if (!t) return;
   if (t.id === 'attTplBtn') { openAttTpl(''); return; }
   if (t.dataset.tplopen !== undefined) { if (t.dataset.tplk) state.tplMonth = t.dataset.tplk; openAttTpl(roleNow() === 'spv' ? (Auth.user() || {}).pid || '' : t.dataset.tplopen); return; }
-  if (t.dataset.tplall !== undefined) { tplDownloadAll(tplMonthNow()); return; }
+  if (t.dataset.tplall !== undefined) { tplDownloadAll(tplMonthNow(), tplShown().list); return; }
+  if (!tplShown().list.some(g => g.key === t.dataset.tpldl)) return;
   tplDownload(t.dataset.tpldl, tplMonthNow());
 });
 document.addEventListener('change', e => {
@@ -23638,6 +23919,48 @@ document.addEventListener('click', e => {
   if (t.id === 'bkGo') bkExport(); else if (t.id === 'bkOpen') bkOpen(); else if (t.id === 'bkImport') bkImport(); else { state.bkIn = null; renderBackupWs(); }
 });
 document.addEventListener('change', e => { if (e.target && e.target.id === 'bkFiles') state.bkFiles = e.target.checked; });
+
+// ================================================================ STILL READING: a pill at the top of every page while the tool reads
+// After the sign-in the shared data takes a while on a slow folder (each file is opened and unlocked); the month's saved files are put
+// back in Build; dropped files are read. Until each is done the pill says so, with what it reads and how far it is, so nobody takes a
+// page that is still filling for an empty one. It shows only for what takes longer than half a second.
+const Busy = (() => {
+  const jobs = new Map(), ORDER = ['restore', 'parse', 'data'];
+  let shown = false, showT = 0, hideT = 0;
+  function paint() {
+    const el = $('busy'); if (!el) return;
+    const key = ORDER.find(k => jobs.has(k)) || [...jobs.keys()][0];
+    if (key) {
+      $('busyMsg').textContent = jobs.get(key);
+      clearTimeout(hideT); hideT = 0;
+      if (!shown && !showT) showT = setTimeout(() => { showT = 0; if (jobs.size) { el.hidden = false; shown = true; } }, 500);
+    } else {
+      clearTimeout(showT); showT = 0;
+      if (shown && !hideT) hideT = setTimeout(() => { hideT = 0; if (!jobs.size) { el.hidden = true; shown = false; } }, 350);
+    }
+  }
+  return {
+    /** id: 'data' | 'restore' | 'parse'; text: what is read now, or '' when it is done */
+    set(id, text) { const was = jobs.has(id); if (text) jobs.set(id, text); else jobs.delete(id); paint(); if (was && !text && id !== 'parse') setTimeout(() => { if (state.ws !== 'build') renderWs(); else render(); }, 0); },
+    has: id => jobs.has(id),
+  };
+})();
+/** the months, the roster and the rest are still coming in (the empty states say so instead of "nothing yet") */
+const stillReading = () => Busy.has('data') || Busy.has('restore');
+/** after the sign-in: the shared data's first read, with how many files are open so far; done once every collection asked for is in
+    and ready() says the page has what it waited for. Returns poke(): look again (call it when ready() may have changed) */
+function busyWatch(db, ready) {
+  if (!db || typeof db.onBusy !== 'function') return () => {};
+  let off = null, done = false, timer = 0, last = { open: 1, read: 0 };
+  const check = b => {
+    if (done) return; if (b) last = b;
+    Busy.set('data', `Reading the shared data…${last.read ? ` ${plural(last.read, 'file')}` : ''}`);
+    clearTimeout(timer);
+    if (!last.open && ready()) timer = setTimeout(() => { if (last.open || !ready()) return; done = true; if (off) off(); Busy.set('data', ''); }, 600);
+  };
+  off = db.onBusy(check);
+  return () => check();
+}
 
 // ================================================================ SEARCH: one box on every page that guesses what you want
 // Ctrl+K (or /) opens it, on every page and for every role. Type a line in plain words: a person, a measure, a month or a day,
@@ -23836,6 +24159,7 @@ function findPages(role) {
     add('rules', 'Incentive rules (scorecards, bases, who earns it), in force from a month', 'incentive rules|rules|governance|bases|eligibility rules|minimum final|rule history|new rules', 'Supervisors', () => openRules());
   }
   if (W.includes('team') && !W.includes('cycle')) add('objteam', 'Objections from the agents', 'objections|objection|disputes|complaints', 'Team', () => { state.teamTab = 'obj'; setWs('team'); renderWs(); scrollTo_('#objCard'); });
+  if (tplTeams().length && (W.includes('build') || role === 'spv')) add('atttpl', 'Attendance templates: one for each department, for the month', 'attendance template|attendance templates|template|attendance sheet|attendees|attendance form|absent sheet|late sheet', role === 'spv' ? 'Team' : 'WFM team', () => openAttTpl(role === 'spv' ? (Auth.user() || {}).pid || '' : ''));
   if (W.length) add('recog', 'Recognise a file: what it is and where it goes', 'recognise|recognize|identify|what is this file|which file|what file|ai|smart|detect|smart drop|upload|old excel|drop', 'Tools', () => recogPick());
   if (W.includes('results')) add('compare', 'Reconcile with the old Excel: why an earned SR differs', 'compare|old excel|parallel run|reconcile|reconciliation|differences|check against excel|final result|earned different|why different|email table|paste', 'Results', () => { setWs('results'); scrollTo_('#reconCard'); });
   if (W.includes('wfm')) {
@@ -25914,11 +26238,11 @@ const DEPT = [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
     'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
-    '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes each supervisor\'s file for the month (or all of them as one .zip): they write a row only for each late, absent, leave or day off, and every other day counts as a working day. Drop the filled files on Import.',
+    '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
     '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it); the incentive data workbook is made too. People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
-    '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction. The incentive email comes from the build.',
+    '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs. The incentive email comes from the build; its workbook is attached without the ID column too.',
     '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
@@ -25940,7 +26264,7 @@ const DEPT = [
     '<b>Team</b> shows your own agents with their numbers for the month; the header\'s month picker changes the month.',
     '<b>One-to-ones</b>: hold each one, fill in the form and send it to the agent; they add their part and sign the final.',
     '<b>Attendance</b>: correct a day when Genesys is wrong (only an agent\'s supervisor can). In CC and SM the days come from Genesys, which shows a sick day as absent: correct those to SL here.',
-    'TS, MG, CT, QA, DE and WF: <b>Attendance › Get the template</b> for the month. Write a row only for each day someone was late, absent, on leave or off on another day than their weekly days off (a From and To date for several days), and send the file to the WFM team. Every other day counts as a working day.',
+    'TS, MG, CT, QA, DE and WF: <b>Attendance › Get the template</b> for the month (or Search › Attendance templates): your department\'s file. It opens on How to fill, with examples. Write a row only for each day someone was late, absent, on leave or off on another day than their weekly days off (a From and a To date for several days), and send the file to the WFM team. Every other day counts as a working day.',
     '<b>Objections</b>: answer your agents\' objections before the deadline, and correct the accepted ones.',
     '<b>Waiting for approval</b>: approve new agent accounts and link each one to their name.',
     'When every one-to-one is done, <b>Finish your team</b>: the senior manager is told straight away. The <b>bell</b> lists what is due.']],
@@ -27131,6 +27455,7 @@ function renderDash() {
   if ($('today').closest('#dashBody')) $('main').prepend($('today'));   // Today lives in the dashboard's side column; kept safe while it is drawn again
   if (!state.rosterReady) { el.innerHTML = `${head}<div class="kpis">${DASH_KPIS.map(K => `<div class="kpi sk-card"><span class="kl">${esc(K.label)}</span><span class="sk w40"></span><span class="sk w70"></span></div>`).join('')}</div><div class="card"><span class="sk tall"></span></div>`; return; }
   if (!months.length || !k) {
+    if (stillReading()) { el.innerHTML = `${head}<div class="dgrid"><div class="dmain"><div class="card empty"><b>Reading the shared data…</b>The months, the roster and the results appear here in a moment.</div></div><aside class="dside">${dashData()}</aside></div>`; return; }
     el.innerHTML = `${head}<div class="dgrid"><div class="dmain"><div class="card empty"><b>No months yet</b>${isBuilder() ? 'Build the month on WFM team › Import: it is saved to the shared history as you work, and every number here comes from it.' : 'The WFM analysts build the month from the Genesys exports; it appears here as soon as they start.'}${isBuilder() ? '<div class="acts" style="justify-content:center;margin-top:14px"><button class="btn primary" data-tgo="step:import">Go to Import</button></div>' : ''}</div></div><aside class="dside">${dashData()}</aside></div>`;
     return;
   }

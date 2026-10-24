@@ -49,8 +49,9 @@ function fill(xml, cells) {
   ok(team.length >= 3, `its Team sheet lists the CT people (${team.length})`);
   // filled in like a supervisor would: an absence on the 3rd, AL from the 7th to the 9th, 20 minutes late on the 8th
   const z = await Core.readZip(fs.readFileSync(tplPath));
-  const entries = await Promise.all(['[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/styles.xml', 'xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml', 'xl/worksheets/sheet3.xml'].map(async n => ({ name: n, data: await z.text(n) })));
-  const s1 = entries.find(e => e.name === 'xl/worksheets/sheet1.xml');
+  ok(T.map(t => t.name).join('|') === 'How to fill|Attendance|Team|_mc', `the template opens on How to fill (${T.map(t => t.name).join(', ')})`);
+  const entries = await Promise.all(z.names().filter(n => !n.endsWith('/')).map(async n => ({ name: n, data: /\.(xml|rels)$/.test(n) ? await z.text(n) : await z.bytes(n) })));
+  const s1 = entries.find(e => e.name === 'xl/worksheets/sheet2.xml');   // Attendance (sheet1 is How to fill)
   s1.data = fill(s1.data, { A5: Core.ymdSerial(2026, 9, 3), C5: team[0], E5: 'Absent', A6: Core.ymdSerial(2026, 9, 7), B6: Core.ymdSerial(2026, 9, 9), C6: team[1], E6: 'AL leave', A7: Core.ymdSerial(2026, 9, 8), C7: team[2], E7: 'Late', F7: 20 });
   const filledPath = path.join(out, 'filled-' + dl.suggestedFilename()); fs.writeFileSync(filledPath, await Core.writeZip(entries));
   await p.keyboard.press('Escape');
@@ -105,7 +106,7 @@ function fill(xml, cells) {
   ok(/get the template/i.test(bar), `Team › Attendance for a CT supervisor: "${bar}"`);
   await sp.click('.tplbar [data-tplopen]'); await sp.waitForSelector('#dAttTpl:not([hidden])');
   const own = await sp.$$eval('#attTplBody [data-tpldl]', L => L.map(x => x.dataset.tpldl));
-  ok(own.length === 1 && own[0] === 'p6', `the supervisor sees only their own template (${own.join(', ')})`);
+  ok(own.length === 1 && own[0] === 'CT', `the supervisor sees only their department's template (${own.join(', ')})`);
   await sp.screenshot({ path: path.join(out, 'att-spv.png') });
   console.log(errs.length ? errs.join('\n') : 'no errors'); if (bad || errs.length) process.exitCode = 1;
   await b.close();

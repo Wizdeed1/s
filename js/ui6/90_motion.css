@@ -48,7 +48,7 @@ details[open] > :not(summary) { animation: openIn var(--t-small) var(--ease-out)
   *, *::before, *::after { scroll-behavior: auto !important; }
   .drawer, .drawer.out, .sheet-more, .dlgbox, .dlg.out .dlgbox { animation-name: fadeIn !important; animation-duration: 120ms !important; }
   .drawer.out, .dlg.out .dlgbox { animation-name: fadeOut !important; }
-  .menu, .acctmenu, .pop.in, .attpop, .toast:not([hidden]), .lockcard, .rbfile, .rbsent, details[open] > :not(summary), .view.enter, .view.stepin, .chk.open .chkbody { animation-name: fadeIn !important; animation-duration: 120ms !important; }
+  .menu, .acctmenu, .pop.in, .attpop, .toast:not([hidden]), .busy:not([hidden]), .lockcard, .rbfile, .rbsent, details[open] > :not(summary), .view.enter, .view.stepin, .chk.open .chkbody { animation-name: fadeIn !important; animation-duration: 120ms !important; }
   .chk.rise, #dashBody.intro .kpi { animation: none !important; }
   #dashBody.intro .dline, #dashBody.intro .dpt, #dashBody.intro .dglow { animation: none !important; stroke-dashoffset: 0 !important; }
   #dashBody.intro .greet::after, #success.sweep::after, .step .n.glow, .tlist li.fresh .tdot { display: none; animation: none !important; }

@@ -82,6 +82,12 @@
 .toast:not([hidden]) { animation: toastIn var(--t-small) var(--ease-out) both; }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px); } to { transform: translate(-50%, 0); } }
 .toast button { border: 0; background: none; color: var(--toast-act); font: 600 13px/1 var(--text); cursor: pointer; padding: 6px 6px; white-space: nowrap; }
+/* still reading: a quiet pill under the toolbar, on every page, until the shared data, the saved files or the dropped files are in */
+.busy { position: fixed; left: calc(50% + var(--side-cur) / 2); top: calc(64px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); z-index: var(--z-toast); display: flex; gap: 10px; align-items: center; width: max-content; max-width: min(520px, calc(100vw - 32px));
+  padding: 8px 14px 8px 12px; border: 1px solid var(--toast-line); border-radius: 999px; background: var(--toast-bg); -webkit-backdrop-filter: var(--mat-blur); backdrop-filter: var(--mat-blur); color: var(--toast-ink); font-size: 13px; line-height: 1.4; box-shadow: var(--shadow-pop); font-variant-numeric: tabular-nums; pointer-events: none; }
+.busy .spin { width: 13px; height: 13px; color: var(--toast-act); }
+.busy:not([hidden]) { animation: busyIn var(--t-small) var(--ease-out) both; }
+@keyframes busyIn { from { opacity: 0; transform: translate(-50%, -8px); } to { transform: translate(-50%, 0); } }
 
 /* ------------------------------------------------------------------------------------------------------------- search: one box on every page (Ctrl K opens it at once: a palette used all day does not animate) */
 body.findon { overflow: hidden; }

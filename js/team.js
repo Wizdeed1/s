@@ -243,6 +243,7 @@ function renderTeam() {
   if (spv && !u.pid && !(u.scope && scopeCount(u.scope))) { body.innerHTML = emptyCard('Not linked yet', 'Your admin links your account to your name in the roster; your team then shows here.'); return; }
   const wait = spv ? waitingHtml(u.pid) : '', nWait = spv ? waitingList(u.pid).length : 0;
   if (spv && !P.length) { body.innerHTML = wait + emptyCard('No agents yet', 'Nobody in the roster has you as their supervisor yet. The WFM team fills the Supervisor column in the roster, or imports the Teams Distribution.'); return; }
+  if (!k && stillReading()) { body.innerHTML = wait + emptyCard('Reading the shared data…', 'The months and your team\'s numbers appear here in a moment.'); return; }
   if (!k) { body.innerHTML = wait + emptyCard('No months yet', isBuilder() ? 'Build a month on Import; it is saved here by itself as you work.' : 'Your WFM team has not saved a month yet. It appears here as soon as they start building it.'); return; }
   if (monthLocked(k)) loadFrozen(k);
   const map = rowsByPid(k), locked = monthLocked(k) && !isSenior(), canForm = !locked && (spv || r === 'admin');   // the supervisors arrange; the senior manager and the WFM analysts look

@@ -195,6 +195,7 @@ function findPages(role) {
     add('rules', 'Incentive rules (scorecards, bases, who earns it), in force from a month', 'incentive rules|rules|governance|bases|eligibility rules|minimum final|rule history|new rules', 'Supervisors', () => openRules());
   }
   if (W.includes('team') && !W.includes('cycle')) add('objteam', 'Objections from the agents', 'objections|objection|disputes|complaints', 'Team', () => { state.teamTab = 'obj'; setWs('team'); renderWs(); scrollTo_('#objCard'); });
+  if (tplTeams().length && (W.includes('build') || role === 'spv')) add('atttpl', 'Attendance templates: one for each department, for the month', 'attendance template|attendance templates|template|attendance sheet|attendees|attendance form|absent sheet|late sheet', role === 'spv' ? 'Team' : 'WFM team', () => openAttTpl(role === 'spv' ? (Auth.user() || {}).pid || '' : ''));
   if (W.length) add('recog', 'Recognise a file: what it is and where it goes', 'recognise|recognize|identify|what is this file|which file|what file|ai|smart|detect|smart drop|upload|old excel|drop', 'Tools', () => recogPick());
   if (W.includes('results')) add('compare', 'Reconcile with the old Excel: why an earned SR differs', 'compare|old excel|parallel run|reconcile|reconciliation|differences|check against excel|final result|earned different|why different|email table|paste', 'Results', () => { setWs('results'); scrollTo_('#reconCard'); });
   if (W.includes('wfm')) {

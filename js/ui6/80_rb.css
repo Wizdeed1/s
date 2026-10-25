@@ -88,6 +88,13 @@
 .dmprog .pbar { width: 160px; }
 .dmprog b { font: 600 20px/1 var(--display); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .dmprog small { color: var(--muted); font-size: 12.5px; }
+/* the brands' history on the same page: export it, or import a history file (read and shown first) */
+.dmhist { display: grid; gap: 10px; padding: 12px 16px; }
+.dmhrow { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+.dmhtx { display: grid; gap: 2px; min-width: 0; flex: 1 1 320px; }
+.dmhtx small { color: var(--muted); font-size: 12.5px; }
+.dmhacts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dmhprev .ilist li { padding: 8px 2px; }
 .rbskel { display: grid; gap: 12px; }
 /* the WFM Daily Review, in the tool's look */
 .rb .wfm-checks { display: grid; gap: 6px; margin: 0 0 12px; }

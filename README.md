@@ -120,6 +120,13 @@ Some risks stay open by design, and the skill lists each one with what would clo
 - Accounts moved from a browser's own storage are trusted on their first key.
 - Reopening someone's access trusts the key in their account file.
 
+## October 2026, brands' history on the daily emails page
+
+| Area | What you see now |
+|---|---|
+| Brands' history | **WFM team › Emails › Daily brand emails** has a **Brands' history** box under the report day. It says what the shared history holds (for example *months Jan 2024 – Aug 2026 · days 1 Sep – 21 Oct 2026*, who saved it last and when). **Export history** saves it as `member-care-history-<day>.json`, the same file Report builder › Export backup and the stand-alone builder make. **Import history** reads such a file and shows it first: per brand, the months and days it would add, those already the same, and those with other numbers here, plus anything it leaves out (parts that are not one of the four brand emails, rows without a date or numbers). Nothing is written until **Import into the tool**. It then adds the months and days the tool does not have. Where both have a day or a month, the tool keeps its own numbers unless **Use the file's numbers** is ticked. A month with no data (every figure empty) comes in as it is, so the tables show it as –. The emails already made keep the history they were made with; the next ones, the Daily page and Search use the new one. |
+| Daily brand emails arriving | A report day's four emails that arrive while the page is open now show by themselves. Since the two email pages became one, they waited on a grey placeholder until something was clicked. |
+
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.
 
@@ -182,6 +189,7 @@ node test/attflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/s
 node test/datafolder.cjs "final/MC Monthly Report Builder.html" test/shots           # a cancelled, slow, silent or unreadable data folder, allowing it again; WFM team › Data export and import; the reading pill
 node test/xss.cjs "final/MC Monthly Report Builder.html" test/shots               # HTML planted in every name: nothing runs on any page, preview or email; Outlook headers; CSV formulas; the no-network rule
 node test/trust.cjs "final/MC Monthly Report Builder.html" test/shots             # accounts planted in the shared folder ("builtIn", "role") get no key, no role and no place in a team copy
+node test/dailyhist.cjs "final/MC Monthly Report Builder.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)
 npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
 ```

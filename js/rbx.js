@@ -96,7 +96,7 @@ function rbPrefsChanged() {
   if (RB.ready && rbVisible('builder')) { const t = document.activeElement; if (!(t && t.closest && t.closest('#wfmRb'))) { const f = $('wfmRb').querySelector('[data-rbfpay]'); if (f) f.value = state.rbIn.fpayTickets || ''; } rbRebuildSoon(); }
   if (rbVisible('dmail')) dmRender(false);
 }
-const rbVisible = t => state.ws === 'wfm' && state.wfmTab === t;
+const rbVisible = t => state.ws === 'wfm' && (t === 'dmail' ? state.wfmTab === 'emails' && state.mailSub === 'daily' : state.wfmTab === t);   // the daily emails are Emails › Daily brand emails
 const rbName = key => (rbB() && rbB().REPORTS[key] ? rbB().REPORTS[key].name : { postpaid: 'Virgin Postpaid', virgin: 'Virgin Mobile', friendi: 'FRiENDi Mobile', fpay: 'FRiENDi Pay', leaders: 'MC Leaders', wfm: 'WFM Daily Review' }[key] || key);
 
 // ---------------------------------------------------------------- the dropped files, kept per brand and per day (as the stand-alone builder kept them)
@@ -275,18 +275,19 @@ function rbAutoSave() {
   if (savedDays.size) RB.lastSaved = { days: Array.from(savedDays).sort(), at: new Date() };
 }
 function rbHistPushSoon() { clearTimeout(RB.histT); RB.histT = setTimeout(() => { rbHistPush(RB.hist); }, 900); }
-/** the builder's history to the shared copy (its rows win where a day differs) */
+/** the builder's history to the shared copy (its rows win where a day differs); false when it could not be shared */
 async function rbHistPush(H) {
-  if (!state.db || !canDailySave() || !H) return;
+  if (!state.db || !canDailySave() || !H) return false;
   if (!state.dhist) {   // not seen yet: read it, so the days only the shared copy has are kept
-    try { const sn = await state.db.doc('dailytool/history').get(); const x = sn.exists ? sn.data() : null; if (x && x.hist) { state.dhist = x.hist; state.dhistAt = x.at || ''; state.dhistBy = x.by || ''; } } catch (e) { return; }
+    try { const sn = await state.db.doc('dailytool/history').get(); const x = sn.exists ? sn.data() : null; if (x && x.hist) { state.dhist = x.hist; state.dhistAt = x.at || ''; state.dhistBy = x.by || ''; } } catch (e) { return false; }
   }
-  const m = mergeDailyHist(state.dhist || {}, H); if (!m.changed && state.dhist) return;
+  const m = mergeDailyHist(state.dhist || {}, H); if (!m.changed && state.dhist) return true;
   state.dhist = m.out; state.dhistAt = new Date().toISOString(); state.dhistBy = whoNow();
   const shared = state.folder ? m.out : fitHist(m.out, 230000);
   try { await queueWrite('dailytool/history', () => state.db.doc('dailytool/history').set({ hist: shared, at: state.dhistAt, by: state.dhistBy })); }
-  catch (e) { toast(`The daily data was not shared (${(e && e.code) || 'error'}).`); return; }
+  catch (e) { toast(`The daily data was not shared (${(e && e.code) || 'error'}).`); return false; }
   const last = lastDailyDate(m.out); markFresh('daily', last ? `brands up to ${+last.slice(8)} ${MON[+last.slice(5, 7) - 1]}` : 'brands');
+  return true;
 }
 /** days of the report month, before the report, that no report has saved yet */
 function rbMissingDays(key) {
@@ -431,7 +432,7 @@ function watchDailyMail(db) {
       const o = {}; sn.docs.forEach(d => { const x = d.data(); if (x && x.k && x.end) o[d.id] = x; });
       const fresh = canDailyMail() && Object.keys(o).some(k => !state.dmail[k] && state.dmailSeen);
       state.dmail = o; state.dmailSeen = true; state.rbVer++;
-      if (rbVisible('dmail')) dmRender(false); else if (state.ws === 'wfm') renderWs(); else renderToday();
+      if (state.ws === 'wfm') renderWs(); else renderToday();   // the whole WFM page: the Daily brand emails count in its bar too
       if (fresh) toast('New daily emails are ready to send: WFM team › Daily emails.');
       rbSendRender();
     }, () => { dmWatching = false; });
@@ -836,7 +837,7 @@ function dmShow() {
   if (!host.dataset.built) {
     host.dataset.built = '1';
     host.innerHTML = `<div class="rbload big" role="status"><span class="spin"></span><span>Opening the daily emails…</span></div>`;
-    rbLoad().then(() => { host.innerHTML = `<div class="card dmhead" data-dmhead></div><div class="seg rbtabs" role="group" aria-label="Brand emails" data-dmtabs></div><div class="rbpanel" data-dmpanel></div>`; dmRender(true); }).catch(e => { host.dataset.built = ''; host.innerHTML = emptyCard('The daily emails could not open', (e && e.message) || String(e)); });
+    rbLoad().then(() => { host.innerHTML = `<div class="card dmhead" data-dmhead></div><div class="card dmhist" data-dmhist></div><div class="seg rbtabs" role="group" aria-label="Brand emails" data-dmtabs></div><div class="rbpanel" data-dmpanel></div>`; dmRender(true); }).catch(e => { host.dataset.built = ''; host.innerHTML = emptyCard('The daily emails could not open', (e && e.message) || String(e)); });
     return;
   }
   if (host.querySelector('[data-dmhead]')) dmRender(false);
@@ -845,6 +846,7 @@ function dmDays() { return Object.values(state.dmail).sort((a, b) => (a.end < b.
 /** full: redraw the email panel too (a new day or new data); otherwise only the head, tabs and checks */
 function dmRender(full) {
   const host = $('wfmDm'), head = host.querySelector('[data-dmhead]'); if (!head || !rbB()) return;
+  dmHistRender();   // the brands' history box, with or without emails
   const L = dmDays();
   if (!L.length) { head.innerHTML = ''; head.hidden = true; host.querySelector('[data-dmtabs]').innerHTML = ''; host.querySelector('[data-dmpanel]').innerHTML = emptyCard('No daily emails yet', 'The WFM analyst drops the day\'s exports in Report builder; Virgin Postpaid, Virgin Mobile, FRiENDi Mobile and FRiENDi Pay then appear here, ready to read and send.'); return; }
   head.hidden = false;
@@ -920,3 +922,141 @@ function dmFieldIn(t) {
   if (f === 'subject') return;   // the subject is not in the mail itself
   rbLater(panel, async () => { const doc = (state.dmBrands[dk] || {})[key]; if (!doc || state.dmSel !== dk || state.dmActive !== key) return; dmRefresh(panel, doc, dk); if (f === 'asaOverride') dmHistAsa(key, doc, dk); await rbFrame(panel.querySelector('iframe.rbprev'), rbHtml(rbBrandBuild(key, doc, dk).model, key)); }, 300);
 }
+
+// ---------------------------------------------------------------- Emails › Daily brand emails: the brands' history out to a file and back in
+// The month to date and the monthly tables of the four brand emails read the shared history (dailytool/history). It goes out as the
+// same member-care-history-<day>.json that Report builder › Export backup and the stand-alone builder save, and such a file comes in
+// here: read and shown first, then the months and days the tool does not have are added. Where both have a month or a day, the tool
+// keeps its own numbers unless "Use the file's numbers" is ticked. The emails already made keep the history they were made with;
+// the next ones, the Daily page and Search use the new one.
+Object.assign(state, { dmHist: null, dmHistBusy: '', dmHistAll: false });
+const DH_PARTS = new Set(['voice', 'nonvoice']), DH_LISTS = new Map([['monthly', /^\d{4}-(0[1-9]|1[0-2])-01$/], ['daily', /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/]]);
+const dhField = /^[A-Za-z][A-Za-z0-9]{0,39}$/;
+const dhPut = (T, b, s, l, r) => { const B = T[b] = T[b] || {}, S = B[s] = B[s] || {}; (S[l] = S[l] || []).push(r); };
+const dhSame = (a, b) => { const ka = Object.keys(a).sort(), kb = Object.keys(b).sort(); return ka.length === kb.length && ka.every((k, i) => k === kb[i] && a[k] === b[k]); };
+const dhRows = T => Object.values(T).reduce((n, B) => n + Object.values(B).reduce((m, S) => m + Object.values(S).reduce((k, L) => k + L.length, 0), 0), 0);
+/** a history file, read: the four brands' voice and non-voice rows, each with a real date and numbers (or empty figures); anything else is left out and counted */
+function dhRead(text) {
+  let raw; try { raw = JSON.parse(text); } catch (e) { throw new Error('it is not a JSON file'); }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('it is not a history file');
+  const H = {}, left = { parts: [], rows: 0 };
+  for (const [b, secs] of Object.entries(raw)) {
+    if (!RB_BRANDS.includes(b) || !secs || typeof secs !== 'object') { left.parts.push(b); continue; }
+    for (const [s, lists] of Object.entries(secs)) {
+      if (!DH_PARTS.has(s) || !lists || typeof lists !== 'object') { left.parts.push(`${rbName(b)} ${s}`); continue; }
+      for (const [l, rows] of Object.entries(lists)) {
+        const re = DH_LISTS.get(l); if (!re || !Array.isArray(rows)) { left.parts.push(`${rbName(b)} ${s} ${l}`); continue; }
+        for (const r of rows) {
+          const row = r && typeof r === 'object' && typeof r.date === 'string' && re.test(r.date) ? { date: r.date } : null; let n = 0;
+          if (row) for (const [k, v] of Object.entries(r)) if (k !== 'date' && dhField.test(k) && (v === null || (typeof v === 'number' && Number.isFinite(v)))) { row[k] = v; n++; }   // a month with no data (all empty) stays: the table shows it as –
+          if (row && n) dhPut(H, b, s, l, row); else left.rows++;
+        }
+      }
+    }
+  }
+  if (!Object.keys(H).length) throw new Error(`there is no brand history in it (${RB_BRANDS.map(rbName).join(', ')})`);
+  return { H, left };
+}
+/** the file against the shared history: per brand, the months and days it adds, those already the same, and those different here */
+function dhCompare(H, cur) {
+  const add = {}, diff = {}, per = [], months = [], days = [];
+  for (const b of RB_BRANDS) {
+    if (!H[b]) continue;
+    const o = { b, newM: new Set(), newD: new Set(), diffM: new Set(), diffD: new Set(), same: new Set() };
+    for (const s of Object.keys(H[b])) for (const l of Object.keys(H[b][s])) {
+      const M = l === 'monthly', have = new Map(((((cur || {})[b] || {})[s] || {})[l] || []).filter(r => r && r.date).map(r => [r.date, r]));
+      for (const r of H[b][s][l]) {
+        (M ? months : days).push(r.date);
+        const h = have.get(r.date);
+        if (!h) { dhPut(add, b, s, l, r); (M ? o.newM : o.newD).add(r.date); } else if (!dhSame(h, r)) { dhPut(diff, b, s, l, r); (M ? o.diffM : o.diffD).add(r.date); } else o.same.add(l + r.date);
+      }
+    }
+    per.push(o);
+  }
+  return { add, diff, per, months, days };
+}
+const dhMon = k => `${MON[+k.slice(5, 7) - 1]} ${k.slice(0, 4)}`;
+const dhDay = (d, y) => `${+d.slice(8)} ${MON[+d.slice(5, 7) - 1]}${y ? ' ' + d.slice(0, 4) : ''}`;
+function dhSpan(dates, monthly) {
+  if (!dates.length) return '';
+  const s = dates.slice().sort(), a = s[0], z = s[s.length - 1];
+  if (monthly) return a === z ? dhMon(a) : `${dhMon(a)} – ${dhMon(z)}`;
+  return a === z ? dhDay(a, true) : `${dhDay(a, a.slice(0, 4) !== z.slice(0, 4))} – ${dhDay(z, true)}`;
+}
+/** "months Jan 2024 – Aug 2026 · days 1 Sep – 21 Oct 2026" for a history */
+function dhWhat(H) {
+  const m = [], d = [];
+  for (const b of RB_BRANDS) for (const s of DH_PARTS) for (const [l, out] of [['monthly', m], ['daily', d]]) for (const r of ((((H || {})[b] || {})[s] || {})[l] || [])) if (r && typeof r.date === 'string') out.push(r.date);
+  return [m.length ? `months ${dhSpan(m, true)}` : '', d.length ? `days ${dhSpan(d)}` : ''].filter(Boolean).join(' · ');
+}
+function dmHistRender() {
+  const el = $('wfmDm').querySelector('[data-dmhist]'); if (!el) return;
+  el.hidden = !canDailyMail(); if (el.hidden) return;
+  const X = state.dmHist, busy = state.dmHistBusy, can = canDailySave() && !!state.db, what = dhWhat(rbHist());
+  const saved = state.dhistAt ? ` Saved ${esc(fmtWhen(state.dhistAt))}${state.dhistBy ? ' by ' + esc(state.dhistBy) : ''}`.replace(/([^.])$/, '$1.') : '';   // "by Yousef T." ends once
+  let html = `<div class="dmhrow"><div class="dmhtx"><b>Brands' history</b><small>${what ? `The month to date and the monthly tables come from it: ${esc(what)}.${saved}` : 'Empty: the month to date and the monthly tables start from the days the WFM analyst drops. Import a history file to add the earlier months.'}</small></div>
+    <div class="dmhacts"><button class="btn sm" data-dmhexp${what ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Export history</button>${can ? `<button class="btn sm" data-dmhpick${busy ? ' disabled' : ''}>${busy === 'open' ? '<span class="spin" aria-hidden="true"></span>Reading…' : '<svg width="14" height="14" aria-hidden="true"><use href="#i-up"/></svg>Import history'}</button>` : ''}</div></div>`;
+  if (X) {
+    const P = X.cmp, nAdd = dhRows(P.add), nDiff = dhRows(P.diff), dM = P.per.reduce((n, o) => n + o.diffM.size, 0), dD = P.per.reduce((n, o) => n + o.diffD.size, 0);
+    const diffWords = [dM ? plural(dM, 'month') : '', dD ? plural(dD, 'day') : ''].filter(Boolean).join(' and '), go = nAdd || (state.dmHistAll && nDiff);
+    const line = o => {   // each month or day counted once: different here (in voice or non-voice) first, then to add, then the same
+      const nM = [...o.newM].filter(d => !o.diffM.has(d)).length, nD = [...o.newD].filter(d => !o.diffD.has(d)).length, df = o.diffM.size + o.diffD.size;
+      const sm = [...o.same].filter(k => { const M = k.startsWith('monthly'), d = k.slice(M ? 7 : 5); return !(M ? o.newM.has(d) || o.diffM.has(d) : o.newD.has(d) || o.diffD.has(d)); }).length;
+      return [nM ? `${plural(nM, 'month')} to add` : '', nD ? `${plural(nD, 'day')} to add` : '', df ? `${df} different here` : '', sm ? `${sm} already the same` : ''].filter(Boolean).join(' · ') || 'nothing';
+    };
+    const left = [X.left.rows ? `${plural(X.left.rows, 'row')} without a date or numbers` : '', ...X.left.parts.slice(0, 6)].filter(Boolean);
+    html += `<div class="bkinfo dmhprev"><b dir="auto">${esc(X.name)}</b><span>${esc([P.months.length ? `months ${dhSpan(P.months, true)}` : '', P.days.length ? `days ${dhSpan(P.days)}` : ''].filter(Boolean).join(' · '))}</span>
+      <ul class="ilist">${P.per.map(o => `<li><span class="nm">${esc(rbName(o.b))}</span><span class="sg">${esc(line(o))}</span></li>`).join('')}</ul></div>
+      ${nDiff ? `<label class="check"><input type="checkbox" data-dmhall${state.dmHistAll ? ' checked' : ''}> Use the file's numbers for the ${esc(diffWords)} that ${dM + dD === 1 ? 'is' : 'are'} different here (unticked, the tool keeps its own)</label>` : ''}
+      ${left.length ? `<p class="hint">Left out: ${esc(left.join('; '))}${X.left.parts.length > 6 ? ` and ${X.left.parts.length - 6} more` : ''}.</p>` : ''}
+      <p class="hint">${go ? 'The emails already made keep the history they were made with; the next ones use this.' : nDiff ? 'Nothing new to add: only the numbers that are different here, if you tick above.' : 'Everything in this file is already in the tool.'}</p>
+      <div class="dmhacts"><button class="btn" data-dmhcancel${busy ? ' disabled' : ''}>Cancel</button><button class="btn primary" data-dmhgo${go && !busy ? '' : ' disabled'}>${busy === 'import' ? '<span class="spin" aria-hidden="true"></span>Importing…' : go ? 'Import into the tool' : 'Nothing to import'}</button></div>`;
+  }
+  el.innerHTML = html;
+}
+/** a chosen history file, read and compared with the shared history; nothing is written yet */
+async function dmHistOpen(f) {
+  if (!f || !canDailySave() || state.dmHistBusy) return;
+  if (f.size > 20 * 1024 * 1024) { toast(`${f.name} is too big to be a history file.`); return; }
+  state.dmHistBusy = 'open'; dmHistRender();
+  try {
+    if (state.db) await Promise.race([dhReady, new Promise(r => setTimeout(r, 4000))]);   // the shared history first, to compare with
+    const { H, left } = dhRead(await f.text());
+    state.dmHist = { name: f.name, left, cmp: dhCompare(H, state.dhist || {}) }; state.dmHistAll = false;
+  } catch (e) { state.dmHist = null; toast(`${f.name} could not be used: ${(e && e.message) || 'it is not a history file'}.`); }
+  finally { state.dmHistBusy = ''; dmHistRender(); }
+}
+/** what the file adds (and, when ticked, the rows it has with other numbers) goes into the shared history */
+async function dmHistImport() {
+  const X = state.dmHist; if (!X || state.dmHistBusy || !canDailySave()) return;
+  const P = X.cmp, all = state.dmHistAll && dhRows(P.diff) > 0, take = all ? mergeDailyHist(P.add, P.diff).out : P.add;
+  if (!dhRows(take)) return;
+  state.dmHistBusy = 'import'; dmHistRender();
+  const ok = await rbHistPush(take);
+  state.dmHistBusy = '';
+  if (ok) {
+    if (RB.hist) rbHistIn(state.dhist);   // this browser's builder copy too
+    const U = k => new Set(P.per.flatMap(o => [...o[k]])).size, m = U('newM'), d = U('newD'), r = all ? U('diffM') + U('diffD') : 0;   // months and days of the calendar, whatever the brands
+    state.dmHist = null; state.dailyVer++;
+    toast(`History imported for ${plural(P.per.length, 'brand')}: ${[m ? plural(m, 'month') : '', d ? plural(d, 'day') : ''].filter(Boolean).join(' and ') || 'nothing new'} added${r ? `, ${r} replaced with the file's numbers` : ''}. The next brand emails use it.`);
+  } else toast('The history was not imported: the shared data could not be written. Try again.');
+  dmHistRender();
+}
+async function dmHistExport() {
+  if (state.db) await Promise.race([dhReady, new Promise(r => setTimeout(r, 4000))]);
+  rbExportHistory();
+}
+// the file picker stays outside the box: the box is drawn again whenever the shared data changes, even while the picker is open
+const dmHistPicker = Object.assign(document.createElement('input'), { type: 'file', accept: '.json,application/json', hidden: true, id: 'dmHistPicker' }); document.body.appendChild(dmHistPicker);
+dmHistPicker.addEventListener('change', () => { const f = dmHistPicker.files && dmHistPicker.files[0]; dmHistPicker.value = ''; if (f) dmHistOpen(f); });
+$('wfmDm').addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-dmhexp], [data-dmhpick], [data-dmhgo], [data-dmhcancel]'); if (!t || t.disabled) return;
+  if (t.matches('[data-dmhexp]')) dmHistExport();
+  else if (t.matches('[data-dmhpick]')) dmHistPicker.click();
+  else if (t.matches('[data-dmhgo]')) dmHistImport();
+  else { state.dmHist = null; dmHistRender(); const b = $('wfmDm').querySelector('[data-dmhpick]'); if (b) b.focus(); }
+});
+$('wfmDm').addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('[data-dmhall]')) { state.dmHistAll = t.checked; dmHistRender(); const c = $('wfmDm').querySelector('[data-dmhall]'); if (c) c.focus(); }
+});

@@ -1,7 +1,7 @@
 // ================================================================ QUALITY: the Final EVAL and the quality KPIs
 // The quality team's monthly workbook: one sheet per brand (sections CC / SM / CT / champions), each agent's Call QA, Ticket QA
-// and CR with the final score, and critical errors; a Leaders sheet scores the team leads. The final score fills Quality
-// Observations; the quality team can correct any quality KPI by hand until the month is final.
+// and CR with the final score, and critical errors; a Leaders sheet scores the team leads. Call QA fills Quality Observations
+// (the Final Score where there is no Call QA, as on CT); the quality team can correct any quality KPI by hand until the month is final.
 Object.assign(state, { qMonth: '', qQ: '' });
 const LEADER_ITEMS = [['obs', 'No of Observation', 0.05], ['acc', 'Observation Accuracy', 0.10], ['work', 'My Work Accuracy', 0.05], ['deadline', 'Deadline', 0.05], ['objection', 'Objection validation', 0.05], ['esc', 'Quality Escalation Reports', 0.05]];
 const qPct = v => (v == null || v === '' ? null : typeof v === 'number' && Number.isFinite(v) ? (v > 1.5 ? v / 100 : v) : (() => { const s = normSpace(v).replace(/[%\s]/g, ''); if (!s || !Number.isFinite(+s)) return null; return /%/.test(String(v)) || +s > 1.5 ? +s / 100 : +s; })());
@@ -110,8 +110,12 @@ function matchEval(ev, saved, no) {
   return { rows, leaders, check, unmatched };
 }
 /** an EVAL row as kept for an agent */
-const Q_FROM = [['qobs', 'final'], ['emp', 'ticketqa'], ['fcr', 'cr'], ['qa', 'eval']];   // KPI <- EVAL column: Final Score is Quality Observations, Ticket QA is Empowerment Utilization, CR is Call Reason & FCR Accuracy, the Evaluation score is QA Evaluation
-const qRowOf = (r, old) => { const kpi = { ...((old && old.kpi) || {}) }; for (const [id, f] of Q_FROM) { if (r[f] != null) kpi[id] = Math.round(r[f] * 10000) / 10000; else if (r.status) delete kpi[id]; } return { ...(old || {}), n: r.name, sheet: r.sheet, section: r.section, eval: { callqa: r.callqa, ticketqa: r.ticketqa, cr: r.cr, ev: r.eval, final: r.final }, status: r.status || '', crit: r.crit || [], kpi, ...(r.how ? { how: r.how } : {}) }; };
+const Q_FROM = [['emp', 'ticketqa'], ['fcr', 'cr'], ['qa', 'eval']];   // KPI <- EVAL column: Ticket QA is Empowerment Utilization, CR is Call Reason & FCR Accuracy, the Evaluation score is QA Evaluation; Quality Observations is Call QA (qObsOf)
+const qRowOf = (r, old) => {
+  const { qobsHand, finalHand, ...o } = old || {}, kpi = { ...(o.kpi || {}) }, qo = qObsOf(r);   // the file's numbers replace any typed before
+  for (const [id, f] of [['qobs', null], ...Q_FROM]) { const v = f ? r[f] : qo; if (v != null) kpi[id] = Math.round(v * 10000) / 10000; else if (r.status) delete kpi[id]; }
+  return { ...o, n: r.name, sheet: r.sheet, section: r.section, eval: { callqa: r.callqa, ticketqa: r.ticketqa, cr: r.cr, ev: r.eval, final: r.final }, status: r.status || '', crit: r.crit || [], kpi, qv: 2, ...(r.how ? { how: r.how } : {}) };
+};
 /** an EVAL row kept until somebody says who it is (everything in it, so nothing is lost when it is linked by hand) */
 const qLeft = u => ({ name: u.name, kind: u.kind, sheet: u.sheet || '', section: u.section || '', callqa: u.callqa ?? null, ticketqa: u.ticketqa ?? null, cr: u.cr ?? null, eval: u.eval ?? null, final: u.final ?? null, items: u.items || null, crit: u.crit || [], status: u.status || '', alts: u.alts || [] });
 const rosterSig = () => `${state.roster.length}|${rosterRows().map(p => p._id + (p.sys || '') + (p.email || '')).join('').length}|${Object.keys(state.history || {}).length}`;
@@ -151,10 +155,10 @@ function qualityHtml(pid, k) {
   const x = k ? qRow(k, pid) : null; if (!x) return '';
   const e = x.eval || {}, crit = x.crit || [], kp = x.kpi || {}, KP = qualityKpis().filter(z => !['qobs', 'emp', 'fcr', 'qa'].includes(z.id) && kp[z.id] != null);
   const cell = (l, v, d = 1, cls = '') => `<div class="${cls}"><span>${esc(l)}</span><b>${v == null ? '–' : pct(v, d)}</b></div>`;
-  const qobs = kp.qobs != null ? kp.qobs : e.final;
-  return `<section class="sec qsec"><h3>Quality · ${esc(ymLabel(k))}</h3><div class="pfgrid">${cell('Quality Observations', qobs, 1, qobs != null && qobs < 0.95 ? 'bad' : '')}${cell('Call QA', e.callqa)}${cell('Ticket QA / Empowerment', kp.emp ?? e.ticketqa)}${cell('Call Reason & FCR', kp.fcr ?? e.cr, 0)}${kp.qa != null || e.ev != null ? cell('Evaluation score', kp.qa ?? e.ev) : ''}${KP.map(z => cell(z.name, kp[z.id])).join('')}</div>
+  const qobs = kp.qobs ?? qObsOf(e);
+  return `<section class="sec qsec"><h3>Quality · ${esc(ymLabel(k))}</h3><div class="pfgrid">${cell('Quality Observations', qobs, 1, qobs != null && qobs < 0.95 ? 'bad' : '')}${cell('Call QA', e.callqa)}${cell('Ticket QA / Empowerment', kp.emp ?? e.ticketqa)}${cell('Call Reason & FCR', kp.fcr ?? e.cr, 0)}${kp.qa != null || e.ev != null ? cell('Evaluation score', kp.qa ?? e.ev) : ''}${cell('Final Score', e.final)}${KP.map(z => cell(z.name, kp[z.id])).join('')}</div>
     ${crit.length ? `<p class="hint qcrit${crit.some(c => ATTITUDE.test(c.type || '')) ? ' bad' : ''}">Critical errors: ${esc(crit.map(c => c.type + (c.n > 1 ? ' ×' + c.n : '')).join(', '))}</p>` : ''}${x.status ? `<p class="hint">${esc(x.status)}</p>` : ''}
-    <p class="hint">From the quality team's Final EVAL${x.n ? `, where the name is “${esc(x.n)}”` : ''}.${qFixed(k) ? ` ${esc(ymLabel(k))}'s results came from the incentive file, so its final % stays as it was.` : ' It counts in the KPI scorecard above.'}</p></section>`;
+    <p class="hint">From the quality team's Final EVAL${x.n ? `, where the name is “${esc(x.n)}”` : ''}. Quality Observations is ${e.callqa != null ? 'the Call QA' : 'the Final Score (there is no Call QA)'}.${qFixed(k) ? ` ${esc(ymLabel(k))}'s results came from the incentive file, so its final % stays as it was.` : ' It counts in the KPI scorecard above.'}</p></section>`;
 }
 /** the quality numbers of a month moved to another month (the EVAL counts for that month's incentive instead) */
 let qMoveTo = '';
@@ -209,7 +213,9 @@ async function qEdit(k, fn, what) {
   if (!canQuality()) return;
   if (monthLocked(k)) { toast(`${ymLabel(k)} is final.`); return; }
   const cur = (await qFresh(k)) || { k, rows: {}, leaders: {}, links: {}, unmatched: [] };
-  const next = JSON.parse(JSON.stringify(cur)); fn(next);
+  const next = JSON.parse(JSON.stringify(cur));
+  for (const pid of Object.keys(next.rows || {})) next.rows[pid] = qUp(next.rows[pid], k);   // rows saved before Call QA counted are written the way they count now
+  fn(next);
   next.log = [...(next.log || []), { at: new Date().toISOString(), by: whoNow(), what }].slice(-300);
   next.at = new Date().toISOString(); next.by = whoNow();
   await qWrite(k, next);
@@ -248,9 +254,9 @@ document.addEventListener('change', e => {
 });
 /** the quality team's table, as in their Final EVAL: one table per team; CT has the Evaluation score instead of Call QA, Ticket QA
     and CR. Every number can be corrected by hand; the Final Score is the average of Call QA, Ticket QA and CR until someone types
-    it. DRC-CSAT is not a column: it is one score for everyone (the box above). */
-const Q_TPL = { main: [['callqa', 'Call QA'], ['emp', 'Ticket QA / Empowerment Utilization'], ['fcr', 'Call Reason & FCR Accuracy'], ['qobs', 'Final Score (Average of Call QA, Ticket QA & CR)']], ct: [['qa', 'Evaluation score'], ['qobs', 'Final Score']] };
-const qVal = (x, f) => { const e = x.eval || {}, kp = x.kpi || {}; return f === 'callqa' ? e.callqa ?? null : f === 'emp' ? kp.emp ?? e.ticketqa ?? null : f === 'fcr' ? kp.fcr ?? e.cr ?? null : f === 'qobs' ? kp.qobs ?? e.final ?? null : f === 'qa' ? kp.qa ?? e.ev ?? null : kp[f] ?? null; };
+    it. Call QA is Quality Observations (CT: the Final Score). DRC-CSAT is not a column: it is one score for everyone (the box above). */
+const Q_TPL = { main: [['callqa', 'Call QA'], ['emp', 'Ticket QA / Empowerment Utilization'], ['fcr', 'Call Reason & FCR Accuracy'], ['final', 'Final Score (Average of Call QA, Ticket QA & CR)']], ct: [['qa', 'Evaluation score'], ['final', 'Final Score']] };
+const qVal = (x, f) => { const e = x.eval || {}, kp = x.kpi || {}; return f === 'callqa' ? e.callqa ?? null : f === 'final' ? e.final ?? null : f === 'emp' ? kp.emp ?? e.ticketqa ?? null : f === 'fcr' ? kp.fcr ?? e.cr ?? null : f === 'qobs' ? kp.qobs ?? qObsOf(e) : f === 'qa' ? kp.qa ?? e.ev ?? null : kp[f] ?? null; };
 const qTplOf = (p, k) => { const c = cardFor(p.team, k), ids = new Set(((c && c.kpis) || []).map(x => x.id)); return ids.has('qa') && !ids.has('emp') ? 'ct' : 'main'; };
 const qPctTxt = v => (v == null ? '–' : `${+(v * 100).toFixed(2)}%`);
 function qTablesHtml(people, k, can, fixed, map) {
@@ -271,7 +277,7 @@ function qTablesHtml(people, k, can, fixed, map) {
     }).join('');
     return `<section class="qteam" aria-label="${esc(u)}"><h3 class="sub">${esc(u)} <small class="subtle">${L.length}</small></h3><div class="tablewrap restab qtab"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div></section>`;
   }).join('');
-  return `<div class="card"><div class="cardhead"><div><h2>Agents · ${people.length}</h2><p class="cap">The quality team's template, one table per team. Ticket QA is Empowerment Utilization and CR is Call Reason &amp; FCR Accuracy in the scorecards; the Final Score is Quality Observations (CT: the Evaluation score is QA Evaluation). Type a corrected value (as %) in any cell; an "Attitude" critical error stops the incentive.</p></div>
+  return `<div class="card"><div class="cardhead"><div><h2>Agents · ${people.length}</h2><p class="cap">The quality team's template, one table per team. Call QA is Quality Observations, Ticket QA is Empowerment Utilization and CR is Call Reason &amp; FCR Accuracy in the scorecards (CT: the Final Score is Quality Observations and the Evaluation score is QA Evaluation). Type a corrected value (as %) in any cell; an "Attitude" critical error stops the incentive.</p></div>
     <div class="toolbar"><input type="search" data-qq value="${esc(state.qQ)}" placeholder="Search a name" aria-label="Search"></div></div>
     ${tables || '<p class="empty">Nobody matches.</p>'}${can ? '<div class="formbtns"><button class="btn sm" data-qadd>Add an agent by hand</button></div>' : ''}</div>`;
 }
@@ -302,9 +308,9 @@ function renderQuality() {
     ${can && U.length ? '<button class="btn sm" data-qrelink>Look again</button>' : ''}</div>
     <div class="qcount"><span class="ok"><b>${linked.size}</b> linked</span>${C.length ? `<span class="warn"><b>${C.length}</b> to glance at</span>` : ''}${U.length ? `<span class="bad"><b>${U.length}</b> need you</span>` : ''}${!C.length && !U.length ? '<span class="ok">Every name is linked and checked.</span>' : ''}</div>
     ${C.length ? `<div class="sechead"><h3 class="sub">Linked by the tool · glance at these</h3><span class="spacer"></span>${can ? '<button class="btn sm" data-qokall>All right</button>' : ''}</div><ul class="ilist qcheck">${C.map(c => `<li><span class="nm" dir="auto">${esc(c.name)}</span><span class="arrow" aria-hidden="true">→</span><button class="linkbtn nm" data-open="${esc(c.pid)}" dir="auto">${esc(nmOf(c.pid))}</button><span class="sg">${esc(whereOf(c.pid))} · ${esc(c.why || '')}</span><span class="sp"></span>${can ? `<span class="acts"><button class="btn sm" data-qok="${c.i}">Right</button><button class="btn sm ghost" data-qnot="${c.i}">Not this person</button></span>` : ''}</li>`).join('')}</ul>` : ''}
-    ${U.length ? `<h3 class="sub">Need you · choose who each one is</h3><ul class="ilist qlink">${U.map((u, i) => `<li><span class="nm" dir="auto">${esc(u.name)}</span><span class="sg">${esc(u.kind === 'leader' ? 'team lead' : [u.sheet, u.section].filter(Boolean).join(' · '))}${u.status ? ' · ' + esc(u.status) : u.final != null ? ' · ' + pct(u.final, 1) : ''}</span><span class="sp"></span>${can ? `<span class="acts">${pickList(u, i)}</span>` : ''}</li>`).join('')}</ul>` : ''}</div>`;
+    ${U.length ? `<h3 class="sub">Need you · choose who each one is</h3><ul class="ilist qlink">${U.map((u, i) => `<li><span class="nm" dir="auto">${esc(u.name)}</span><span class="sg">${esc(u.kind === 'leader' ? 'team lead' : [u.sheet, u.section].filter(Boolean).join(' · '))}${u.status ? ' · ' + esc(u.status) : qObsOf(u) != null ? ' · ' + pct(qObsOf(u), 1) : ''}</span><span class="sp"></span>${can ? `<span class="acts">${pickList(u, i)}</span>` : ''}</li>`).join('')}</ul>` : ''}</div>`;
   const q = normName(state.qQ || '');
-  const people = Object.entries(Q.rows || {}).map(([pid, x]) => ({ pid, x, p: R.find(p => p._id === pid) })).filter(o => o.p && (!q || normName(`${o.x.n} ${o.p.name}`).includes(q)))
+  const people = Object.entries(Q.rows || {}).map(([pid, x]) => ({ pid, x: qUp(x, k), p: R.find(p => p._id === pid) })).filter(o => o.p && (!q || normName(`${o.x.n} ${o.p.name}`).includes(q)))
     .sort((a, b) => unitRank(unitOf(a.p)) - unitRank(unitOf(b.p)) || String(a.x.n).localeCompare(String(b.x.n)));
   const fixed = qFixed(k), map = rowsByPid(k);
   const tab = qTablesHtml(people, k, can, fixed, map);
@@ -339,7 +345,7 @@ async function evalTemplate(k) {
     }
     sheets.push({ name, title: `Final EVAL - ${name} - ${ymLabel(k)}`, sub, cols, rows, freezeCol: 2 });
   };
-  const subM = 'Type the scores (95 or 95%). Keep the National ID column: the tool links each row by it. A blank Final Score is the average of Call QA, Ticket QA and CR; Ticket QA is Empowerment Utilization. Write "Annual leave" in Call QA for someone away.';
+  const subM = 'Type the scores (95 or 95%). Keep the National ID column: the tool links each row by it. A blank Final Score is the average of Call QA, Ticket QA and CR. Call QA is Quality Observations; Ticket QA is Empowerment Utilization. Write "Annual leave" in Call QA for someone away.';
   for (const sh of ['Virgin', 'FRiENDi']) sheetOf(sh, R.filter(p => !isCt(p) && (normBrand(p.brand) === 'Virgin' ? 'Virgin' : 'FRiENDi') === sh), MAIN, subM);
   sheetOf('CT', R.filter(isCt), CTC, 'Type the Evaluation score (95 or 95%). Keep the National ID column. A blank Final Score is the Evaluation score.');
   if (!sheets.length) { toast('Nobody in the roster yet.'); return; }
@@ -348,9 +354,9 @@ async function evalTemplate(k) {
 }
 async function exportQuality() {
   const k = qMonthNow(), Q = state.quality[k]; if (!Q) return; const KP = qualityKpis(), R = rosterRows();
-  const rows = Object.entries(Q.rows || {}).map(([pid, x]) => { const p = R.find(y => y._id === pid) || {}; return [gname(effP(pid) || p) || x.n, Core.cleanId((effP(pid) || p).nid) || '', p.brand || '', p.team || '', x.eval ? x.eval.callqa : null, x.eval ? x.eval.ticketqa : null, x.eval ? x.eval.cr : null, ...KP.map(kk => (x.kpi ? x.kpi[kk.id] ?? null : null)), (x.crit || []).map(c => c.type).join('; '), x.status || '']; });
+  const rows = Object.entries(Q.rows || {}).map(([pid, x0]) => { const x = qUp(x0, k), p = R.find(y => y._id === pid) || {}; return [gname(effP(pid) || p) || x.n, Core.cleanId((effP(pid) || p).nid) || '', p.brand || '', p.team || '', x.eval ? x.eval.callqa : null, x.eval ? x.eval.ticketqa : null, x.eval ? x.eval.cr : null, x.eval ? x.eval.final ?? null : null, ...KP.map(kk => (x.kpi ? x.kpi[kk.id] ?? null : null)), (x.crit || []).map(c => c.type).join('; '), x.status || '']; });
   await xlBook(`Quality results - ${ymLabel(k)}.xlsx`, [
-    { name: 'Agents', title: `Quality results - ${ymLabel(k)}`, sub: `${Q.src || ''} · ${stamp(k)}`, cols: [{ h: 'Agent', t: 'text', w: 30 }, { h: 'National ID', t: 'text', w: 13 }, { h: 'Brand', t: 'text', w: 11 }, { h: 'Team', t: 'text', w: 8 }, { h: 'Call QA', t: 'pct' }, { h: 'Ticket QA', t: 'pct' }, { h: 'CR', t: 'pct' }, ...KP.map(x => ({ h: x.name, t: 'pct' })), { h: 'Critical errors', t: 'text', w: 30 }, { h: 'Note', t: 'text', w: 12 }], rows },
+    { name: 'Agents', title: `Quality results - ${ymLabel(k)}`, sub: `${Q.src || ''} · ${stamp(k)}`, cols: [{ h: 'Agent', t: 'text', w: 30 }, { h: 'National ID', t: 'text', w: 13 }, { h: 'Brand', t: 'text', w: 11 }, { h: 'Team', t: 'text', w: 8 }, { h: 'Call QA', t: 'pct' }, { h: 'Ticket QA', t: 'pct' }, { h: 'CR', t: 'pct' }, { h: 'Final Score', t: 'pct' }, ...KP.map(x => ({ h: x.name, t: 'pct' })), { h: 'Critical errors', t: 'text', w: 30 }, { h: 'Note', t: 'text', w: 12 }], rows },
     { name: 'Team leads', title: `Team leads - ${ymLabel(k)}`, sub: stamp(k), cols: [{ h: 'Team lead', t: 'text', w: 30 }, ...LEADER_ITEMS.map(([, l]) => ({ h: l, t: 'pct' })), { h: 'Total', t: 'pct' }],
       rows: Object.entries(Q.leaders || {}).map(([pid, x]) => [supName(pid) || x.n, ...LEADER_ITEMS.map(([id]) => x.items[id] ?? null), sum(Object.values(x.items || {}))]) }]);
 }
@@ -368,7 +374,7 @@ $('v-quality').addEventListener('click', e => {
     const k = qMonthNow(), Q = state.quality[k] || { rows: {} }, R = rosterRows().filter(p => !(Q.rows || {})[p._id]);
     const nm = prompt('Who? Type the name as it is in the roster.'); if (!nm) return;
     const p = R.find(x => normName(gname(x) || x.name) === normName(nm) || normName(x.name) === normName(nm)); if (!p) { toast('Nobody with that name who is not already in the list.'); return; }
-    qEdit(k, Q2 => { Q2.rows = Q2.rows || {}; Q2.rows[p._id] = { n: gname(p) || p.name, kpi: {}, crit: [] }; }, `Added ${p.name}`); return;
+    qEdit(k, Q2 => { Q2.rows = Q2.rows || {}; Q2.rows[p._id] = { n: gname(p) || p.name, kpi: {}, crit: [], qv: 2 }; }, `Added ${p.name}`); return;
   }
   if (e.target.closest('[data-qrelink]')) { relinkLeft(qMonthNow()); return; }
   if (e.target.closest('[data-qokall]')) { const k = qMonthNow(), n = (state.quality[k].check || []).length; qEdit(k, Q => { for (const c of Q.check || []) { const r = (Q.rows || {})[c.pid] || (Q.leaders || {})[c.pid]; if (r && r.how) r.how.sure = true; } Q.check = []; }, `Checked all ${plural(n, 'link')} the tool made`); return; }
@@ -420,15 +426,16 @@ $('v-quality').addEventListener('change', e => {
   if (t.matches('[data-qk]')) {
     const pid = t.dataset.qp, id = t.dataset.qk, v = normSpace(t.value) === '' ? null : qPct(t.value);
     if (normSpace(t.value) !== '' && (v == null || v < 0 || v > 1.0001)) { toast('Type a percentage, like 94 or 94%.'); return; }
-    const label = id === 'callqa' ? 'Call QA' : id === 'emp' ? 'Ticket QA / Empowerment Utilization' : id === 'fcr' ? 'Call Reason & FCR Accuracy' : id === 'qobs' ? 'Final Score' : id === 'qa' ? 'Evaluation score' : (qualityKpis().find(x => x.id === id) || { name: id }).name;
+    const label = id === 'callqa' ? 'Call QA' : id === 'emp' ? 'Ticket QA / Empowerment Utilization' : id === 'fcr' ? 'Call Reason & FCR Accuracy' : id === 'final' ? 'Final Score' : id === 'qa' ? 'Evaluation score' : (qualityKpis().find(x => x.id === id) || { name: id }).name;
     qEdit(k, Q => {
-      const r = Q.rows[pid] = Q.rows[pid] || { n: supName(pid), kpi: {} }; r.kpi = r.kpi || {};
-      if (id === 'callqa') { r.eval = { ...(r.eval || {}), callqa: v }; } else if (v == null) delete r.kpi[id]; else r.kpi[id] = v;
-      if (id === 'qobs') r.qobsHand = v != null;   // a typed Final Score stays as typed
-      if (['callqa', 'emp', 'fcr'].includes(id) && !r.qobsHand) {   // else it is the average of Call QA, Ticket QA and CR, as in the template
-        const parts = ['callqa', 'emp', 'fcr'].map(f => qVal(r, f)).filter(x => x != null);
-        if (parts.length) r.kpi.qobs = Math.round(parts.reduce((a, b) => a + b, 0) / parts.length * 10000) / 10000;
+      const r = Q.rows[pid] = Q.rows[pid] || { n: supName(pid), kpi: {}, qv: 2 }; r.kpi = r.kpi || {};
+      if (id === 'callqa' || id === 'final') r.eval = { ...(r.eval || {}), [id]: v }; else if (v == null) delete r.kpi[id]; else r.kpi[id] = v;
+      if (id === 'final') r.finalHand = v != null;   // a typed Final Score stays as typed
+      if (['callqa', 'emp', 'fcr', 'qa'].includes(id) && !r.finalHand) {   // else it is the average of Call QA, Ticket QA and CR, as in the template (CT: the Evaluation score)
+        const parts = ['callqa', 'emp', 'fcr'].map(f => qVal(r, f)).filter(x => x != null), f = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : qVal(r, 'qa');
+        r.eval = { ...(r.eval || {}), final: f == null ? null : Math.round(f * 10000) / 10000 };
       }
+      if (['callqa', 'emp', 'fcr', 'qa', 'final'].includes(id)) { const qo = qObsOf(r.eval); if (qo == null) delete r.kpi.qobs; else r.kpi.qobs = Math.round(qo * 10000) / 10000; }   // Quality Observations follows Call QA
     }, `${label} for ${supName(pid)}: ${v == null ? 'empty' : pct(v, 1)}`);
   }
   if (t.matches('[data-qcrit]')) {

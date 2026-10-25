@@ -297,7 +297,7 @@ const DEPT = [
     'When every one-to-one is done, <b>Finish your team</b>: the senior manager is told straight away. The <b>bell</b> lists what is due.']],
   ['quality', 'Quality team', [
     '<b>Quality</b>: drop the month\'s Final EVAL in your template: Agent Name, Call QA, Ticket QA / Empowerment Utilization, Call Reason &amp; FCR Accuracy, Final Score, Critical Error and Number of Critical Errors (CT: Evaluation score). The analysts can also drop it on WFM team › Import with everything else.',
-    'Ticket QA counts as Empowerment Utilization, CR as Call Reason &amp; FCR Accuracy and the Final Score as Quality Observations (CT\'s Evaluation score as QA Evaluation).',
+    'Call QA counts as Quality Observations, Ticket QA as Empowerment Utilization and CR as Call Reason &amp; FCR Accuracy (CT: the Final Score as Quality Observations and the Evaluation score as QA Evaluation). The Final Score itself is shown but does not count.',
     'Check the names the tool linked and link the ones left; the answers are remembered next month.',
     'Type <b>DRC-CSAT</b> once for the month: it counts for every agent.',
     'Correct any score in the table (logged). An Attitude critical error stops the incentive.',

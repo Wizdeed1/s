@@ -68,9 +68,20 @@ function eligibility(res, q, adj, k) {
 }
 
 // ---------------------------------------------------------------- KPI values: the quality team's numbers, then the KPI file
-const QUALITY_OWNED = ['qobs', 'fcr', 'csat', 'emp', 'qa'];   // the Final EVAL's columns: Final Score, CR, Ticket QA (= Empowerment Utilization), CT's Evaluation score; DRC-CSAT is one number for everyone
+const QUALITY_OWNED = ['qobs', 'fcr', 'csat', 'emp', 'qa'];   // the Final EVAL's columns: Call QA, CR, Ticket QA (= Empowerment Utilization), CT's Evaluation score; DRC-CSAT is one number for everyone
 function ownerOf(k) { return k.owner || (QUALITY_OWNED.includes(k.id) ? 'quality' : 'file'); }
-function qRow(k, pid) { const Q = state.quality[k]; return Q && Q.rows ? Q.rows[pid] || null : null; }
+/** Quality Observations is the EVAL's Call QA, not its Final Score; a row with no Call QA (CT scores an Evaluation score) counts its Final Score */
+const qObsOf = e => (e && e.callqa != null ? e.callqa : e && e.final != null ? e.final : null);
+/** a row saved when Quality Observations was the Final Score (no qv), read the way it counts now: Call QA. A Final Score typed
+    by hand then stays the Final Score. A final month is never read again: it stays as it was finalized. */
+function qUp(r, k) {
+  if (!r || r.qv === 2 || (k && monthLocked(k))) return r;
+  const { qobsHand, ...x } = r, e = { ...(r.eval || {}) }, kpi = { ...(r.kpi || {}) };
+  if (qobsHand && kpi.qobs != null) e.final = kpi.qobs;
+  const qo = qObsOf(e); if (!r.status && qo != null) kpi.qobs = Math.round(qo * 10000) / 10000;
+  return { ...x, eval: e, kpi, qv: 2, ...(qobsHand ? { finalHand: true } : {}) };
+}
+function qRow(k, pid) { const Q = state.quality[k]; return Q && Q.rows ? qUp(Q.rows[pid] || null, k) : null; }
 function kpiFileRowK(k, p, r) {
   const F = state.kpiFiles[k]; if (!F) return null;
   const pp = p ? effP(p._id) || p : null, id = Core.cleanId(pp ? pp.nid : r && r.id), names = new Set([pp && normName(pp.name), pp && normName(pp.sys), r && normName(r.n)].filter(Boolean));

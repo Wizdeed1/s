@@ -31,12 +31,27 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
     return { ctx, p };
   }
   const shot = async (p, name, o = {}) => { await p.waitForTimeout(o.wait ?? 500); await p.screenshot({ path: path.join(out, name + '.png'), ...(o.clip ? { clip: o.clip } : {}) }); console.log('✓', name); };
+  /** where parts of the page are (CSS px of the window), for the deck's callouts */
+  const boxes = (p, sels) => p.evaluate(S => Object.fromEntries(Object.entries(S).map(([k, s]) => { const e = document.querySelector(s), r = e ? e.getBoundingClientRect() : null; return [k, r && r.width ? { x: r.x, y: r.y, w: r.width, h: r.height } : null]; })), sels);
+  /** a close-up of some parts of the page (padded, at most maxH tall, inside the window), sharp enough to read on a slide */
+  async function zoom(p, name, sels, o = {}) {
+    const r = await p.evaluate(([S, closest]) => {
+      let a = null;
+      for (const s of S) { let e = document.querySelector(s); if (e && closest) e = e.closest(closest) || e; if (!e) continue; const b = e.getBoundingClientRect(); if (!b.width || !b.height) continue; a = a ? { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), r: Math.max(a.r, b.right), b: Math.max(a.b, b.bottom) } : { x: b.x, y: b.y, r: b.right, b: b.bottom }; }
+      return a;
+    }, [sels, o.closest || null]);
+    if (!r) throw new Error('nothing to show for ' + name);
+    const v = p.viewportSize(), pad = o.pad ?? 12, x = Math.max(0, r.x - pad), y = Math.max(0, r.y - pad);
+    await shot(p, name, { wait: o.wait ?? 300, clip: { x, y, width: Math.min(v.width - x, r.r - r.x + 2 * pad), height: Math.min(o.maxH || 9999, v.height - y, r.b - r.y + 2 * pad) } });
+  }
 
   // ---- the dashboard, light and dark
   for (const dark of [false, true]) {
     const { ctx, p } = await open('senior', { dark });
     await p.evaluate(() => { window.__mc.setWs('dash'); });
-    await shot(p, dark ? 'dash-dark' : 'dash-light', { wait: 900 }); await ctx.close();
+    await shot(p, dark ? 'dash-dark' : 'dash-light', { wait: 900 });
+    if (!dark) fs.writeFileSync(path.join(out, 'dash-light.json'), JSON.stringify({ view: p.viewportSize(), ...(await boxes(p, { search: 'nav#sidebar button', bell: '#bell', period: '#periodBtn', acts: '.qacts', kpis: '.kpis', close: '.dclose' })) }, null, 1));
+    await ctx.close();
   }
   // ---- the WFM analyst's month: Import with the exports, Review › Checks, Export, the emails, the templates
   {
@@ -45,8 +60,11 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
     await p.setInputFiles('#picker', fs.readdirSync(exp).filter(f => /\.csv$/i.test(f) && !/^Book1/.test(f)).map(f => path.join(exp, f)));
     await p.waitForFunction(() => !window.__mc.state.pending.length && Object.keys(window.__mc.state.slots).length >= 4, null, { timeout: 60000 });
     await p.evaluate(() => scrollTo(0, 0)); await shot(p, 'import', { wait: 900 });
+    await p.evaluate(() => { const c = document.querySelector('#slots'); if (c) c.scrollIntoView({ block: 'start' }); window.scrollBy(0, -24); }); await zoom(p, 'z-import', ['#slots'], { maxH: 462, pad: 6 });
+    await p.evaluate(() => scrollTo(0, 0));
     await p.evaluate(() => { window.__mc.setStep('review'); window.__mc.setTab && window.__mc.setTab('checks'); scrollTo(0, 0); });
     await shot(p, 'checks', { wait: 900 });
+    await zoom(p, 'z-checks', ['#checksSum', '#checksTiles', '#checksBody', '#readyCard'], { maxH: 560 });
     await p.evaluate(() => { window.__mc.setStep('export'); scrollTo(0, 0); });
     await shot(p, 'export', { wait: 700 });
     await p.click('#wfmTabs [data-wt="emails"]'); await p.waitForTimeout(300);
@@ -56,6 +74,7 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
       M.state.mailKind = 'ded'; M.state.mailStage = 'review'; M.renderWs(); scrollTo(0, 0);
     });
     await shot(p, 'emails', { wait: 900 });
+    await zoom(p, 'z-email', ['#mailFrame'], { closest: '.card', maxH: 640, wait: 600 });
     // the attendance templates, with a few synthetic people in the other template departments
     await p.evaluate(() => {
       const M = window.__mc, S = M.state, add = [['TS', 'p0', ['Rami K.', 'Dana W.', 'Sami H.', 'Reem F.', 'Talal B.']], ['MG', 'p3', ['Hessa N.', 'Basil O.']], ['QA', 'p9', ['Mona T.', 'Fahd L.', 'Jana Q.']], ['DE', 'p9', ['Ola P.', 'Ziad M.']], ['WF', 'p3', ['Nawal D.', 'Omar Y.']]];
@@ -64,6 +83,7 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
     });
     if (!(await p.$('#dAttTpl:not([hidden])'))) { await p.evaluate(() => { window.__mc.setWs('build'); window.__mc.setStep('import'); }); await p.waitForTimeout(400); await p.click('#attTplBtn'); }
     await p.waitForSelector('#dAttTpl:not([hidden]) [data-tpldl]'); await shot(p, 'templates', { wait: 600 });
+    await zoom(p, 'z-templates', ['#dAttTpl'], { pad: 0 });
     await ctx.close();
   }
   // ---- How this was counted (the senior manager, Results)
@@ -79,6 +99,7 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
     await p.waitForTimeout(500);
     await p.evaluate(pid => { const x = document.createElement('button'); x.dataset.how = pid; x.dataset.howk = '2026-09'; document.body.append(x); x.click(); x.remove(); }, who);
     await p.waitForSelector('#dHow:not([hidden]) #howBody table'); await shot(p, 'how', { wait: 700 });
+    await zoom(p, 'z-how', ['#dHow'], { pad: 0, maxH: 700 });
     await p.keyboard.press('Escape'); await p.evaluate(() => { window.__mc.setWs('cycle'); scrollTo(0, 0); }); await shot(p, 'cycle', { wait: 800 });
     await ctx.close();
   }

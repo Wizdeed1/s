@@ -38,7 +38,7 @@ const CSS = `* { box-sizing: border-box; margin: 0; } body { background: transpa
   .base { height: 30px; margin: 0 -86px; border-radius: 2px 2px 26px 26px; position: relative; background: linear-gradient(#e6e7e9, #c4c6ca 55%, #9d9fa3); }
   .base.dark { background: linear-gradient(#5a5a5e, #3a3a3c 55%, #1f1f21); }
   .base::before { content: ''; position: absolute; top: 0; left: 50%; width: 230px; margin-left: -115px; height: 11px; border-radius: 0 0 12px 12px; background: rgba(0,0,0,.18); }
-  .shadow { filter: drop-shadow(0 44px 60px rgba(0,0,0,.32)) drop-shadow(0 8px 16px rgba(0,0,0,.12)); }
+  .shadow { filter: drop-shadow(0 18px 24px rgba(0,0,0,.22)) drop-shadow(0 4px 8px rgba(0,0,0,.10)); }   /* fades out inside the padding, so no edge shows on the slide */
   .win { width: 1500px; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.09); }
   .win.dark { background: #1c1c1e; box-shadow: 0 0 0 1px rgba(255,255,255,.1); }
   .bar { height: 46px; background: #f2f2f5; border-bottom: 1px solid #e5e5ea; display: flex; align-items: center; padding: 0 18px; gap: 9px; position: relative; }
@@ -55,7 +55,9 @@ const CSS = `* { box-sizing: border-box; margin: 0; } body { background: transpa
   .glow { width: 1400px; height: 1400px; border-radius: 50%; background: radial-gradient(circle, rgba(242,103,34,.55) 0%, rgba(242,103,34,.18) 38%, rgba(242,103,34,0) 70%); }
   .phone .island { position: absolute; top: 25px; left: 50%; width: 118px; height: 34px; margin-left: -59px; border-radius: 20px; background: #000; }
   .paper { width: 860px; background: #fff; border-radius: 4px; box-shadow: 0 0 0 1px rgba(0,0,0,.06); } .paper img { width: 100%; display: block; border-radius: 4px; }
-  .fan { display: flex; align-items: center; } .fan .phone { margin: 0 -40px; }`;
+  .fan { display: flex; align-items: center; } .fan .phone { margin: 0 -40px; }
+  .zoom { position: relative; border-radius: 26px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.08); } .zoom img { width: 100%; display: block; }
+  .zoom.fade::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 140px; background: linear-gradient(rgba(255,255,255,0), #fff 85%); }`;
 const winHtml = (src, title, dark) => `<div class="win${dark ? ' dark' : ''}"><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">${svg('lock', dark ? '#a8a8ad' : '#8e8e93', 14)}${title}</span></div><img class="sc" src="${src}"></div>`;
 const phoneHtml = (src, style = '', dark = false) => `<div class="phone${dark ? ' dark' : ''}" style="${style}"><div class="scr"><div class="sb"><span>10:30</span><span>5G<i></i></span></div><img src="${src}"></div><span class="island"></span></div>`;
 const laptopHtml = (src, dark) => `<div class="laptop"><div class="lid"><div class="screen"><img src="${src}"></div></div><div class="base${dark ? ' dark' : ''}"></div></div>`;
@@ -85,5 +87,12 @@ const laptopHtml = (src, dark) => `<div class="laptop"><div class="lid"><div cla
   await render('phones-fan', `<div class="fan">${phoneHtml(shot('phone-team'), 'transform: rotate(-7deg) translateY(30px)')}${phoneHtml(shot('phone-agent-en'), 'z-index:2; transform: translateY(-10px)')}${phoneHtml(shot('phone-agent-ar'), 'transform: rotate(7deg) translateY(30px)')}</div>`, { pad: 120 });
   if (formPng && fs.existsSync(formPng)) await render('paper-form', `<div class="paper"><img src="${img(formPng)}"></div>`, { style: 'transform: rotate(-3deg)', pad: 110 });
   if (xlsxPng && fs.existsSync(xlsxPng)) await render('win-xlsx', winHtml(img(xlsxPng), 'Attendance - Oct 2026 - TS.xlsx'));
+  // the dashboard large, for the slide that points at its parts (make_deck.cjs reads hero.json to place the numbers), and close-ups
+  await render('hero-dash', winHtml(shot('dash-light'), 'MC Monthly Report Builder · Dashboard'));
+  fs.writeFileSync(path.join(out, 'hero.json'), JSON.stringify({ pad: 90, winW: 1500, bar: 46, boxes: JSON.parse(fs.readFileSync(path.join(shots, 'dash-light.json'), 'utf8')) }));
+  for (const [n, fade] of [['z-import', 0], ['z-checks', 0], ['z-email', 1], ['z-templates', 1], ['z-how', 1]]) {
+    const f = path.join(shots, n + '.png'), w = fs.readFileSync(f).readUInt32BE(16);
+    await render(n, `<div class="zoom${fade ? ' fade' : ''}" style="width:${Math.round(w * 0.8)}px"><img src="${img(f)}"></div>`, { pad: 70 });
+  }
   await b.close();
 })().catch(e => { console.log('✗ ' + (e && e.stack || e)); process.exit(1); });

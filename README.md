@@ -10,7 +10,8 @@ below. Every calculation, output, email
 template, role, permission and storage format is the same as v33 **by default**: the new counting settings start at what
 v33 did (tests compare 10,000 synthetic people against the v33 code), and the only permissions added on request are that the
 WFM analyst shares the Emails page with the WFM manager and that the WFM team (and admins) can export and import all the data.
-The tool still sends nothing and makes no network request.
+The tool still sends nothing and makes no network request; opened as a file, the browser itself now refuses any web
+address (see the security review below).
 
 **The built file:** [`final/MC Monthly Report Builder.html`](final/MC%20Monthly%20Report%20Builder.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
@@ -90,6 +91,35 @@ Option A was chosen from three samples and built by the rules of Apple's Human I
 | Still reading | After the sign-in a pill under the toolbar says **Reading the shared data… N files** until the first read is in, **Putting Oct 2026 back in Build** while the saved uploads are opened, and **Reading 3 files…** while dropped files are read; the dashboard, Team and Supervisors pages say they are still reading instead of "No months yet". |
 | Stakeholder deck | **final/MC Monthly Report Builder - Overview.pptx**: 14 slides for the stakeholders and the management team (the challenge, the tool, how a month runs, the checks, attendance, the incentive, emails, every role, one-to-ones, privacy, daily reporting, the benefits, how to start), in the tool's look (its greys, white cards and orange; dark slides to open and close), with screenshots of the tool in laptop, window and phone frames, a fade between slides and every part rising in, one after another. The screenshots are made from the synthetic test data; `bash tools/deck/build.sh` makes the deck again from the current build. |
 
+## October 2026, security review
+
+The review followed a security skill adapted for this project from **Claude Code Cybersecurity Skills** by **Riyan Pratama
+(Masriyan / sudo3rs)** (MIT; <https://github.com/Masriyan/Claude-Code-CyberSecurity-Skill>). The adapted skill is in
+`.claude/skills/mc-security-review/`, with the original LICENSE and NOTICE; it is a modified version, not the author's
+release. Every finding was first shown on the build before the fix, with synthetic data, then fixed, and its test stays.
+
+| Area | What changed |
+|---|---|
+| Accounts in the shared folder | **Fixed (high).** The account files in MC Data are plain files that anyone with the folder can write. A file saying `"builtIn": true` was believed: the next time an admin signed in, the tool gave that account the team's data key and the admin role by itself, and the Accounts list showed it as built in (cannot be changed). Now "built in" comes only from the team copy's own settings, never from the file. The team copy's built-in admins are now the real admins (the roles in the staff-only directory). Before, it took the role written in the account file, so a planted `"role": "admin"` became a built-in admin of the next team copy and the real admins were left out. |
+| Backups | The .mcbak file is locked with 600 000 rounds (as the sign-in; OWASP's figure for PBKDF2-SHA256) instead of 250 000. The tool reads the count from the file, so backups made before still open, and a made-up count is refused. A backup made with this version needs this version or a later one to open. |
+| CSV files | The roster export and the daily exceptions: a cell whose text starts with `=`, `+`, `-` or `@` gets a leading `'`, so Excel shows it as text instead of running it as a formula. Every other cell is as before. |
+| Outlook drafts | A line break in an address or a file name can no longer start a header of its own. The addresses were already cleaned before; this guards the place that writes the headers. |
+| No network | Opened as a file, the page tells the browser to refuse any web address: only what is inside the file (`data:` and `blob:`) can be used, so not even a mistake or planted text could send data out. Every page was checked for every role: nothing the tool itself does is refused. The online page keeps its host's rules. |
+| Supply chain | The vendored GSAP is pinned by its SHA-256 (`npm test` fails if the file changes and the README does not); the CI workflow's token can only read. |
+| Checked, nothing to fix | **Text from files and from people** is escaped on every page, in the previews and in the email bodies; a test plants HTML in every name and opens every page as every role. **Encryption:** passwords use PBKDF2-SHA256 at 600 000 rounds with 16-byte salts, records use AES-GCM-256 with a new IV each time, keys use RSA-OAEP 2048. **Limits:** a backup cannot replace accounts or keys, and record names cannot leave the data folder. |
+
+**For the people who run it:**
+- Keep the HTML in the common folder read-only for everyone but its owner: whoever can replace the file controls every
+  session that signs in with it.
+- Admins should use long passphrases.
+- Keep backup passwords apart from sign-in passwords.
+
+Some risks stay open by design, and the skill lists each one with what would close it:
+- Staff share one data key.
+- The data key is never rotated.
+- Accounts moved from a browser's own storage are trusted on their first key.
+- Reopening someone's access trusts the key in their account file.
+
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.
 
@@ -150,8 +180,10 @@ node test/peek.cjs "final/MC Monthly Report Builder.html" test/shots            
 node test/rounding.cjs "final/MC Monthly Report Builder.html" test/shots /tmp/exports   # 94.99% counts as 95%, How this was counted, the rules' rounding, the exact days %, the Build month's KPI tab
 node test/attflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots    # attendance templates out and back, CC and SM from Genesys, the two-sheet attachment, no Month close card
 node test/datafolder.cjs "final/MC Monthly Report Builder.html" test/shots           # a cancelled, slow, silent or unreadable data folder, allowing it again; WFM team › Data export and import; the reading pill
+node test/xss.cjs "final/MC Monthly Report Builder.html" test/shots               # HTML planted in every name: nothing runs on any page, preview or email; Outlook headers; CSV formulas; the no-network rule
+node test/trust.cjs "final/MC Monthly Report Builder.html" test/shots             # accounts planted in the shared folder ("builtIn", "role") get no key, no role and no place in a team copy
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)
-npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the emails' workbooks, the one-page one-to-one
+npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
 ```
 
 They load the page with `window.__NOLOCK__` and `window.__ROSTER__` (the existing test hooks) and `window.__mcUser`,

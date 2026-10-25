@@ -49,7 +49,9 @@ const Auth = (() => {
   async function listRaw() {
     const snap = await db.collection('accounts').get();
     const out = [];
-    for (const d of snap.docs) { const a = d.data(); if (a && typeof a === 'object') out.push({ ...a, name: normSpace(a.name || '') || a.username || a.email || 'No name', id: d.id }); }   // every record: one without a username or email is listed too, to fix or remove
+    // every record: one without a username or email is listed too, to fix or remove. "Built in" is never taken from the file
+    // (anyone with the folder can write the accounts; putAcct never stores it): only this copy's team config makes an admin built in
+    for (const d of snap.docs) { const a = d.data(); if (a && typeof a === 'object') { const { builtIn, ...r } = a; out.push({ ...r, name: normSpace(r.name || '') || r.username || r.email || 'No name', id: d.id }); } }
     return out;
   }
   async function listAccts() {
@@ -716,7 +718,7 @@ const Auth = (() => {
   async function people() { try { return (await peopleAll()).map(({ hash, salt, algo, iter, pwSetAt, priv, grants, ...a }) => a); } catch (e) { return []; } }
   async function downloadTeamCopy() {
     if (!isAdmin() || !SRC.ok) return;
-    const admins = (await listAccts()).filter(a => (a.role === 'admin' || a.builtIn) && !a.disabled && a.hash)
+    const admins = (await peopleAll()).filter(a => a.role === 'admin' && !a.disabled && a.hash)   // the real roles (the staff-only directory, or built in), never the role field of the account file
       .map(a => ({ ...(a.email ? { email: normEmail(a.email) } : {}), ...(a.username ? { username: normUser(a.username) } : {}), name: a.name, algo: a.algo, iter: a.iter, salt: a.salt, hash: a.hash, pwSetAt: a.pwSetAt, createdAt: a.createdAt }));
     const team = { v: 2, madeAt: new Date().toISOString(), madeBy: user.name, admins, ...(userOnly ? { usernameOnly: true } : {}), ...(state.logo ? { logo: state.logo } : {}) };
     const html = teamCopyHtml(team);

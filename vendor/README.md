@@ -13,4 +13,8 @@ What the page uses it for (`js/motion.js`): the few things that move. A drawer o
 to a new value. Scrolling is the browser's own (Lenis, which made the wheel glide, was taken out with the Option A design:
 Apple's guidelines leave motion out of things done many times a day). With reduced motion set in the system, none of it runs.
 
-To update: `npm pack gsap@<version>`, copy `dist/gsap.min.js` here, and rebuild.
+To update: `npm pack gsap@<version>`, copy `dist/gsap.min.js` here, read what changed, record the new file's SHA-256 below
+(`sha256sum vendor/gsap.min.js`), and rebuild. `npm test` (test/supply.cjs) fails while the file and the line below differ, so
+a changed library is always a deliberate, reviewed step.
+
+SHA-256 of the reviewed `gsap.min.js`: `92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb`

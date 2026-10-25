@@ -9,6 +9,10 @@ on:
   pull_request:
     branches: [ "claude/build-request-nj4kyb" ]
 
+# the job only reads the code: its token cannot push, open releases or change settings
+permissions:
+  contents: read
+
 jobs:
   build:
 

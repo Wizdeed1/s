@@ -2294,7 +2294,7 @@ function exceptionsCsv(){
     x.label + ' at ' + String(x.at.getHours()).padStart(2,'0') + ':' + String(x.at.getMinutes()).padStart(2,'0')
       + (x.queue ? ' on ' + x.queue : '') + (x.outbound ? ' (outbound)' : '')));
 
-  const qq = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  const qq = v => { let s = String(v == null ? '' : v); if(typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };   // text that starts like a formula stays text in Excel
   return { csv: '﻿' + rows.map(r => r.map(qq).join(',')).join('\r\n'), count: rows.length - 2 };
 }
 
@@ -2569,7 +2569,7 @@ root.WFM = {
   hasFiles: () => Object.keys(state.files).length > 0 || state.unmatched.length > 0,
   panel,
   // for tests
-  _state: state, _build: build, _eml: buildEml, _settings: () => SET
+  _state: state, _build: build, _eml: buildEml, _csv: exceptionsCsv, _settings: () => SET
 };
 
 })(window);

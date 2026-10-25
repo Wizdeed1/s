@@ -4,6 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MC Monthly Report Builder</title>
+<script id="cspBoot">
+/* No network, kept by the browser itself: opened as a file (the common folder), the page may use only what is inside it (data:
+   and blob: addresses), and a request to any web address is refused, so no mistake or planted text could send the data
+   anywhere. The online page keeps the rules of the site that serves it. Plain old JavaScript, like the start guard. */
+(function () {
+  if (location.protocol !== 'file:') return;
+  var m = document.createElement('meta');
+  m.httpEquiv = 'Content-Security-Policy';
+  m.content = "default-src 'unsafe-inline' data: blob:; form-action 'none'; base-uri 'none'";
+  document.head.appendChild(m);
+})();
+</script>
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0b0c">
 <meta name="color-scheme" content="light dark">
@@ -7924,7 +7936,7 @@ function exceptionsCsv(){
     x.label + ' at ' + String(x.at.getHours()).padStart(2,'0') + ':' + String(x.at.getMinutes()).padStart(2,'0')
       + (x.queue ? ' on ' + x.queue : '') + (x.outbound ? ' (outbound)' : '')));
 
-  const qq = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  const qq = v => { let s = String(v == null ? '' : v); if(typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };   // text that starts like a formula stays text in Excel
   return { csv: '﻿' + rows.map(r => r.map(qq).join(',')).join('\r\n'), count: rows.length - 2 };
 }
 
@@ -8199,7 +8211,7 @@ root.WFM = {
   hasFiles: () => Object.keys(state.files).length > 0 || state.unmatched.length > 0,
   panel,
   // for tests
-  _state: state, _build: build, _eml: buildEml, _settings: () => SET
+  _state: state, _build: build, _eml: buildEml, _csv: exceptionsCsv, _settings: () => SET
 };
 
 })(window);
@@ -13182,7 +13194,7 @@ const SRC = (() => {   // the page's own source, for the team copy
   try {
     const me = document.currentScript && document.currentScript.textContent.includes('const Auth = (() =>') ? document.currentScript : [...document.scripts].find(x => x.textContent.includes('const Auth = (() =>'));
     const style = [...document.querySelectorAll('style')].find(x => x.textContent.includes('.lockcard'));
-    const head = [document.querySelector('title'), document.getElementById('themeBoot'), ...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]'), style].filter(Boolean).map(e => e.outerHTML).join('\n');
+    const head = [document.querySelector('title'), document.getElementById('cspBoot'), document.getElementById('themeBoot'), ...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]'), style].filter(Boolean).map(e => e.outerHTML).join('\n');
     const body = [...document.querySelectorAll('svg, #lock, a#skipLink, nav#sidebar, header.appbar, main#main, footer.sitefoot, nav#tabBar, #moreSheet, #scrim, div.dlg, div#find, aside.drawer, #toast, #tt, #pop, script#rb-data, script#rb-code, script#brand-assets')]
       .filter(e => (e.tagName.toLowerCase() !== 'svg' || e.querySelector('symbol#i-up')) && !(e.parentElement && e.parentElement.closest('#lock, nav#sidebar, header.appbar, main#main, aside.drawer, div.dlg, #moreSheet')))
       .map(e => e.outerHTML).join('\n');
@@ -13922,7 +13934,9 @@ const Auth = (() => {
   async function listRaw() {
     const snap = await db.collection('accounts').get();
     const out = [];
-    for (const d of snap.docs) { const a = d.data(); if (a && typeof a === 'object') out.push({ ...a, name: normSpace(a.name || '') || a.username || a.email || 'No name', id: d.id }); }   // every record: one without a username or email is listed too, to fix or remove
+    // every record: one without a username or email is listed too, to fix or remove. "Built in" is never taken from the file
+    // (anyone with the folder can write the accounts; putAcct never stores it): only this copy's team config makes an admin built in
+    for (const d of snap.docs) { const a = d.data(); if (a && typeof a === 'object') { const { builtIn, ...r } = a; out.push({ ...r, name: normSpace(r.name || '') || r.username || r.email || 'No name', id: d.id }); } }
     return out;
   }
   async function listAccts() {
@@ -14589,7 +14603,7 @@ const Auth = (() => {
   async function people() { try { return (await peopleAll()).map(({ hash, salt, algo, iter, pwSetAt, priv, grants, ...a }) => a); } catch (e) { return []; } }
   async function downloadTeamCopy() {
     if (!isAdmin() || !SRC.ok) return;
-    const admins = (await listAccts()).filter(a => (a.role === 'admin' || a.builtIn) && !a.disabled && a.hash)
+    const admins = (await peopleAll()).filter(a => a.role === 'admin' && !a.disabled && a.hash)   // the real roles (the staff-only directory, or built in), never the role field of the account file
       .map(a => ({ ...(a.email ? { email: normEmail(a.email) } : {}), ...(a.username ? { username: normUser(a.username) } : {}), name: a.name, algo: a.algo, iter: a.iter, salt: a.salt, hash: a.hash, pwSetAt: a.pwSetAt, createdAt: a.createdAt }));
     const team = { v: 2, madeAt: new Date().toISOString(), madeBy: user.name, admins, ...(userOnly ? { usernameOnly: true } : {}), ...(state.logo ? { logo: state.logo } : {}) };
     const html = teamCopyHtml(team);
@@ -15379,7 +15393,7 @@ async function save(filename, blob) { const c = await saveRaw(filename, blob); t
 
 // ---------------------------------------------------------------- roster import / export
 function rosterCsv() {
-  const cell = v => { const s = String(v ?? ''); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const cell = v => { let s = String(v ?? ''); if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };   // text that starts like a formula stays text in Excel
   const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || ''])];
   return '﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
@@ -16490,7 +16504,7 @@ function emlFile({ to, cc, subject, text, html, attach, logo }) {
   }
   const files = (Array.isArray(attach) ? attach : attach ? [attach] : []).filter(f => f && f.bytes);
   if (files.length) {
-    const parts = files.flatMap(f => { const fn = String(f.name).replace(/"/g, ''); return ['', `--${mix}`, `Content-Type: ${f.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}; name="${fn}"`, `Content-Disposition: attachment; filename="${fn}"`, 'Content-Transfer-Encoding: base64', '', b64(f.bytes)]; });
+    const parts = files.flatMap(f => { const fn = hdrSafe(f.name).replace(/"/g, ''); return ['', `--${mix}`, `Content-Type: ${f.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}; name="${fn}"`, `Content-Disposition: attachment; filename="${fn}"`, 'Content-Transfer-Encoding: base64', '', b64(f.bytes)]; });
     return [...H, `Content-Type: multipart/mixed; boundary="${mix}"`, '', `--${mix}`, ...body, ...parts, '', `--${mix}--`, ''].join('\r\n');
   }
   return [...H, ...body, ''].join('\r\n');
@@ -16980,7 +16994,8 @@ const addrList = s => String(s || '').split(/[;,\n]+/).map(x => normSpace(x)).fi
 function b64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/.{76}(?=.)/g, '$&\r\n'); }
 const enc8 = new TextEncoder();
 const hdrWord = s => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${b64(enc8.encode(s)).replace(/\r\n/g, '')}?=`);
-const hdrAddr = a => { const m = a.match(/^(.*?)\s*<([^>]+)>$/); return m && m[1] ? `${/^[\x20-\x7e]*$/.test(m[1]) ? `"${m[1].replace(/"/g, '')}"` : hdrWord(m[1])} <${m[2]}>` : a; };
+const hdrSafe = s => String(s ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ');   // no line break may start a header of its own in the draft
+const hdrAddr = a => { a = hdrSafe(a); const m = a.match(/^(.*?)\s*<([^>]+)>$/); return m && m[1] ? `${/^[\x20-\x7e]*$/.test(m[1]) ? `"${m[1].replace(/"/g, '')}"` : hdrWord(m[1])} <${m[2]}>` : a; };
 async function copyRich(html, text) {
   let fired = false;
   const onCopy = e => { e.clipboardData.setData('text/plain', text); if (html) e.clipboardData.setData('text/html', html); e.preventDefault(); fired = true; };
@@ -23831,13 +23846,13 @@ document.addEventListener('change', e => {
 Object.assign(state, { bkFiles: false, bkIn: null, bkBusy: '' });
 const canBackup = () => hasRole('admin', 'wfm', 'user');
 const BK_SKIP = new Set(['accounts', 'meta', 'akeys', 'dir']), BK_FILES = new Set(['upmeta', 'upfile', 'repmeta', 'repfile']);
-const BK_ITER = 250000;
+const BK_ITER = 600000;   // as the sign-in (OWASP's figure for PBKDF2-SHA256); a file says its own count, so older files (250 000) still open
 const bkB64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
 const bkUnB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 async function bkPipe(u8, ts) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(ts)).arrayBuffer()); }
-async function bkKey(pw, salt) {
+async function bkKey(pw, salt, iter = BK_ITER) {
   const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: BK_ITER }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
 /** the records to export: everything but the sign-in and the keys, and the kept files only when asked */
 async function bkRecords() {
@@ -23870,9 +23885,10 @@ async function bkOpen() {
   state.bkBusy = 'open'; renderBackupWs();
   try {
     let file; try { file = JSON.parse(await f.text()); } catch (e) { file = null; }
-    if (!file || file.kind !== 'mc-backup' || !file.data || !file.kdf) throw new Error(`${f.name} is not a backup made by this tool`);
+    const iter = Number(file && file.kdf && file.kdf.iter);   // the count the file was locked with, within reason (a made-up file cannot stall the page)
+    if (!file || file.kind !== 'mc-backup' || !file.data || !file.kdf || !(Number.isInteger(iter) && iter >= 100000 && iter <= 5000000)) throw new Error(`${f.name} is not a backup made by this tool`);
     let plain;
-    try { plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bkUnB64(file.iv) }, await bkKey(pw, bkUnB64(file.kdf.salt)), bkUnB64(file.data))); }
+    try { plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bkUnB64(file.iv) }, await bkKey(pw, bkUnB64(file.kdf.salt), iter), bkUnB64(file.data))); }
     catch (e) { throw new Error('the password is not the one this file was locked with'); }
     if (file.gz) plain = await bkPipe(plain, new DecompressionStream('gzip'));
     const d = JSON.parse(new TextDecoder().decode(plain)), recs = (d.records || []).filter(r => r && typeof r.path === 'string' && r.path.split('/').length % 2 === 0 && !BK_SKIP.has(r.path.split('/')[0]));

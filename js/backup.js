@@ -5,13 +5,13 @@
 Object.assign(state, { bkFiles: false, bkIn: null, bkBusy: '' });
 const canBackup = () => hasRole('admin', 'wfm', 'user');
 const BK_SKIP = new Set(['accounts', 'meta', 'akeys', 'dir']), BK_FILES = new Set(['upmeta', 'upfile', 'repmeta', 'repfile']);
-const BK_ITER = 250000;
+const BK_ITER = 600000;   // as the sign-in (OWASP's figure for PBKDF2-SHA256); a file says its own count, so older files (250 000) still open
 const bkB64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
 const bkUnB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 async function bkPipe(u8, ts) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(ts)).arrayBuffer()); }
-async function bkKey(pw, salt) {
+async function bkKey(pw, salt, iter = BK_ITER) {
   const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: BK_ITER }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
 /** the records to export: everything but the sign-in and the keys, and the kept files only when asked */
 async function bkRecords() {
@@ -44,9 +44,10 @@ async function bkOpen() {
   state.bkBusy = 'open'; renderBackupWs();
   try {
     let file; try { file = JSON.parse(await f.text()); } catch (e) { file = null; }
-    if (!file || file.kind !== 'mc-backup' || !file.data || !file.kdf) throw new Error(`${f.name} is not a backup made by this tool`);
+    const iter = Number(file && file.kdf && file.kdf.iter);   // the count the file was locked with, within reason (a made-up file cannot stall the page)
+    if (!file || file.kind !== 'mc-backup' || !file.data || !file.kdf || !(Number.isInteger(iter) && iter >= 100000 && iter <= 5000000)) throw new Error(`${f.name} is not a backup made by this tool`);
     let plain;
-    try { plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bkUnB64(file.iv) }, await bkKey(pw, bkUnB64(file.kdf.salt)), bkUnB64(file.data))); }
+    try { plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bkUnB64(file.iv) }, await bkKey(pw, bkUnB64(file.kdf.salt), iter), bkUnB64(file.data))); }
     catch (e) { throw new Error('the password is not the one this file was locked with'); }
     if (file.gz) plain = await bkPipe(plain, new DecompressionStream('gzip'));
     const d = JSON.parse(new TextDecoder().decode(plain)), recs = (d.records || []).filter(r => r && typeof r.path === 'string' && r.path.split('/').length % 2 === 0 && !BK_SKIP.has(r.path.split('/')[0]));

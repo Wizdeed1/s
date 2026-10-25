@@ -1,0 +1,12 @@
+<script id="cspBoot">
+/* No network, kept by the browser itself: opened as a file (the common folder), the page may use only what is inside it (data:
+   and blob: addresses), and a request to any web address is refused, so no mistake or planted text could send the data
+   anywhere. The online page keeps the rules of the site that serves it. Plain old JavaScript, like the start guard. */
+(function () {
+  if (location.protocol !== 'file:') return;
+  var m = document.createElement('meta');
+  m.httpEquiv = 'Content-Security-Policy';
+  m.content = "default-src 'unsafe-inline' data: blob:; form-action 'none'; base-uri 'none'";
+  document.head.appendChild(m);
+})();
+</script>

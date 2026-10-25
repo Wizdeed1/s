@@ -5,7 +5,7 @@ const SRC = (() => {   // the page's own source, for the team copy
   try {
     const me = document.currentScript && document.currentScript.textContent.includes('const Auth = (() =>') ? document.currentScript : [...document.scripts].find(x => x.textContent.includes('const Auth = (() =>'));
     const style = [...document.querySelectorAll('style')].find(x => x.textContent.includes('.lockcard'));
-    const head = [document.querySelector('title'), document.getElementById('themeBoot'), ...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]'), style].filter(Boolean).map(e => e.outerHTML).join('\n');
+    const head = [document.querySelector('title'), document.getElementById('cspBoot'), document.getElementById('themeBoot'), ...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]'), style].filter(Boolean).map(e => e.outerHTML).join('\n');
     const body = [...document.querySelectorAll('svg, #lock, a#skipLink, nav#sidebar, header.appbar, main#main, footer.sitefoot, nav#tabBar, #moreSheet, #scrim, div.dlg, div#find, aside.drawer, #toast, #tt, #pop, script#rb-data, script#rb-code, script#brand-assets')]
       .filter(e => (e.tagName.toLowerCase() !== 'svg' || e.querySelector('symbol#i-up')) && !(e.parentElement && e.parentElement.closest('#lock, nav#sidebar, header.appbar, main#main, aside.drawer, div.dlg, #moreSheet')))
       .map(e => e.outerHTML).join('\n');
@@ -1079,7 +1079,7 @@ async function save(filename, blob) { const c = await saveRaw(filename, blob); t
 
 // ---------------------------------------------------------------- roster import / export
 function rosterCsv() {
-  const cell = v => { const s = String(v ?? ''); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const cell = v => { let s = String(v ?? ''); if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };   // text that starts like a formula stays text in Excel
   const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || ''])];
   return '﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
@@ -2190,7 +2190,7 @@ function emlFile({ to, cc, subject, text, html, attach, logo }) {
   }
   const files = (Array.isArray(attach) ? attach : attach ? [attach] : []).filter(f => f && f.bytes);
   if (files.length) {
-    const parts = files.flatMap(f => { const fn = String(f.name).replace(/"/g, ''); return ['', `--${mix}`, `Content-Type: ${f.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}; name="${fn}"`, `Content-Disposition: attachment; filename="${fn}"`, 'Content-Transfer-Encoding: base64', '', b64(f.bytes)]; });
+    const parts = files.flatMap(f => { const fn = hdrSafe(f.name).replace(/"/g, ''); return ['', `--${mix}`, `Content-Type: ${f.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}; name="${fn}"`, `Content-Disposition: attachment; filename="${fn}"`, 'Content-Transfer-Encoding: base64', '', b64(f.bytes)]; });
     return [...H, `Content-Type: multipart/mixed; boundary="${mix}"`, '', `--${mix}`, ...body, ...parts, '', `--${mix}--`, ''].join('\r\n');
   }
   return [...H, ...body, ''].join('\r\n');
@@ -2680,7 +2680,8 @@ const addrList = s => String(s || '').split(/[;,\n]+/).map(x => normSpace(x)).fi
 function b64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/.{76}(?=.)/g, '$&\r\n'); }
 const enc8 = new TextEncoder();
 const hdrWord = s => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${b64(enc8.encode(s)).replace(/\r\n/g, '')}?=`);
-const hdrAddr = a => { const m = a.match(/^(.*?)\s*<([^>]+)>$/); return m && m[1] ? `${/^[\x20-\x7e]*$/.test(m[1]) ? `"${m[1].replace(/"/g, '')}"` : hdrWord(m[1])} <${m[2]}>` : a; };
+const hdrSafe = s => String(s ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ');   // no line break may start a header of its own in the draft
+const hdrAddr = a => { a = hdrSafe(a); const m = a.match(/^(.*?)\s*<([^>]+)>$/); return m && m[1] ? `${/^[\x20-\x7e]*$/.test(m[1]) ? `"${m[1].replace(/"/g, '')}"` : hdrWord(m[1])} <${m[2]}>` : a; };
 async function copyRich(html, text) {
   let fired = false;
   const onCopy = e => { e.clipboardData.setData('text/plain', text); if (html) e.clipboardData.setData('text/html', html); e.preventDefault(); fired = true; };

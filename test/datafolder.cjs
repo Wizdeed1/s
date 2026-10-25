@@ -3,7 +3,8 @@
 // 1. The folder picker cancelled: the screen says no folder was opened (it used to stay as it was, as if stuck).
 // 2. The folder set up, the first account (the admin), the roster.
 // 3. WFM team › Data: Export all data, locked with a password (opened here in Node: the records, and no accounts or keys);
-//    a roster record deleted, then Import with a wrong password (refused) and the right one (the record is back).
+//    a roster record deleted, then Import with a wrong password (refused) and the right one (the record is back); the file is
+//    locked at 600 000 rounds, a file from before (250 000) still opens and imports, and a made-up round count is refused.
 // 3b. Signed in again on a slowish folder: "Reading the shared data… N files" at the top of the page until it is all in.
 // 4. A slow folder: "Opening the shared data" with the seconds, the OneDrive hint after 10 s, then the sign-in.
 // 5. A folder that does not answer at all: after 20 s, what to check and Open the shared data again.
@@ -24,6 +25,14 @@ async function openBackup(file, pw) {
   const key = await webcrypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b(file.kdf.salt), iterations: file.kdf.iter }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
   const plain = Buffer.from(await webcrypto.subtle.decrypt({ name: 'AES-GCM', iv: b(file.iv) }, key, b(file.data)));
   return JSON.parse((file.gz ? zlib.gunzipSync(plain) : plain).toString('utf8'));
+}
+/** a .mcbak file locked the way a given version of the tool did (to check that older files still open) */
+async function lockBackup(D, pw, iter, like) {
+  const salt = webcrypto.getRandomValues(new Uint8Array(16)), iv = webcrypto.getRandomValues(new Uint8Array(12)), b = u8 => Buffer.from(u8).toString('base64');
+  const base = await webcrypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const key = await webcrypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+  const ct = new Uint8Array(await webcrypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, zlib.gzipSync(Buffer.from(JSON.stringify(D)))));
+  return { ...like, gz: true, kdf: { name: 'PBKDF2-SHA256', iter, salt: b(salt) }, iv: b(iv), data: b(ct) };
 }
 (async () => {
   const b = await chromium.launch(), ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', acceptDownloads: true }), errs = [];
@@ -93,6 +102,20 @@ async function openBackup(file, pw) {
   await p.waitForFunction(() => /^Imported/.test(document.getElementById('toastMsg').textContent), null, { timeout: 60000 });
   const back = await p.evaluate(async () => { const s = await window.__mc.state.db.doc('roster/p0').get(); return s.exists ? s.data().name : ''; });
   ok(back === name0 && /Imported \d+ records/.test(await p.textContent('#toastMsg')), `Import: the deleted record is back (${await p.textContent('#toastMsg')})`);
+  ok(file.kdf.name === 'PBKDF2-SHA256' && file.kdf.iter === 600000, `the file is locked with ${file.kdf.name} at ${file.kdf.iter} rounds`);
+  // a file made before (250 000 rounds) still opens and imports; a round count no file of the tool has is refused
+  const name1 = await p.evaluate(() => window.__mc.state.roster.find(x => x._id === 'p1').name), old = path.join(out, 'old.mcbak'), odd = path.join(out, 'odd.mcbak');
+  fs.writeFileSync(old, JSON.stringify(await lockBackup(D, bpw, 250000, file))); fs.writeFileSync(odd, JSON.stringify({ ...file, kdf: { ...file.kdf, iter: 2e9 } }));
+  await p.evaluate(() => window.__mc.state.db.doc('roster/p1').delete());
+  await p.waitForFunction(n => window.__mc.state.roster.length === n - 1, nRoster, { timeout: 15000 });
+  await p.setInputFiles('#bkFile', old); await p.fill('#bkInPw', bpw); await p.click('#bkOpen');
+  await p.waitForSelector('#bkImport', { timeout: 30000 }); await p.evaluate(() => { document.getElementById('toastMsg').textContent = ''; }); await p.click('#bkImport');
+  await p.waitForFunction(() => /^Imported/.test(document.getElementById('toastMsg').textContent), null, { timeout: 60000 });
+  const back1 = await p.evaluate(async () => { const s = await window.__mc.state.db.doc('roster/p1').get(); return s.exists ? s.data().name : ''; });
+  ok(back1 === name1, `a backup from before (250 000 rounds) opens and imports: the record is back (${back1 ? 'yes' : 'no'})`);
+  await p.setInputFiles('#bkFile', odd); await p.fill('#bkInPw', bpw); await p.click('#bkOpen');
+  await p.waitForFunction(() => /not a backup made by this tool/.test(document.getElementById('toastMsg').textContent), null, { timeout: 30000 }).catch(() => {});
+  ok(/not a backup made by this tool/.test(await p.textContent('#toastMsg')) && !(await p.$('#bkImport')), 'a file with a made-up round count is refused at once');
   // ---- 3b. after the sign-in on a slowish folder: the page says it is still reading, then the pill goes
   await flags({ 't-slow': '150' });
   await p.goto(URL);

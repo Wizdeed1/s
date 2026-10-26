@@ -1080,7 +1080,7 @@ async function save(filename, blob) { const c = await saveRaw(filename, blob); t
 // ---------------------------------------------------------------- roster import / export
 function rosterCsv() {
   const cell = v => { let s = String(v ?? ''); if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };   // text that starts like a formula stays text in Excel
-  const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || ''])];
+  const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base', 'Joining date'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || '', p.joined || ''])];
   return '﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 async function importRosterFile(file, o = {}) {
@@ -1105,13 +1105,13 @@ function prepareMerge(rows, src) {
   const seen = new Set();
   for (const x of rows) {
     const name = normSpace(x.name); if (!name) continue;
-    const inc = { name, nid: x.id || '', brand: x.team || '', team: x.dep || '', sys: normSpace(x.sys), status: x.status || '', email: x.email || '', base: x.base || null, spvName: x.spvName || '' };
+    const inc = { name, nid: x.id || '', brand: x.team || '', team: x.dep || '', sys: normSpace(x.sys), status: x.status || '', email: x.email || '', base: x.base || null, spvName: x.spvName || '', joined: x.joined || '' };
     const cur = (inc.nid && byId.get(inc.nid)) || byName.get(normName(name)) || (inc.sys && byName.get(normName(inc.sys)));
     if (cur && seen.has(cur._id)) continue;
-    if (!cur) { const { spvName, ...rest } = inc; plan.adds.push({ ...rest, brand: inc.brand || 'Virgin', team: inc.team || 'CC', status: inc.status || 'Active', ...(inc.base ? {} : { base: undefined }) }); if (spvName) (plan.sup = plan.sup || []).push([name, spvName]); continue; }
+    if (!cur) { const { spvName, ...rest } = inc; plan.adds.push({ ...rest, ...(rest.joined ? {} : { joined: undefined }), brand: inc.brand || 'Virgin', team: inc.team || 'CC', status: inc.status || 'Active', ...(inc.base ? {} : { base: undefined }) }); if (spvName) (plan.sup = plan.sup || []).push([name, spvName]); continue; }
     seen.add(cur._id);
     const patch = {};
-    for (const f of ['name', 'nid', 'brand', 'team', 'sys', 'status', 'email']) if (inc[f] && normSpace(cur[f]) !== inc[f] && !(f === 'nid' && Core.cleanId(cur.nid) === inc.nid)) patch[f] = inc[f];
+    for (const f of ['name', 'nid', 'brand', 'team', 'sys', 'status', 'email', 'joined']) if (inc[f] && normSpace(cur[f]) !== inc[f] && !(f === 'nid' && Core.cleanId(cur.nid) === inc.nid)) patch[f] = inc[f];
     if (inc.base && +cur.base !== inc.base) patch.base = inc.base;
     if (inc.spvName && normName(supName(cur.spv)) !== normName(inc.spvName)) (plan.sup = plan.sup || []).push([cur.name, inc.spvName]);
     if (Object.keys(patch).length) plan.updates.push({ id: cur._id, name: cur.name, patch }); else if (!(inc.spvName && normName(supName(cur.spv)) !== normName(inc.spvName))) plan.same++;
@@ -1122,7 +1122,7 @@ function prepareMerge(rows, src) {
   $('confirmBody').innerHTML = `<p style="margin:0">From <b>${esc(src)}</b>: ${plural(rows.length, 'person', 'people')}.</p>
     <div class="minis"><div><b>${plan.adds.length}</b><span>new</span></div><div><b>${plan.updates.length}</b><span>updated</span></div><div><b>${plan.same}</b><span>unchanged</span></div><div><b>${rosterRows().length}</b><span>on the roster now</span></div></div>
     ${plan.adds.length ? `<section class="sec"><h3>New</h3><ul class="ilist">${lim(plan.adds, a => `<li><span class="nm" dir="auto">${esc(a.name)}</span><span class="sg">${esc(a.brand)} · ${esc(a.team)}</span></li>`)}</ul></section>` : ''}
-    ${plan.updates.length ? `<section class="sec"><h3>Updated</h3><ul class="ilist">${lim(plan.updates, u => `<li><span class="nm" dir="auto">${esc(u.name)}</span><span class="sg">${esc(Object.entries(u.patch).map(([k, v]) => `${{ nid: 'ID', sys: 'system name' }[k] || k}: ${v}`).join(', '))}</span></li>`)}</ul></section>` : ''}
+    ${plan.updates.length ? `<section class="sec"><h3>Updated</h3><ul class="ilist">${lim(plan.updates, u => `<li><span class="nm" dir="auto">${esc(u.name)}</span><span class="sg">${esc(Object.entries(u.patch).map(([k, v]) => `${{ nid: 'ID', sys: 'system name', joined: 'joined' }[k] || k}: ${k === 'joined' ? Forms.fmtDate(v) : v}`).join(', '))}</span></li>`)}</ul></section>` : ''}
     <p class="hint">People on the roster who are not in the file stay as they are. Empty cells in the file do not clear anything. Tip: use Export roster first to keep a backup.</p>`;
   $('confirmOk').disabled = !total; $('confirmOk').textContent = total ? `Import ${plural(total, 'change')}` : 'Nothing to import';
   openDrawer('dConfirm');
@@ -1735,7 +1735,7 @@ function computeKpi() {
     const vals = { adh: m.avg, adhUnder: m.adh ? m.adh.filter(v => v != null && v < target).length : null, aht: m.aht, tardy: cnt ? cnt.tardyMin : null, file };
     const ar = attByPid.get(m.p._id);   // the days as the month's rules count them (attended: the penalty for absence is taken in Kpi.score)
     const res = Kpi.score(card, vals, ar && ar.has ? { sched: ar.sched, attended: ar.attended, absent: ar.absent, runs: ar.runs } : null, baseOf(m.p, null, k0), countFor(k0));
-    res.elig = eligibility(res, qRow(k0, m.p._id), null, k0);
+    res.elig = eligibility(res, qRow(k0, m.p._id), null, k0, m.p);
     if (!res.elig.ok && res.earned != null) { res.earnedCalc = res.earned; res.earned = 0; }
     out.set(m.p._id, { m, card, fileRow: fr, res });
   }
@@ -1767,6 +1767,8 @@ function kpiNotes(add) {
   if (!state.model) return;
   const shown = state.model.filter(m => m.shown), noCard = [...new Set(shown.filter(m => !cardFor(m.p.team, monthKey()) && !['MG', 'OP'].includes(m.p.team)).map(m => m.p.team || '–'))];
   if (noCard.length) add({ id: 'kpi:nocard', sev: 'info', group: 'Scorecards', title: `No scorecard yet for ${noCard.join(', ')}`, body: 'Their KPI results are left out until a scorecard is added in Settings › Scorecards.' });
+  const mm = rulesFor(monthKey()).elig.minMonths, noJoin = mm > 0 ? shown.filter(m => cardFor(m.p.team, monthKey()) && !m.p.joined) : [];
+  if (noJoin.length) add({ id: 'kpi:nojoin', sev: 'info', group: 'Scorecards', title: `No joining date for ${plural(noJoin.length, 'person', 'people')}`, body: `The incentive starts after ${mm} months in the job, counted from the joining date on the roster. Without one the rule is not checked: ${noJoin.slice(0, 6).map(m => m.exp).join(', ')}${noJoin.length > 6 ? ` and ${noJoin.length - 6} more` : ''}. Add it on each person's page (Edit), or import the roster with a "Joining date" column.` });
   const miss = new Map();
   for (const K of state.kpi.values()) for (const x of K.res.rows) if (x.r == null) { if (!miss.has(x.k.name)) miss.set(x.k.name, []); miss.get(x.k.name).push(K.m.exp); }
   if (!miss.size) return;
@@ -2961,11 +2963,12 @@ function profileHtml(p) {
       <span>${normSpace(p.sys) && normName(p.sys) !== normName(p.name) ? `Roster name: <span dir="auto">${esc(p.name)}</span> · ` : ''}${esc(DEP_NAMES[p.team] || p.team || '')}</span></div>
       <button class="sw" role="switch" aria-checked="${on}" data-psw aria-label="Status"><i></i>${on ? 'Active' : 'Inactive'}</button></div>
     <div class="pfacts"><div><span>National ID</span><b class="num">${id ? esc(id) : '<span class="warnline">Missing</span>'}</b>${filled ? '<small>from the IDs file</small>' : ''}</div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b><small>${esc(DEP_NAMES[p.team] || '')}</small></div><div><span>Genesys name</span><b dir="auto">${esc(gname(p) || '–')}</b><small dir="auto">${normSpace(p.sys) ? 'system name' : 'same as the roster'}${akaOf(p).length ? ` · also written ${esc(akaOf(p).join(', '))}` : ''}</small></div></div>
-    <details class="pedit"${state.peditOpen ? ' open' : ''}><summary>Edit name, ID, brand and team</summary><div class="pfields">
+    <details class="pedit"${state.peditOpen ? ' open' : ''}><summary>Edit name, ID, brand, team and joining date</summary><div class="pfields">
       ${fld('name', 'Name', p.name, 'dir="auto" placeholder="Full name"')}${fld('nid', 'National ID', p.nid, 'inputmode="numeric" placeholder="10 digits or NA"')}
       ${sel('brand', 'Brand', BRANDS, p.brand)}${sel('team', 'Team', DEP_ORDER, p.team, DEP_NAMES)}
       ${fld('sys', 'System name (Genesys)', p.sys, 'dir="auto" list="sysNames" autocomplete="off" placeholder="Same as the name"')}
       ${fld('spvName', 'Supervisor', supName(p.spv), 'list="supNames" dir="auto" placeholder="–"')}${fld('email', 'Work email', p.email || '', 'type="email" placeholder="name@company.com" spellcheck="false"')}
+      ${fld('joined', 'Joining date', p.joined || '', `type="date" min="1990-01-01" max="2100-12-31" title="${(n => (n > 0 ? `The incentive starts the month after ${n} months in the job` : 'The rules do not count time in the job'))(rulesFor(monthKey()).elig.minMonths)}"`)}
       ${fld('base', 'Incentive base (SR)', p.base || '', `inputmode="numeric" placeholder="${basesNow()[normBrand(p.brand)] ?? 1000} (the brand's)"`)}
       <div class="pfoot"><span class="hint">Saved as you leave each field. The Genesys name is what the exports are matched on.</span><button class="btn sm ghost danger" data-premove>Remove from the roster</button></div></div></details></section>`;
 }
@@ -3886,9 +3889,9 @@ $('scoreBody').addEventListener('change', e => {
   if (el.dataset.base) { const v = parseFloat(el.value), b = el.dataset.base, old = { ...BASES0, ...(C.bases || {}) }[b]; if (!(Number.isFinite(v) && v >= 0)) { renderScore(); return; } C.bases = { ...(C.bases || {}), [b]: v }; if (b === 'Virgin') C.base = v; scoreChanged(`Incentive base for ${b}: ${old} → ${v} SR`); return; }
   if (el.dataset.eligf) {
     const f = el.dataset.eligf, raw = parseFloat(el.value); if (!(Number.isFinite(raw) && raw >= 0)) { renderScore(); return; }
-    const v = f === 'minFinal' ? Math.min(1, raw / 100) : Math.round(raw), ek = ruleEditKey(), tgt = ek ? state.rules[ek] : state.cards, old = { ...ELIG0, ...(tgt.elig || {}) }[f];
+    const v = f === 'minFinal' ? Math.min(1, raw / 100) : f === 'minMonths' ? Math.min(60, Math.round(raw)) : Math.round(raw), ek = ruleEditKey(), tgt = ek ? state.rules[ek] : state.cards, old = { ...ELIG0, ...(tgt.elig || {}) }[f];
     tgt.elig = { ...ELIG0, ...(tgt.elig || {}), [f]: v };
-    scoreChanged(f === 'minFinal' ? `Lowest final % for the incentive: ${pct1(old)} → ${pct1(v)}` : `Fewest days attended for the incentive: ${old} → ${v}`); return;
+    scoreChanged(f === 'minFinal' ? `Lowest final % for the incentive: ${pct1(old)} → ${pct1(v)}` : f === 'minMonths' ? `Months in the job before the incentive: ${old} → ${v}` : `Fewest days attended for the incentive: ${old} → ${v}`); return;
   }
   if (el.id === 'scTitle') { const old = card.title; card.title = normSpace(el.value) || card.title; scoreChanged(`${T}: scorecard name "${old}" → "${card.title}"`); return; }
   const tr = el.closest('tr[data-ki]'); if (!tr) return; const k = card.kpis[+tr.dataset.ki];
@@ -3960,6 +3963,14 @@ $('personBody').addEventListener('change', e => {
   if (f === 'spvName') { commitSup(state.personId, normSpace(e.target.value), e.target); refresh(); return; }
   if (f === 'base') { const n = normSpace(e.target.value) === '' ? null : Math.round(+e.target.value); if (n != null && !(n > 0)) { toast('Type the base in SR, or leave it empty for the brand\'s.'); return; } updatePerson(state.personId, { base: n }); return; }
   if (f === 'email' && normSpace(e.target.value) && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normSpace(e.target.value))) { toast('That does not look like an email address.'); return; }
+  if (f === 'joined') {
+    const v = normSpace(e.target.value) === '' ? '' : Core.cleanDate(e.target.value), p = state.roster.find(x => x._id === state.personId); if (!p) return;
+    if (normSpace(e.target.value) !== '' && !v) { toast('Type the joining date as a date, like 18/01/2026.'); return; }
+    if ((p.joined || '') === v) return;
+    const prev = p.joined || ''; updatePerson(p._id, { joined: v });
+    const from = eligFrom({ joined: v }, rulesFor(monthKey()).elig.minMonths);
+    toast(v ? `Joined ${Forms.fmtDate(v)}${from ? `: earns the incentive from ${ymLabel(from)}` : ''}.` : 'Joining date cleared.', { label: 'Undo', fn: () => updatePerson(p._id, { joined: prev }) }); return;
+  }
   const v = f === 'brand' || f === 'team' ? e.target.value : normSpace(e.target.value);
   const p = state.roster.find(x => x._id === state.personId); if (!p || (p[f] ?? '') === v) return;
   const prev = p[f] ?? '';
@@ -4058,7 +4069,7 @@ renderBrand();
 render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
-window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, rb: () => RB };   // for testing
+window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
 Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing

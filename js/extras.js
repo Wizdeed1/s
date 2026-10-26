@@ -47,21 +47,28 @@ const ATTITUDE = /attitude|abuse|hr action/i;
 function attitudeRe(k) { const a = countFor(k).attitude; if (!a) return null; if (a === COUNT_DEF.attitude) return ATTITUDE; try { return new RegExp(a, 'i'); } catch (e) { return ATTITUDE; } }
 /** who earns the incentive, in words, from the month's rules ('final under 80%, an attitude critical error, under 5 days attended') */
 function eligText(k, form) {
-  const R = rulesFor(k === undefined ? rulesK() : k), E = R.elig, att = R.count.attitude ? 'an attitude critical error' : '', dw = R.count.eligDays === 'counted' ? 'counted' : 'attended';
-  if (form === 'long') return `a final % under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}or fewer than ${E.minDays} days ${dw}`;
-  if (form === 'help') return `a final under ${pct1(E.minFinal)}, ${att ? att + ' ' : ''}or fewer than ${E.minDays} days ${dw}`.replace(', or', ' or');
-  if (form === 'short') return `Final under ${pct1(E.minFinal)}, ${att ? 'an attitude error ' : ''}or too few days`.replace(', or', ' or');
-  return `final under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}under ${E.minDays} days ${dw}`;
+  const R = rulesFor(k === undefined ? rulesK() : k), E = R.elig, att = R.count.attitude ? 'an attitude critical error' : '', dw = R.count.eligDays === 'counted' ? 'counted' : 'attended', ten = E.minMonths > 0 ? E.minMonths : 0;
+  if (form === 'long') return `a final % under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}${ten ? `fewer than ${E.minDays} days ${dw} or under ${ten} months in the job` : `or fewer than ${E.minDays} days ${dw}`}`;
+  if (form === 'help') return `a final under ${pct1(E.minFinal)}, ${att ? att + ' ' : ''}${ten ? `fewer than ${E.minDays} days ${dw} or under ${ten} months in the job` : `or fewer than ${E.minDays} days ${dw}`}`.replace(', or', ' or');
+  if (form === 'short') return `Final under ${pct1(E.minFinal)}, ${att ? 'an attitude error ' : ''}${ten ? `too few days or under ${ten} months in the job` : 'or too few days'}`.replace(', or', ' or');
+  return `final under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}under ${E.minDays} days ${dw}${ten ? `, under ${ten} months in the job` : ''}`;
 }
-/** the quality sheet's barriers: final under 80%, an attitude critical error, fewer than 5 days attended (the month's rules can
-    change the numbers, the critical error types and whether the days are those attended or those counted after an absence
-    penalty). adj.elig = the senior manager's decision */
-function eligibility(res, q, adj, k) {
-  const why = [], R = rulesFor(k === undefined ? rulesK() : k), E = R.elig, AT = attitudeRe(k);
+/** the first month someone earns the incentive under the months-in-the-job rule: n months after the month they joined, so the month
+    after the n months are done (joined 18 Jan 2026, 6 months: from Jul 2026). '' with no joining date on the roster or no rule */
+function eligFrom(p, n) {
+  const m = /^(\d{4})-(\d{2})-\d{2}$/.exec((p && p.joined) || ''); n = Math.round(+n); if (!m || !(n > 0)) return '';
+  const t = +m[1] * 12 + +m[2] - 1 + n; return ymKey(Math.floor(t / 12), (t % 12) + 1);
+}
+/** the quality sheet's barriers: final under 80%, an attitude critical error, fewer than 5 days attended, and under 6 months in the
+    job (the month's rules can change the numbers, the critical error types and whether the days are those attended or those counted
+    after an absence penalty). p = the person (their joining date); adj.elig = the senior manager's decision */
+function eligibility(res, q, adj, k, p) {
+  const K = k === undefined ? rulesK() : k, why = [], R = rulesFor(K), E = R.elig, AT = attitudeRe(k), from = eligFrom(p, E.minMonths);
   if (res && res.finalPct != null && res.finalPct < E.minFinal - 1e-9) why.push(`final ${pct1(res.finalPct)} is under ${pct1(E.minFinal)}`);
   if (AT && q && (q.crit || []).some(c => AT.test(c.type || ''))) why.push('attitude critical error');
   const cnt = R.count.eligDays === 'counted', days = res ? (cnt || res.attended === undefined ? res.actual : res.attended) : null;
   if (res && days != null && res.sched != null && days < E.minDays) why.push(cnt ? `${days} days counted` : `${days} days attended`);
+  if (from && K && K < from) why.push(`joined ${Forms.fmtDate(p.joined)}: earns from ${ymLabel(from)}`);
   if (adj && adj.elig === true) return { ok: true, why, forced: true };
   if (adj && adj.elig === false) return { ok: false, why: why.length ? why : ['not eligible (senior manager)'], forced: true };
   return { ok: !why.length, why };

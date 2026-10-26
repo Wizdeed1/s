@@ -24,6 +24,22 @@ const daysIn = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 const EPOCH = Date.UTC(1899, 11, 30);
 const serialToDate = n => new Date(EPOCH + Math.round(n * 86400000));
 const ymdSerial = (y, m, d) => (Date.UTC(y, m - 1, d) - EPOCH) / 86400000;
+/** a date cell -> 'YYYY-MM-DD' ('' when it is not one): a date, an Excel serial, 2026-01-18, 18/01/2026 (day first, unless only
+    the second number can be a month's day: 01/18/2026), 18-Jan-2026, 18 January 2026, Jan 18, 2026 */
+function cleanDate(v) {
+  const ok = (y, m, d) => (y >= 1990 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= daysIn(y, m) ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : '');
+  const ofDate = d => ok(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  if (v instanceof Date) return isNaN(v) ? '' : ofDate(v);
+  if (typeof v === 'number') return v > 20000 && v < 80000 ? ofDate(serialToDate(v)) : '';
+  const s = normSpace(v), mon = w => MON.findIndex(x => x.toLowerCase() === String(w).slice(0, 3).toLowerCase()) + 1;
+  let m;
+  if ((m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T].*)?$/.exec(s))) return ok(+m[1], +m[2], +m[3]);
+  if ((m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})(?: .*)?$/.exec(s))) return +m[1] <= 12 && +m[2] > 12 ? ok(+m[3], +m[1], +m[2]) : ok(+m[3], +m[2], +m[1]);
+  if ((m = /^(\d{1,2})[-\s]+([a-z]{3,})\.?[-\s,]+(\d{4})$/i.exec(s))) return mon(m[2]) ? ok(+m[3], mon(m[2]), +m[1]) : '';
+  if ((m = /^([a-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})$/i.exec(s))) return mon(m[1]) ? ok(+m[3], mon(m[1]), +m[2]) : '';
+  if (/^\d{5}(\.\d+)?$/.test(s)) return cleanDate(+s);
+  return '';
+}
 const weekday = (y, m, d) => WD[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
 const round6 = x => Math.round(x * 1e6) / 1e6;
 function colName(n) { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - m - 1) / 26; } return s; }
@@ -420,11 +436,13 @@ function parseRoster(rows) {
   const g = groupCols(hdr, body, ic.groups);
   const col = re => hdr.findIndex(x => re.test(normSpace(x)));
   const em = col(/^(e-?mail|email address|work email)$/i), sp = col(/^(supervisor|team lead(er)?|leader|spv|direct (manager|leader))$/i), bs = col(/^(incentive base|base|incentive base \(sr\))$/i);
+  const jd = col(/^(joining date|join date|date of joining|doj|joined|joined on|hire date|hiring date|date of hire|date joined|start date|joining)$/i);
   return body.map(r => ({
     name: normSpace(r[ic.name]), id: cleanId(r[ic.id]), sys: ic.sys >= 0 ? normSpace(r[ic.sys]) : '',
     team: g.team >= 0 ? normTeam(r[g.team]) : '', dep: g.dep >= 0 ? normDep(r[g.dep]) : '',
     status: ic.status >= 0 ? normStatus(r[ic.status]) : '',
     email: em >= 0 ? normSpace(r[em]).toLowerCase() : '', spvName: sp >= 0 ? normSpace(r[sp]) : '', base: bs >= 0 && Number.isFinite(+r[bs]) && +r[bs] > 0 ? +r[bs] : null,
+    joined: jd >= 0 ? cleanDate(r[jd]) : '',
   }));
 }
 
@@ -1023,7 +1041,7 @@ function buildModel(dets, settings, overrides = {}) {
   };
 }
 
-return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, daysIn, ymdSerial, weekday, colName, ref, round6,
+return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, cleanDate, daysIn, ymdSerial, weekday, colName, ref, round6,
   readZip, writeZip, crc32, readXlsx, readXlsb, parseCSV, parseHeaderDate, adhVal, ahtSeconds, normAtt, attCat, normDep, normTeam, normStatus, parseAttTemplate, ATT_TPL_MARK,
   analyzeFile, readTables, analyzeTables, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
 })();

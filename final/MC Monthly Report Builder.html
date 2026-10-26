@@ -3546,7 +3546,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
     </section>
     <section>
       <h3>Incentive rules</h3>
-      <p>The scorecards (KPIs, weights, bands), the incentive bases and who earns the incentive (lowest final %, fewest days attended) are one set of rules. Only the senior manager or an admin changes them (<b>Supervisors › Incentive rules</b>, or Settings › Scorecards); everyone else sees them read-only. <b>Start new rules from</b> a month: that month and the ones after it use the new set, the months before keep theirs, and a final month never changes. Every change is logged.</p>
+      <p>The scorecards (KPIs, weights, bands), the incentive bases and who earns the incentive (lowest final %, fewest days attended, months in the job: 6 by default, so someone who joined on 18 January earns from July, which needs the joining date on the roster) are one set of rules. The absence penalty (How it is counted) takes days off the actual days for each Absent day, never for SL or another leave: with 4, one absent day out of 22 leaves 21 − 4 = 17 days. Only the senior manager or an admin changes them (<b>Supervisors › Incentive rules</b>, or Settings › Scorecards); everyone else sees them read-only. <b>Start new rules from</b> a month: that month and the ones after it use the new set, the months before keep theirs, and a final month never changes. Every change is logged.</p>
     </section>
     <section>
       <h3>Reconcile with the old Excel, and the EVAL with IDs</h3>
@@ -8952,6 +8952,22 @@ const daysIn = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 const EPOCH = Date.UTC(1899, 11, 30);
 const serialToDate = n => new Date(EPOCH + Math.round(n * 86400000));
 const ymdSerial = (y, m, d) => (Date.UTC(y, m - 1, d) - EPOCH) / 86400000;
+/** a date cell -> 'YYYY-MM-DD' ('' when it is not one): a date, an Excel serial, 2026-01-18, 18/01/2026 (day first, unless only
+    the second number can be a month's day: 01/18/2026), 18-Jan-2026, 18 January 2026, Jan 18, 2026 */
+function cleanDate(v) {
+  const ok = (y, m, d) => (y >= 1990 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= daysIn(y, m) ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : '');
+  const ofDate = d => ok(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  if (v instanceof Date) return isNaN(v) ? '' : ofDate(v);
+  if (typeof v === 'number') return v > 20000 && v < 80000 ? ofDate(serialToDate(v)) : '';
+  const s = normSpace(v), mon = w => MON.findIndex(x => x.toLowerCase() === String(w).slice(0, 3).toLowerCase()) + 1;
+  let m;
+  if ((m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T].*)?$/.exec(s))) return ok(+m[1], +m[2], +m[3]);
+  if ((m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})(?: .*)?$/.exec(s))) return +m[1] <= 12 && +m[2] > 12 ? ok(+m[3], +m[1], +m[2]) : ok(+m[3], +m[2], +m[1]);
+  if ((m = /^(\d{1,2})[-\s]+([a-z]{3,})\.?[-\s,]+(\d{4})$/i.exec(s))) return mon(m[2]) ? ok(+m[3], mon(m[2]), +m[1]) : '';
+  if ((m = /^([a-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})$/i.exec(s))) return mon(m[1]) ? ok(+m[3], mon(m[1]), +m[2]) : '';
+  if (/^\d{5}(\.\d+)?$/.test(s)) return cleanDate(+s);
+  return '';
+}
 const weekday = (y, m, d) => WD[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
 const round6 = x => Math.round(x * 1e6) / 1e6;
 function colName(n) { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - m - 1) / 26; } return s; }
@@ -9348,11 +9364,13 @@ function parseRoster(rows) {
   const g = groupCols(hdr, body, ic.groups);
   const col = re => hdr.findIndex(x => re.test(normSpace(x)));
   const em = col(/^(e-?mail|email address|work email)$/i), sp = col(/^(supervisor|team lead(er)?|leader|spv|direct (manager|leader))$/i), bs = col(/^(incentive base|base|incentive base \(sr\))$/i);
+  const jd = col(/^(joining date|join date|date of joining|doj|joined|joined on|hire date|hiring date|date of hire|date joined|start date|joining)$/i);
   return body.map(r => ({
     name: normSpace(r[ic.name]), id: cleanId(r[ic.id]), sys: ic.sys >= 0 ? normSpace(r[ic.sys]) : '',
     team: g.team >= 0 ? normTeam(r[g.team]) : '', dep: g.dep >= 0 ? normDep(r[g.dep]) : '',
     status: ic.status >= 0 ? normStatus(r[ic.status]) : '',
     email: em >= 0 ? normSpace(r[em]).toLowerCase() : '', spvName: sp >= 0 ? normSpace(r[sp]) : '', base: bs >= 0 && Number.isFinite(+r[bs]) && +r[bs] > 0 ? +r[bs] : null,
+    joined: jd >= 0 ? cleanDate(r[jd]) : '',
   }));
 }
 
@@ -9951,7 +9969,7 @@ function buildModel(dets, settings, overrides = {}) {
   };
 }
 
-return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, daysIn, ymdSerial, weekday, colName, ref, round6,
+return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, cleanDate, daysIn, ymdSerial, weekday, colName, ref, round6,
   readZip, writeZip, crc32, readXlsx, readXlsb, parseCSV, parseHeaderDate, adhVal, ahtSeconds, normAtt, attCat, normDep, normTeam, normStatus, parseAttTemplate, ATT_TPL_MARK,
   analyzeFile, readTables, analyzeTables, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
 })();
@@ -15401,7 +15419,7 @@ async function save(filename, blob) { const c = await saveRaw(filename, blob); t
 // ---------------------------------------------------------------- roster import / export
 function rosterCsv() {
   const cell = v => { let s = String(v ?? ''); if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };   // text that starts like a formula stays text in Excel
-  const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || ''])];
+  const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base', 'Joining date'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || '', p.joined || ''])];
   return '﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 async function importRosterFile(file, o = {}) {
@@ -15426,13 +15444,13 @@ function prepareMerge(rows, src) {
   const seen = new Set();
   for (const x of rows) {
     const name = normSpace(x.name); if (!name) continue;
-    const inc = { name, nid: x.id || '', brand: x.team || '', team: x.dep || '', sys: normSpace(x.sys), status: x.status || '', email: x.email || '', base: x.base || null, spvName: x.spvName || '' };
+    const inc = { name, nid: x.id || '', brand: x.team || '', team: x.dep || '', sys: normSpace(x.sys), status: x.status || '', email: x.email || '', base: x.base || null, spvName: x.spvName || '', joined: x.joined || '' };
     const cur = (inc.nid && byId.get(inc.nid)) || byName.get(normName(name)) || (inc.sys && byName.get(normName(inc.sys)));
     if (cur && seen.has(cur._id)) continue;
-    if (!cur) { const { spvName, ...rest } = inc; plan.adds.push({ ...rest, brand: inc.brand || 'Virgin', team: inc.team || 'CC', status: inc.status || 'Active', ...(inc.base ? {} : { base: undefined }) }); if (spvName) (plan.sup = plan.sup || []).push([name, spvName]); continue; }
+    if (!cur) { const { spvName, ...rest } = inc; plan.adds.push({ ...rest, ...(rest.joined ? {} : { joined: undefined }), brand: inc.brand || 'Virgin', team: inc.team || 'CC', status: inc.status || 'Active', ...(inc.base ? {} : { base: undefined }) }); if (spvName) (plan.sup = plan.sup || []).push([name, spvName]); continue; }
     seen.add(cur._id);
     const patch = {};
-    for (const f of ['name', 'nid', 'brand', 'team', 'sys', 'status', 'email']) if (inc[f] && normSpace(cur[f]) !== inc[f] && !(f === 'nid' && Core.cleanId(cur.nid) === inc.nid)) patch[f] = inc[f];
+    for (const f of ['name', 'nid', 'brand', 'team', 'sys', 'status', 'email', 'joined']) if (inc[f] && normSpace(cur[f]) !== inc[f] && !(f === 'nid' && Core.cleanId(cur.nid) === inc.nid)) patch[f] = inc[f];
     if (inc.base && +cur.base !== inc.base) patch.base = inc.base;
     if (inc.spvName && normName(supName(cur.spv)) !== normName(inc.spvName)) (plan.sup = plan.sup || []).push([cur.name, inc.spvName]);
     if (Object.keys(patch).length) plan.updates.push({ id: cur._id, name: cur.name, patch }); else if (!(inc.spvName && normName(supName(cur.spv)) !== normName(inc.spvName))) plan.same++;
@@ -15443,7 +15461,7 @@ function prepareMerge(rows, src) {
   $('confirmBody').innerHTML = `<p style="margin:0">From <b>${esc(src)}</b>: ${plural(rows.length, 'person', 'people')}.</p>
     <div class="minis"><div><b>${plan.adds.length}</b><span>new</span></div><div><b>${plan.updates.length}</b><span>updated</span></div><div><b>${plan.same}</b><span>unchanged</span></div><div><b>${rosterRows().length}</b><span>on the roster now</span></div></div>
     ${plan.adds.length ? `<section class="sec"><h3>New</h3><ul class="ilist">${lim(plan.adds, a => `<li><span class="nm" dir="auto">${esc(a.name)}</span><span class="sg">${esc(a.brand)} · ${esc(a.team)}</span></li>`)}</ul></section>` : ''}
-    ${plan.updates.length ? `<section class="sec"><h3>Updated</h3><ul class="ilist">${lim(plan.updates, u => `<li><span class="nm" dir="auto">${esc(u.name)}</span><span class="sg">${esc(Object.entries(u.patch).map(([k, v]) => `${{ nid: 'ID', sys: 'system name' }[k] || k}: ${v}`).join(', '))}</span></li>`)}</ul></section>` : ''}
+    ${plan.updates.length ? `<section class="sec"><h3>Updated</h3><ul class="ilist">${lim(plan.updates, u => `<li><span class="nm" dir="auto">${esc(u.name)}</span><span class="sg">${esc(Object.entries(u.patch).map(([k, v]) => `${{ nid: 'ID', sys: 'system name', joined: 'joined' }[k] || k}: ${k === 'joined' ? Forms.fmtDate(v) : v}`).join(', '))}</span></li>`)}</ul></section>` : ''}
     <p class="hint">People on the roster who are not in the file stay as they are. Empty cells in the file do not clear anything. Tip: use Export roster first to keep a backup.</p>`;
   $('confirmOk').disabled = !total; $('confirmOk').textContent = total ? `Import ${plural(total, 'change')}` : 'Nothing to import';
   openDrawer('dConfirm');
@@ -16056,7 +16074,7 @@ function computeKpi() {
     const vals = { adh: m.avg, adhUnder: m.adh ? m.adh.filter(v => v != null && v < target).length : null, aht: m.aht, tardy: cnt ? cnt.tardyMin : null, file };
     const ar = attByPid.get(m.p._id);   // the days as the month's rules count them (attended: the penalty for absence is taken in Kpi.score)
     const res = Kpi.score(card, vals, ar && ar.has ? { sched: ar.sched, attended: ar.attended, absent: ar.absent, runs: ar.runs } : null, baseOf(m.p, null, k0), countFor(k0));
-    res.elig = eligibility(res, qRow(k0, m.p._id), null, k0);
+    res.elig = eligibility(res, qRow(k0, m.p._id), null, k0, m.p);
     if (!res.elig.ok && res.earned != null) { res.earnedCalc = res.earned; res.earned = 0; }
     out.set(m.p._id, { m, card, fileRow: fr, res });
   }
@@ -16088,6 +16106,8 @@ function kpiNotes(add) {
   if (!state.model) return;
   const shown = state.model.filter(m => m.shown), noCard = [...new Set(shown.filter(m => !cardFor(m.p.team, monthKey()) && !['MG', 'OP'].includes(m.p.team)).map(m => m.p.team || '–'))];
   if (noCard.length) add({ id: 'kpi:nocard', sev: 'info', group: 'Scorecards', title: `No scorecard yet for ${noCard.join(', ')}`, body: 'Their KPI results are left out until a scorecard is added in Settings › Scorecards.' });
+  const mm = rulesFor(monthKey()).elig.minMonths, noJoin = mm > 0 ? shown.filter(m => cardFor(m.p.team, monthKey()) && !m.p.joined) : [];
+  if (noJoin.length) add({ id: 'kpi:nojoin', sev: 'info', group: 'Scorecards', title: `No joining date for ${plural(noJoin.length, 'person', 'people')}`, body: `The incentive starts after ${mm} months in the job, counted from the joining date on the roster. Without one the rule is not checked: ${noJoin.slice(0, 6).map(m => m.exp).join(', ')}${noJoin.length > 6 ? ` and ${noJoin.length - 6} more` : ''}. Add it on each person's page (Edit), or import the roster with a "Joining date" column.` });
   const miss = new Map();
   for (const K of state.kpi.values()) for (const x of K.res.rows) if (x.r == null) { if (!miss.has(x.k.name)) miss.set(x.k.name, []); miss.get(x.k.name).push(K.m.exp); }
   if (!miss.size) return;
@@ -17282,11 +17302,12 @@ function profileHtml(p) {
       <span>${normSpace(p.sys) && normName(p.sys) !== normName(p.name) ? `Roster name: <span dir="auto">${esc(p.name)}</span> · ` : ''}${esc(DEP_NAMES[p.team] || p.team || '')}</span></div>
       <button class="sw" role="switch" aria-checked="${on}" data-psw aria-label="Status"><i></i>${on ? 'Active' : 'Inactive'}</button></div>
     <div class="pfacts"><div><span>National ID</span><b class="num">${id ? esc(id) : '<span class="warnline">Missing</span>'}</b>${filled ? '<small>from the IDs file</small>' : ''}</div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b><small>${esc(DEP_NAMES[p.team] || '')}</small></div><div><span>Genesys name</span><b dir="auto">${esc(gname(p) || '–')}</b><small dir="auto">${normSpace(p.sys) ? 'system name' : 'same as the roster'}${akaOf(p).length ? ` · also written ${esc(akaOf(p).join(', '))}` : ''}</small></div></div>
-    <details class="pedit"${state.peditOpen ? ' open' : ''}><summary>Edit name, ID, brand and team</summary><div class="pfields">
+    <details class="pedit"${state.peditOpen ? ' open' : ''}><summary>Edit name, ID, brand, team and joining date</summary><div class="pfields">
       ${fld('name', 'Name', p.name, 'dir="auto" placeholder="Full name"')}${fld('nid', 'National ID', p.nid, 'inputmode="numeric" placeholder="10 digits or NA"')}
       ${sel('brand', 'Brand', BRANDS, p.brand)}${sel('team', 'Team', DEP_ORDER, p.team, DEP_NAMES)}
       ${fld('sys', 'System name (Genesys)', p.sys, 'dir="auto" list="sysNames" autocomplete="off" placeholder="Same as the name"')}
       ${fld('spvName', 'Supervisor', supName(p.spv), 'list="supNames" dir="auto" placeholder="–"')}${fld('email', 'Work email', p.email || '', 'type="email" placeholder="name@company.com" spellcheck="false"')}
+      ${fld('joined', 'Joining date', p.joined || '', `type="date" min="1990-01-01" max="2100-12-31" title="${(n => (n > 0 ? `The incentive starts the month after ${n} months in the job` : 'The rules do not count time in the job'))(rulesFor(monthKey()).elig.minMonths)}"`)}
       ${fld('base', 'Incentive base (SR)', p.base || '', `inputmode="numeric" placeholder="${basesNow()[normBrand(p.brand)] ?? 1000} (the brand's)"`)}
       <div class="pfoot"><span class="hint">Saved as you leave each field. The Genesys name is what the exports are matched on.</span><button class="btn sm ghost danger" data-premove>Remove from the roster</button></div></div></details></section>`;
 }
@@ -18207,9 +18228,9 @@ $('scoreBody').addEventListener('change', e => {
   if (el.dataset.base) { const v = parseFloat(el.value), b = el.dataset.base, old = { ...BASES0, ...(C.bases || {}) }[b]; if (!(Number.isFinite(v) && v >= 0)) { renderScore(); return; } C.bases = { ...(C.bases || {}), [b]: v }; if (b === 'Virgin') C.base = v; scoreChanged(`Incentive base for ${b}: ${old} → ${v} SR`); return; }
   if (el.dataset.eligf) {
     const f = el.dataset.eligf, raw = parseFloat(el.value); if (!(Number.isFinite(raw) && raw >= 0)) { renderScore(); return; }
-    const v = f === 'minFinal' ? Math.min(1, raw / 100) : Math.round(raw), ek = ruleEditKey(), tgt = ek ? state.rules[ek] : state.cards, old = { ...ELIG0, ...(tgt.elig || {}) }[f];
+    const v = f === 'minFinal' ? Math.min(1, raw / 100) : f === 'minMonths' ? Math.min(60, Math.round(raw)) : Math.round(raw), ek = ruleEditKey(), tgt = ek ? state.rules[ek] : state.cards, old = { ...ELIG0, ...(tgt.elig || {}) }[f];
     tgt.elig = { ...ELIG0, ...(tgt.elig || {}), [f]: v };
-    scoreChanged(f === 'minFinal' ? `Lowest final % for the incentive: ${pct1(old)} → ${pct1(v)}` : `Fewest days attended for the incentive: ${old} → ${v}`); return;
+    scoreChanged(f === 'minFinal' ? `Lowest final % for the incentive: ${pct1(old)} → ${pct1(v)}` : f === 'minMonths' ? `Months in the job before the incentive: ${old} → ${v}` : `Fewest days attended for the incentive: ${old} → ${v}`); return;
   }
   if (el.id === 'scTitle') { const old = card.title; card.title = normSpace(el.value) || card.title; scoreChanged(`${T}: scorecard name "${old}" → "${card.title}"`); return; }
   const tr = el.closest('tr[data-ki]'); if (!tr) return; const k = card.kpis[+tr.dataset.ki];
@@ -18281,6 +18302,14 @@ $('personBody').addEventListener('change', e => {
   if (f === 'spvName') { commitSup(state.personId, normSpace(e.target.value), e.target); refresh(); return; }
   if (f === 'base') { const n = normSpace(e.target.value) === '' ? null : Math.round(+e.target.value); if (n != null && !(n > 0)) { toast('Type the base in SR, or leave it empty for the brand\'s.'); return; } updatePerson(state.personId, { base: n }); return; }
   if (f === 'email' && normSpace(e.target.value) && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normSpace(e.target.value))) { toast('That does not look like an email address.'); return; }
+  if (f === 'joined') {
+    const v = normSpace(e.target.value) === '' ? '' : Core.cleanDate(e.target.value), p = state.roster.find(x => x._id === state.personId); if (!p) return;
+    if (normSpace(e.target.value) !== '' && !v) { toast('Type the joining date as a date, like 18/01/2026.'); return; }
+    if ((p.joined || '') === v) return;
+    const prev = p.joined || ''; updatePerson(p._id, { joined: v });
+    const from = eligFrom({ joined: v }, rulesFor(monthKey()).elig.minMonths);
+    toast(v ? `Joined ${Forms.fmtDate(v)}${from ? `: earns the incentive from ${ymLabel(from)}` : ''}.` : 'Joining date cleared.', { label: 'Undo', fn: () => updatePerson(p._id, { joined: prev }) }); return;
+  }
   const v = f === 'brand' || f === 'team' ? e.target.value : normSpace(e.target.value);
   const p = state.roster.find(x => x._id === state.personId); if (!p || (p[f] ?? '') === v) return;
   const prev = p[f] ?? '';
@@ -18525,16 +18554,18 @@ const NameLink = (() => {
 // starts from a month; every month is scored with the set in force for it, so next month's changes never touch a month that
 // is closed. Each change is logged with who and when. Everyone else sees the rules read-only.
 Object.assign(state, { rules: {}, rulesVer: 0, ruleEdit: null });
-const ELIG0 = { minFinal: 0.8, minDays: 5 };
+const ELIG0 = { minFinal: 0.8, minDays: 5, minMonths: 6 };   // minMonths: months in the job before the incentive (from the joining date on the roster; 0 = no rule)
 const canRules = () => ['senior', 'admin'].includes(roleNow());
+/** a set's 'who earns it' section, with the months in the job always a whole number from 0 to 60 (it comes from the shared data) */
+const eligOf = e => { const x = { ...ELIG0, ...(e || {}) }, n = Math.round(+x.minMonths); return { ...x, minMonths: Number.isFinite(n) ? Math.max(0, Math.min(60, n)) : ELIG0.minMonths }; };
 /** the sets of rules, oldest first: [{ from: 'YYYY-MM', cards: {base, bases, teams, people}, elig, count, at, by, log }]. cards.people = a
     person's own base for the months of the set ({pid: {base, src, at, by}}); count = how days, rankings and the incentive are counted */
 function ruleVersions() { return Object.values(state.rules || {}).filter(v => v && /^\d{4}-\d{2}$/.test(v.from || '') && v.cards && v.cards.teams).sort((a, b) => a.from.localeCompare(b.from)); }
 /** the rules a month is scored with: the newest set that starts on or before it; before the first set, the first rules */
 function rulesFor(k) {
   let v = null; for (const x of ruleVersions()) if (!k || x.from <= k) v = x;
-  if (v) return { from: v.from, cards: v.cards, elig: { ...ELIG0, ...(v.elig || {}) }, count: countOf(v.count), v };
-  return { from: '', cards: state.cards, elig: { ...ELIG0, ...((state.cards && state.cards.elig) || {}) }, count: countOf(state.cards && state.cards.count), v: null };
+  if (v) return { from: v.from, cards: v.cards, elig: eligOf(v.elig), count: countOf(v.count), v };
+  return { from: '', cards: state.cards, elig: eligOf(state.cards && state.cards.elig), count: countOf(state.cards && state.cards.count), v: null };
 }
 /** a set's 'count' section, made whole once per saved object (an edit always puts a new object in its place) */
 const countMemo = new WeakMap(), COUNT_DEF = Object.freeze(Kpi.normCount(null)), KDR0 = Kpi.dayRulesKey(COUNT_DEF);
@@ -18563,7 +18594,7 @@ function ruleEditKey() {
   return rulesFor(rulesK()).from;
 }
 function ruleCards() { const k = ruleEditKey(); return k && state.rules[k] ? state.rules[k].cards : state.cards; }
-function ruleElig() { const k = ruleEditKey(); return { ...ELIG0, ...((k && state.rules[k] ? state.rules[k].elig : state.cards.elig) || {}) }; }
+function ruleElig() { const k = ruleEditKey(); return eligOf(k && state.rules[k] ? state.rules[k].elig : state.cards.elig); }
 /** the set being looked at (its doc, or the first rules) and its 'count' section */
 function ruleSet() { const k = ruleEditKey(); return k && state.rules[k] ? state.rules[k] : state.cards; }
 function ruleCount() { return countOf(ruleSet().count); }
@@ -18648,7 +18679,8 @@ function rulesBarHtml() {
 }
 function eligEditHtml() {
   const E = ruleElig(), c = ruleCount(), dw = c.eligDays === 'counted' ? 'counted days' : 'days attended';
-  return `<div class="field"><span class="lbl">Who earns the incentive</span><div class="basegrid"><label><span>Lowest final %</span><input type="number" min="0" max="100" step="1" data-eligf="minFinal" value="${+(E.minFinal * 100).toFixed(1)}" aria-label="Lowest final %"></label><label><span>Fewest ${dw}</span><input type="number" min="0" max="31" step="1" data-eligf="minDays" value="${E.minDays}" aria-label="Fewest ${dw}"></label></div><small>Nobody earns the incentive with a final under ${+(E.minFinal * 100).toFixed(1)}%, ${c.attitude ? 'an attitude critical error from the quality team, ' : ''}or fewer than ${E.minDays} ${dw}, unless the senior manager decides otherwise on Results.</small></div>`;
+  const n = E.minMonths, ex = n > 0 ? `${MONTH_LONG[n % 12]} ${2026 + Math.floor(n / 12)}` : '', miss = n > 0 ? rosterRows().filter(p => p.status !== 'Inactive' && !p.joined && (ruleCards().teams || {})[normSpace(p.team)]).length : 0;
+  return `<div class="field"><span class="lbl">Who earns the incentive</span><div class="basegrid"><label><span>Lowest final %</span><input type="number" min="0" max="100" step="1" data-eligf="minFinal" value="${+(E.minFinal * 100).toFixed(1)}" aria-label="Lowest final %"></label><label><span>Fewest ${dw}</span><input type="number" min="0" max="31" step="1" data-eligf="minDays" value="${E.minDays}" aria-label="Fewest ${dw}"></label><label><span>Months in the job</span><input type="number" min="0" max="60" step="1" data-eligf="minMonths" value="${n}" aria-label="Months in the job before the incentive"></label></div><small>Nobody earns the incentive with a final under ${+(E.minFinal * 100).toFixed(1)}%, ${c.attitude ? 'an attitude critical error from the quality team, ' : ''}${n > 0 ? `fewer than ${E.minDays} ${dw} or under ${n} months in the job` : `or fewer than ${E.minDays} ${dw}`}, unless the senior manager decides otherwise on Results.</small>${n > 0 ? `<small>Months in the job: from the month after the ${n} months are done, counted from the month they joined (joined 18 January 2026: from ${esc(ex)}). It needs the joining date on the roster${miss ? `: ${plural(miss, 'active person', 'active people')} ${miss === 1 ? 'has' : 'have'} none yet and ${miss === 1 ? 'is' : 'are'} not checked` : ''}. 0 = no rule.</small>` : '<small>Months in the job: 0, so time in the job does not count.</small>'}</div>`;
 }
 
 // ---------------------------------------------------------------- how it is counted: the 'count' section of the set being looked at
@@ -18706,7 +18738,7 @@ function countEditHtml() {
     <div class="cntgrid">
     ${row('Scheduled days', chips, 'A scheduled day is a day attended (Attend or a late day) or a day with one of the ticked codes. Days attended ÷ days scheduled is the days %.')}
     ${row('Late days', `<label class="rowin">Late by more than ${cntNum('lateOver', c.lateOver, 'Minutes late that count as absent', 1440)} min counts as absent</label>`, '0 = a late day is a day attended. Its minutes count as tardiness either way.')}
-    ${row('Absence penalty', `<div class="rowin">${cntNum('absentExtra', c.absentExtra, 'More days off per absence')} more days off per ${cntSel('absentPer', c.absentPer, [['day', 'absent day'], ['run', 'run of absent days']], 'Per absent day or per run')}</div><div class="rowin">plus ${cntNum('absentFlat', c.absentFlat, 'Days off once when there is any absence')} days off once when there is any absence; counted days never below ${cntNum('countedMin', c.countedMin, 'Fewest counted days')}</div>`, 'Taken off the days attended for the incentive only. A run is absent days in a row; days off between them do not break it.')}
+    ${row('Absence penalty', `<div class="rowin">${cntNum('absentExtra', c.absentExtra, 'More days off per absence')} more days off per ${cntSel('absentPer', c.absentPer, [['day', 'absent day'], ['run', 'run of absent days']], 'Per absent day or per run')}</div><div class="rowin">plus ${cntNum('absentFlat', c.absentFlat, 'Days off once when there is any absence')} days off once when there is any absence; counted days never below ${cntNum('countedMin', c.countedMin, 'Fewest counted days')}</div>`, 'Taken off the days attended (the actual days) for the incentive only. Only Absent days count, never SL, AL or another leave. With 4 per absent day: 21 scheduled, 1 absent = 20 attended, 16 counted. A run is absent days in a row; days off between them do not break it.')}
     ${row('Fewest days for the incentive use', cntSeg('eligDays', c.eligDays, [['attended', 'days attended'], ['counted', 'counted days']], 'Fewest days for the incentive use'))}
     ${row('A KPI with no value', cntSeg('missing', c.missing, [['scale', 'is left out'], ['rank1', 'counts as ranking 1'], ['none', 'no final % yet']], 'A KPI with no value'), esc(cntText('missing', c)[0].toUpperCase() + cntText('missing', c).slice(1)) + '.')}
     ${row('A value exactly on a band', cntSeg('edge', c.edge, [['in', 'gets that ranking'], ['out', 'gets the ranking below']], 'A value exactly on a band'))}
@@ -18889,6 +18921,7 @@ function howHtml(r, k, o = {}) {
     const L = [chk(!bad(/^final /), `final ${esc(pct1(r.fin))} ${bad(/^final /) ? 'is under' : 'reaches'} ${esc(pct1(E.minFinal))}`)];
     if (cfg.attitude || bad(/^attitude/)) L.push(chk(!bad(/^attitude/), bad(/^attitude/) ? 'an attitude critical error from the quality team' : 'no attitude critical error'));
     if (s != null) L.push(chk(!bad(/days (attended|counted)$/), `${dv ?? '–'} ${dw}, ${bad(/days (attended|counted)$/) ? 'fewer than' : 'at least'} ${E.minDays}`));
+    if (E.minMonths > 0 && p) { const fr = eligFrom(p, E.minMonths); L.push(fr ? chk(!bad(/^joined /), `joined ${esc(Forms.fmtDate(p.joined))}: ${E.minMonths} months in the job, earns from ${esc(ymLabel(fr))}`) : `<li class="subtle"><span aria-hidden="true">–</span> no joining date on the roster, so ${E.minMonths} months in the job is not checked</li>`); }
     const paid = !el.ok && sr && r.earnedCalc != null ? ` Calculated ${r.earnedCalc} SR, paid 0 SR.` : '';
     step('Who earns it', `<ul class="howchk">${L.join('')}</ul><p>${el.forced ? `The senior manager decided: ${el.ok ? 'eligible' : 'not eligible'}.` : el.ok ? 'Eligible.' : 'Not eligible.'}${esc(paid)}${fin ? ' As decided when the month was finalized.' : ''}</p>`);
   }
@@ -19123,7 +19156,7 @@ function liveRow(r, p, k, rec) {
   }
   if (!(rec && (rec.tool || rec.auto || rec.page || rec.daily))) return withAdj(x, adj);
   const s = scoreLive(x, p, k); if (!s) return withAdj(x, adj);
-  const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k);
+  const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k, p);
   // ka = the days counted (after any absence penalty), kat = the days attended: kept apart so a penalty is never taken twice
   const { kat, kr, kab, kdr, ...y } = x, kept = s.again || res.sched != null ? countKept(res, x, k) : Object.fromEntries(Object.entries({ kat, kr, kab, kdr }).filter(([, v]) => v !== undefined));
   return withAdj({ ...y, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: kvOf(res),
@@ -19537,7 +19570,7 @@ function renderPersonWs(p) {
   if (spvView && !(me.pid && p.spv === me.pid) && !inScope(p, me.scope)) { $('personBody').innerHTML = '<p class="subtle">Not in your team.</p>'; return; }
   const r = k ? rowOf(p._id, k) : null, on = p.status !== 'Inactive';
   let h = `<section class="sec profile"><div class="phead"><span class="av lg" aria-hidden="true"${avStyle(exp)}>${esc(initials(exp))}</span><div class="pwho"><b dir="auto">${esc(exp)}</b>${spvLine(p._id)}<span>${normSpace(p.sys) && normName(p.sys) !== normName(p.name) ? `Roster name: <span dir="auto">${esc(p.name)}</span> · ` : ''}${esc(DEP_NAMES[p.team] || p.team || '')}</span></div><span class="stt${on ? ' on' : ''}">${on ? 'Active' : 'Inactive'}</span></div>
-    <div class="pfacts"><div><span>National ID</span><b class="num">${esc(Core.cleanId(pp.nid) || '–')}</b></div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b></div><div><span>Supervisor</span><b>${esc(spvOf(p._id).map(a => a.name).join(', ') || '–')}</b></div></div></section>`;
+    <div class="pfacts"><div><span>National ID</span><b class="num">${esc(Core.cleanId(pp.nid) || '–')}</b></div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b></div><div><span>Supervisor</span><b>${esc(spvOf(p._id).map(a => a.name).join(', ') || '–')}</b></div>${p.joined ? (fr => `<div><span>Joined</span><b>${esc(Forms.fmtDate(p.joined))}</b>${fr ? `<small>incentive from ${esc(ymLabel(fr))}</small>` : ''}</div>`)(eligFrom(p, rulesFor(k || monthKey()).elig.minMonths)) : ''}</div></section>`;
   h += k ? statusBanner(k) : '';
   if (!r) h += `<div class="banner info">${k ? `Not in the ${esc(ymLabel(k))} results.` : 'No month is saved yet.'}</div>`;
   else {
@@ -19758,21 +19791,28 @@ const ATTITUDE = /attitude|abuse|hr action/i;
 function attitudeRe(k) { const a = countFor(k).attitude; if (!a) return null; if (a === COUNT_DEF.attitude) return ATTITUDE; try { return new RegExp(a, 'i'); } catch (e) { return ATTITUDE; } }
 /** who earns the incentive, in words, from the month's rules ('final under 80%, an attitude critical error, under 5 days attended') */
 function eligText(k, form) {
-  const R = rulesFor(k === undefined ? rulesK() : k), E = R.elig, att = R.count.attitude ? 'an attitude critical error' : '', dw = R.count.eligDays === 'counted' ? 'counted' : 'attended';
-  if (form === 'long') return `a final % under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}or fewer than ${E.minDays} days ${dw}`;
-  if (form === 'help') return `a final under ${pct1(E.minFinal)}, ${att ? att + ' ' : ''}or fewer than ${E.minDays} days ${dw}`.replace(', or', ' or');
-  if (form === 'short') return `Final under ${pct1(E.minFinal)}, ${att ? 'an attitude error ' : ''}or too few days`.replace(', or', ' or');
-  return `final under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}under ${E.minDays} days ${dw}`;
+  const R = rulesFor(k === undefined ? rulesK() : k), E = R.elig, att = R.count.attitude ? 'an attitude critical error' : '', dw = R.count.eligDays === 'counted' ? 'counted' : 'attended', ten = E.minMonths > 0 ? E.minMonths : 0;
+  if (form === 'long') return `a final % under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}${ten ? `fewer than ${E.minDays} days ${dw} or under ${ten} months in the job` : `or fewer than ${E.minDays} days ${dw}`}`;
+  if (form === 'help') return `a final under ${pct1(E.minFinal)}, ${att ? att + ' ' : ''}${ten ? `fewer than ${E.minDays} days ${dw} or under ${ten} months in the job` : `or fewer than ${E.minDays} days ${dw}`}`.replace(', or', ' or');
+  if (form === 'short') return `Final under ${pct1(E.minFinal)}, ${att ? 'an attitude error ' : ''}${ten ? `too few days or under ${ten} months in the job` : 'or too few days'}`.replace(', or', ' or');
+  return `final under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}under ${E.minDays} days ${dw}${ten ? `, under ${ten} months in the job` : ''}`;
 }
-/** the quality sheet's barriers: final under 80%, an attitude critical error, fewer than 5 days attended (the month's rules can
-    change the numbers, the critical error types and whether the days are those attended or those counted after an absence
-    penalty). adj.elig = the senior manager's decision */
-function eligibility(res, q, adj, k) {
-  const why = [], R = rulesFor(k === undefined ? rulesK() : k), E = R.elig, AT = attitudeRe(k);
+/** the first month someone earns the incentive under the months-in-the-job rule: n months after the month they joined, so the month
+    after the n months are done (joined 18 Jan 2026, 6 months: from Jul 2026). '' with no joining date on the roster or no rule */
+function eligFrom(p, n) {
+  const m = /^(\d{4})-(\d{2})-\d{2}$/.exec((p && p.joined) || ''); n = Math.round(+n); if (!m || !(n > 0)) return '';
+  const t = +m[1] * 12 + +m[2] - 1 + n; return ymKey(Math.floor(t / 12), (t % 12) + 1);
+}
+/** the quality sheet's barriers: final under 80%, an attitude critical error, fewer than 5 days attended, and under 6 months in the
+    job (the month's rules can change the numbers, the critical error types and whether the days are those attended or those counted
+    after an absence penalty). p = the person (their joining date); adj.elig = the senior manager's decision */
+function eligibility(res, q, adj, k, p) {
+  const K = k === undefined ? rulesK() : k, why = [], R = rulesFor(K), E = R.elig, AT = attitudeRe(k), from = eligFrom(p, E.minMonths);
   if (res && res.finalPct != null && res.finalPct < E.minFinal - 1e-9) why.push(`final ${pct1(res.finalPct)} is under ${pct1(E.minFinal)}`);
   if (AT && q && (q.crit || []).some(c => AT.test(c.type || ''))) why.push('attitude critical error');
   const cnt = R.count.eligDays === 'counted', days = res ? (cnt || res.attended === undefined ? res.actual : res.attended) : null;
   if (res && days != null && res.sched != null && days < E.minDays) why.push(cnt ? `${days} days counted` : `${days} days attended`);
+  if (from && K && K < from) why.push(`joined ${Forms.fmtDate(p.joined)}: earns from ${ymLabel(from)}`);
   if (adj && adj.elig === true) return { ok: true, why, forced: true };
   if (adj && adj.elig === false) return { ok: false, why: why.length ? why : ['not eligible (senior manager)'], forced: true };
   return { ok: !why.length, why };
@@ -25480,7 +25520,7 @@ function mtdProj(pid, k) {
   const vals = { adh: r.adh ?? null, adhUnder: r.adhUnder != null ? Math.round(r.adhUnder * scale) : null, aht: r.aht ?? null, tardy: r.tardy != null ? Math.round(r.tardy * scale) : null, file };
   // the days attended (not those counted after an absence penalty, which Kpi.score takes off again), absences scaled like the rest
   const att = r.ks != null && r.ks > 0 ? { sched: Math.round(r.ks * scale), attended: Math.round((r.kat ?? r.ka ?? 0) * scale), absent: Math.round((r.absent || 0) * scale), runs: Math.round((r.kr || 0) * scale) } : null;
-  const res = Kpi.score(card, vals, att, baseOf(p, r, k), countFor(k)), el = eligibility(res, qRow(k, pid), null, k);
+  const res = Kpi.score(card, vals, att, baseOf(p, r, k), countFor(k)), el = eligibility(res, qRow(k, pid), null, k, p);
   const weak = res.rows.filter(x => x.r != null && x.r < 5).sort((a, b) => a.r - b.r || b.w - a.w)[0] || null;
   return { asOf, days: days.length, ND, fin: res.finalPct, earned: res.earned == null ? null : el.ok ? res.earned : 0, calc: res.earned, ok: el.ok, why: el.why, borrowed, minFinal: rulesFor(k).elig.minFinal,
     weak: weak ? { name: weak.k.name, value: Kpi.fmtVal(weak.k, Kpi.rankedVal(weak)), target: Kpi.target(weak.k), rank: weak.r } : null, missing: res.missing };
@@ -27891,7 +27931,7 @@ renderBrand();
 render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
-window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, rb: () => RB };   // for testing
+window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
 Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing

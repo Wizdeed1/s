@@ -3,16 +3,18 @@
 // starts from a month; every month is scored with the set in force for it, so next month's changes never touch a month that
 // is closed. Each change is logged with who and when. Everyone else sees the rules read-only.
 Object.assign(state, { rules: {}, rulesVer: 0, ruleEdit: null });
-const ELIG0 = { minFinal: 0.8, minDays: 5 };
+const ELIG0 = { minFinal: 0.8, minDays: 5, minMonths: 6 };   // minMonths: months in the job before the incentive (from the joining date on the roster; 0 = no rule)
 const canRules = () => ['senior', 'admin'].includes(roleNow());
+/** a set's 'who earns it' section, with the months in the job always a whole number from 0 to 60 (it comes from the shared data) */
+const eligOf = e => { const x = { ...ELIG0, ...(e || {}) }, n = Math.round(+x.minMonths); return { ...x, minMonths: Number.isFinite(n) ? Math.max(0, Math.min(60, n)) : ELIG0.minMonths }; };
 /** the sets of rules, oldest first: [{ from: 'YYYY-MM', cards: {base, bases, teams, people}, elig, count, at, by, log }]. cards.people = a
     person's own base for the months of the set ({pid: {base, src, at, by}}); count = how days, rankings and the incentive are counted */
 function ruleVersions() { return Object.values(state.rules || {}).filter(v => v && /^\d{4}-\d{2}$/.test(v.from || '') && v.cards && v.cards.teams).sort((a, b) => a.from.localeCompare(b.from)); }
 /** the rules a month is scored with: the newest set that starts on or before it; before the first set, the first rules */
 function rulesFor(k) {
   let v = null; for (const x of ruleVersions()) if (!k || x.from <= k) v = x;
-  if (v) return { from: v.from, cards: v.cards, elig: { ...ELIG0, ...(v.elig || {}) }, count: countOf(v.count), v };
-  return { from: '', cards: state.cards, elig: { ...ELIG0, ...((state.cards && state.cards.elig) || {}) }, count: countOf(state.cards && state.cards.count), v: null };
+  if (v) return { from: v.from, cards: v.cards, elig: eligOf(v.elig), count: countOf(v.count), v };
+  return { from: '', cards: state.cards, elig: eligOf(state.cards && state.cards.elig), count: countOf(state.cards && state.cards.count), v: null };
 }
 /** a set's 'count' section, made whole once per saved object (an edit always puts a new object in its place) */
 const countMemo = new WeakMap(), COUNT_DEF = Object.freeze(Kpi.normCount(null)), KDR0 = Kpi.dayRulesKey(COUNT_DEF);
@@ -41,7 +43,7 @@ function ruleEditKey() {
   return rulesFor(rulesK()).from;
 }
 function ruleCards() { const k = ruleEditKey(); return k && state.rules[k] ? state.rules[k].cards : state.cards; }
-function ruleElig() { const k = ruleEditKey(); return { ...ELIG0, ...((k && state.rules[k] ? state.rules[k].elig : state.cards.elig) || {}) }; }
+function ruleElig() { const k = ruleEditKey(); return eligOf(k && state.rules[k] ? state.rules[k].elig : state.cards.elig); }
 /** the set being looked at (its doc, or the first rules) and its 'count' section */
 function ruleSet() { const k = ruleEditKey(); return k && state.rules[k] ? state.rules[k] : state.cards; }
 function ruleCount() { return countOf(ruleSet().count); }
@@ -126,7 +128,8 @@ function rulesBarHtml() {
 }
 function eligEditHtml() {
   const E = ruleElig(), c = ruleCount(), dw = c.eligDays === 'counted' ? 'counted days' : 'days attended';
-  return `<div class="field"><span class="lbl">Who earns the incentive</span><div class="basegrid"><label><span>Lowest final %</span><input type="number" min="0" max="100" step="1" data-eligf="minFinal" value="${+(E.minFinal * 100).toFixed(1)}" aria-label="Lowest final %"></label><label><span>Fewest ${dw}</span><input type="number" min="0" max="31" step="1" data-eligf="minDays" value="${E.minDays}" aria-label="Fewest ${dw}"></label></div><small>Nobody earns the incentive with a final under ${+(E.minFinal * 100).toFixed(1)}%, ${c.attitude ? 'an attitude critical error from the quality team, ' : ''}or fewer than ${E.minDays} ${dw}, unless the senior manager decides otherwise on Results.</small></div>`;
+  const n = E.minMonths, ex = n > 0 ? `${MONTH_LONG[n % 12]} ${2026 + Math.floor(n / 12)}` : '', miss = n > 0 ? rosterRows().filter(p => p.status !== 'Inactive' && !p.joined && (ruleCards().teams || {})[normSpace(p.team)]).length : 0;
+  return `<div class="field"><span class="lbl">Who earns the incentive</span><div class="basegrid"><label><span>Lowest final %</span><input type="number" min="0" max="100" step="1" data-eligf="minFinal" value="${+(E.minFinal * 100).toFixed(1)}" aria-label="Lowest final %"></label><label><span>Fewest ${dw}</span><input type="number" min="0" max="31" step="1" data-eligf="minDays" value="${E.minDays}" aria-label="Fewest ${dw}"></label><label><span>Months in the job</span><input type="number" min="0" max="60" step="1" data-eligf="minMonths" value="${n}" aria-label="Months in the job before the incentive"></label></div><small>Nobody earns the incentive with a final under ${+(E.minFinal * 100).toFixed(1)}%, ${c.attitude ? 'an attitude critical error from the quality team, ' : ''}${n > 0 ? `fewer than ${E.minDays} ${dw} or under ${n} months in the job` : `or fewer than ${E.minDays} ${dw}`}, unless the senior manager decides otherwise on Results.</small>${n > 0 ? `<small>Months in the job: from the month after the ${n} months are done, counted from the month they joined (joined 18 January 2026: from ${esc(ex)}). It needs the joining date on the roster${miss ? `: ${plural(miss, 'active person', 'active people')} ${miss === 1 ? 'has' : 'have'} none yet and ${miss === 1 ? 'is' : 'are'} not checked` : ''}. 0 = no rule.</small>` : '<small>Months in the job: 0, so time in the job does not count.</small>'}</div>`;
 }
 
 // ---------------------------------------------------------------- how it is counted: the 'count' section of the set being looked at
@@ -184,7 +187,7 @@ function countEditHtml() {
     <div class="cntgrid">
     ${row('Scheduled days', chips, 'A scheduled day is a day attended (Attend or a late day) or a day with one of the ticked codes. Days attended ÷ days scheduled is the days %.')}
     ${row('Late days', `<label class="rowin">Late by more than ${cntNum('lateOver', c.lateOver, 'Minutes late that count as absent', 1440)} min counts as absent</label>`, '0 = a late day is a day attended. Its minutes count as tardiness either way.')}
-    ${row('Absence penalty', `<div class="rowin">${cntNum('absentExtra', c.absentExtra, 'More days off per absence')} more days off per ${cntSel('absentPer', c.absentPer, [['day', 'absent day'], ['run', 'run of absent days']], 'Per absent day or per run')}</div><div class="rowin">plus ${cntNum('absentFlat', c.absentFlat, 'Days off once when there is any absence')} days off once when there is any absence; counted days never below ${cntNum('countedMin', c.countedMin, 'Fewest counted days')}</div>`, 'Taken off the days attended for the incentive only. A run is absent days in a row; days off between them do not break it.')}
+    ${row('Absence penalty', `<div class="rowin">${cntNum('absentExtra', c.absentExtra, 'More days off per absence')} more days off per ${cntSel('absentPer', c.absentPer, [['day', 'absent day'], ['run', 'run of absent days']], 'Per absent day or per run')}</div><div class="rowin">plus ${cntNum('absentFlat', c.absentFlat, 'Days off once when there is any absence')} days off once when there is any absence; counted days never below ${cntNum('countedMin', c.countedMin, 'Fewest counted days')}</div>`, 'Taken off the days attended (the actual days) for the incentive only. Only Absent days count, never SL, AL or another leave. With 4 per absent day: 21 scheduled, 1 absent = 20 attended, 16 counted. A run is absent days in a row; days off between them do not break it.')}
     ${row('Fewest days for the incentive use', cntSeg('eligDays', c.eligDays, [['attended', 'days attended'], ['counted', 'counted days']], 'Fewest days for the incentive use'))}
     ${row('A KPI with no value', cntSeg('missing', c.missing, [['scale', 'is left out'], ['rank1', 'counts as ranking 1'], ['none', 'no final % yet']], 'A KPI with no value'), esc(cntText('missing', c)[0].toUpperCase() + cntText('missing', c).slice(1)) + '.')}
     ${row('A value exactly on a band', cntSeg('edge', c.edge, [['in', 'gets that ranking'], ['out', 'gets the ranking below']], 'A value exactly on a band'))}
@@ -367,6 +370,7 @@ function howHtml(r, k, o = {}) {
     const L = [chk(!bad(/^final /), `final ${esc(pct1(r.fin))} ${bad(/^final /) ? 'is under' : 'reaches'} ${esc(pct1(E.minFinal))}`)];
     if (cfg.attitude || bad(/^attitude/)) L.push(chk(!bad(/^attitude/), bad(/^attitude/) ? 'an attitude critical error from the quality team' : 'no attitude critical error'));
     if (s != null) L.push(chk(!bad(/days (attended|counted)$/), `${dv ?? '–'} ${dw}, ${bad(/days (attended|counted)$/) ? 'fewer than' : 'at least'} ${E.minDays}`));
+    if (E.minMonths > 0 && p) { const fr = eligFrom(p, E.minMonths); L.push(fr ? chk(!bad(/^joined /), `joined ${esc(Forms.fmtDate(p.joined))}: ${E.minMonths} months in the job, earns from ${esc(ymLabel(fr))}`) : `<li class="subtle"><span aria-hidden="true">–</span> no joining date on the roster, so ${E.minMonths} months in the job is not checked</li>`); }
     const paid = !el.ok && sr && r.earnedCalc != null ? ` Calculated ${r.earnedCalc} SR, paid 0 SR.` : '';
     step('Who earns it', `<ul class="howchk">${L.join('')}</ul><p>${el.forced ? `The senior manager decided: ${el.ok ? 'eligible' : 'not eligible'}.` : el.ok ? 'Eligible.' : 'Not eligible.'}${esc(paid)}${fin ? ' As decided when the month was finalized.' : ''}</p>`);
   }

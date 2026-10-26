@@ -61,4 +61,17 @@ if (fs.existsSync(built)) ok('the built page is one self-contained file', () => 
   assert.ok(Buffer.byteLength(html) < 16 * 1024 * 1024);
 });
 
+ok('joining dates: an Excel date or serial, 2026-01-18, 18/01/2026 (day first), 01/18/2026, 18-Jan-2026, 18 January 2026; nonsense is empty', () => {
+  for (const v of [46040, '46040', '2026-01-18', '18/01/2026', '01/18/2026', '18-Jan-2026', '18 January 2026', 'Jan 18, 2026', new Date(Date.UTC(2026, 0, 18))]) assert.equal(Core.cleanDate(v), '2026-01-18', String(v));
+  assert.equal(Core.cleanDate('05/03/2026'), '2026-03-05', 'day first when both could be a month');
+  for (const v of ['', null, 'NA', '31/02/2026', '2026-13-01', 12, 'soon']) assert.equal(Core.cleanDate(v), '', String(v));
+});
+ok('a roster with a "Joining date" column gives each person their joining date (synthetic people)', () => {
+  const rows = [['Name', 'National ID', 'Brand', 'Team', 'Joining date'], ['Lina A.', '1000000001', 'Virgin', 'CC', '18/01/2026'], ['Omar B.', '1000000002', 'Virgin', 'CC', 46100], ['Sara C.', '1000000003', 'Friendi', 'CC', '']];
+  const sheets = [{ name: 'Roster', rows }], d = Core.analyzeTables ? Core.analyzeTables('roster.xlsx', sheets) : null;
+  const R = (d || []).find(x => x.kind === 'roster');
+  assert.ok(R, 'read as a roster');
+  assert.deepEqual(R.data.map(x => [x.name, x.joined]), [['Lina A.', '2026-01-18'], ['Omar B.', '2026-03-19'], ['Sara C.', '']]);
+});
+
 console.log(`${n} checks passed`);

@@ -205,7 +205,7 @@ function liveRow(r, p, k, rec) {
   }
   if (!(rec && (rec.tool || rec.auto || rec.page || rec.daily))) return withAdj(x, adj);
   const s = scoreLive(x, p, k); if (!s) return withAdj(x, adj);
-  const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k);
+  const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k, p);
   // ka = the days counted (after any absence penalty), kat = the days attended: kept apart so a penalty is never taken twice
   const { kat, kr, kab, kdr, ...y } = x, kept = s.again || res.sched != null ? countKept(res, x, k) : Object.fromEntries(Object.entries({ kat, kr, kab, kdr }).filter(([, v]) => v !== undefined));
   return withAdj({ ...y, fin: res.finalPct ?? x.fin, fr: res.finalRank ?? x.fr, kc: s.card.title, kpi: kpiTuples(res), kv: kvOf(res),
@@ -619,7 +619,7 @@ function renderPersonWs(p) {
   if (spvView && !(me.pid && p.spv === me.pid) && !inScope(p, me.scope)) { $('personBody').innerHTML = '<p class="subtle">Not in your team.</p>'; return; }
   const r = k ? rowOf(p._id, k) : null, on = p.status !== 'Inactive';
   let h = `<section class="sec profile"><div class="phead"><span class="av lg" aria-hidden="true"${avStyle(exp)}>${esc(initials(exp))}</span><div class="pwho"><b dir="auto">${esc(exp)}</b>${spvLine(p._id)}<span>${normSpace(p.sys) && normName(p.sys) !== normName(p.name) ? `Roster name: <span dir="auto">${esc(p.name)}</span> · ` : ''}${esc(DEP_NAMES[p.team] || p.team || '')}</span></div><span class="stt${on ? ' on' : ''}">${on ? 'Active' : 'Inactive'}</span></div>
-    <div class="pfacts"><div><span>National ID</span><b class="num">${esc(Core.cleanId(pp.nid) || '–')}</b></div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b></div><div><span>Supervisor</span><b>${esc(spvOf(p._id).map(a => a.name).join(', ') || '–')}</b></div></div></section>`;
+    <div class="pfacts"><div><span>National ID</span><b class="num">${esc(Core.cleanId(pp.nid) || '–')}</b></div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b></div><div><span>Supervisor</span><b>${esc(spvOf(p._id).map(a => a.name).join(', ') || '–')}</b></div>${p.joined ? (fr => `<div><span>Joined</span><b>${esc(Forms.fmtDate(p.joined))}</b>${fr ? `<small>incentive from ${esc(ymLabel(fr))}</small>` : ''}</div>`)(eligFrom(p, rulesFor(k || monthKey()).elig.minMonths)) : ''}</div></section>`;
   h += k ? statusBanner(k) : '';
   if (!r) h += `<div class="banner info">${k ? `Not in the ${esc(ymLabel(k))} results.` : 'No month is saved yet.'}</div>`;
   else {

@@ -53,11 +53,12 @@ function eligText(k, form) {
   if (form === 'short') return `Final under ${pct1(E.minFinal)}, ${att ? 'an attitude error ' : ''}${ten ? `too few days or under ${ten} months in the job` : 'or too few days'}`.replace(', or', ' or');
   return `final under ${pct1(E.minFinal)}, ${att ? att + ', ' : ''}under ${E.minDays} days ${dw}${ten ? `, under ${ten} months in the job` : ''}`;
 }
-/** the first month someone earns the incentive under the months-in-the-job rule: n months after the month they joined, so the month
-    after the n months are done (joined 18 Jan 2026, 6 months: from Jul 2026). '' with no joining date on the roster or no rule */
+/** the first month someone earns the incentive under the months-in-the-job rule: their n-th full month in the job. The month they
+    joined is the first only when they joined on the 1st; otherwise the first is the month after. With 6: joined 1 Jan 2026, from
+    Jun 2026; joined 18 Jan 2026 (six months done on 18 Jun), from Jul 2026. '' with no joining date on the roster or no rule */
 function eligFrom(p, n) {
-  const m = /^(\d{4})-(\d{2})-\d{2}$/.exec((p && p.joined) || ''); n = Math.round(+n); if (!m || !(n > 0)) return '';
-  const t = +m[1] * 12 + +m[2] - 1 + n; return ymKey(Math.floor(t / 12), (t % 12) + 1);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((p && p.joined) || ''); n = Math.round(+n); if (!m || !(n > 0)) return '';
+  const t = +m[1] * 12 + +m[2] - 1 + (+m[3] === 1 ? 0 : 1) + n - 1; return ymKey(Math.floor(t / 12), (t % 12) + 1);
 }
 /** the quality sheet's barriers: final under 80%, an attitude critical error, fewer than 5 days attended, and under 6 months in the
     job (the month's rules can change the numbers, the critical error types and whether the days are those attended or those counted

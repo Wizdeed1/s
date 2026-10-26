@@ -1,10 +1,11 @@
 // Two incentive rules, in the browser, with synthetic people (test/fixture.js):
-// 1. Months in the job (default 6): someone earns the incentive from the month after the six months are done, counted from the
-//    month they joined: joined 18 Jan 2026 -> from Jul 2026. A September draft agent who joined 18 Apr 2026 earns 0 SR in September
-//    ("joined 18 Apr 2026: earns from Oct 2026"), one who joined in March earns it; 0 months in the rules turns the rule off; no
-//    joining date, no check. The joining date comes from the roster file ("Joining date") or the person's page.
-// 2. The absence penalty: 4 days taken off the actual days for each Absent day (never for SL or another leave): 22 scheduled,
-//    1 absent, 21 attended -> 17 counted, 773 SR instead of 955.
+// 1. Months in the job (default 6): the incentive starts with the sixth full month in the job; the month someone joined counts only
+//    when they joined on the 1st: joined 1 Jan 2026 -> from Jun 2026, joined 18 Jan 2026 -> from Jul 2026. A September draft agent who
+//    joined 18 Apr 2026 earns 0 SR in September ("joined 18 Apr 2026: earns from Oct 2026"), one who joined on 1 Apr or in March earns
+//    it; 0 months in the rules turns the rule off; no joining date, no check. The joining date comes from the roster file ("Joining
+//    date") or the person's page.
+// 2. The absence penalty: 3 days taken off the actual days for each Absent day (never for SL or another leave), so one absent day
+//    costs 4 days in all: 22 scheduled, 1 absent, 21 attended -> 18 counted, 818 SR instead of 955.
 // Usage: node test/tenure.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -21,9 +22,10 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   await p.waitForFunction(() => window.__mc && window.__mc.state && window.__mc.state.rosterReady);
 
   // the month a joining date gives
-  const from = await p.evaluate(() => { const f = window.__mc.eligFrom; return { jan18: f({ joined: '2026-01-18' }, 6), jan1: f({ joined: '2026-01-01' }, 6), jul31: f({ joined: '2026-07-31' }, 6), none: f({}, 6), off: f({ joined: '2026-01-18' }, 0), year: f({ joined: '2025-11-03' }, 6) }; });
+  const from = await p.evaluate(() => { const f = window.__mc.eligFrom; return { jan18: f({ joined: '2026-01-18' }, 6), jan1: f({ joined: '2026-01-01' }, 6), jul31: f({ joined: '2026-07-31' }, 6), none: f({}, 6), off: f({ joined: '2026-01-18' }, 0), year: f({ joined: '2025-11-03' }, 6), dec1: f({ joined: '2025-12-01' }, 6) }; });
   ok(from.jan18 === '2026-07', `joined 18 Jan 2026: from Jul 2026 (${from.jan18})`);
-  ok(from.jan1 === '2026-07' && from.jul31 === '2027-01' && from.year === '2026-05', `joined 1 Jan: Jul; 31 Jul: Jan 2027; 3 Nov 2025: May 2026 (${from.jan1}, ${from.jul31}, ${from.year})`);
+  ok(from.jan1 === '2026-06', `joined 1 Jan 2026: from Jun 2026 (${from.jan1})`);
+  ok(from.jul31 === '2027-01' && from.year === '2026-05' && from.dec1 === '2026-05', `31 Jul 2026: Jan 2027; 3 Nov 2025: May 2026; 1 Dec 2025: May 2026 (${from.jul31}, ${from.year}, ${from.dec1})`);
   ok(from.none === '' && from.off === '', 'no joining date or 0 months: no rule');
 
   // a September draft agent in the top band of every KPI
@@ -45,13 +47,15 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   await join('2026-03-18'); R = await row();
   ok(R.ok && R.earned === 1000, `joined 18 Mar 2026: six months done in August, eligible from September: ${R.earned} SR`);
   await join('2026-04-01'); R = await row();
-  ok(!R.ok, 'joined 1 Apr 2026: from October, so not in September');
+  ok(R.ok && R.earned === 1000, `joined 1 Apr 2026: April is the first full month, September the sixth: ${R.earned} SR`);
+  await join('2026-04-02'); R = await row();
+  ok(!R.ok, 'joined 2 Apr 2026: from October, so not in September');
 
   // "How this was counted" says it
   await p.evaluate(w => { const x = document.createElement('button'); x.dataset.how = w.pid; x.dataset.howk = '2026-09'; document.body.append(x); x.click(); x.remove(); }, who);
   await p.waitForSelector('#dHow:not([hidden]) #howBody');
   const how = await p.$eval('#howBody', el => el.textContent.replace(/\s+/g, ' '));
-  ok(/✗ joined 1 Apr 2026: 6 months in the job, earns from Oct 2026/.test(how) && /Not eligible\. Calculated 1000 SR, paid 0 SR\./.test(how), 'How this was counted: the joining date, the month it earns from, paid 0 SR');
+  ok(/✗ joined 2 Apr 2026: 6 months in the job, earns from Oct 2026/.test(how) && /Not eligible\. Calculated 1000 SR, paid 0 SR\./.test(how), 'How this was counted: the joining date, the month it earns from, paid 0 SR');
   await p.screenshot({ path: path.join(out, 'tenure-how.png') });
   await p.keyboard.press('Escape');
 
@@ -59,7 +63,7 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   await p.evaluate(w => { const M = window.__mc; M.state.ws = 'team'; M.state.personK = '2026-09'; M.openPerson(w.pid); }, who);
   await p.waitForSelector('#personBody .pfacts');
   const facts = await p.$eval('#personBody .pfacts', el => el.textContent.replace(/\s+/g, ' '));
-  ok(/Joined\s*1 Apr 2026\s*incentive from Oct 2026/.test(facts), 'person page: ' + facts.slice(-60));
+  ok(/Joined\s*2 Apr 2026\s*incentive from Oct 2026/.test(facts), 'person page: ' + facts.slice(-60));
   await p.keyboard.press('Escape');
 
   // the rules: 0 months turns it off, 6 brings it back
@@ -68,7 +72,7 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   const val0 = await p.$eval('input[data-eligf="minMonths"]', i => i.value);
   ok(val0 === '6', 'the rules show 6 months in the job by default');
   const help = await p.$eval('input[data-eligf="minMonths"]', i => i.closest('.field').textContent.replace(/\s+/g, ' '));
-  ok(/joined 18 January 2026: from July 2026/.test(help), 'the rules explain it with the example: ' + (help.match(/Months in the job:[^.]*\.[^.]*\./) || [''])[0]);
+  ok(/joined 1 January 2026: from June 2026; joined 18 January 2026: from July 2026/.test(help), 'the rules explain it with the examples: ' + (help.match(/Months in the job:[^)]*\)/) || [''])[0]);
   await p.screenshot({ path: path.join(out, 'tenure-rules.png') });
   await p.fill('input[data-eligf="minMonths"]', '0'); await p.press('input[data-eligf="minMonths"]', 'Tab');
   await p.waitForTimeout(300); R = await row();
@@ -86,9 +90,9 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   await p.evaluate(() => { const d = document.querySelector('details[data-det="cnt"]'); if (d && !d.open) d.querySelector('summary').click(); });
   const penHelp = await p.$eval('[data-cnt="absentExtra"]', i => i.closest('.cntrow').textContent.replace(/\s+/g, ' '));
   ok(/Only Absent days count, never SL, AL or another leave/.test(penHelp), 'the absence penalty says only Absent days count');
-  await p.fill('[data-cnt="absentExtra"]', '4'); await p.press('[data-cnt="absentExtra"]', 'Tab');
+  await p.fill('[data-cnt="absentExtra"]', '3'); await p.press('[data-cnt="absentExtra"]', 'Tab');
   await p.waitForTimeout(300); R = await row();
-  ok(R.ka === 17 && R.earned === 773, `4 days off per absent day: 21 - 4 = ${R.ka} days counted, ${R.earned} SR`);
+  ok(R.ka === 18 && R.earned === 818, `3 more days off per absent day (4 in all): 21 - 3 = ${R.ka} days counted of 22, ${R.earned} SR`);
   await p.screenshot({ path: path.join(out, 'tenure-penalty.png') });
   await p.keyboard.press('Escape');
 

@@ -1078,7 +1078,9 @@
   const parseTicketsByCategory = parseTicketSheet;
 
   /* "Ticket Summary Details" export (.csv) — one FRiENDi Pay ticket per line:
-     StartedAt | Category | SubCategory | … (a third layout, beside the two above). */
+     StartedAt | Category | SubCategory | … (a third layout, beside the two above).
+     The export already covers the report's window (it runs across midnight), so every line
+     counts: the day is kept only to show in the file list, not to filter on. */
   function isFpayTicketSummary(headers) {
     const h = headers.map(x => String(x).trim().toLowerCase());
     return h.indexOf('startedat') >= 0 && h.indexOf('category') >= 0 && h.indexOf('subcategory') >= 0 && h.indexOf('ticketnumber') >= 0;
@@ -1089,7 +1091,7 @@
     const s = v => String(v === null || v === undefined ? '' : v).trim();
     return payload.rows.map(r => {
       const cat = s(r[cCat]);
-      return { date: rowDate(s(r[cDate])), category: cat, sub: s(r[cSub]) || cat, count: 1 };
+      return { date: null, day: rowDate(s(r[cDate])), category: cat, sub: s(r[cSub]) || cat, count: 1 };
     }).filter(r => r.category);
   }
 
@@ -5764,7 +5766,7 @@ root.WFM = {
 
   function addTicketSheet(name, rows, notes) {
     state.bag.fpayTicketsFile = { name: name, rows: rows };
-    const ds = Array.from(new Set(rows.map(r => r.date).filter(Boolean))).sort();
+    const ds = Array.from(new Set(rows.map(r => r.date || r.day).filter(Boolean))).sort();
     notes.push({ name: name, label: 'FRiENDi Pay · Tickets · ' + E.fmtInt(rows.reduce((a, r) => a + r.count, 0)) +
       ' tickets' + (ds.length ? ' · ' + shortDays(ds) : '') });
   }

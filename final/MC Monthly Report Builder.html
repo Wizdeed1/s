@@ -10012,7 +10012,7 @@ const KINDS = {
   wfmDaily: { label: 'a day\'s export for the WFM Daily Review (Report builder)', short: 'daily export', group: 'rb', route: 'rb', routes: ['rb'] },
   scorecard: { label: 'the KPI scorecards (kpi.xlsx)', short: 'scorecards', group: 'other', route: 'scorecards', routes: ['scorecards'] },
   logo: { label: 'an image (a logo?)', short: 'image', group: 'other', route: 'logo', routes: ['logo'] },
-  rbHistory: { label: 'a Report builder history backup', short: 'backup', group: 'rb', route: 'rbHistory', routes: ['rbHistory'] },
+  rbHistory: { label: 'the brands\' history (a history file or a Report Builder page)', short: 'history', group: 'rb', route: 'rbHistory', routes: ['rbHistory'] },
   unknown: { label: 'something the tool does not read', short: 'not recognised', group: 'unknown', route: 'none', routes: [] },
 };
 const GENESYS = ['adhGenesys', 'aht', 'perf', 'schedule', 'timeline'];
@@ -21954,7 +21954,7 @@ function watchDaily(db) {
       rbPrefsIn(sn.docs); dhReadyFn();
       state.dailyVer++;
       if (state.ws === 'wfm' && state.wfmTab === 'daily') renderWs();
-      if (rbVisible('dmail')) dmHistRender();   // Emails › Daily brand emails: what the history holds now
+      if (rbVisible('dmail') || rbVisible('builder')) dmHistRender();   // the Brands' history box (Emails › Daily brand emails, Report builder): what the history holds now
     }, () => { dhWatching = false; dhReadyFn(); });
   } catch (e) { dhWatching = false; dhReadyFn(); }
   watchDailyMail(db);
@@ -22753,7 +22753,7 @@ function rbSkeleton() {
       <div class="card rbcard"><div class="rbstep"><span class="n">4</span><div><h2>History</h2><p class="cap">Month to date and the monthly averages come from here.</p></div></div>
         <p class="hint">Every day in the exports you drop is saved by itself, for everyone and not only in this browser, including earlier days you drop to fill a gap.</p>
         <p class="hint rbhist" data-rbhist></p>
-        <div class="rbmini"><button class="btn sm" data-rbhexp><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Export backup</button><label class="btn sm">Import backup<input type="file" accept=".json" hidden data-rbhimp></label></div></div>
+        <div class="dmhist rbdmhist" data-dmhist></div></div>
     </aside>
     <section class="rbmain">
       <div class="card rbsend" data-rbsend></div>
@@ -22799,6 +22799,7 @@ function rbHistRender() {
   const month = R.FULL[+RB.date.slice(5, 7) - 1];
   el.innerHTML = miss.size ? `<b class="warnline">Missing in ${esc(month)}: ${esc(rbShortDays(Array.from(miss).sort()))}</b>. Drop those days' Genesys exports to add them.` : `History is complete for ${esc(month)} up to the report.`;
   if (RB.lastSaved) { const t = RB.lastSaved.at; el.innerHTML += `<br>✓ Saved to history: ${esc(rbShortDays(RB.lastSaved.days))} (${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')})`; }
+  dmHistRender();
 }
 /** the four brand emails this day: on their way to the WFM manager, their checks, sent or not */
 function rbSendRender() {
@@ -22849,12 +22850,12 @@ function rbDayOf(M) {
   return { date: M.cfg.date, agents: o, dept: { adh: d.adherence, conf: d.conformance, occ: d.occupancy, cov: d.coverage, sched: d.scheduled, worked: d.worked, ans: d.answered } };
 }
 function rbExportHistory() { rbSave('member-care-history-' + todayIso() + '.json', new Blob([JSON.stringify(rbHist(), null, 1)], { type: 'application/json' })); }
+/** a history file or a Report Builder page dropped anywhere: read and shown first in the Brands' history box (the Report builder's
+    History card, or Emails › Daily brand emails), never written before "Import into the tool" */
 async function rbImportHistory(file) {
-  try {
-    const H = JSON.parse(await file.text()); if (!H || typeof H !== 'object') throw new Error('bad');
-    RB.hist = H; lsPut(DH_KEY, JSON.stringify(H)); rbHistPush(H);
-    toast('History replaced.'); rbRebuild();
-  } catch (e) { toast('That file is not valid history JSON.'); }
+  if (!dmHistHost()) { state.wfmTab = 'builder'; if (state.ws !== 'wfm') setWs('wfm'); else renderWs(); await new Promise(r => setTimeout(r, 0)); }
+  await dmHistOpen(file);
+  const h = dmHistHost(); if (h) h.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 // events: the analyst's builder
@@ -22863,7 +22864,6 @@ $('wfmRb').addEventListener('click', e => {
   const tb = t.closest('[data-rbtab]'); if (tb) { state.rbActive = tb.dataset.rbtab; rbTabsRender(); rbPanelRender(); return; }
   if (t.closest('[data-rbdrop]')) { $('wfmRb').querySelector('[data-rbpick]').click(); return; }
   if (t.closest('[data-rbclear]')) { if (window.WFM) window.WFM.clear(); RB.bag = rbEmptyBag(); RB.files = []; RB.lastSaved = null; rbRebuild(); toast('Files cleared. What was already sent to the WFM manager stays with him.'); return; }
-  if (t.closest('[data-rbhexp]')) { rbExportHistory(); return; }
   const a = t.closest('[data-rba]'); if (a && a.tagName === 'BUTTON') { const host = a.closest('.rbpanel'); rbAction(host, a.dataset.rba, () => ({ key: 'leaders', dk: rbDayKeyOf(rbPeriod()), period: rbPeriod(), model: RB.models.leaders })); }
 });
 // ---- a brand box shows its email, small and whole, while the pointer rests on it (or it has the keyboard focus): how the email
@@ -22922,7 +22922,6 @@ $('wfmRb').addEventListener('keydown', e => { const z = e.target.closest && e.ta
 $('wfmRb').addEventListener('change', e => {
   const t = e.target;
   if (t.matches('[data-rbpick]')) { if (t.files && t.files.length) rbAddFiles([...t.files]); t.value = ''; return; }
-  if (t.matches('[data-rbhimp]')) { if (t.files && t.files[0]) rbImportHistory(t.files[0]); t.value = ''; return; }
   if (t.matches('[data-rbdate]')) { if (t.value) { rbSetDate(t.value, true); rbRebuild(); } return; }
   if (t.matches('[data-rbsun]')) { RB.weekend = t.checked; rbRebuild(); return; }
   if (t.matches('[data-rbuday]')) { const u = RB.bag.undated.find(x => x.id === t.dataset.rbuday); if (!u) return; u.day = t.value || null; u.how = 'set by hand'; rbComposeBag(); rbAutoSave(); rbRebuild(); return; }
@@ -23038,8 +23037,8 @@ function dmFieldIn(t) {
 
 // ---------------------------------------------------------------- Emails › Daily brand emails: the brands' history out to a file and back in
 // The month to date and the monthly tables of the four brand emails read the shared history (dailytool/history). It goes out as the
-// same member-care-history-<day>.json that Report builder › Export backup and the stand-alone builder save, and such a file comes in
-// here: read and shown first, then the months and days the tool does not have are added. Where both have a month or a day, the tool
+// same member-care-history-<day>.json the stand-alone builder saves, and such a file (or the stand-alone page itself) comes in here, on
+// this page and on the Report builder's History card: read and shown first, then the months and days the tool does not have are added. Where both have a month or a day, the tool
 // keeps its own numbers unless "Use the file's numbers" is ticked. The emails already made keep the history they were made with;
 // the next ones, the Daily page and Search use the new one.
 Object.assign(state, { dmHist: null, dmHistBusy: '', dmHistAll: false });
@@ -23048,8 +23047,19 @@ const dhField = /^[A-Za-z][A-Za-z0-9]{0,39}$/;
 const dhPut = (T, b, s, l, r) => { const B = T[b] = T[b] || {}, S = B[s] = B[s] || {}; (S[l] = S[l] || []).push(r); };
 const dhSame = (a, b) => { const ka = Object.keys(a).sort(), kb = Object.keys(b).sort(); return ka.length === kb.length && ka.every((k, i) => k === kb[i] && a[k] === b[k]); };
 const dhRows = T => Object.values(T).reduce((n, B) => n + Object.values(B).reduce((m, S) => m + Object.values(S).reduce((k, L) => k + L.length, 0), 0), 0);
-/** a history file, read: the four brands' voice and non-voice rows, each with a real date and numbers (or empty figures); anything else is left out and counted */
+/** the history a Report Builder page (the stand-alone .html) carries inside it, as window.HISTORY_SEED: its JSON text, or null */
+function dhSeedOf(text) {
+  for (let i = text.indexOf('window.HISTORY_SEED'); i >= 0; i = text.indexOf('window.HISTORY_SEED', i + 1)) {
+    const m = /^window\.HISTORY_SEED\s*=\s*\{/.exec(text.slice(i, i + 40)); if (!m) continue;
+    const a = i + m[0].length - 1, z = text.indexOf('<\/script>', a);   // written so, it does not close this page's own script
+    return text.slice(a, z < 0 ? text.length : z).trim().replace(/;\s*$/, '');
+  }
+  return null;
+}
+/** a history file, read: the four brands' voice and non-voice rows, each with a real date and numbers (or empty figures); anything else
+    is left out and counted. A Report Builder page (.html) is read for the history built into it. */
 function dhRead(text) {
+  if (/^\s*</.test(text)) { const s = dhSeedOf(text); if (s == null) throw new Error('it is a web page with no brands\' history in it (a Report Builder page has its history built in)'); text = s; }
   let raw; try { raw = JSON.parse(text); } catch (e) { throw new Error('it is not a JSON file'); }
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('it is not a history file');
   const H = {}, left = { parts: [], rows: 0 };
@@ -23102,9 +23112,11 @@ function dhWhat(H) {
   for (const b of RB_BRANDS) for (const s of DH_PARTS) for (const [l, out] of [['monthly', m], ['daily', d]]) for (const r of ((((H || {})[b] || {})[s] || {})[l] || [])) if (r && typeof r.date === 'string') out.push(r.date);
   return [m.length ? `months ${dhSpan(m, true)}` : '', d.length ? `days ${dhSpan(d)}` : ''].filter(Boolean).join(' · ');
 }
+/** the Brands' history box on the page now: Emails › Daily brand emails, or the Report builder's History card */
+const dmHistHost = () => [...document.querySelectorAll('#wfmDm [data-dmhist], #wfmRb [data-dmhist]')].find(el => !el.closest('[hidden]')) || null;
 function dmHistRender() {
-  const el = $('wfmDm').querySelector('[data-dmhist]'); if (!el) return;
-  el.hidden = !canDailyMail(); if (el.hidden) return;
+  const hosts = [...document.querySelectorAll('#wfmDm [data-dmhist], #wfmRb [data-dmhist]')]; if (!hosts.length) return;
+  for (const h of hosts) h.hidden = !canDailyMail(); if (!canDailyMail()) return;
   const X = state.dmHist, busy = state.dmHistBusy, can = canDailySave() && !!state.db, what = dhWhat(rbHist());
   const saved = state.dhistAt ? ` Saved ${esc(fmtWhen(state.dhistAt))}${state.dhistBy ? ' by ' + esc(state.dhistBy) : ''}`.replace(/([^.])$/, '$1.') : '';   // "by Yousef T." ends once
   let html = `<div class="dmhrow"><div class="dmhtx"><b>Brands' history</b><small>${what ? `The month to date and the monthly tables come from it: ${esc(what)}.${saved}` : 'Empty: the month to date and the monthly tables start from the days the WFM analyst drops. Import a history file to add the earlier months.'}</small></div>
@@ -23125,7 +23137,7 @@ function dmHistRender() {
       <p class="hint">${go ? 'The emails already made keep the history they were made with; the next ones use this.' : nDiff ? 'Nothing new to add: only the numbers that are different here, if you tick above.' : 'Everything in this file is already in the tool.'}</p>
       <div class="dmhacts"><button class="btn" data-dmhcancel${busy ? ' disabled' : ''}>Cancel</button><button class="btn primary" data-dmhgo${go && !busy ? '' : ' disabled'}>${busy === 'import' ? '<span class="spin" aria-hidden="true"></span>Importing…' : go ? 'Import into the tool' : 'Nothing to import'}</button></div>`;
   }
-  el.innerHTML = html;
+  for (const h of hosts) h.innerHTML = html;
 }
 /** a chosen history file, read and compared with the shared history; nothing is written yet */
 async function dmHistOpen(f) {
@@ -23160,19 +23172,21 @@ async function dmHistExport() {
   rbExportHistory();
 }
 // the file picker stays outside the box: the box is drawn again whenever the shared data changes, even while the picker is open
-const dmHistPicker = Object.assign(document.createElement('input'), { type: 'file', accept: '.json,application/json', hidden: true, id: 'dmHistPicker' }); document.body.appendChild(dmHistPicker);
+const dmHistPicker = Object.assign(document.createElement('input'), { type: 'file', accept: '.json,.html,.htm,application/json,text/html', hidden: true, id: 'dmHistPicker' }); document.body.appendChild(dmHistPicker);
 dmHistPicker.addEventListener('change', () => { const f = dmHistPicker.files && dmHistPicker.files[0]; dmHistPicker.value = ''; if (f) dmHistOpen(f); });
-$('wfmDm').addEventListener('click', e => {
-  const t = e.target.closest && e.target.closest('[data-dmhexp], [data-dmhpick], [data-dmhgo], [data-dmhcancel]'); if (!t || t.disabled) return;
-  if (t.matches('[data-dmhexp]')) dmHistExport();
-  else if (t.matches('[data-dmhpick]')) dmHistPicker.click();
-  else if (t.matches('[data-dmhgo]')) dmHistImport();
-  else { state.dmHist = null; dmHistRender(); const b = $('wfmDm').querySelector('[data-dmhpick]'); if (b) b.focus(); }
-});
-$('wfmDm').addEventListener('change', e => {
-  const t = e.target;
-  if (t.matches('[data-dmhall]')) { state.dmHistAll = t.checked; dmHistRender(); const c = $('wfmDm').querySelector('[data-dmhall]'); if (c) c.focus(); }
-});
+for (const page of [$('wfmDm'), $('wfmRb')]) {
+  page.addEventListener('click', e => {
+    const t = e.target.closest && e.target.closest('[data-dmhexp], [data-dmhpick], [data-dmhgo], [data-dmhcancel]'); if (!t || t.disabled) return;
+    if (t.matches('[data-dmhexp]')) dmHistExport();
+    else if (t.matches('[data-dmhpick]')) dmHistPicker.click();
+    else if (t.matches('[data-dmhgo]')) dmHistImport();
+    else { state.dmHist = null; dmHistRender(); const b = page.querySelector('[data-dmhpick]'); if (b) b.focus(); }
+  });
+  page.addEventListener('change', e => {
+    const t = e.target;
+    if (t.matches('[data-dmhall]')) { state.dmHistAll = t.checked; dmHistRender(); const c = page.querySelector('[data-dmhall]'); if (c) c.focus(); }
+  });
+}
 
 // ================================================================ INTERACTIONS: the Genesys interactions export, day by day
 // The export lists every inbound interaction: who handled it, when, how long, which queue, who hung up and any error.
@@ -26460,7 +26474,7 @@ const DEPT = [
   ['user', 'WFM analyst', [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
-    '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in. It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
+    '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
@@ -26472,7 +26486,7 @@ const DEPT = [
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
   ['wfm', 'WFM manager', [
     'Every morning, <b>WFM team › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them.',
-    '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in. It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
+    '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
     'When a WFM analyst is on vacation, tick their name under <b>Vacation cover</b> on the WFM team page: you then have their tabs (Import, Review, Export, Report builder) until you untick it.',
@@ -27771,9 +27785,9 @@ const RC_ROUTE = {
   rb: { l: () => 'WFM team › Report builder', can: () => canDailyTool() },
   scorecards: { l: () => 'Settings › Scorecards (typed there: this file is not read)', can: () => isBuilder() },
   logo: { l: () => 'the logo on the forms and Excel files', can: () => isBuilder() },
-  rbHistory: { l: () => 'the Report builder history (replaces it)', can: () => canDailyTool() },
+  rbHistory: { l: () => 'the brands\' history (read and shown first, then added)', can: () => canDailySave() },
 };
-const recogPicker = Object.assign(document.createElement('input'), { type: 'file', multiple: true, accept: '.csv,.txt,.xlsx,.xlsm,.xlsb,.xls,.msg,.json,image/*', hidden: true, id: 'recogPicker' }); document.body.appendChild(recogPicker);
+const recogPicker = Object.assign(document.createElement('input'), { type: 'file', multiple: true, accept: '.csv,.txt,.xlsx,.xlsm,.xlsb,.xls,.msg,.json,.html,.htm,image/*', hidden: true, id: 'recogPicker' }); document.body.appendChild(recogPicker);
 recogPicker.addEventListener('change', () => { const L = [...recogPicker.files]; recogPicker.value = ''; if (L.length) recogFiles(L, 'pick'); });
 function recogPick() { recogPicker.click(); }
 
@@ -27817,6 +27831,7 @@ async function recogOne(f) {
   if (/\.msg$/i.test(n)) return Recog.verdictOf(n, 'distributionMsg', { reasons: ['An Outlook message (.msg): the tool reads the Teams Distribution email'] });
   if (/^image\//.test(f.type || '') || /\.(png|jpe?g|gif|webp)$/i.test(n)) return Recog.verdictOf(n, 'logo', { level: 'likely', confidence: 0.75, reasons: ['An image file'] });
   if (/\.json$/i.test(n)) return Recog.verdictOf(n, 'rbHistory', { level: 'likely', confidence: 0.7, reasons: ['A JSON file, as the Report builder saves its history'] });
+  if (/\.html?$/i.test(n)) { const t = await f.text(); return dhSeedOf(t) != null ? Recog.verdictOf(n, 'rbHistory', { level: 'sure', confidence: 0.95, reasons: ['A Report Builder page: the brands\' history built into it'] }) : Recog.verdictOf(n, 'unknown', { level: 'unsure', confidence: 0, reasons: ['A web page with no brands\' history in it'] }); }
   let v = null;
   if (!/\.xls$/i.test(n)) { try { const r = await parse(n, await f.arrayBuffer(), true, 'recog', recogOpts()); v = r && r.rec; } catch (e) { v = Recog.verdictOf(n, 'unknown', { level: 'unsure', confidence: 0, reasons: ['It could not be read. If it has a password, save a copy without one'], error: 'read' }); } }
   if (!v || v.kind === 'unknown' || (v.level !== 'sure' && /\.(csv|txt|xls)$/i.test(n))) {

@@ -24,9 +24,9 @@ const RC_ROUTE = {
   rb: { l: () => 'WFM team › Report builder', can: () => canDailyTool() },
   scorecards: { l: () => 'Settings › Scorecards (typed there: this file is not read)', can: () => isBuilder() },
   logo: { l: () => 'the logo on the forms and Excel files', can: () => isBuilder() },
-  rbHistory: { l: () => 'the Report builder history (replaces it)', can: () => canDailyTool() },
+  rbHistory: { l: () => 'the brands\' history (read and shown first, then added)', can: () => canDailySave() },
 };
-const recogPicker = Object.assign(document.createElement('input'), { type: 'file', multiple: true, accept: '.csv,.txt,.xlsx,.xlsm,.xlsb,.xls,.msg,.json,image/*', hidden: true, id: 'recogPicker' }); document.body.appendChild(recogPicker);
+const recogPicker = Object.assign(document.createElement('input'), { type: 'file', multiple: true, accept: '.csv,.txt,.xlsx,.xlsm,.xlsb,.xls,.msg,.json,.html,.htm,image/*', hidden: true, id: 'recogPicker' }); document.body.appendChild(recogPicker);
 recogPicker.addEventListener('change', () => { const L = [...recogPicker.files]; recogPicker.value = ''; if (L.length) recogFiles(L, 'pick'); });
 function recogPick() { recogPicker.click(); }
 
@@ -70,6 +70,7 @@ async function recogOne(f) {
   if (/\.msg$/i.test(n)) return Recog.verdictOf(n, 'distributionMsg', { reasons: ['An Outlook message (.msg): the tool reads the Teams Distribution email'] });
   if (/^image\//.test(f.type || '') || /\.(png|jpe?g|gif|webp)$/i.test(n)) return Recog.verdictOf(n, 'logo', { level: 'likely', confidence: 0.75, reasons: ['An image file'] });
   if (/\.json$/i.test(n)) return Recog.verdictOf(n, 'rbHistory', { level: 'likely', confidence: 0.7, reasons: ['A JSON file, as the Report builder saves its history'] });
+  if (/\.html?$/i.test(n)) { const t = await f.text(); return dhSeedOf(t) != null ? Recog.verdictOf(n, 'rbHistory', { level: 'sure', confidence: 0.95, reasons: ['A Report Builder page: the brands\' history built into it'] }) : Recog.verdictOf(n, 'unknown', { level: 'unsure', confidence: 0, reasons: ['A web page with no brands\' history in it'] }); }
   let v = null;
   if (!/\.xls$/i.test(n)) { try { const r = await parse(n, await f.arrayBuffer(), true, 'recog', recogOpts()); v = r && r.rec; } catch (e) { v = Recog.verdictOf(n, 'unknown', { level: 'unsure', confidence: 0, reasons: ['It could not be read. If it has a password, save a copy without one'], error: 'read' }); } }
   if (!v || v.kind === 'unknown' || (v.level !== 'sure' && /\.(csv|txt|xls)$/i.test(n))) {

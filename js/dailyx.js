@@ -46,7 +46,7 @@ function watchDaily(db) {
       rbPrefsIn(sn.docs); dhReadyFn();
       state.dailyVer++;
       if (state.ws === 'wfm' && state.wfmTab === 'daily') renderWs();
-      if (rbVisible('dmail')) dmHistRender();   // Emails › Daily brand emails: what the history holds now
+      if (rbVisible('dmail') || rbVisible('builder')) dmHistRender();   // the Brands' history box (Emails › Daily brand emails, Report builder): what the history holds now
     }, () => { dhWatching = false; dhReadyFn(); });
   } catch (e) { dhWatching = false; dhReadyFn(); }
   watchDailyMail(db);

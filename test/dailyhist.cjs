@@ -4,6 +4,8 @@
 //    days to add, the same, different here; what is left out), imported without touching the days the tool already has, then
 //    again with "Use the file's numbers"; a third time there is nothing to import; Export history gives it all back.
 // 3. Files that are not history files are refused, and odd keys in a file (__proto__, constructor) change nothing.
+// 4. A Report Builder page (the stand-alone .html, made up here) is read for the history built into it, on the Report builder's
+//    History card too (its old Import backup replaced the history unread), and dropped on Recognise files; a page with none is refused.
 // Every number here is made up. Usage: node test/dailyhist.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -105,6 +107,32 @@ const fileP = path.join(out, 'member-care-history-test.json'); fs.writeFileSync(
   const r1 = await refuse('list.json', '[1, 2, 3]'), r2 = await refuse('notes.json', 'not json at all'), r3 = await refuse('other.json', '{"roster": [{"name": "A"}]}');
   ok(/it is not a history file/.test(r1) && /it is not a JSON file/.test(r2) && /no brand history in it/.test(r3) && !(await p.$('#wfmDm .dmhprev')), `not history files are refused: "${r1}" / "${r2}" / "${r3}"`);
   await p.screenshot({ path: path.join(out, 'dailyhist-done.png') });
+  // ---- 4. a Report Builder page: the history built into it (made-up numbers, June 2024 and 1–3 August 2026)
+  const seedH = {}; for (const b of BRANDS) { seedH[b] = { voice: { monthly: [voice('2024-06-01')], daily: [1, 2, 3].map(n => voice(`2026-08-0${n}`)) } }; if (NV[b]) seedH[b].nonvoice = { monthly: [nonvoice('2024-06-01')], daily: [1, 2, 3].map(n => nonvoice(`2026-08-0${n}`)) }; }
+  const page14 = `<!doctype html><html><head><title>Member Care Report Builder</title></head><body><div id="app"></div>
+<script>function seedOf() { return JSON.parse(JSON.stringify(window.HISTORY_SEED || {})); }</script>
+<script>window.HISTORY_SEED=${JSON.stringify(seedH)};</script>
+<script>window.TEMPLATES={}; console.log(seedOf());</script></body></html>`;
+  const pageP = path.join(out, 'Member Care Report Builder 14.html'); fs.writeFileSync(pageP, page14);
+  await p.setInputFiles('#dmHistPicker', pageP); await p.waitForSelector('#wfmDm .dmhprev', { timeout: 15000 });
+  const pv = await p.evaluate(() => ({ head: document.querySelector('#wfmDm .dmhprev > span').textContent, rows: [...document.querySelectorAll('#wfmDm .dmhprev .ilist li')].map(li => li.textContent.replace(/\s+/g, ' ').trim()) }));
+  ok(pv.head === 'months Jun 2024 · days 1 Aug – 3 Aug 2026' && pv.rows.length === 4 && pv.rows.every(r => /1 month to add · 3 days to add$/.test(r)), `a Report Builder page is read for its built-in history: ${pv.head} | ${pv.rows[0]}`);
+  await p.evaluate(() => { document.getElementById('toastMsg').textContent = ''; }); await p.click('#wfmDm [data-dmhgo]');
+  await p.waitForFunction(() => /^History imported/.test(document.getElementById('toastMsg').textContent), null, { timeout: 20000 });
+  const a4 = await p.evaluate(async () => { const x = (await window.__mc.state.db.doc('dailytool/history').get()).data().hist; return { jul: !!x.virgin.voice.monthly.find(r => r.date === '2024-06-01'), aug2: !!x.fpay.nonvoice.daily.find(r => r.date === '2026-08-02'), oct: x.virgin.voice.daily.filter(r => r.date.startsWith('2026-10')).length }; });
+  ok(a4.jul && a4.aug2 && a4.oct === 21, 'its months and days are added; the days the tool had stay');
+  const r4 = await refuse('page.html', '<!doctype html><html><body><p>Hello</p><script>var HISTORY = 1;</script></body></html>');
+  ok(/a web page with no brands' history in it/.test(r4), `a web page with no history is refused: "${r4}"`);
+  // the Report builder's History card has the same box (its old Import backup replaced the shared history without reading it)
+  await p.evaluate(() => { window.__mc.state.wfmTab = 'builder'; window.__mc.setWs('wfm'); window.__mc.renderWs(); });
+  await p.waitForSelector('#wfmRb [data-dmhist] [data-dmhpick]', { timeout: 20000 });
+  ok(!(await p.$('#wfmRb [data-rbhimp]')), 'the Report builder has no unread Import backup any more: its History card has the Brands\' history box');
+  await p.click('#wfmRb [data-dmhist] [data-dmhpick]').catch(() => {});
+  await p.setInputFiles('#dmHistPicker', pageP); await p.waitForSelector('#wfmRb .dmhprev', { timeout: 15000 });
+  const rbTxt = await p.$eval('#wfmRb [data-dmhist]', el => el.textContent.replace(/\s+/g, ' '));
+  ok(/Everything in this file is already in the tool/.test(rbTxt), 'on the Report builder the same page is read and shown first: everything is already in');
+  await p.click('#wfmRb [data-dmhcancel]');
+  await p.screenshot({ path: path.join(out, 'dailyhist-builder.png') });
   console.log(errs.length ? errs.join('\n') : 'no errors'); if (bad || errs.length) process.exitCode = 1;
   await b.close();
 })();

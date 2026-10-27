@@ -35,7 +35,7 @@ const KINDS = {
   wfmDaily: { label: 'a day\'s export for the WFM Daily Review (Report builder)', short: 'daily export', group: 'rb', route: 'rb', routes: ['rb'] },
   scorecard: { label: 'the KPI scorecards (kpi.xlsx)', short: 'scorecards', group: 'other', route: 'scorecards', routes: ['scorecards'] },
   logo: { label: 'an image (a logo?)', short: 'image', group: 'other', route: 'logo', routes: ['logo'] },
-  rbHistory: { label: 'a Report builder history backup', short: 'backup', group: 'rb', route: 'rbHistory', routes: ['rbHistory'] },
+  rbHistory: { label: 'the brands\' history (a history file or a Report Builder page)', short: 'history', group: 'rb', route: 'rbHistory', routes: ['rbHistory'] },
   unknown: { label: 'something the tool does not read', short: 'not recognised', group: 'unknown', route: 'none', routes: [] },
 };
 const GENESYS = ['adhGenesys', 'aht', 'perf', 'schedule', 'timeline'];

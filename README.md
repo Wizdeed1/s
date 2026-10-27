@@ -5,8 +5,8 @@ supervisors' attendance sheets into the monthly report, the incentive data and e
 one-to-ones, objections, the senior manager's review and final, the month close, the daily Member Care reports).
 
 This repository holds the v33 source restored from *MC Monthly Report Builder.md* (Part 2), with the **Option A
-(Daylight)** visual design built on top of it, following Apple's Human Interface Guidelines, and the October 2026 additions
-below. Every calculation, output, email
+(Daylight)** visual design built on top of it, following Apple's Human Interface Guidelines, now in **glass** (see below), and
+the October 2026 additions below. Every calculation, output, email
 template, role, permission and storage format is the same as v33 **by default**: the new counting settings start at what
 v33 did (tests compare 10,000 synthetic people against the v33 code), and the only permissions added on request are that the
 WFM analyst shares the Emails page with the WFM manager and that the WFM team (and admins) can export and import all the data.
@@ -15,6 +15,21 @@ address (see the security review below).
 
 **The built file:** [`final/MC Monthly Report Builder.html`](final/MC%20Monthly%20Report%20Builder.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
+
+## Glass (glassmorphism)
+
+Since 27 October 2026 the interface is frosted glass over a soft, still field of colour (`js/ui6/97_glass.css`, the last
+layer, so the design underneath is unchanged and comes back by removing the file):
+
+| Part | How it looks |
+|---|---|
+| The field | A few broad washes of the brand orange and the data colours (blue, violet, teal) under everything, in light and in dark. It never moves and is painted once, so scrolling stays smooth. |
+| Panels | Cards, dashboard tiles, filter bars and the sign-in card are translucent (white in light, graphite in dark) and frost what is behind them, with a bright top edge where light catches the glass and a soft shadow. |
+| No glass on glass | A panel inside a card, a drawer or a dialog is a light fill, not a second blur, so text stays sharp. Person tiles and nested boxes are translucent without a blur of their own (many on screen at once). |
+| Floating parts | The sidebar is the heaviest glass, the toolbar and tab bar lighter; drawers, dialogs, menus and the hover previews are thicker glass with a stronger blur. Dialogs arrive as a material (their frost and size together) unless the system asks for less motion. |
+| Tables | Sticky headers and first columns are nearly solid, so rows never show through a name or a figure. Separators blend into the glass; control edges stay solid. |
+| Legibility | Secondary text is a step darker in light and lighter in dark than on solid panels; the main action stays solid orange. |
+| System settings | *Reduce transparency* turns every surface solid and the field off; *Increase contrast* makes panels nearly solid with a defined edge; printing shows white panels and no field. |
 
 ## The design: Option A, by Apple's guidelines
 

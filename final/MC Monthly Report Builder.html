@@ -95,6 +95,7 @@
    selection and progress (branding.md › Apply your app's accent color judiciously). Geist for headlines and figures, the
    system font for body text on Apple devices (branding.md › Consider using a custom font). Text 4.5:1 or better on its surface
    (secondary text near 7:1, dark-mode.md › Aim for sufficient color contrast); controls and focus rings 3:1.
+   Since October 2026 the panels are glass over a field of colour: ui6/97_glass.css, the last layer, changes the surfaces only.
    ========================================================================================================================== */
 
 :root {
@@ -2485,6 +2486,8 @@ p.prange { padding-top: 12px; }
 .dmprog small { color: var(--muted); font-size: 12.5px; }
 /* the brands' history on the same page: export it, or import a history file (read and shown first) */
 .dmhist { display: grid; gap: 10px; padding: 12px 16px; }
+.rbdmhist { padding: 12px 0 0; margin-top: 4px; border-top: 1px solid var(--line); }   /* inside the Report builder's History card: the card's own edges, a rule above */
+.rbdmhist .dmhtx { flex-basis: 100%; }
 .dmhrow { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
 .dmhtx { display: grid; gap: 2px; min-width: 0; flex: 1 1 320px; }
 .dmhtx small { color: var(--muted); font-size: 12.5px; }
@@ -2822,6 +2825,141 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
   .cvauto { content-visibility: visible; }
   body { background: #fff; color: #000; }
   .card, .tiles, .tablewrap { border-color: #ccc; }
+}
+
+/* ==========================================================================================================================
+   Glass: the interface as frosted, translucent material over a soft field of colour (glassmorphism), in light and in dark.
+   The field is still: a few broad washes of the brand's orange and the data colours under everything, never moving. Panels let
+   it through (a translucent white or graphite, a bright top edge where light catches the glass, a soft shadow), and the larger,
+   floating ones (cards, the sidebar and toolbar, drawers, dialogs, menus) frost what is behind them. Hierarchy stays in the
+   material: the sidebar is the heaviest glass, drawers and dialogs the most opaque, chips and buttons the lightest.
+   Legibility first: no glass on glass (a panel inside a card is a light fill, not a second blur), sticky table headers and
+   columns nearly solid so rows never show through, text a step darker (lighter in dark) than on solid panels. When the system
+   asks for less transparency or more contrast every surface turns solid again, and nothing of the field is printed.
+   ========================================================================================================================== */
+
+:root {
+  /* the field under everything */
+  --bg: #e7eaf4;
+  --field:
+    radial-gradient(64vw 56vw at 102% -6%, rgba(242, 103, 34, .36), rgba(242, 103, 34, 0) 64%),
+    radial-gradient(60vw 52vw at -8% 106%, rgba(11, 87, 208, .28), rgba(11, 87, 208, 0) 64%),
+    radial-gradient(50vw 44vw at 80% 96%, rgba(142, 68, 201, .24), rgba(142, 68, 201, 0) 62%),
+    radial-gradient(44vw 38vw at 14% 4%, rgba(14, 138, 126, .2), rgba(14, 138, 126, 0) 62%),
+    radial-gradient(36vw 30vw at 52% 46%, rgba(248, 149, 29, .1), rgba(248, 149, 29, 0) 64%),
+    linear-gradient(160deg, #f3f4fa 0%, #e8ebf5 55%, #e4e7f2 100%);
+  /* glass: panels let the field through; what floats is thicker; what sticks over rows is nearly solid */
+  --surface: rgba(255, 255, 255, .52); --raised: rgba(250, 250, 253, .95); --overlay: rgba(255, 255, 255, .8); --sunk: rgba(255, 255, 255, .5);
+  --glass-sticky: rgba(249, 249, 252, .96);
+  --glass-blur: saturate(1.7) blur(22px); --glass-blur-lg: saturate(1.8) blur(34px);
+  --glass-edge: rgba(255, 255, 255, .72);   /* the bright top edge: light catching the material */
+  --card-line: rgba(255, 255, 255, .7); --card-line-hover: rgba(255, 255, 255, .95);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, .8), 0 1px 2px rgba(22, 26, 64, .05), 0 10px 32px rgba(22, 26, 64, .08);
+  --shadow-hover: inset 0 1px 0 rgba(255, 255, 255, .9), 0 2px 4px rgba(22, 26, 64, .06), 0 14px 40px rgba(22, 26, 64, .12);
+  --shadow-raise: inset 0 1px 0 rgba(255, 255, 255, .85), 0 2px 6px rgba(22, 26, 64, .07), 0 16px 44px rgba(22, 26, 64, .14);
+  --shadow-pop: inset 0 1px 0 rgba(255, 255, 255, .8), 0 0 0 .5px rgba(22, 26, 64, .1), 0 14px 40px rgba(22, 26, 64, .18);
+  --shadow-modal: inset 0 1px 0 rgba(255, 255, 255, .8), 0 0 0 .5px rgba(22, 26, 64, .1), 0 30px 80px rgba(22, 26, 64, .26);
+  --shadow-sheet: inset 0 1px 0 rgba(255, 255, 255, .8), 0 0 0 .5px rgba(22, 26, 64, .1), 0 22px 60px rgba(22, 26, 64, .22);
+  --scrim: rgba(22, 26, 48, .28);
+  /* separators blend into the glass; control edges stay solid (3:1) */
+  --line: rgba(60, 60, 80, .13); --line-2: rgba(60, 60, 80, .22);
+  /* text on glass: a step darker than on a solid panel (vibrancy) */
+  --muted: #505056; --faint: #5f5f66;
+  /* materials: the sidebar the heaviest, the toolbar and tab bar lighter, menus thick enough to read over anything */
+  --mat-side: rgba(255, 255, 255, .4); --mat-bar: rgba(246, 247, 252, .5); --mat-menu: rgba(252, 252, 255, .78); --mat-blur: saturate(1.8) blur(30px);
+  --nav: var(--mat-side); --nav-line: rgba(255, 255, 255, .7); --nav-hover: rgba(255, 255, 255, .55); --nav-current: rgba(242, 103, 34, .16);
+  /* controls: light glass */
+  --btn-fill: rgba(255, 255, 255, .58); --btn-fill-hover: rgba(255, 255, 255, .82); --seg-thumb: rgba(255, 255, 255, .95);
+  --fill: rgba(255, 255, 255, .5); --fill-2: rgba(255, 255, 255, .72); --zebra: rgba(255, 255, 255, .34);
+  --tt-bg: rgba(252, 252, 255, .9);
+}
+:root[data-theme="dark"] {
+  --bg: #07080d;
+  --field:
+    radial-gradient(64vw 56vw at 102% -6%, rgba(242, 103, 34, .3), rgba(242, 103, 34, 0) 64%),
+    radial-gradient(60vw 52vw at -8% 106%, rgba(64, 156, 255, .26), rgba(64, 156, 255, 0) 64%),
+    radial-gradient(50vw 44vw at 80% 96%, rgba(191, 90, 242, .24), rgba(191, 90, 242, 0) 62%),
+    radial-gradient(44vw 38vw at 14% 4%, rgba(64, 200, 180, .14), rgba(64, 200, 180, 0) 62%),
+    linear-gradient(160deg, #0d0e15 0%, #08090e 60%, #06070b 100%);
+  --surface: rgba(44, 44, 54, .42); --raised: rgba(30, 30, 36, .96); --overlay: rgba(36, 36, 42, .8); --sunk: rgba(118, 118, 128, .16);
+  --glass-sticky: rgba(28, 28, 34, .97);
+  --glass-edge: rgba(255, 255, 255, .1);
+  --card-line: rgba(255, 255, 255, .09); --card-line-hover: rgba(255, 255, 255, .18);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, .07), 0 12px 36px rgba(0, 0, 0, .34);
+  --shadow-hover: inset 0 1px 0 rgba(255, 255, 255, .1), 0 16px 44px rgba(0, 0, 0, .44);
+  --shadow-raise: inset 0 1px 0 rgba(255, 255, 255, .09), 0 0 0 .5px rgba(255, 255, 255, .08), 0 16px 44px rgba(0, 0, 0, .5);
+  --shadow-pop: inset 0 1px 0 rgba(255, 255, 255, .09), 0 0 0 .5px rgba(255, 255, 255, .12), 0 16px 44px rgba(0, 0, 0, .6);
+  --shadow-modal: inset 0 1px 0 rgba(255, 255, 255, .09), 0 0 0 .5px rgba(255, 255, 255, .1), 0 30px 80px rgba(0, 0, 0, .7);
+  --shadow-sheet: inset 0 1px 0 rgba(255, 255, 255, .09), 0 0 0 .5px rgba(255, 255, 255, .1), 0 22px 64px rgba(0, 0, 0, .62);
+  --scrim: rgba(0, 0, 0, .5);
+  --line: rgba(255, 255, 255, .1); --line-2: rgba(255, 255, 255, .16);
+  --muted: #b0b0b6; --faint: #97979e;
+  --mat-side: rgba(20, 20, 26, .52); --mat-bar: rgba(14, 14, 18, .56); --mat-menu: rgba(44, 44, 52, .78);
+  --nav: var(--mat-side); --nav-line: rgba(255, 255, 255, .09); --nav-hover: rgba(255, 255, 255, .08); --nav-current: rgba(242, 103, 34, .24);
+  --btn-fill: rgba(255, 255, 255, .1); --btn-fill-hover: rgba(255, 255, 255, .17); --seg-thumb: rgba(118, 118, 128, .62);
+  --fill: rgba(255, 255, 255, .08); --fill-2: rgba(255, 255, 255, .14); --zebra: rgba(255, 255, 255, .035);
+  --tt-bg: rgba(52, 52, 58, .92);
+}
+
+/* the field: a still layer of its own, painted once (it never repaints when the page scrolls) */
+body { background: var(--bg); }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--field); transform: translateZ(0); }
+.lock { background: transparent; }
+
+/* the panels that sit on the field frost what is behind them; a panel inside a panel is a fill, never a second blur */
+.card, .lockcard, .kpi, .qa, .fbar, .buildbar, .wsstatus.draft, .rb .editor, .board, .todaymini {
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+.card .card, .card .kpi, .card .board, .drawer .card, .dlgbox .card, .card .tablewrap, .drawer .tablewrap, .dlgbox .tablewrap {
+  -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--sunk); box-shadow: none; border-color: var(--line);
+}
+.card, .kpi, .qa, .tile, .slot, .atile, .tk, .note, .fbar, .buildbar, .wsstatus.draft, .lockcard, .rb .editor, .monthbox, .todaymini, .pending li, .others li {
+  border-color: var(--card-line);
+}
+/* what floats: thicker glass, a stronger blur */
+.drawer, .dlgbox, .sheet-more, .rbpeek {
+  -webkit-backdrop-filter: var(--glass-blur-lg); backdrop-filter: var(--glass-blur-lg); border: 1px solid var(--card-line);
+}
+.menu, .pop, .attpop, .findbox { border: 1px solid var(--card-line); }
+.sidebar { border-inline-end: 1px solid var(--nav-line); }
+
+/* rows scroll under the headers and the first columns: those stay nearly solid, so a figure never shows through a name */
+thead th, .tteam thead th, #rwrap .ptable th:first-child, #rwrap .ptable td:first-child, #rwrap .ptable th:nth-child(2), #rwrap .ptable td:nth-child(2),
+#rwrap .ptable th:last-child, #rwrap .ptable td:last-child, .attgrid th.an { background: var(--glass-sticky); }
+.tablewrap { background: color-mix(in srgb, var(--surface) 70%, transparent); }
+
+/* fields: a clear pane, a solid edge */
+input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, var(--surface) 80%, rgba(255, 255, 255, .3)); }
+:root[data-theme="dark"] input.cell, :root[data-theme="dark"] select.cell, :root[data-theme="dark"] textarea.cell, :root[data-theme="dark"] .rbta { background: rgba(0, 0, 0, .22); }
+
+/* the main action stays solid orange: colour on a solid layer, never on the glass (materials: put colour on a solid layer) */
+.btn.primary { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 6px 18px rgba(196, 81, 26, .28); }
+:root[data-theme="dark"] .btn.primary { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 6px 18px rgba(0, 0, 0, .4); }
+
+/* a glass panel arrives as a material: its frost and its size together (only where motion is welcome) */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes glassIn { from { opacity: 0; transform: scale(.985); -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } }
+  .dlgbox { animation: glassIn var(--t-panel) var(--ease-out); }
+}
+
+/* less transparency, as the system asks: every surface solid, the field gone (materials.md, accessibility.md) */
+@media (prefers-reduced-transparency: reduce) {
+  :root { --bg: #f2f2f7; --surface: #ffffff; --raised: #ffffff; --overlay: #ffffff; --sunk: #f7f7fa; --glass-sticky: #ffffff; --line: #e5e5ea; --line-2: #d1d1d6; --card-line: rgba(60, 60, 67, .1);
+    --fill: rgba(120, 120, 128, .12); --fill-2: rgba(120, 120, 128, .2); --btn-fill: rgba(120, 120, 128, .14); --btn-fill-hover: rgba(120, 120, 128, .22); --zebra: rgba(116, 116, 128, .075); --seg-thumb: #ffffff; }
+  :root[data-theme="dark"] { --bg: #0b0b0c; --surface: #1c1c1e; --raised: #2c2c2e; --overlay: #2c2c2e; --sunk: #232326; --glass-sticky: #1c1c1e; --line: #38383a; --line-2: #48484a; --card-line: rgba(255, 255, 255, .06);
+    --fill: rgba(120, 120, 128, .24); --fill-2: rgba(120, 120, 128, .34); --btn-fill: rgba(120, 120, 128, .28); --btn-fill-hover: rgba(120, 120, 128, .38); --zebra: rgba(120, 120, 128, .1); --seg-thumb: #636366; }
+  body::before { display: none; }
+  .card, .lockcard, .kpi, .qa, .fbar, .buildbar, .wsstatus.draft, .rb .editor, .board, .todaymini, .drawer, .dlgbox, .sheet-more, .rbpeek { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}
+/* more contrast: nearly solid panels with a defined edge */
+@media (prefers-contrast: more) {
+  :root { --surface: rgba(255, 255, 255, .94); --overlay: #ffffff; --card-line: rgba(60, 60, 67, .4); --line: rgba(60, 60, 67, .3); --line-2: rgba(60, 60, 67, .45); }
+  :root[data-theme="dark"] { --surface: rgba(28, 28, 32, .95); --overlay: #2c2c2e; --card-line: rgba(255, 255, 255, .35); --line: rgba(255, 255, 255, .28); --line-2: rgba(255, 255, 255, .4); }
+}
+@media print {
+  body::before { display: none; }
+  body { background: #fff; }
+  .card, .kpi, .tablewrap { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: #fff !important; box-shadow: none !important; }
 }
 </style>
 </head>

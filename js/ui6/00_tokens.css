@@ -7,6 +7,7 @@
    selection and progress (branding.md › Apply your app's accent color judiciously). Geist for headlines and figures, the
    system font for body text on Apple devices (branding.md › Consider using a custom font). Text 4.5:1 or better on its surface
    (secondary text near 7:1, dark-mode.md › Aim for sufficient color contrast); controls and focus rings 3:1.
+   Since October 2026 the panels are glass over a field of colour: ui6/97_glass.css, the last layer, changes the surfaces only.
    ========================================================================================================================== */
 
 :root {

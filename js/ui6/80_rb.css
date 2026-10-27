@@ -90,6 +90,8 @@
 .dmprog small { color: var(--muted); font-size: 12.5px; }
 /* the brands' history on the same page: export it, or import a history file (read and shown first) */
 .dmhist { display: grid; gap: 10px; padding: 12px 16px; }
+.rbdmhist { padding: 12px 0 0; margin-top: 4px; border-top: 1px solid var(--line); }   /* inside the Report builder's History card: the card's own edges, a rule above */
+.rbdmhist .dmhtx { flex-basis: 100%; }
 .dmhrow { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
 .dmhtx { display: grid; gap: 2px; min-width: 0; flex: 1 1 320px; }
 .dmhtx small { color: var(--muted); font-size: 12.5px; }

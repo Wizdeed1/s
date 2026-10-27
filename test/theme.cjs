@@ -23,7 +23,7 @@ let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? 'âœ“ ' : 'âœ
   const look = p => p.evaluate(() => ({ theme: document.documentElement.dataset.theme, atBody: window.__themeAtBody, bg: getComputedStyle(document.body).backgroundColor, stored: localStorage.getItem('mc-theme'),
     checked: [...document.querySelectorAll('#acctMenu [data-theme-set]')].filter(x => x.getAttribute('aria-checked') === 'true').map(x => x.dataset.themeSet).join(),
     meta: [...document.querySelectorAll('meta[name="theme-color"]')].map(m => m.content).join() }));
-  const DARK = 'rgb(11, 11, 12)', LIGHT = 'rgb(242, 242, 247)';
+  const DARK = 'rgb(7, 8, 13)', LIGHT = 'rgb(231, 234, 244)';   // the glass field's base (ui6/97_glass.css)
 
   // a computer set to dark, nothing chosen yet: System, so dark
   let { p, ctx } = await open(admin);
@@ -34,7 +34,7 @@ let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? 'âœ“ ' : 'âœ
   await p.screenshot({ path: path.join(out, 'appearance-menu-dark.png') });
   await p.click('#acctMenu [data-theme-set="light"]'); await p.waitForTimeout(150);
   s = await look(p);
-  ok(s.theme === 'light' && s.bg === LIGHT && s.stored === 'light' && s.checked === 'light' && s.meta === '#f2f2f7,#f2f2f7', `Light from the account menu: ${s.bg}, kept as ${s.stored}, toolbar colour ${s.meta}`);
+  ok(s.theme === 'light' && s.bg === LIGHT && s.stored === 'light' && s.checked === 'light' && s.meta === '#e7eaf4,#e7eaf4', `Light from the account menu: ${s.bg}, kept as ${s.stored}, toolbar colour ${s.meta}`);
   ok(await p.evaluate(() => !document.getElementById('acctMenu').hidden), 'the menu stays open after the choice');
   await p.screenshot({ path: path.join(out, 'appearance-menu-light.png') });
   // the keyboard: right arrow moves to Dark

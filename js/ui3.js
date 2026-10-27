@@ -3542,7 +3542,7 @@ const themeMq = matchMedia('(prefers-color-scheme: dark)');
 function applyTheme(t = themeNow()) {
   const dark = t === 'dark' || (t === 'system' && themeMq.matches);
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#0b0b0c' : '#f2f2f7'));
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#07080d' : '#e7eaf4'));
   document.dispatchEvent(new CustomEvent('mc-theme'));
 }
 function syncTheme() {

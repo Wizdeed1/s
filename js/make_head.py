@@ -11,8 +11,8 @@ theme = open(os.path.join(here, 'theme_boot.html'), encoding='utf-8').read()   #
 csp = open(os.path.join(here, 'csp_boot.html'), encoding='utf-8').read()   # the browser refuses any web address (a file only)
 out = ('<title>MC Monthly Report Builder</title>\n'
        + csp.rstrip('\n') + '\n'
-       '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">\n'
-       '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0b0c">\n'
+       '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#e7eaf4">\n'
+       '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#07080d">\n'
        '<meta name="color-scheme" content="light dark">\n'
        + theme.rstrip('\n') + '\n' + boot.rstrip('\n') + '\n<style>\n' + '\n'.join(css) + '</style>\n')
 assert '</style' not in ''.join(css).lower()

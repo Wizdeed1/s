@@ -16,8 +16,8 @@
   document.head.appendChild(m);
 })();
 </script>
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0b0c">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#e7eaf4">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#07080d">
 <meta name="color-scheme" content="light dark">
 <script id="themeBoot">
 /* Light or dark before the first paint, in plain old JavaScript like the start guard: the choice kept in this browser (System,
@@ -18019,7 +18019,7 @@ const themeMq = matchMedia('(prefers-color-scheme: dark)');
 function applyTheme(t = themeNow()) {
   const dark = t === 'dark' || (t === 'system' && themeMq.matches);
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#0b0b0c' : '#f2f2f7'));
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#07080d' : '#e7eaf4'));
   document.dispatchEvent(new CustomEvent('mc-theme'));
 }
 function syncTheme() {

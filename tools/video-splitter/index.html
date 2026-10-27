@@ -52,7 +52,7 @@ dd{margin:0;overflow-wrap:anywhere}
   <section class="card">
     <h2>1 · Choose the video</h2>
     <label class="drop" id="drop">
-      <input type="file" id="file" accept="video/*" hidden>
+      <input type="file" id="file" accept="video/*,.mkv,.mov,.m4v" hidden>
       <span id="dropText">Drop a video here, or click to choose one</span>
     </label>
     <dl id="info" hidden>
@@ -60,6 +60,7 @@ dd{margin:0;overflow-wrap:anywhere}
       <dt>Size</dt><dd id="iSize"></dd>
       <dt>Length</dt><dd id="iLength"></dd>
       <dt>Picture</dt><dd id="iPixels"></dd>
+      <dt>Sound</dt><dd id="iAudio"></dd>
     </dl>
   </section>
 
@@ -67,7 +68,7 @@ dd{margin:0;overflow-wrap:anywhere}
     <h2>2 · Settings</h2>
     <div class="grid">
       <label>Maximum size per part (MB)
-        <input type="number" id="maxMB" value="30" min="1" max="500" step="1">
+        <input type="number" id="maxMB" value="30" min="1" max="2000" step="1">
       </label>
       <label>Frame image every (seconds)
         <input type="number" id="interval" value="30" min="5" step="5">
@@ -80,13 +81,15 @@ dd{margin:0;overflow-wrap:anywhere}
       </label>
     </div>
     <p class="hint">MB here means 1,000,000 bytes, so every part is under 30&nbsp;MB whichever unit a tool uses.
-    Parts are copied, not re-encoded, so they are fast and keep the original quality. A cut can only happen at a
-    keyframe, so a part may come out a little bigger than planned. If that happens the tool cuts again with a smaller target.
-    MP4, MOV and M4V files work best.</p>
+    The tool first measures the video, then fills each part as close to the limit as it can, so you get as few parts as possible.
+    Parts are copied, not re-encoded, so quality is unchanged. Large files are fine: the video is read from disk in pieces.
+    MP4, MOV, M4V and MKV files work best.</p>
   </section>
 
   <section class="card">
     <h2>3 · Split</h2>
+    <p class="hint">In Chrome and Edge you first choose where to save. A new folder is made there and each part is
+    written into it as soon as it is cut. Other browsers download the files at the end instead.</p>
     <button id="split" disabled>Split video</button>
     <progress id="bar" hidden></progress>
     <p id="status" role="status" aria-live="polite"></p>
@@ -105,15 +108,15 @@ dd{margin:0;overflow-wrap:anywhere}
 <script>
 const MB = 1000 * 1000;
 const $ = (id) => document.getElementById(id);
-// ffmpeg.wasm core (single-threaded, so it runs on this page and works when the file is opened from disk).
+// ffmpeg.wasm core. It runs in a worker built from these two files, so it also works when this page is opened from disk.
 const CDN = {
   core: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
   wasm: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
 };
 const MIN_FRAMES = 4;
 const MAX_FRAMES = 36;
-const state = { file: null, sourceName: '', ext: '.mp4', duration: 0, width: 0, height: 0, parts: [] };
-const ffLog = [];
+const CELL_W = 320;
+const state = { file: null, ext: '.mp4', info: null, parts: [], folder: null, folderName: '' };
 let enginePromise = null;
 
 const maxBytes = () => Math.max(1, Number($('maxMB').value) || 30) * MB;
@@ -142,7 +145,7 @@ function showBar(on, value) {
   else bar.value = value;
 }
 function setBusy(on) {
-  $('split').disabled = on || !state.file;
+  $('split').disabled = on || !state.info;
   $('save').disabled = on || !state.parts.length;
   $('file').disabled = on;
 }
@@ -162,184 +165,369 @@ async function run(fn) {
   }
 }
 
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = src;
-    s.onload = resolve;
-    s.onerror = () => reject(new Error(`could not load ${src}. Check the internet connection.`));
-    document.head.append(s);
-  });
+// ---- The worker. This function is turned into text and runs after the ffmpeg core script, so it cannot use
+// anything else on this page. It reads the video straight from the File (WORKERFS) instead of copying it into memory.
+function ffmpegWorker() {
+  let core = null;
+  let srcPath = null;
+  let onLine = null;
+  const recent = [];
+
+  const softError = (message) => Object.assign(new Error(message), { soft: true });
+  const failure = (what) => softError(`${what}. ${recent.slice(-4).join(' ').trim()}`);
+  function exec(args) {
+    core.setTimeout(-1);
+    core.exec(...args);
+    const code = core.ret;
+    core.reset();
+    return code;
+  }
+  function clearOut() {
+    for (const name of core.FS.readdir('/out')) {
+      if (name !== '.' && name !== '..') core.FS.unlink(`/out/${name}`);
+    }
+  }
+  // Runs the segment muxer over the source. Each file is handed to onFile as soon as ffmpeg has finished it,
+  // then deleted, so only one part is ever held in memory.
+  function segment(options, onFile) {
+    const starts = {};
+    let lastTick = 0;
+    onLine = (line) => {
+      let m = line.match(/segment:'([^']+)' starts with packet stream:\d+ pts:\S+ pts_time:(-?[\d.e+-]+)/);
+      if (m) {
+        starts[m[1]] = Number(m[2]);
+        if (Date.now() - lastTick > 250) {
+          lastTick = Date.now();
+          self.postMessage({ type: 'progress', time: Number(m[2]) });
+        }
+        return;
+      }
+      m = line.match(/segment:'([^']+)' count:\d+ ended/);
+      if (m) {
+        onFile(m[1], starts[m[1]]);
+        core.FS.unlink(m[1]);
+      }
+    };
+    try {
+      return exec([
+        '-hide_banner', '-nostats', '-loglevel', 'verbose',
+        '-i', srcPath,
+        '-map', '0:v:0', '-map', '0:a?',
+        '-c', 'copy',
+        '-f', 'segment', '-reset_timestamps', '1', '-segment_format', 'mp4',
+        ...options,
+        '/out/p%05d.mp4',
+      ]);
+    } finally {
+      onLine = null;
+    }
+  }
+
+  const handlers = {
+    async init({ wasm }) {
+      core = await createFFmpegCore({ wasmBinary: wasm });
+      core.setLogger(({ message }) => {
+        recent.push(message);
+        if (recent.length > 40) recent.shift();
+        if (onLine) onLine(message);
+      });
+      core.FS.mkdir('/out');
+      core.FS.mkdir('/src');
+    },
+    // Opens a video and reads its length, size and codecs.
+    open({ file, name }) {
+      if (srcPath) core.FS.unmount('/src');
+      core.FS.mount(core.FS.filesystems.WORKERFS, { blobs: [{ name, data: file }] }, '/src');
+      srcPath = `/src/${name}`;
+      const lines = [];
+      onLine = (line) => lines.push(line);
+      try {
+        exec(['-hide_banner', '-i', srcPath]);
+      } finally {
+        onLine = null;
+      }
+      const text = lines.join('\n');
+      const d = text.match(/Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/);
+      const v = text.match(/Stream #\d+:\d+.*?: Video: (\w+).*?, (\d{2,5})x(\d{2,5})/);
+      const a = text.match(/Stream #\d+:\d+.*?: Audio: (\w+)/);
+      if (!d) throw failure('ffmpeg could not read the length of this file');
+      return {
+        duration: Number(d[1]) * 3600 + Number(d[2]) * 60 + Number(d[3]),
+        video: v ? v[1] : '',
+        width: v ? Number(v[2]) : 0,
+        height: v ? Number(v[3]) : 0,
+        audio: a ? a[1] : '',
+      };
+    },
+    // Cuts at every keyframe without keeping anything, to learn where cuts can go and how big each stretch is.
+    scan() {
+      const stretches = [];
+      const code = segment(['-segment_time', '0.001'], (path, start) => {
+        stretches.push({ start, size: core.FS.stat(path).size });
+      });
+      clearOut();
+      if (code !== 0) throw failure('ffmpeg could not read this video');
+      return stretches;
+    },
+    // Cuts at the given times and sends each part to the page as it is finished.
+    cut({ times, whole }) {
+      const where = times.length ? ['-segment_times', times.join(',')] : ['-segment_time', String(Math.ceil(whole))];
+      let count = 0;
+      const code = segment([...where, '-segment_format_options', 'movflags=+faststart'], (path, start) => {
+        const data = core.FS.readFile(path);
+        self.postMessage({ type: 'part', start, data }, [data.buffer]);
+        count++;
+      });
+      clearOut();
+      if (code !== 0) throw failure('ffmpeg could not cut this video');
+      return count;
+    },
+    // One JPEG frame, for videos the browser itself cannot play.
+    frame({ time, width }) {
+      const code = exec([
+        '-hide_banner', '-loglevel', 'error', '-ss', time.toFixed(3), '-i', srcPath,
+        '-frames:v', '1', '-vf', `scale=${width}:-2`, '-q:v', '4', '-y', '/frame.jpg',
+      ]);
+      if (code !== 0) return null;
+      const data = core.FS.readFile('/frame.jpg');
+      core.FS.unlink('/frame.jpg');
+      return data;
+    },
+  };
+
+  self.onmessage = async ({ data: { id, type, args } }) => {
+    try {
+      const result = await handlers[type](args);
+      self.postMessage({ id, result }, result instanceof Uint8Array ? [result.buffer] : []);
+    } catch (err) {
+      self.postMessage({ id, error: String((err && err.message) || err), fatal: !(err && err.soft) });
+    }
+  };
 }
-// Loads the ffmpeg core once and returns a small wrapper around its file system and exec call.
+
 function getEngine() {
   if (!enginePromise) {
-    enginePromise = (async () => {
-      setStatus('Loading the video engine (about 30 MB, once per visit)…');
-      await loadScript(CDN.core);
-      const wasmBinary = await (await fetch(CDN.wasm)).arrayBuffer();
-      const core = await createFFmpegCore({ wasmBinary });
-      core.setLogger(({ message }) => {
-        ffLog.push(message);
-        if (ffLog.length > 40) ffLog.shift();
-      });
-      return {
-        writeFile: (name, data) => core.FS.writeFile(name, data),
-        readFile: (name) => core.FS.readFile(name),
-        deleteFile: (name) => core.FS.unlink(name),
-        names: () => core.FS.readdir('/').filter((n) => n !== '.' && n !== '..'),
-        exec(args) {
-          core.setTimeout(-1);
-          core.exec(...args);
-          const code = core.ret;
-          core.reset();
-          return code;
-        },
-      };
-    })();
+    enginePromise = startEngine();
     enginePromise.catch(() => { enginePromise = null; });
   }
   return enginePromise;
 }
 
-function readMeta(url) {
-  return new Promise((resolve, reject) => {
-    const v = document.createElement('video');
-    v.preload = 'metadata';
-    v.onloadedmetadata = () => resolve({ duration: v.duration, width: v.videoWidth, height: v.videoHeight });
-    v.onerror = () => reject(new Error('the browser cannot read this video. Try an MP4 or MOV file.'));
-    v.src = url;
-  });
+async function startEngine() {
+  setStatus('Loading the video engine (about 32 MB, once per visit)…');
+  const download = async (url, as) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res[as]();
+  };
+  let coreText;
+  let wasm;
+  try {
+    [coreText, wasm] = await Promise.all([download(CDN.core, 'text'), download(CDN.wasm, 'arrayBuffer')]);
+  } catch (err) {
+    throw new Error('could not download the video engine from cdn.jsdelivr.net. Check the internet connection. '
+      + 'If this page is open inside an app or a preview, save it as an .html file and open it in Chrome or Edge.');
+  }
+  const url = URL.createObjectURL(new Blob([coreText, `\n;(${ffmpegWorker})();\n`], { type: 'text/javascript' }));
+  const worker = new Worker(url);
+  const pending = new Map();
+  let nextId = 1;
+  const engine = {
+    source: null,
+    onPart: null,
+    onProgress: null,
+    call(type, args = {}, transfer = []) {
+      return new Promise((resolve, reject) => {
+        const id = nextId++;
+        pending.set(id, { resolve, reject });
+        worker.postMessage({ id, type, args }, transfer);
+      });
+    },
+  };
+  // After a crash (usually out of memory) the engine is thrown away; the next action starts a fresh one.
+  const stop = (message) => {
+    worker.terminate();
+    URL.revokeObjectURL(url);
+    enginePromise = null;
+    for (const p of pending.values()) p.reject(new Error(message));
+    pending.clear();
+  };
+  worker.onmessage = ({ data }) => {
+    if (data.type === 'part') return engine.onPart && engine.onPart(data);
+    if (data.type === 'progress') return engine.onProgress && engine.onProgress(data.time);
+    const p = pending.get(data.id);
+    pending.delete(data.id);
+    if (!data.error) return p.resolve(data.result);
+    p.reject(new Error(data.error));
+    if (data.fatal) stop('the video engine stopped.');
+  };
+  worker.onerror = (e) => {
+    e.preventDefault();
+    stop(`the video engine stopped (${e.message || 'probably out of memory'}).`);
+  };
+  await engine.call('init', { wasm }, [wasm]);
+  return engine;
 }
-function seek(v, t) {
-  return new Promise((resolve, reject) => {
-    v.addEventListener('seeked', () => resolve(), { once: true });
-    v.addEventListener('error', () => reject(new Error('could not read a frame.')), { once: true });
-    v.currentTime = t;
-  });
+
+// Returns the engine with the chosen video open in it.
+async function openSource() {
+  const engine = await getEngine();
+  if (engine.source !== state.file) {
+    setStatus('Reading the video details…');
+    state.info = await engine.call('open', { file: state.file, name: 'input' + state.ext });
+    engine.source = state.file;
+  }
+  return engine;
 }
 
 async function chooseFile(file) {
-  state.file = file;
-  state.sourceName = file.name;
-  const m = file.name.match(/\.[a-z0-9]{2,5}$/i);
-  state.ext = m ? m[0].toLowerCase() : '.mp4';
+  Object.assign(state, { file, info: null, parts: [] });
+  const m = file.name.match(/\.([a-z0-9]{2,5})$/i);
+  state.ext = m ? '.' + m[1].toLowerCase() : '.mp4';
   $('base').value = cleanName(file.name.replace(/\.[^.]+$/, '')) || 'video';
+  $('info').hidden = true;
+  $('partsCard').hidden = true;
+  $('parts').replaceChildren();
+  showBar(true);
 
-  const url = URL.createObjectURL(file);
-  let meta;
-  try {
-    meta = await readMeta(url);
-  } finally {
-    URL.revokeObjectURL(url);
+  await openSource();
+  const info = state.info;
+  if (!info.video) {
+    state.info = null;
+    throw new Error('this file has no video in it.');
   }
-  if (!isFinite(meta.duration) || meta.duration <= 0) {
-    throw new Error('the browser cannot read the length of this video. Try an MP4 or MOV file.');
-  }
-  Object.assign(state, { duration: meta.duration, width: meta.width, height: meta.height, parts: [] });
 
   $('dropText').textContent = 'Drop another video here, or click to choose a different one';
   $('iName').textContent = file.name;
   $('iSize').textContent = mbText(file.size);
-  $('iLength').textContent = fmtTime(meta.duration);
-  $('iPixels').textContent = meta.width ? `${meta.width} × ${meta.height}` : 'unknown';
+  $('iLength').textContent = fmtTime(info.duration);
+  $('iPixels').textContent = `${info.width} × ${info.height} (${info.video})`;
+  $('iAudio').textContent = info.audio || 'none';
   $('info').hidden = false;
-  $('partsCard').hidden = true;
-  $('parts').replaceChildren();
-  setStatus(file.size > 1000 * MB
-    ? 'This file is over 1 GB. The browser may run out of memory while splitting, so close other tabs first.'
-    : 'Ready. Press “Split video”.');
+  setStatus('Ready. Press “Split video”.');
 }
 
-function removeParts(ff) {
-  for (const name of ff.names()) {
-    if (/^part\d{3}\.mp4$/.test(name)) ff.deleteFile(name);
+// Rounds a cut time down far enough to undo ffmpeg's six-digit rounding of times in its log,
+// so the cut lands on the keyframe the scan found and not the one after it.
+const cutTime = (t) => (t - 0.6 * 10 ** (Math.floor(Math.log10(Math.max(t, 1))) - 5)).toFixed(6);
+
+// Groups the keyframe-to-keyframe stretches into parts that stay under the budget.
+function planParts(stretches, budget) {
+  const plan = [];
+  let current = null;
+  for (const s of stretches) {
+    if (!current || current.size + s.size > budget) {
+      current = { start: s.start, size: 0, keyframes: 0 };
+      plan.push(current);
+    }
+    current.size += s.size;
+    current.keyframes++;
   }
+  return plan;
 }
 
-const nextPaint = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+async function writeFile(folder, name, data) {
+  const handle = await folder.getFileHandle(name, { create: true });
+  const writable = await handle.createWritable();
+  await writable.write(data);
+  await writable.close();
+}
+
+// Removes parts and notes left by an earlier run in this folder, so they cannot mix with the new ones.
+async function clearOldFiles(folder) {
+  const old = [];
+  for await (const name of folder.keys()) {
+    if (/^\d+(\.mp4|_frames\.jpg)$|^video-notes\.md$/.test(name)) old.push(name);
+  }
+  for (const name of old) await folder.removeEntry(name);
+}
+
+// Cuts the video as planned. With a folder, each part is written to disk as soon as it is made, so even a
+// very large video never has to fit in memory; without one, the parts are kept for downloading later.
+async function cutParts(engine, plan, t0, folder) {
+  const duration = state.info.duration;
+  const digits = Math.max(3, String(plan.length).length);
+  const partName = (i) => String(i + 1).padStart(digits, '0') + '.mp4';
+  const pieces = [];
+  let writing = Promise.resolve();
+  if (folder) await clearOldFiles(folder);
+  engine.onPart = ({ data, start }) => {
+    const i = pieces.length;
+    pieces.push({ at: start, size: data.byteLength, blob: folder ? null : new Blob([data], { type: 'video/mp4' }) });
+    if (folder) writing = writing.then(() => writeFile(folder, partName(i), data));
+    showBar(true, pieces.length / plan.length);
+    setStatus(`Cutting… ${pieces.length} of ${plan.length} parts done`);
+  };
+  try {
+    await engine.call('cut', { times: plan.slice(1).map((p) => cutTime(p.start)), whole: duration + 3600 });
+  } finally {
+    engine.onPart = null;
+  }
+  await writing;
+  const parts = pieces.map((p, i) => ({
+    name: partName(i),
+    blob: p.blob,
+    size: p.size,
+    start: Math.max(0, (Number.isFinite(p.at) ? p.at : plan[i] ? plan[i].start : t0) - t0),
+    keyframes: pieces.length === plan.length ? plan[i].keyframes : 2,
+    notes: '',
+    sheet: null,
+    sheetName: '',
+  }));
+  parts.forEach((p, i) => {
+    p.duration = Math.max(0, (i + 1 < parts.length ? parts[i + 1].start : duration) - p.start);
+  });
+  return parts;
+}
 
 async function split() {
-  const ff = await getEngine();
+  const base = cleanName($('base').value) || 'video';
+  const folder = await pickFolder(base);
   const limit = maxBytes();
-  const input = 'input' + state.ext;
-  showBar(true);
-  setStatus('Reading the video into the browser…');
-  await nextPaint();
-  ff.writeFile(input, new Uint8Array(await state.file.arrayBuffer()));
+  state.parts = [];
+  state.folder = null;
+  const engine = await openSource();
+  const duration = state.info.duration;
 
-  let target = state.file.size <= limit ? limit : limit * 0.9;
-  let datas = [];
+  showBar(true, 0);
+  setStatus('Measuring where the video can be cut…');
+  engine.onProgress = (time) => {
+    const done = Math.min(1, Math.max(0, time / duration));
+    showBar(true, done);
+    setStatus(`Measuring where the video can be cut… ${Math.round(done * 100)}%`);
+  };
+  let stretches;
   try {
-    for (let attempt = 1; ; attempt++) {
-      removeParts(ff);
-      const n = Math.max(1, Math.ceil(state.file.size / target));
-      const segTime = n === 1 ? state.duration + 10 : state.duration / n;
-      setStatus(`Cutting into about ${n} part${n === 1 ? '' : 's'} (try ${attempt})…`);
-      await nextPaint();
-      const code = ff.exec([
-        '-i', input,
-        '-map', '0:v:0', '-map', '0:a?',
-        '-c', 'copy',
-        '-f', 'segment',
-        '-segment_time', segTime.toFixed(3),
-        '-reset_timestamps', '1',
-        '-segment_format', 'mp4',
-        '-segment_format_options', 'movflags=+faststart',
-        'part%03d.mp4',
-      ]);
-      if (code !== 0) throw new Error(`ffmpeg could not copy this video. ${ffLog.slice(-3).join(' ')}`);
-
-      const names = ff.names().filter((n) => /^part\d{3}\.mp4$/.test(n)).sort();
-      datas = names.map((name) => ff.readFile(name));
-      if (!datas.length) throw new Error('no parts were made.');
-
-      const tooBig = datas.some((d) => d.byteLength > limit);
-      if (!tooBig || attempt >= 4) break;
-      target *= 0.85;
-    }
+    stretches = (await engine.call('scan')).filter((s) => Number.isFinite(s.start));
   } finally {
-    removeParts(ff);
-    try {
-      ff.deleteFile(input);
-    } catch (err) {
-      // The input was never written, so there is nothing to remove.
-    }
+    engine.onProgress = null;
   }
+  if (!stretches.length) throw new Error('no keyframes were found in this video.');
+  const t0 = stretches[0].start;
 
-  const digits = Math.max(3, String(datas.length).length);
-  const parts = [];
-  let start = 0;
-  for (let i = 0; i < datas.length; i++) {
-    const blob = new Blob([datas[i]], { type: 'video/mp4' });
-    const url = URL.createObjectURL(blob);
-    let duration;
-    try {
-      duration = (await readMeta(url)).duration;
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-    parts.push({
-      name: String(i + 1).padStart(digits, '0') + '.mp4',
-      blob,
-      size: blob.size,
-      start,
-      duration,
-      notes: '',
-      sheet: null,
-      sheetName: '',
-    });
-    start += duration;
+  // Each scanned stretch carries its own small file header, so the plan slightly overestimates sizes.
+  // If a part still comes out too big and can be split further, plan again with a smaller budget.
+  let budget = limit - 0.1 * MB;
+  let parts;
+  for (let attempt = 1; ; attempt++) {
+    parts = await cutParts(engine, planParts(stretches, budget), t0, folder);
+    const fixable = parts.some((p) => p.size > limit && p.keyframes > 1);
+    if (!fixable || attempt === 3) break;
+    budget *= 0.97;
   }
-  datas = null;
 
   state.parts = parts;
+  state.folder = folder;
+  state.folderName = base;
   renderParts();
   $('partsCard').hidden = false;
+  $('save').textContent = folder ? 'Save notes and frame images' : 'Download parts and notes';
   const over = parts.filter((p) => p.size > limit);
+  const where = folder ? ` They are saved in the folder “${base}”.` : '';
   setStatus(over.length
-    ? `Made ${parts.length} parts, but ${over.length} is still over the limit. Try a slightly bigger limit or a shorter video.`
-    : `Made ${parts.length} part${parts.length === 1 ? '' : 's'}. Each one is under the limit.`,
+    ? `Made ${parts.length} parts, but ${over.length} ${over.length === 1 ? 'is' : 'are'} over the limit. `
+      + `The video has no cut point (keyframe) inside them, so they cannot be made smaller without re-encoding.${where}`
+    : `Made ${parts.length} part${parts.length === 1 ? '' : 's'}. Each one is under the limit.${where}`,
     over.length ? 'error' : 'ok');
 }
 
@@ -365,61 +553,103 @@ function renderParts() {
   }
 }
 
-async function drawSheet(v, part, interval) {
-  const dur = v.duration;
-  const count = Math.min(MAX_FRAMES, Math.max(MIN_FRAMES, Math.ceil(dur / interval)));
-  const step = dur / count;
+function seek(v, t) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('seek timed out')), 15000);
+    v.addEventListener('seeked', () => { clearTimeout(timer); resolve(); }, { once: true });
+    v.currentTime = t;
+  });
+}
+
+// Gives frames of the chosen video by time. The browser's own player is fast; if it cannot play this
+// video (for example HEVC in some browsers), ffmpeg makes the frames instead.
+async function makeGrabber() {
+  const url = URL.createObjectURL(state.file);
+  const v = document.createElement('video');
+  v.muted = true;
+  v.preload = 'auto';
+  v.src = url;
+  const playable = await new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), 10000);
+    v.addEventListener('loadeddata', () => { clearTimeout(timer); resolve(v.videoWidth > 0); }, { once: true });
+    v.addEventListener('error', () => { clearTimeout(timer); resolve(false); }, { once: true });
+  });
+  const close = () => {
+    v.removeAttribute('src');
+    v.load();
+    URL.revokeObjectURL(url);
+  };
+  if (playable) {
+    return {
+      close,
+      async grab(t) {
+        try {
+          await seek(v, Math.min(t, v.duration - 0.05));
+          return v;
+        } catch (err) {
+          return null;
+        }
+      },
+    };
+  }
+  close();
+  const engine = await openSource();
+  return {
+    close() {},
+    async grab(t) {
+      const data = await engine.call('frame', { time: t, width: CELL_W });
+      return data ? createImageBitmap(new Blob([data], { type: 'image/jpeg' })) : null;
+    },
+  };
+}
+
+async function drawSheet(grabber, part, interval) {
+  const count = Math.min(MAX_FRAMES, Math.max(MIN_FRAMES, Math.ceil(part.duration / interval)));
+  const step = part.duration / count;
   const cols = Math.min(4, count);
   const rows = Math.ceil(count / cols);
-  const cellW = 320;
-  const cellH = Math.round(cellW * (v.videoHeight / v.videoWidth)) || 180;
-  const canvas = document.createElement('canvas');
-  canvas.width = cols * cellW;
-  canvas.height = rows * cellH;
-  const g = canvas.getContext('2d');
-  g.fillStyle = '#111';
-  g.fillRect(0, 0, canvas.width, canvas.height);
-  g.font = '14px -apple-system, Segoe UI, Roboto, sans-serif';
+  let canvas = null;
+  let g = null;
+  let cellH = 0;
   const times = [];
   for (let i = 0; i < count; i++) {
-    const t = (i + 0.5) * step;
-    await seek(v, Math.min(t, dur - 0.05));
-    const x = (i % cols) * cellW;
+    const t = part.start + (i + 0.5) * step;
+    const img = await grabber.grab(t);
+    if (!canvas) {
+      const w = img ? img.videoWidth || img.width : 16;
+      const h = img ? img.videoHeight || img.height : 9;
+      cellH = Math.round((CELL_W * h) / w) || 180;
+      canvas = document.createElement('canvas');
+      canvas.width = cols * CELL_W;
+      canvas.height = rows * cellH;
+      g = canvas.getContext('2d');
+      g.fillStyle = '#111';
+      g.fillRect(0, 0, canvas.width, canvas.height);
+      g.font = '14px -apple-system, Segoe UI, Roboto, sans-serif';
+    }
+    const x = (i % cols) * CELL_W;
     const y = Math.floor(i / cols) * cellH;
-    g.drawImage(v, x, y, cellW, cellH);
+    if (img) {
+      g.drawImage(img, x, y, CELL_W, cellH);
+      if (img.close) img.close();
+    }
     g.fillStyle = 'rgba(0,0,0,0.65)';
     g.fillRect(x, y + cellH - 24, 76, 24);
     g.fillStyle = '#fff';
-    g.fillText(fmtTime(part.start + t), x + 6, y + cellH - 7);
-    times.push(part.start + t);
+    g.fillText(fmtTime(t), x + 6, y + cellH - 7);
+    times.push(t);
   }
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
   return { blob, times };
 }
 
-async function makeSheet(part, interval) {
-  const url = URL.createObjectURL(part.blob);
-  try {
-    const v = document.createElement('video');
-    v.muted = true;
-    v.preload = 'auto';
-    v.src = url;
-    await new Promise((resolve, reject) => {
-      v.addEventListener('loadeddata', resolve, { once: true });
-      v.addEventListener('error', () => reject(new Error('could not read the part for its frame image.')), { once: true });
-    });
-    return await drawSheet(v, part, interval);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
 function buildMarkdown() {
   const p = state.parts;
+  const info = state.info;
   const hasSheets = p.some((x) => x.sheet);
   const L = [];
-  L.push(`# Video notes: ${state.sourceName}`, '');
-  L.push(`- **Source file:** ${state.sourceName}, ${mbText(state.file.size)}, ${fmtTime(state.duration)} long${state.width ? `, ${state.width} × ${state.height} pixels` : ''}`);
+  L.push(`# Video notes: ${state.file.name}`, '');
+  L.push(`- **Source file:** ${state.file.name}, ${mbText(state.file.size)}, ${fmtTime(info.duration)} long, ${info.width} × ${info.height} pixels`);
   L.push(`- **Split into:** ${p.length} part${p.length === 1 ? '' : 's'}, each at most ${Math.round(maxBytes() / MB)} MB. The parts are copies of the original, not re-encoded, so quality is the same.`);
   L.push(`- **Made:** ${new Date().toLocaleString()}`, '');
   L.push('## How to read these files', '');
@@ -442,58 +672,82 @@ function buildMarkdown() {
   return L.join('\n') + '\n';
 }
 
+// Download links stay valid until the next save. The browser may hold later downloads until the person
+// allows multiple downloads, and a link withdrawn before then makes those files fail.
+let downloadURLs = [];
 function download(blob, name) {
   const a = document.createElement('a');
   const url = URL.createObjectURL(blob);
+  downloadURLs.push(url);
   a.href = url;
   a.download = name;
   document.body.append(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+// Asks where to save and makes the new folder there. The browser only shows the folder picker straight after
+// a click, so this runs first when Split is pressed. Returns null when the picker is missing or not allowed
+// here (for example in Firefox, Safari or an app preview); the files are downloaded then.
+async function pickFolder(base) {
+  if (!window.showDirectoryPicker) return null;
+  try {
+    const root = await window.showDirectoryPicker({ mode: 'readwrite' });
+    return await root.getDirectoryHandle(base, { create: true });
+  } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    console.warn('Folder picker not available, downloading instead:', err);
+    return null;
+  }
 }
 
 async function save() {
-  const base = cleanName($('base').value) || 'video';
   const withSheets = $('frames').checked;
   const interval = Math.max(5, Number($('interval').value) || 30);
+  const folder = state.folder;
 
   for (const p of state.parts) {
     p.sheet = null;
     p.sheetName = p.name.replace('.mp4', '_frames.jpg');
-    if (withSheets) {
-      setStatus(`Making the frame image for part ${p.name}…`);
-      showBar(true);
-      p.sheet = await makeSheet(p, interval);
+  }
+  if (withSheets) {
+    setStatus('Making the frame images…');
+    showBar(true, 0);
+    const grabber = await makeGrabber();
+    try {
+      for (const [i, p] of state.parts.entries()) {
+        setStatus(`Making the frame image for part ${p.name} (${i + 1} of ${state.parts.length})…`);
+        showBar(true, i / state.parts.length);
+        p.sheet = await drawSheet(grabber, p, interval);
+      }
+    } finally {
+      grabber.close();
     }
   }
   showBar(false);
 
-  const files = state.parts.map((p) => ({ name: p.name, blob: p.blob }));
-  for (const p of state.parts) {
-    if (p.sheet) files.push({ name: p.sheetName, blob: p.sheet.blob });
-  }
-  files.push({ name: 'video-notes.md', blob: new Blob([buildMarkdown()], { type: 'text/markdown' }) });
+  const extras = state.parts.filter((p) => p.sheet).map((p) => ({ name: p.sheetName, blob: p.sheet.blob }));
+  extras.push({ name: 'video-notes.md', blob: new Blob([buildMarkdown()], { type: 'text/markdown' }) });
 
-  if (window.showDirectoryPicker) {
-    const root = await showDirectoryPicker({ mode: 'readwrite' });
-    const folder = await root.getDirectoryHandle(base, { create: true });
-    for (const f of files) {
-      setStatus(`Saving ${f.name}…`);
-      const handle = await folder.getFileHandle(f.name, { create: true });
-      const writable = await handle.createWritable();
-      await writable.write(f.blob);
-      await writable.close();
+  if (folder) {
+    // The parts are already in the folder; only the frame images and the notes are added.
+    for (const [i, f] of extras.entries()) {
+      setStatus(`Saving ${f.name} (${i + 1} of ${extras.length})…`);
+      await writeFile(folder, f.name, f.blob);
     }
-    setStatus(`Saved ${files.length} files into the new folder “${base}”. Upload the .md file and the parts to Claude.`, 'ok');
+    setStatus(`Saved video-notes.md${extras.length > 1 ? ` and ${extras.length - 1} frame images` : ''} into the folder `
+      + `“${state.folderName}”, next to the parts. Give Claude the .md file, the frame images and the parts.`, 'ok');
   } else {
+    const files = [...state.parts.map((p) => ({ name: p.name, blob: p.blob })), ...extras];
+    downloadURLs.forEach((url) => URL.revokeObjectURL(url));
+    downloadURLs = [];
     for (const f of files) {
       setStatus(`Downloading ${f.name}…`);
       download(f.blob, f.name);
       await sleep(500);
     }
     setStatus(`Started ${files.length} downloads. If the browser asks to allow multiple downloads, choose Allow. `
-      + 'Use Chrome or Edge to save into a folder you choose.', 'ok');
+      + 'Chrome and Edge, opened on the .html file itself, save everything into one folder instead.', 'ok');
   }
   $('saveHint').textContent = withSheets
     ? 'The frame images show the video at intervals, so Claude can see what each part looks like.'

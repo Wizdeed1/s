@@ -235,11 +235,28 @@ window.addEventListener('beforeunload', e => { if (state.pending.length || infli
 // ---- the header's shadow once the page scrolls under it, and the skip link lands on the page
 $('skipLink').addEventListener('click', e => { e.preventDefault(); const m = $('main'); m.focus({ preventScroll: true }); m.scrollIntoView({ block: 'start' }); });
 applyRail();
-// ---- a long page (Supervisors) gets a local list of its sections, so each one is a click away
+// ---- steps: a page's work in the order it is done, then what is there to look things up, then what is set once (a .flow of
+// .flowstep sections: .step is the build's own step bar)
+/** one numbered step of a page: its number on a line down the left, its title, its state (done, next, or still to come), a short
+    note (done when and by whom, how far it is), its actions, what it is for, then its own cards. title and note are text; cap,
+    acts and body are HTML the caller made safe. short: the step's name in the page's "On this page" list */
+function stepHtml(n, { id, title, short, cap = '', st = '', note = '', acts = '', body = '' }) {
+  const hid = `sth-${id || n}`, chip = st === 'done' ? '<span class="pill good">Done</span>' : st === 'next' ? '<span class="pill info">Next</span>' : '';
+  return `<section class="flowstep${st ? ' ' + st : ''}"${id ? ` id="${esc(id)}"` : ''} data-n="${n}" data-short="${esc(short || title)}" aria-labelledby="${esc(hid)}"><span class="stepn" aria-hidden="true">${st === 'done' ? '✓' : n}</span>
+    <div class="stepbody"><div class="stephd"><h2 id="${esc(hid)}"><span class="sr">Step ${n}: </span>${esc(title)}</h2>${chip}${note ? `<small class="stnote">${esc(note)}</small>` : ''}${acts ? `<div class="stacts">${acts}</div>` : ''}</div>${cap ? `<p class="cap stcap">${cap}</p>` : ''}${body}</div></section>`;
+}
+/** the steps' states in order: each one done, or the first not done (next), or still to come. skipL: steps that cannot be next
+    (a month closed before, where a step the tool did not see is "not recorded") */
+function stepStates(doneL, skipL = []) { let seen = false; return doneL.map((d, i) => (d ? 'done' : seen || skipL[i] ? '' : ((seen = true), 'next'))); }
+/** a heading between the steps and the rest of a page: what is there to look things up, what is set once */
+const phaseHtml = (t, cap = '') => `<div class="phase"><h2>${esc(t)}</h2>${cap ? `<p class="cap">${esc(cap)}</p>` : ''}</div>`;
+// ---- a long page (Supervisors) gets a local list of its sections, so each one is a click away (its steps first, numbered)
 function sectionNav(bodyId) {
   const body = $(bodyId); if (!body) return;
   const old = body.querySelector(':scope > .secnav'); if (old) old.remove();
-  const S = [...body.children].filter(el => el.matches('.card, details.card')).map((el, i) => {
+  const kids = [...body.children].flatMap(el => (el.matches('.flow') ? [...el.children] : [el]));
+  const S = kids.filter(el => el.matches('.card, details.card, .flowstep')).map((el, i) => {
+    if (el.matches('.flowstep')) { if (!el.id) el.id = `${bodyId}-st${i}`; return { id: el.id, t: `${el.dataset.n} · ${el.dataset.short}` }; }
     const h = el.matches('details') ? el.querySelector(':scope > summary') : el.querySelector('h2'); if (!h) return null;
     const t = normSpace(h.textContent).replace(/\s*·.*$/, ''); if (!t) return null;
     if (!el.id) el.id = `${bodyId}-s${i}`; return { id: el.id, t };
@@ -263,7 +280,7 @@ const DEPT = [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
-    'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
+    'At month end, the numbered tabs are the month\'s steps, in order: <b>1 Import</b>, <b>2 Review</b>, <b>3 Export</b>, <b>4 Emails</b>. On <b>Import</b>, drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     'On <b>Review › KPI results</b>, under the table: <b>Month figures</b> takes the floor\'s numbers once a month, one per brand (Service Level, Floor QoS / Empowerment, AHT, Resources Adherence, Utilization, Digital and Complaints resolution time) for the SPVs\', specialists\' and managers\' cards; <b>Typed by hand</b> takes a value for one person that is in no file (Staff Satisfaction, Digital projects, CST compliance…), or NA when a KPI does not apply. The scores follow at once.',
@@ -284,36 +301,37 @@ const DEPT = [
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
     'The <b>Dashboard</b> and <b>WFM team › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
   ['senior', 'Senior manager', [
-    '<b>Supervisors</b>: set the one-to-ones deadline and the month close days, and keep the <b>incentive rules</b>: the scorecards, the bases, who is eligible and how the days and KPIs are counted. Percent KPIs and the Final % are rounded to a whole % before they count (94.99% → 95%); the days % is never rounded.',
+    '<b>Supervisors › Month close</b> is the month in eight numbered steps, in the order they are done; each shows when it is done, and the next one is marked: 1 the incentive data for review to the champions, 2 the results on the agents\' pages, 3 the one-to-ones deadline and the "One-to-ones are ready" email, 4 the supervisors who finished and the objections (with the deadline reminder), 5 the results for review to the VP, 6 Finalize on Results, 7 the final result form, 8 the final incentive data.',
+    'Under the steps, <b>Set once</b>: the supervisor scorecard, the email addresses and the month close days. <b>Incentive rules</b> (at the top) keeps the scorecards, the bases, who is eligible and how the days and KPIs are counted. Percent KPIs and the Final % are rounded to a whole % before they count (94.99% → 95%); the days % is never rounded.',
     'Every department has a scorecard (CC, SM, CT, QA, WF, TS, DE, the SPVs), and the managers and some leads a card of their own (CT-SPV, CT-CCM, CT-SGM, OP-DIG, QA-MGR, WF-MGR, DE-MGR), which the WFM team gives on the person\'s page (Edit › Scorecard) or with a Scorecard column in the roster file. A card can have its own base per brand (the SPVs: 1600 SR Virgin, 1000 SR FRiENDi). Team Performance is the average final % of the people they supervise.',
     '<b>Results</b>: decide on eligibility where the rules say otherwise, adjust a result where needed (every change is logged), and <b>Finalize</b> the month.',
     '<b>Results › Reconcile with the old Excel</b>: drop the old final result (and the incentive or deduction workbook). The tool lines up every person and says why each number differs: an own base, an absence rule, a typing error in the old file. Each has a fix.',
-    '<b>Supervisors › Incentive email</b>: the incentive data email to the champions, for review and then final (it lists what changed since the review). The incentive file the WFM analysts built is attached by itself, without National IDs; drop an edited one to use it instead. <b>Copy for Outlook</b> or <b>Download .eml</b>.',
-    'Send the four emails from <b>Supervisors › Month close</b>: one-to-ones are ready, the deadline reminder, results for review to the VP, and the final result form.',
+    'The incentive email (steps 1 and 8, or <b>Supervisors › Incentive email</b>): the incentive data to the champions, for review and then final. The incentive file the WFM analysts built is attached by itself, without National IDs; drop an edited one to use it instead. The final has its usual body; what changed since the review is shown for you to check, not in the email. <b>Copy for Outlook</b> or <b>Download .eml</b>.',
     'The <b>bell</b> lists what is late or due soon.']],
   ['spv', 'Supervisor', [
-    '<b>Team</b> shows your own agents with their numbers for the month; the header\'s month picker changes the month.',
-    '<b>One-to-ones</b>: hold each one, fill in the form and send it to the agent; they add their part and sign the final.',
+    '<b>Team</b> shows your own agents with their numbers for the month; the header\'s month picker changes the month. The numbered tabs are your month\'s steps, in order: <b>1 Attendance</b>, <b>2 Objections</b>, <b>3 One-to-ones</b>.',
     '<b>Attendance</b>: correct a day when Genesys is wrong (only an agent\'s supervisor can). In CC and SM the days come from Genesys, which shows a sick day as absent: correct those to SL here.',
     'TS, MG, CT, QA, DE and WF: <b>Attendance › Get the template</b> for the month (or Search › Attendance templates): your department\'s file. It opens on How to fill, with examples. Write a row only for each day someone was late, absent, on leave or off on another day than their weekly days off (a From and a To date for several days), and send the file to the WFM team. Every other day counts as a working day.',
     '<b>Objections</b>: answer your agents\' objections before the deadline, and correct the accepted ones.',
-    '<b>Waiting for approval</b>: approve new agent accounts and link each one to their name.',
-    'When every one-to-one is done, <b>Finish your team</b>: the senior manager is told straight away. The <b>bell</b> lists what is due.']],
+    '<b>One-to-ones</b>: hold each one, fill in the form and send it to the agent; they add their part and sign the final.',
+    'When every one-to-one is done, <b>Finish your team</b>: the senior manager is told straight away.',
+    '<b>Waiting for approval</b>: approve new agent accounts and link each one to their name. The <b>bell</b> lists what is due.']],
   ['quality', 'Quality team', [
-    '<b>Quality</b>: drop the month\'s Final EVAL in your template: Agent Name, Call QA, Ticket QA / Empowerment Utilization, Call Reason &amp; FCR Accuracy, Final Score, Critical Error and Number of Critical Errors (CT: Evaluation score). The analysts can also drop it on WFM team › Import with everything else.',
+    '<b>Quality</b> is the month\'s quality work in six numbered steps, in order; the next one is marked. First, <b>EVAL template with IDs</b> gives you a workbook in your template with every agent\'s National ID, so each row links by its ID.',
+    'Drop the month\'s Final EVAL in your template: Agent Name, Call QA, Ticket QA / Empowerment Utilization, Call Reason &amp; FCR Accuracy, Final Score, Critical Error and Number of Critical Errors (CT: Evaluation score). The analysts can also drop it on WFM team › Import with everything else.',
     'Call QA counts as Quality Observations, Ticket QA as Empowerment Utilization and CR as Call Reason &amp; FCR Accuracy (CT: the Final Score as Quality Observations and the Evaluation score as QA Evaluation). The Final Score itself is shown but does not count.',
     'Check the names the tool linked and link the ones left; the answers are remembered next month.',
     'Type <b>DRC-CSAT</b> once for the month: it counts for every agent.',
     'Correct any score in the table (logged). An Attitude critical error stops the incentive.',
-    '<b>EVAL template with IDs</b> gives you a workbook in your template with every agent\'s National ID, so each row links by its ID.']],
+    'Last, fix the objections the supervisors accepted on a quality KPI, and mark each one fixed.']],
   ['agent', 'Agent', [
     '<b>My page</b> shows your adherence, KPI results, attendance and one-to-ones. Change the month with the <b>month box</b> at the top (the arrows, or the list).',
-    'One-to-ones: fill in your part and send it to your supervisor; sign the final when it arrives.',
+    'One-to-ones: fill in your part and send it to your supervisor; sign the final when it arrives. One waiting for you shows at the top of the page.',
     'If a number is not right, <b>object</b> within the window shown on the page.',
     'The <b>bell</b> tells you what you need to do (sign, answer).',
     'The <b>العربية</b> button shows your page in Arabic.'], [
     '<b>صفحتي</b> تعرض التزامك بالجدول ونتائج مؤشرات الأداء والحضور والاجتماعات الفردية. غيّر الشهر من <b>مربع الشهر</b> في الأعلى (الأسهم أو القائمة).',
-    'الاجتماعات الفردية: املأ جزأك وأرسله إلى مشرفك، ثم وقّع على القرار النهائي عند وصوله.',
+    'الاجتماعات الفردية: املأ جزأك وأرسله إلى مشرفك، ثم وقّع على القرار النهائي عند وصوله. ما ينتظرك منها يظهر في أعلى الصفحة.',
     'إذا كان هناك رقم غير صحيح، <b>اعترض</b> خلال المدة الظاهرة في الصفحة.',
     '<b>الجرس</b> يخبرك بما عليك فعله (توقيع أو رد).',
     'زر <b>English</b> يعرض صفحتك بالإنجليزية.']],

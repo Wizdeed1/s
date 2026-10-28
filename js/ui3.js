@@ -39,7 +39,7 @@ const XKINDS = [
 const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
-const REVIEW_TABS = ['checks', 'people', 'issues', 'preview', 'kpi', 'history'];
+const REVIEW_TABS = ['checks', 'issues', 'people', 'kpi', 'preview', 'history'];   // what to decide first, then the names, the people, the KPI results, the workbook, the past months
 const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
@@ -715,7 +715,10 @@ function renderBadges() {
 }
 
 // ---- import
-function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); }
+function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); impGroups(); }
+/** the Import page in the order the month is put together: 1 the exports, 2 the attendance, 3 the IDs and KPI inputs (a heading
+    only when one of them is on the page) */
+function impGroups() { const g = $('impG3'); if (g) g.hidden = ['idsCard', 'kpiCardImp', 'csatImp'].every(id => $(id).hidden); }
 function renderPending() {
   Busy.set('parse', state.pending.length ? `Reading ${plural(state.pending.length, 'file')}…` : '');
   $('pending').innerHTML = state.pending.map(p => `<li><div class="row"><b>${esc(p.name)}</b><span>${fmtSize(p.size)}</span></div><div class="progress" role="progressbar" aria-label="Reading ${esc(p.name)}"><i></i></div><div class="hint">Reading and recognising the columns…</div></li>`).join('');
@@ -2248,12 +2251,6 @@ function incMailHtmlClassic(md, logoSrc, preview) {
   let b = lines(im.greeting).map(l => P(`<span lang="EN-GB">${l}</span>`)).join('') + gap;
   if (md.stage === 'final') {
     b += P(`<span lang="EN-GB" style="color:black">Kindly find attached the final data which will be used to calculate your </span><span lang="EN-GB">incentive for<b> ${esc(label)}</b>, after the review.</span>`) + gap;
-    if (md.changes && md.changes.length) {
-      b += P('<span lang="EN-GB">The following changes were made after the review:</span>') + gap;
-      const th = t => `<td style="background:#1F3864;padding:0in 5.4pt 0in 5.4pt;height:.3in"><p class="MsoNormal" style="margin:0in;${F}"><b><span style="font-size:10.0pt;color:white">${t}</span></b></p></td>`;
-      const td = t => `<td valign="top" style="border:solid #BFBFBF 1.0pt;padding:2pt 5.4pt 2pt 5.4pt"><p class="MsoNormal" style="margin:0in;${F}"><span style="font-size:10.0pt;color:black">${t}</span></p></td>`;
-      b += `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr>${th('Name')}${th('What changed')}</tr>${md.changes.map(c => `<tr>${td(esc(c.n))}${td(esc(c.what))}</tr>`).join('')}</table>` + gap;
-    } else if (md.changes) b += P('<span lang="EN-GB">No changes were made after the review.</span>') + gap;
   } else {
     b += P(`<span lang="EN-GB" style="color:black">Kindly find the attached data which will be used to calculate your </span><span lang="EN-GB">incentive for<b> ${esc(label)}</b></span>`) + gap;
     b += P(`<span lang="EN-GB">Please review it and If you have any concerns, please <b><u>refer to your direct leader, the deadline is ${esc(incDeadlineText())}.</u></b></span>`) + gap;
@@ -2269,8 +2266,6 @@ function incMailText(md) {
   const im = state.incMail, label = incLabel(md.y, md.m), out = [im.greeting, ''];
   if (md.stage === 'final') {
     out.push(`Kindly find attached the final data which will be used to calculate your incentive for ${label}, after the review.`, '');
-    if (md.changes && md.changes.length) { out.push('The following changes were made after the review:', '', 'Name\tWhat changed'); md.changes.forEach(c => out.push(`${c.n}\t${c.what}`)); out.push(''); }
-    else if (md.changes) out.push('No changes were made after the review.', '');
   } else out.push(`Kindly find the attached data which will be used to calculate your incentive for ${label}`, '', `Please review it and If you have any concerns, please refer to your direct leader, the deadline is ${incDeadlineText()}.`, '');
   out.push('The attached include 3 tabs:', '', '• Adherence data .', '• AHT.', '• Attendance data.', '');
   if (md.stage !== 'final') out.push('Make sure to send your objection to your direct leader and CC me', '');
@@ -2768,9 +2763,7 @@ function incMailHtml(md, logoSrc, preview) {
   let b = cardGreet(im.greeting);
   if (fin) {
     b += cardP(`Kindly find attached the final data which will be used to calculate your incentive for <b style="color:${CARD.ink}">${esc(label)}</b>, after the review.`);
-    b += cardBand(true, 'Final data', esc(label));
-    if (md.changes && md.changes.length) { b += cardH('Changes after the review'); b += cardTable(['Name', 'What changed'], md.changes.map(c => [{ t: esc(c.n), left: true }, { t: esc(c.what), left: true }]), [0, 1]); }
-    else if (md.changes) b += cardP('No changes were made after the review.', 'margin-top:12pt');
+    b += cardBand(true, 'Final data', esc(label));   // the final body as it always was: what changed since the review is the sender's to see, not in the email
   } else {
     b += cardP(`Kindly find the attached data which will be used to calculate your incentive for <b style="color:${CARD.ink}">${esc(label)}</b>`);
     b += cardP(`Please review it and If you have any concerns, please <b><u>refer to your direct leader, the deadline is ${esc(incDeadlineText())}.</u></b>`);
@@ -2893,7 +2886,8 @@ function renderEmail() {
   const sn = snapOf(state.mailKind);
   $('revState').hidden = !fin;
   if (fin) $('revState').innerHTML = `<h3>Compared with the review</h3>${sn ? `<p class="hint">${sn.src ? `File ${esc(sn.src)}` : `Saved ${esc(fmtWhen(sn.at))}${sn.by ? ' by ' + esc(sn.by) : ''} when the review email was copied or downloaded`}.</p>` : '<p class="hint">No review version yet for this month.</p>'}
-    <button class="btn sm" id="revPick">${sn ? 'Compare with a file instead' : 'Drop the file sent for review'}</button>${state.revWb[state.mailKind] ? ' <button class="linkbtn" data-revclear>Use the saved version</button>' : ''}`;
+    <button class="btn sm" id="revPick">${sn ? 'Compare with a file instead' : 'Drop the file sent for review'}</button>${state.revWb[state.mailKind] ? ' <button class="linkbtn" data-revclear>Use the saved version</button>' : ''}
+    ${inc && md.changes && md.changes.length ? `<details class="revchg"><summary>What changed for ${plural(md.changes.length, 'person', 'people')}, for you to check (the email does not list it)</summary><ul class="ilist">${md.changes.slice(0, 300).map(c => `<li><span class="nm" dir="auto">${esc(c.n)}</span><span class="sg">${esc(c.what)}</span></li>`).join('')}</ul></details>` : ''}`;
   // form
   const setv = (id, v) => { const el = $(id); if (document.activeElement !== el && el.value !== v) el.value = v; };
   setv('mTo', cfg.to); setv('mCc', cfg.cc); setv('mSubject', md.subject); setv('mDeadline', mailDeadlineIso());
@@ -2910,7 +2904,7 @@ function renderEmail() {
   $('attBtn').hidden = !md.attach; $('attBtn').title = md.attach ? `Save ${md.attach.name}` : '';
   $('mailWarns').innerHTML = md.warns.map(x => `<li>${esc(x)}</li>`).join('');
   const to = cm.to, cc = cm.cc;
-  const rowsInfo = inc ? (md.d ? `${plural(md.d.att.length, 'person', 'people')} in the attachment${fin && md.changes ? ` · ${plural(md.changes.length, 'person', 'people')} changed since the review` : ''}` : 'No data yet')
+  const rowsInfo = inc ? (md.d ? `${plural(md.d.att.length, 'person', 'people')} in the attachment${fin && md.changes ? ` · ${plural(md.changes.length, 'person', 'people')} changed since the review${md.changes.length ? ' (see Compared with the review; not listed in the email)' : ''}` : ''}` : 'No data yet')
     : `${plural(md.ded.length, 'person', 'people')} in Conformance Deduction${md.abs ? ` · ${plural(md.abs.rows.length, 'person', 'people')} absent` : ''}${fin && md.changes ? ` · ${plural(md.changes.ded.length + md.changes.abs.length, 'change')} since the review` : ''}`;
   $('mailHead').innerHTML = `<div><span>To</span><span>${esc(to.join('; ')) || '<i class="subtle">nobody yet</i>'}</span></div>${cc.length ? `<div><span>Cc</span><span>${esc(cc.join('; '))}</span></div>` : ''}
     <div><span>Subject</span><span><b>${esc(md.subject)}</b></span></div>${md.attach && cfg.attach ? `<div><span>Attached</span><span class="att"><svg width="12" height="12" aria-hidden="true"><use href="#i-file"/></svg>${esc(md.attach.name)}${md.attach.size ? ' · ' + fmtSize(md.attach.size) : ''}</span></div>` : ''}

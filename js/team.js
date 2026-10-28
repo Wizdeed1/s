@@ -292,9 +292,11 @@ function renderTeam() {
   const scoreCard = () => cur && (spv || isSenior() || Auth.isAdmin()) ? spvScoreHtml(cur, k, { showSR: !spv && (isSenior() || Auth.isAdmin()), cap: spv ? 'Set by the senior manager. Team items are your agents\' averages; the leader items come from the quality team\'s EVAL.' : `${supName(cur)}'s scorecard, as the senior manager set it.` }) : '';
   // the tabs: each keeps the filters
   const nObj = objList({ k, st: ['open', 'escalated', 'accepted'] }).filter(o => items.some(x => x.p._id === o.pid)).length, hasCalls = !!state.inter[k];
-  const TABS = [['agents', 'Agents', items.length], ['one', 'One-to-ones', `${held}/${items.length}`], ['att', 'Attendance', ''], ['obj', 'Objections', nObj || ''], ...(hasCalls ? [['calls', 'Calls', '']] : []), ['kpis', 'Team KPIs', ''], ...(spv ? [['wait', 'Waiting for approval', nWait || '']] : [])];
+  // the team first, then the month's work in the order it is done (the attendance, the agents' objections, the one-to-ones: a
+  // supervisor sees them numbered), then what is there to look things up, and the accounts to approve
+  const TABS = [['agents', 'Agents', items.length], ['att', 'Attendance', '', 1], ['obj', 'Objections', nObj || '', 2], ['one', 'One-to-ones', `${held}/${items.length}`, 3], ...(hasCalls ? [['calls', 'Calls', '']] : []), ['kpis', 'Team KPIs', ''], ...(spv ? [['wait', 'Waiting for approval', nWait || '']] : [])];
   const tab = TABS.some(t => t[0] === state.teamTab) ? state.teamTab : 'agents';
-  const tabsHtml = `<div class="tabs ttabs" role="tablist" aria-label="Team">${TABS.map(([v, l, n]) => `<button class="tab" role="tab" id="tt-${v}" aria-controls="tp-${v}" aria-selected="${v === tab}" tabindex="${v === tab ? 0 : -1}" data-ttab="${v}">${esc(l)}${n !== '' ? ` <span class="badge${v === 'wait' || (v === 'obj' && n) ? ' n' : ''}">${esc(String(n))}</span>` : ''}</button>`).join('')}</div>`;
+  const tabsHtml = `<div class="tabs ttabs" role="tablist" aria-label="Team">${TABS.map(([v, l, n, sn]) => `<button class="tab" role="tab" id="tt-${v}" aria-controls="tp-${v}" aria-selected="${v === tab}" tabindex="${v === tab ? 0 : -1}" data-ttab="${v}">${spv && sn ? `<span class="tabn" aria-hidden="true">${sn}</span><span class="sr">Step ${sn}: </span>` : ''}${esc(l)}${n !== '' ? ` <span class="badge${v === 'wait' || (v === 'obj' && n) ? ' n' : ''}">${esc(String(n))}</span>` : ''}</button>`).join('')}</div>`;
   const panel = tab === 'agents' ? teamTableHtml(items, set, showSR, spv)
     : tab === 'one' ? board()
     : tab === 'att' ? attTplBar(k) + (attGridHtml(items, k, spv && !monthLocked(k)) || emptyCard('No attendance yet', 'The month\'s attendance shows here once the schedule and the sign-ons (or the attendance sheets) are in.'))

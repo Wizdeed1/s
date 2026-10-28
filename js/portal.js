@@ -3,7 +3,9 @@
 // is saved as the analyst works; supervisors, the senior manager, the WFM manager, the quality team and the agents read the
 // same history, final results and one-to-ones, live. A month the senior manager finalizes is frozen in `final/<month>`.
 const WS_VIEWS = ['dash', 'team', 'results', 'cycle', 'wfm', 'quality', 'me', 'wait', 'blocked'];
-const WS_OF = { admin: ['dash', 'build', 'team', 'results', 'cycle', 'wfm', 'quality'], user: ['dash', 'build', 'team', 'wfm'], senior: ['dash', 'cycle', 'results', 'team', 'wfm'], wfm: ['dash', 'wfm', 'results', 'team'], spv: ['team'], quality: ['quality'], agent: ['me'], pending: [] };
+// each role's pages in the order the month is done: the build (the WFM team page), the quality EVAL, the senior manager's month
+// close (Supervisors), the one-to-ones (Team), the final results; the dashboard first, the role's own first page
+const WS_OF = { admin: ['dash', 'build', 'wfm', 'quality', 'cycle', 'team', 'results'], user: ['dash', 'build', 'wfm', 'team'], senior: ['dash', 'cycle', 'team', 'results', 'wfm'], wfm: ['dash', 'wfm', 'results', 'team'], spv: ['team'], quality: ['quality'], agent: ['me'], pending: [] };
 Object.assign(state, { ws: 'build', finals: {}, finVer: 0, frozen: {}, people: [], wsMonth: '', wsSpv: '', wsUnit: '', wsQ: '', resSort: 'name', resDir: 'asc', resUnit: '', resSpv: '', resQ: '',
   wfmMetric: 'adh', wfmGroup: 'unit', wfmUnit: '', teamMetric: 'adh', autoAt: 0, autoNote: '', boardAll: {}, wfmTab: 'analytics', spvDone: {}, spvDoneVer: 0, cycleLog: {} });
 const FORM_STATUS = [['planned', 'Arranged'], ['held', 'Held'], ['closed', 'Closed']];
@@ -373,9 +375,9 @@ function roleHeads(r) {
   $('cycLead').textContent = cycLeadText(r);
 }
 /** the Supervisors page's line under its title: the month close, or (its other tab) the incentive email */
-const cycLeadText = (r, mail) => (mail ? 'The month\'s incentive data to the champions: for review with its deadline, then final with what changed since the review. The incentive file the WFM analysts built is attached by itself.'
-  : r === 'senior' ? 'Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month\'s emails: the incentive data to the champions (Incentive email) and the four of the month close.'
-    : 'The senior manager\'s page, which you can stand in for: the one-to-one deadline, which supervisors have finished their team, their scorecards, and the month\'s emails, the incentive email to the champions included.');
+const cycLeadText = (r, mail) => (mail ? 'The month\'s incentive data to the champions (steps 1 and 8 of the month close): for review with its deadline, then the final after the review. The incentive file the WFM analysts built is attached by itself.'
+  : r === 'senior' ? 'The month close in eight steps, in the order they are done: each one shows when it is done, and the next one is marked. Below them, the supervisors\' results and what is set once.'
+    : 'The senior manager\'s page, which you can stand in for: the month close in eight steps, in the order they are done, then the supervisors\' results and what is set once.');
 let hashTaken = false;
 function applyRole() {
   const r = roleNow(), L = wsOfNow();
@@ -423,7 +425,7 @@ function leaveWs() { if (state.ws === 'build') return; state.ws = 'build'; for (
 function renderWs() {
   const w = state.ws;
   if (w === 'dash') renderDash(); else if (w === 'team') renderTeam(); else if (w === 'results') renderResults(); else if (w === 'wfm') renderWfmWs(); else if (w === 'quality') renderQuality(); else if (w === 'cycle') renderCycle(); else if (w === 'me') renderMe();
-  if (w === 'cycle') sectionNav('cycleBody');
+  if (w === 'cycle') sectionNav('cycleBody'); else if (w === 'results') sectionNav('resultsBody');
   renderAutoNote(); renderFresh(); cycleBadge(); renderToday(); syncNav();
   requestAnimationFrame(() => { segThumbs(); introOnce($('v-' + w)); });
 }
@@ -515,7 +517,9 @@ function renderResults() {
     <div class="tablewrap restab"><table><thead><tr>${COLS.map(th).join('')}</tr></thead><tbody>${L.map(x => `<tr>${COLS.map(([c]) => cell(x, c)).join('')}</tr>`).join('') || `<tr><td colspan="${COLS.length}" class="empty">Nobody matches.</td></tr>`}</tbody></table></div></div>`;
   const log = D.final && (D.final.log || []).length ? `<details class="card wslog"><summary>Change log · ${plural(D.final.log.length, 'entry', 'entries')}</summary><ul class="ilist">${D.final.log.slice().reverse().map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
   const keepFocus = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-resq]') ? document.activeElement.selectionStart : null;
-  body.innerHTML = `${statusBanner(k)}<div class="tiles wstiles">${tiles}</div>${teamTab}${spvTab}${agentTab}${log}${safeHtml(cmpCardHtml, k)}`;
+  // first what is decided here (every agent: who is eligible, a result adjusted by hand), then the month by team and by supervisor,
+  // then the tools (the old Excel next to the tool, the change log)
+  body.innerHTML = `${statusBanner(k)}<div class="tiles wstiles">${tiles}</div>${agentTab}${phaseHtml('By team and by supervisor', 'The same month, added up.')}${teamTab}${spvTab}${phaseHtml('Tools', 'The old Excel next to the tool, and every change by hand.')}${safeHtml(cmpCardHtml, k)}${log}`;
   if (keepFocus != null) { const i = body.querySelector('[data-resq]'); i.focus(); i.setSelectionRange(keepFocus, keepFocus); }
 }
 const progress = (n, d) => `<span class="prog" title="${n} of ${d}"><span class="bar"><i style="width:${d ? Math.round(n / d * 100) : 0}%"></i></span><span class="pv">${n}/${d}</span></span>`;

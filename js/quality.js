@@ -241,6 +241,7 @@ function renderCsat() {
     if (!el || el.contains(document.activeElement)) continue;
     const h = csatBoxHtml(k, ctx); if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h; } el.hidden = !h;
   }
+  impGroups();   // the Import page's third group shows when the box does
 }
 document.addEventListener('change', e => {
   const t = e.target; if (!t.matches || !t.matches('[data-csat]')) return;
@@ -284,12 +285,32 @@ function qTablesHtml(people, k, can, fixed, map) {
 function renderQuality() {
   const k = qMonthNow(), Q = state.quality[k] || null, locked = monthLocked(k), can = canQuality() && !locked, KP = qualityKpis();
   $('qualityBar').innerHTML = `<label class="wsfield"><span>Month</span><select class="cell" data-qmonth aria-label="Month">${qMonths().slice().reverse().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(ymLabel(x))}${monthLocked(x) ? ' · final' : ''}</option>`).join('')}</select></label>
-    ${csatBoxHtml(k, 'q')}<div class="wsacts">${can ? '<button class="btn sm primary" data-qdrop><svg width="14" height="14" aria-hidden="true"><use href="#i-up"/></svg>Drop the Final EVAL</button>' : ''}${canQuality() ? '<button class="btn sm" data-qtpl title="An EVAL workbook with every agent\'s national ID: filled in and dropped back, every row links by its ID"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>EVAL template with IDs</button>' : ''}<button class="btn sm" data-x="quality"${Q ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Excel</button></div>`;
+    <div class="wsacts"><button class="btn sm" data-x="quality"${Q ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Excel</button></div>`;
   const body = $('qualityBody');
   const head = Q ? `<div class="wsstatus ${locked ? 'final' : 'draft'}"><span class="dot"></span><div><b>${locked ? 'Final' : 'Open'}</b> · Final EVAL <b>${esc(Q.src || 'typed by hand')}</b>, ${esc(Q.by || '')} ${esc(Q.at ? fmtWhen(Q.at) : '')}.${locked ? ` ${esc(ymLabel(k))} was ${esc(finalBy(k))}; nothing here can change.` : ' Changes count straight away in every scorecard.'}</div></div>`
     + (qFixed(k) ? `<div class="banner info">${esc(ymLabel(k))}'s results came from the incentive file, so its scorecards are fixed: these numbers show on each agent's page but do not change the final %.${can ? ` If this EVAL is for another month, choose it: <select class="cell" data-qmove aria-label="Count it for">${qMonths().filter(x => x !== k && !monthLocked(x)).reverse().map(x => `<option value="${x}"${x === qMoveTo ? ' selected' : ''}>${esc(ymLabel(x))}${qFixed(x) ? '' : ' · built by the tool'}</option>`).join('')}</select> <button class="btn sm" data-qmovego>Count it for that month</button>` : ''}</div>` : '')
-    : `<div class="card empty"><b>No quality results for ${esc(ymLabel(k))} yet</b>${can ? 'Drop the month\'s Final EVAL workbook (Virgin, FRiENDi and Leaders sheets). Names are matched to the roster; anything left over can be linked here.' : 'The quality team has not added them yet.'}</div>`;
-  if (!Q) { body.innerHTML = head + safeHtml(objFixHtml, 'quality') + `<div class="card qdrop" data-qdropzone><svg width="22" height="22" aria-hidden="true"><use href="#i-up"/></svg><b>Drop the Final EVAL here</b><span>or use the button above</span></div>`; return; }
+    : '';
+  // the month's quality work, in the order it is done: the template, the Final EVAL, the names, the DRC-CSAT, the check, the objections
+  const qSteps = o => {
+    const ofx = safeHtml(objFixHtml, 'quality'), csat = csatAll(k) != null, U0 = Q ? (Q.unmatched || []) : [];
+    const L = [
+      { id: 'qs-tpl', short: 'EVAL template', title: 'Get the EVAL template', done: !!Q, cap: 'An EVAL workbook with every agent\'s national ID: filled in and dropped back, every row links by its ID.',
+        acts: canQuality() ? '<button class="btn sm" data-qtpl><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>EVAL template with IDs</button>' : '' },
+      { id: 'qs-drop', short: 'Final EVAL', title: 'Drop the Final EVAL', done: !!Q, note: Q ? `${Q.src || 'typed by hand'} · ${Q.by || ''} ${Q.at ? fmtWhen(Q.at) : ''}` : '',
+        cap: 'The month\'s Final EVAL workbook (Virgin, FRiENDi and Leaders sheets). Names are matched to the roster; anything left over is linked in the next step.',
+        acts: can ? `<button class="btn sm${Q ? '' : ' primary'}" data-qdrop><svg width="14" height="14" aria-hidden="true"><use href="#i-up"/></svg>${Q ? 'Drop a newer EVAL' : 'Drop the Final EVAL'}</button>` : '',
+        body: Q ? '' : can ? '<div class="card qdrop" data-qdropzone><svg width="22" height="22" aria-hidden="true"><use href="#i-up"/></svg><b>Drop the Final EVAL here</b><span>or use the button above</span></div>' : `<div class="card empty"><b>No quality results for ${esc(ymLabel(k))} yet</b>The quality team has not added them yet.</div>` },
+      { id: 'qs-names', short: 'Names', title: 'Link every name', done: !!Q && !U0.length, note: Q ? (U0.length ? `${plural(U0.length, 'name')} need you` : 'every name linked') : '',
+        cap: Q ? '' : 'The names the tool could not match to the roster show here, to link by hand.', body: o.unm || '' },
+      { id: 'qs-csat', short: 'DRC-CSAT', title: 'Type the month\'s DRC-CSAT', done: csat, body: csatBoxHtml(k, 'q') },   // only when a scorecard has DRC-CSAT
+      { id: 'qs-check', short: 'Check and correct', title: 'Check and correct the quality KPIs', done: locked, note: locked ? 'the month is final' : '',
+        cap: 'Each team\'s table and the team leads\' items. A change counts straight away in every scorecard, until the senior manager finalizes the month.', body: `${o.tab || ''}${o.lead || ''}` },
+      { id: 'qs-obj', short: 'Objections', title: 'Fix the accepted objections', done: !ofx, note: ofx ? '' : 'none to fix', cap: 'Objections on a quality KPI the supervisors accepted: correct the value, then mark it fixed.', body: ofx },
+    ].filter(x => x.id !== 'qs-csat' || x.body);
+    const sts = stepStates(L.map(x => x.done));
+    return `<div class="flow">${L.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i] })).join('')}</div>`;
+  };
+  if (!Q) { body.innerHTML = head + qSteps({}); return; }
   const R = rosterRows(), U = Q.unmatched || [], linked = new Set([...Object.keys(Q.rows || {}), ...Object.keys(Q.leaders || {})]);
   const C = (Q.check || []).map((c, i) => ({ ...c, i })).filter(c => linked.has(c.pid));
   const nmOf = pid => { const p = R.find(x => x._id === pid); return p ? gname(effP(pid) || p) || p.name : ''; };
@@ -321,7 +342,7 @@ function renderQuality() {
     </tbody></table></div></div>` : '';
   const log = (Q.log || []).length ? `<details class="card wslog"><summary>Changes by hand · ${Q.log.length}</summary><ul class="ilist">${Q.log.slice().reverse().map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
   const keep = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-qq]') ? document.activeElement.selectionStart : null;
-  body.innerHTML = head + safeHtml(objFixHtml, 'quality') + unm + tab + lead + log;
+  body.innerHTML = head + qSteps({ unm, tab, lead }) + (log ? phaseHtml('To look things up') + log : '');
   if (keep != null) { const i = body.querySelector('[data-qq]'); if (i) { i.focus(); i.setSelectionRange(keep, keep); } }
   reveal(body);
 }

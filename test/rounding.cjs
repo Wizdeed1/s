@@ -15,7 +15,7 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   const b = await chromium.launch(), errs = [];
   const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce', colorScheme: 'light' }), p = await ctx.newPage();
   p.on('pageerror', e => errs.push('pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.addInitScript(([fx]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u3', name: 'Faisal M.', username: 'faisal.m', role: 'senior' }; }, [fixture]);
+  await p.addInitScript(([fx]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u3', name: 'Faisal M.', username: 'faisal.m', role: 'senior' }; try { const d = new Date(); localStorage.setItem('mc-today-toast:u3', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); } catch (e) { /* none */ } }, [fixture]);   // the day's late reminder already seen: it never takes the place of the Undo toast
   await p.goto('file://' + page0);
   await p.waitForFunction(() => window.__mc && window.__mc.state && window.__mc.state.rosterReady);
   const who = await p.evaluate(() => {

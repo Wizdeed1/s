@@ -161,5 +161,5 @@ table input.cell, table select.cell, table textarea.cell { border-color: transpa
 .secnav button { border: 0; background: none; color: var(--ink-2); min-height: 30px; padding: 0 10px; border-radius: 8px; font: 500 12.5px/1 var(--text); cursor: pointer; }
 .secnav button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 @media (hover: hover) and (pointer: fine) { .secnav button:hover { background: var(--fill); color: var(--ink); } }
-@media (max-width: 767.98px) { .secnav { position: static; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .secnav button { white-space: nowrap; } }
+@media (max-width: 767.98px) { .secnav { position: static; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .secnav button, .secnav .snl { white-space: nowrap; } }
 .savestate .linkbtn { color: var(--bad); font-weight: 600; }

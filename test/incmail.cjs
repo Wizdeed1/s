@@ -52,9 +52,10 @@ const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(
   const s = await open({ id: 'u3', name: 'Faisal M.', username: 'faisal.m', role: 'senior' });
   await s.evaluate(() => { const M = window.__mc, F = window.__FIX__; M.state.history = F.history; M.state.finals = {}; M.state.histVer++; M.state.finVer++; M.state.wsMonth = '2026-09'; M.setWs('cycle'); });
   await s.waitForSelector('#cycleBar [data-cyctab="mail"]');
-  const tile = await s.$eval('#cycleBody .mailgrid4', el => el.textContent.replace(/\s+/g, ' '));
-  ok(/Incentive data\s*To the champions/.test(tile) && /For review: not prepared yet · Final: not prepared yet/.test(tile), 'the month\'s emails: an Incentive data tile first');
-  await s.click('#cycleBody [data-cyctab="mail"]');
+  const st = await s.evaluate(() => [...document.querySelectorAll('#cycleBody .flow > .flowstep')].map(x => ({ id: x.id, n: x.dataset.n, cls: x.className, t: x.querySelector('h2').textContent.replace(/^Step \d+: /, '') })));
+  ok(st.length === 8 && st[0].id === 'st-increv' && /^Send the incentive data for review$/.test(st[0].t) && / next/.test(st[0].cls) && st[7].id === 'st-incfin' && /^Send the final incentive data$/.test(st[7].t),
+    `the month close in eight numbered steps, the incentive data for review first and next, the final incentive data last (${st.map(x => x.n + ' ' + x.t).join(' | ')})`);
+  await s.click('#st-increv [data-cycmail="review"]');
   await s.waitForSelector('#cycMail:not([hidden]) #v-email:not([hidden])');
   await s.waitForFunction(() => /Saved by the WFM team/.test(document.getElementById('srcState').textContent), null, { timeout: 15000 });
   const src = await s.$eval('#srcState', el => el.textContent.replace(/\s+/g, ' '));
@@ -76,8 +77,16 @@ const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(
   await s.click('#mStage [data-f="final"]'); await s.waitForTimeout(300);
   const fin = await s.evaluate(() => ({ h: document.getElementById('h-email').textContent, rev: document.getElementById('revState').textContent.replace(/\s+/g, ' '), rows: document.querySelector('#mailHead').textContent.replace(/\s+/g, ' ') }));
   ok(fin.h === 'Incentive email – final' && /Saved .* by Faisal M\. when the review email was copied or downloaded/.test(fin.rev) && /0 people changed since the review/.test(fin.rows), `the final, compared with the review: ${fin.rev.slice(0, 80)}…`);
-  ok(await s.evaluate(() => /No changes were made after the review/.test(document.getElementById('mailFrame').contentDocument.body.textContent)), 'the final email: no changes after the review');
+  // the final email is the old body, without any detail of what changed (the sender sees it in the tool)
+  await s.evaluate(() => { const M = window.__mc, d = JSON.parse(JSON.stringify(M.state.incWb.rows)); d.aht[0].v += 10; M.state.revWb.inc = { name: 'sent for review.xlsx', data: d }; M.renderWs(); });
+  await s.waitForTimeout(400);
+  const fb = await s.evaluate(() => ({ body: document.getElementById('mailFrame').contentDocument.body.textContent.replace(/\s+/g, ' '), rows: document.querySelector('#mailHead').textContent.replace(/\s+/g, ' '), list: (document.querySelector('#revState .revchg') || {}).textContent || '' }));
+  ok(/Kindly find attached the final data which will be used to calculate your incentive for Sep - 2026, after the review\./.test(fb.body) && !/changed|Changes after|No changes/i.test(fb.body), 'the final email: the old body, no list of changes');
+  ok(/1 person changed since the review/.test(fb.rows) && /What changed for 1 person/.test(fb.list) && /AHT/.test(fb.list), 'the sender sees what changed in the tool (Compared with the review), not in the email');
+  const eml2 = await s.evaluate(() => window.__mc.curMail().text);
+  ok(!/changes were made|What changed/i.test(eml2) && /after the review\./.test(eml2), 'the plain text too');
   await s.screenshot({ path: path.join(out, 'incmail-senior-final.png') });
+  await s.evaluate(() => { delete window.__mc.state.revWb.inc; window.__mc.renderWs(); });
 
   // 3. a newer build replaces the older file on the senior manager's page
   const id0 = await s.evaluate(() => window.__mc.state.incWb.saved.id);
@@ -95,7 +104,7 @@ const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(
   const none = await s.evaluate(() => ({ src: document.getElementById('srcState').textContent.replace(/\s+/g, ' '), warns: document.getElementById('mailWarns').textContent }));
   ok(/make it for Aug 2026 on WFM team › Export/.test(none.src) && /have not built the incentive file for August 2026/.test(none.warns), 'August: no incentive file yet, and where the analysts make it');
   await s.click('#cycleBar [data-cyctab="close"]'); await s.waitForTimeout(300);
-  ok(await s.evaluate(() => !document.getElementById('cycleBody').hidden && document.getElementById('cycMail').hidden && !!document.querySelector('#cycleBody .mailgrid4')), 'Month close: the page as before');
+  ok(await s.evaluate(() => !document.getElementById('cycleBody').hidden && document.getElementById('cycMail').hidden && !!document.querySelector('#cycleBody #st-increv')), 'Month close: the page as before');
 
   ok(!errs.length, `no errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
   await b.close();

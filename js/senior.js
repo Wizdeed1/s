@@ -59,20 +59,20 @@ function renderCycle() {
     mountMail('cyc'); renderEmail(); return;
   }
   mountMail(false);
-  $('cycleBar').innerHTML = `${tabs}${monthSelHtml(k, 'data-wsmonth')}${k ? `<label class="wsfield"><span>One-to-ones due</span><input type="date" class="cell" data-deadline value="${esc(C.deadline || '')}" ${can ? '' : 'disabled'} aria-label="Deadline for the one-to-ones"></label>` : ''}
-    <div class="wsacts">${can && k ? '<button class="btn sm" data-cyc="publish" title="Copy each agent\'s latest numbers and forms to their own page">Update the agents\' pages</button>' : ''}<button class="btn sm" data-rulesopen title="KPIs, weights, bands, bases and who earns the incentive, in force from a month">Incentive rules</button><button class="btn sm" data-x="cycle"${k ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Supervisors Excel</button></div>`;
+  $('cycleBar').innerHTML = `${tabs}${monthSelHtml(k, 'data-wsmonth')}
+    <div class="wsacts"><button class="btn sm" data-rulesopen title="KPIs, weights, bands, bases and who earns the incentive, in force from a month">Incentive rules</button><button class="btn sm" data-x="cycle"${k ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Supervisors Excel</button></div>`;
   const body = $('cycleBody');
   if (!k && stillReading()) { body.innerHTML = emptyCard('Reading the shared data…', 'The months appear here in a moment.'); return; }
   if (!k) { body.innerHTML = emptyCard('No months yet', 'The month appears here as soon as the WFM team starts building it.'); return; }
   const R = cycleRows(k), doneN = R.filter(r => r.done).length, prev = state.cycleSeenPrev;
   const dl = C.deadline, days = dl ? Math.ceil((new Date(dl + 'T23:59:59') - Date.now()) / 86400000) : null;
-  // notifications
+  // who finished their team (step 4)
   const fresh = R.filter(r => r.done && r.done.at > prev), notYet = R.filter(r => !r.done);
-  const notes = `<div class="card notecard"><div class="cardhead"><div><h2>Notifications</h2><p class="cap">${doneN} of ${R.length} supervisors finished their team for ${esc(ymLabel(k))}.${dl ? ` One-to-ones due ${esc(Forms.fmtDate(dl))}${days < 0 ? `, ${plural(-days, 'day')} ago` : days === 0 ? ', today' : `, in ${plural(days, 'day')}`}.` : ' No deadline set yet: choose one above.'}</p></div>${fresh.length ? '<button class="btn sm" data-cyc="seen">Mark as read</button>' : ''}</div>
+  const notes = `<div class="card notecard"><div class="cardhead"><div><h2>Who finished</h2><p class="cap">${doneN} of ${R.length} supervisors finished their team for ${esc(ymLabel(k))}.${dl ? ` One-to-ones due ${esc(Forms.fmtDate(dl))}${days < 0 ? `, ${plural(-days, 'day')} ago` : days === 0 ? ', today' : `, in ${plural(days, 'day')}`}.` : ' No deadline set yet: set it in step 3.'}</p></div>${fresh.length ? '<button class="btn sm" data-cyc="seen">Mark as read</button>' : ''}</div>
     <ul class="ilist notes">${fresh.map(r => `<li class="new"><span class="nm">${esc(r.name)} finished the team</span><span class="sg">${esc(fmtWhen(r.done.at))} · ${r.done.held}/${r.done.n} one-to-ones · ${r.done.signed || 0} signed by the agent</span></li>`).join('')}
     ${R.filter(r => r.done && !(r.done.at > prev)).map(r => `<li><span class="nm">${esc(r.name)} finished the team</span><span class="sg">${esc(fmtWhen(r.done.at))} · ${r.done.held}/${r.done.n} one-to-ones</span></li>`).join('')}
     ${notYet.length ? `<li class="${dl && days < 0 ? 'late' : ''}"><span class="nm">Not finished yet: ${esc(notYet.map(r => r.name).join(', '))}</span><span class="sg">${dl && days < 0 ? 'past the deadline' : dl ? 'before the deadline' : ''}</span></li>` : ''}</ul></div>`;
-  // progress and scorecards
+  // the supervisors' scorecards (to look things up)
   const card = spvCardNow(), its = card.items, base = +card.base || 0;
   const manual = its.filter(it => it.src === 'manual');
   const prog = `<div class="card"><div class="cardhead"><div><h2>Supervisor results · ${esc(ymLabel(k))}</h2><p class="cap">One-to-ones held and signed per team, whether the supervisor pressed Finish, and their scorecard.${manual.length && can ? ' Type the values of the items you score yourself.' : ''}</p></div></div>
@@ -82,25 +82,50 @@ function renderCycle() {
       ${r.sc.items.map(x => `<td class="r">${x.it.src === 'manual' && can ? `<input class="cell man" data-man="${esc(r.pid)}" data-it="${esc(x.it.id)}" value="${x.v == null ? '' : spvItemUnit(x.it) === 'pct' ? +(x.v * 100).toFixed(2) : x.v}" inputmode="decimal" placeholder="–" aria-label="${esc(x.it.name)} for ${esc(r.name)}">` : `<span class="num">${esc(spvItemFmt(x.it, x.v))}</span>`} ${x.r != null ? rankChip(x.r) : ''}</td>`).join('')}
       <td class="r num"><b>${pct1(r.sc.finalPct)}</b></td>${base ? `<td class="r num">${r.sc.earned == null ? '–' : r.sc.earned.toLocaleString('en-US')}</td>` : ''}</tr>`).join('') || `<tr><td colspan="${6 + its.length}" class="empty">No supervisors yet: fill the Supervisor column in the roster.</td></tr>`}
     </tbody></table></div></div>`;
-  // the four emails
-  const sent = C.sent || {}, sentTxt = x => (sent[x] ? `Prepared ${esc(fmtWhen(sent[x].at))}${sent[x].by ? ' by ' + esc(sent[x].by) : ''}` : 'Not prepared yet');
-  const incSent = x => (sent[x] ? `${esc(sent[x].how || 'Prepared')} ${esc(fmtWhen(sent[x].at))}${sent[x].by ? ' by ' + esc(sent[x].by) : ''}` : 'not prepared yet');
-  const mailCard = `<div class="card"><div class="cardhead"><div><h2>Emails for ${esc(ymLabel(k))}</h2><p class="cap">Each one downloads as an Outlook draft (.eml): open it, check it and press Send. Addresses come from the roster's Email column and the contacts below.</p></div></div>
-    <div class="mailgrid4">
-      <div class="m4"><b>Incentive data</b><span>To the champions: the incentive file the WFM analysts built (attendance, adherence and AHT, without National IDs) for review with its deadline, then the final after the review with what changed.</span><small>For review: ${incSent('incReview')} · Final: ${incSent('incFinal')}</small><button class="btn sm" data-cyctab="mail"${can ? '' : ' disabled'}>Open the email</button></div>
-      <div class="m4"><b>One-to-ones are ready</b><span>To every supervisor, with the deadline and each team's numbers.</span><small>${sentTxt('ready')}</small><button class="btn sm primary" data-mail4="ready"${can ? '' : ' disabled'}>Make the email</button></div>
-      <div class="m4"><b>Deadline reminder</b><span>To the ${plural(notYet.length, 'supervisor')} not finished yet.</span><small>${sentTxt('warn')}</small><button class="btn sm" data-mail4="warn"${can && notYet.length ? '' : ' disabled'}>Make the email</button></div>
-      <div class="m4"><b>Results for review</b><span>To ${esc(splitAddr(contactsNow().vp).map(x => x.replace(/\s*<.*$/, '')).join(', ') || 'the VP')}: “Hi All”, with the ID, name, final % and earned SR of everyone on the incentive list who earned it, and the same table as an Excel file.</span><small>${sentTxt('review')}</small><button class="btn sm" data-mail4="review"${can ? '' : ' disabled'}>Make the email</button></div>
-      <div class="m4"><b>Final result form</b><span>To ${esc(splitAddr(contactsNow().form).map(x => x.replace(/\s*<.*$/, '')).join(', ') || 'the WFM manager')}: everyone on the incentive list with their final % and earned SR, the month's total, the table the VP, HR, Finance and the CEO sign, and the same form as an Excel file.${monthLocked(k) ? '' : ' Finalize the month on Results first.'}</span><small>${sentTxt('final')}</small><button class="btn sm" data-mail4="final"${can ? '' : ' disabled'}>Make the email</button></div>
-    </div></div>`;
-  // scorecard editor and contacts
+  // set once: the supervisors' scorecard and the email addresses (and the month close's due days)
   const editor = can ? `<details class="card sced"${state.scEdit ? ' open' : ''} data-det="sc"><summary>Supervisor scorecard · ${plural(its.length, 'item')} · weights ${+(its.reduce((a, it) => a + (+it.weight || 0), 0) * 100).toFixed(1)}%</summary>${scEditorHtml(card)}</details>` : '';
   const C0 = contactsNow();
   const contacts = can ? `<details class="card"${state.ctEdit ? ' open' : ''} data-det="ct"><summary>Email addresses</summary><div class="grid2 tight">
     ${[['vp', 'VP (results for review)'], ['form', 'Final result form (to)'], ['senior', 'Senior manager (gets the supervisors\' "done" emails)'], ['mgmt', 'Management team (in copy)'], ['wfm', 'WFM (in copy of the supervisors\' emails)']].map(([f, l]) => `<div class="field"><span class="lbl">${esc(l)}</span><input class="cell" data-contact="${f}" value="${esc(C0[f] || '')}" spellcheck="false" placeholder="Name <name@company.com>"></div>`).join('')}
     <div class="field"><span class="lbl">Final result form: who signs (one per line: name | designation)</span><textarea class="cell" data-signers rows="4" spellcheck="false">${esc(signersNow().map(x => x.join(' | ')).join('\n'))}</textarea></div></div>
     <p class="hint">Supervisors' and agents' addresses come from the roster's Email column.</p></details>` : '';
-  body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${editor}${contacts}${safeHtml(calDaysHtml)}`;
+  // the month close, step by step, in the order it is done: each step says if it is done (and when, by whom) and has its own action
+  const sent = C.sent || {}, sentTxt = x => (sent[x] ? `Prepared ${fmtWhen(sent[x].at)}${sent[x].by ? ' by ' + sent[x].by : ''}` : '');
+  const incSent = x => (sent[x] ? `${sent[x].how || 'Prepared'} ${fmtWhen(sent[x].at)}${sent[x].by ? ' by ' + sent[x].by : ''}` : '');
+  let CS = {}; try { CS = Object.fromEntries(calSteps(k).map(x => [x.id, x])); } catch (e) { CS = {}; }
+  const calDone = id => !!(CS[id] && CS[id].st === 'done'), calNote = id => { const x = CS[id]; return !x ? '' : x.done || x.st === 'past' ? calStateText(x) : x.note || ''; };
+  const past = k < closeMonthNow(), calPast = id => !!(CS[id] && CS[id].st === 'past');   // a month closed before: a step not recorded is not "next"
+  const who = f => esc(splitAddr(contactsNow()[f]).map(a => a.replace(/\s*<.*$/, '')).join(', ')), dis = can ? '' : ' disabled', btn = on => `btn sm${on ? ' primary' : ''}`;
+  const L = [
+    { id: 'st-increv', short: 'Incentive data for review', title: 'Send the incentive data for review', done: !!sent.incReview, skip: past, note: incSent('incReview') || (past ? 'Not recorded' : ''),
+      cap: 'To the champions: the incentive file the WFM analysts built (attendance, adherence and AHT, without National IDs), with the review deadline.',
+      acts: on => `<button class="${btn(on)}" data-cycmail="review"${dis}>Open the email</button>` },
+    { id: 'st-shared', short: 'Agents\' pages', title: 'Put the results on the agents\' pages', done: calDone('shared'), skip: calPast('shared'), note: calNote('shared'),
+      cap: 'Each agent with an account sees their latest numbers and forms on their own page, and can object until the objection deadline.',
+      acts: on => `<button class="${btn(on)}" data-cyc="publish"${dis} title="Copy each agent's latest numbers and forms to their own page">Update the agents' pages</button>` },
+    { id: 'st-ready', short: 'Start the one-to-ones', title: 'Start the one-to-ones', done: calDone('ready'), skip: calPast('ready'), note: sentTxt('ready') || calNote('ready'),
+      cap: 'Set the deadline, then send “One-to-ones are ready” to every supervisor, with the deadline and each team\'s numbers.',
+      acts: on => `<label class="wsfield"><span>Due</span><input type="date" class="cell" data-deadline value="${esc(C.deadline || '')}"${dis} aria-label="Deadline for the one-to-ones"></label><button class="${btn(on)}" data-mail4="ready"${dis}>Make the email</button>` },
+    { id: 'st-follow', short: 'Follow the supervisors', title: 'Follow the supervisors and the objections', done: calDone('done'), skip: calPast('done'), note: `${doneN} of ${R.length} supervisors finished${sent.warn ? ` · reminder prepared ${fmtWhen(sent.warn.at)}` : ''}`,
+      cap: 'Who finished their team and who has not, and what the agents raised. The reminder goes to the supervisors not finished yet.',
+      acts: () => `<button class="btn sm" data-mail4="warn"${can && notYet.length ? '' : ' disabled'}>Deadline reminder</button>`,
+      body: `${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}` },
+    { id: 'st-review', short: 'Results for review', title: 'Send the results for review', done: calDone('review'), skip: calPast('review'), note: sentTxt('review') || calNote('review'),
+      cap: `To ${who('vp') || 'the VP'}: “Hi All”, with the ID, name, final % and earned SR of everyone on the incentive list who earned it, and the same table as an Excel file.`,
+      acts: on => `<button class="${btn(on)}" data-mail4="review"${dis}>Make the email</button>`, body: can ? safeHtml(incListHtml, k) : '' },
+    { id: 'st-final', short: 'Finalize', title: 'Finalize the month', done: calDone('final'), skip: calPast('final'), note: calNote('final'),
+      cap: 'On Results: decide who is eligible where the rules say otherwise, then Finalize. After that only you can change the results.',
+      acts: on => `<button class="${btn(on)}" data-cycgo="results">Open Results</button>` },
+    { id: 'st-form', short: 'Final result form', title: 'Send the final result form', done: calDone('finalmail'), skip: calPast('finalmail'), note: sentTxt('final') || calNote('finalmail'),
+      cap: `To ${who('form') || 'the WFM manager'}: everyone on the incentive list with their final % and earned SR, the month's total, the table the VP, HR, Finance and the CEO sign, and the same form as an Excel file.${monthLocked(k) ? '' : ' Finalize the month first.'}`,
+      acts: on => `<button class="${btn(on)}" data-mail4="final"${dis}>Make the email</button>` },
+    { id: 'st-incfin', short: 'Final incentive data', title: 'Send the final incentive data', done: !!sent.incFinal, skip: past, note: incSent('incFinal') || (past ? 'Not recorded' : ''),
+      cap: 'To the champions after the review deadline, with the final incentive file.',
+      acts: on => `<button class="${btn(on)}" data-cycmail="final"${dis}>Open the email</button>` },
+  ];
+  const sts = stepStates(L.map(x => x.done), L.map(x => x.skip));
+  const steps = `<div class="flow">${L.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i], acts: x.acts(sts[i] === 'next') })).join('')}</div>`;
+  body.innerHTML = `${statusBanner(k)}${steps}${phaseHtml('To look things up', 'How each supervisor scores this month.')}${prog}${can ? `${phaseHtml('Set once', 'Every month uses them.')}${editor}${contacts}${safeHtml(calDaysHtml)}` : ''}`;
   if (canCycle() && unseenDone().length && state.ws === 'cycle') { lsSet(seenKey(), new Date().toISOString()); cycleBadge(); }
   reveal(body);
 }
@@ -400,15 +425,15 @@ async function exportCycle() {
 }
 
 // ---------------------------------------------------------------- events
-$('cycleBar').addEventListener('change', e => {
-  const t = e.target;
-  if (t.matches('[data-deadline]')) { const k = wsMonthNow(), v = t.value; cycleUpdate(k, c => { c.deadline = v; }, v ? `Set the one-to-one deadline to ${Forms.fmtDate(v)}` : 'Removed the deadline'); }
-});
+/** the one-to-ones' deadline (step 3) and the agents' pages (step 2), from the page */
+function cycDeadline(t) { const k = wsMonthNow(), v = t.value; cycleUpdate(k, c => { c.deadline = v; }, v ? `Set the one-to-one deadline to ${Forms.fmtDate(v)}` : 'Removed the deadline'); }
+async function cycPublish(b) { const k = wsMonthNow(); b.disabled = true; const n = await publishMonthToAgents(k).catch(() => 0); b.disabled = false; toast(n ? `${plural(n, 'agent')} now see their latest ${ymLabel(k)} numbers and forms.` : 'No agent has an account yet.'); if (n) logCycle(k, `Updated ${plural(n, 'agent')}'s own pages`); }
+$('cycleBar').addEventListener('change', e => { if (e.target.matches('[data-deadline]')) cycDeadline(e.target); });
 $('cycleBar').addEventListener('click', async e => {
   const tb = e.target.closest('[data-cyctab]'); if (tb) { cycTabGo(tb.dataset.cyctab); return; }
-  const b = e.target.closest('[data-cyc="publish"]');
-  if (b) { const k = wsMonthNow(); b.disabled = true; const n = await publishMonthToAgents(k).catch(() => 0); b.disabled = false; toast(n ? `${plural(n, 'agent')} now see their latest ${ymLabel(k)} numbers and forms.` : 'No agent has an account yet.'); if (n) logCycle(k, `Updated ${plural(n, 'agent')}'s own pages`); }
+  const b = e.target.closest('[data-cyc="publish"]'); if (b) cycPublish(b);
 });
+$('cycleBody').addEventListener('change', e => { if (e.target.matches('[data-deadline]')) cycDeadline(e.target); });
 /** the Supervisors page's tabs: the month close, or the incentive email */
 function cycTabGo(t) {
   if (state.cycTab === t) return; state.cycTab = t; renderWs(); window.scrollTo({ top: 0 });
@@ -421,6 +446,9 @@ $('cycMail').addEventListener('click', e => {
 $('cycleBody').addEventListener('click', e => {
   const t = e.target;
   const ct = t.closest('[data-cyctab]'); if (ct) { cycTabGo(ct.dataset.cyctab); return; }
+  const cm = t.closest('[data-cycmail]'); if (cm) { openIncMail(cm.dataset.cycmail); return; }
+  if (t.closest('[data-cycgo="results"]')) { setWs('results'); return; }
+  const pb = t.closest('[data-cyc="publish"]'); if (pb) { cycPublish(pb); return; }
   const m4 = t.closest('[data-mail4]'); if (m4) { mail4(m4.dataset.mail4); return; }
   if (t.closest('[data-cyc="seen"]')) { lsSet(seenKey(), new Date().toISOString()); state.cycleSeenPrev = seenAt(); renderWs(); return; }
   const tm = t.closest('[data-cyc="team"]'); if (tm) { state.wsSpv = tm.dataset.spv; setWs('team'); return; }

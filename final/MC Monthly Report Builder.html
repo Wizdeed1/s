@@ -890,7 +890,7 @@ table input.cell, table select.cell, table textarea.cell { border-color: transpa
 .secnav button { border: 0; background: none; color: var(--ink-2); min-height: 30px; padding: 0 10px; border-radius: 8px; font: 500 12.5px/1 var(--text); cursor: pointer; }
 .secnav button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 @media (hover: hover) and (pointer: fine) { .secnav button:hover { background: var(--fill); color: var(--ink); } }
-@media (max-width: 767.98px) { .secnav { position: static; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .secnav button { white-space: nowrap; } }
+@media (max-width: 767.98px) { .secnav { position: static; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .secnav button, .secnav .snl { white-space: nowrap; } }
 .savestate .linkbtn { color: var(--bad); font-weight: 600; }
 
 /* ------------------------------------------------------------------------------------------------------------- panels from the right: a floating sheet with soft corners, the page dimmed behind (sheets.md) */
@@ -1446,6 +1446,10 @@ b.bad, .astats b.bad { color: var(--bad); }
 .kxadd { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
 .kxadd select.cell { flex: 0 1 260px; min-width: 0; }
 .kxadd input.cell { flex: 0 0 130px; width: 130px; }
+/* the final incentive email: what changed since the review, for the sender only */
+.revchg { justify-self: stretch; font-size: 12.5px; }
+.revchg > summary { cursor: pointer; color: var(--ink-2); }
+.revchg .ilist { max-height: 260px; overflow: auto; margin-top: 6px; }
 
 /* Quality: the DRC-CSAT box (one score for every agent) and the Final EVAL tables in the quality team's template */
 .csatslot:not([hidden]) { display: block; }
@@ -2399,6 +2403,42 @@ p.prange { padding-top: 12px; }
 .dcsteps li.late small { color: var(--bad); } .dcsteps li.soon small { color: var(--warn); }
 .rleg .dcsum { font-size: 12.5px; color: var(--muted); }
 
+/* ================================================================ STEPS: a page's work in the order it is done
+   A number on a line down the left, the step's title with its state (done, next) and its actions, what it is for, then its own
+   cards. After the steps: what is there to look things up, and what is set once, each under a small heading (.phase). */
+.flow { display: grid; gap: var(--s5); }
+.flowstep { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: var(--s4); align-items: start; }
+.flowstep::before { content: ''; position: absolute; left: 17px; top: 44px; bottom: calc(-1 * var(--s5) + 8px); width: 2px; border-radius: 2px; background: var(--line); }
+.flowstep:last-child::before { display: none; }
+.stepn { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 700 14px/1 var(--display); color: var(--ink-2); background: var(--surface); border: 1.5px solid var(--line-2); box-shadow: var(--shadow-card); }
+.flowstep.next .stepn { background: var(--accent-fill); color: var(--on-accent); border-color: transparent; }   /* the filled accent: white text keeps its contrast */
+.flowstep.done .stepn { background: var(--good-soft); color: var(--good); border-color: transparent; }
+.flowstep.done::before { background: var(--good-line); }
+.stepbody { display: grid; gap: var(--s3); min-width: 0; }
+.stephd { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 36px; }
+.stephd h2 { margin: 0; font: 600 17px/1.3 var(--display); letter-spacing: -0.01em; }
+.flowstep.done .stephd h2 { color: var(--ink-2); }
+.stephd .stnote { color: var(--muted); font-size: 12.5px; }
+.stephd .stacts { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stephd .stacts .wsfield { display: inline-flex; align-items: center; gap: 6px; }
+.stepbody > .stcap { margin: calc(4px - var(--s3)) 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; max-width: 82ch; }   /* under the title line, whatever its length */
+.phase { display: grid; gap: 2px; margin-top: var(--s4); padding-top: var(--s4); border-top: 1px solid var(--line); }
+.phase h2 { margin: 0; font: 600 12px/1.3 var(--text); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.phase .cap { margin: 0; font-size: 12.5px; color: var(--muted); }
+/* numbered tabs: a step of the month in a row of tabs */
+.tabn { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-right: 6px; padding: 0 4px; border-radius: 9px; font: 700 11px/1 var(--display); background: var(--fill); color: var(--ink-2); }
+[aria-pressed="true"] > .tabn, [aria-selected="true"] > .tabn { background: var(--accent-fill); color: var(--on-accent); }
+@media (max-width: 640px) {
+  .flowstep { grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; }
+  .stepn { width: 28px; height: 28px; font-size: 12px; }
+  .flowstep::before { left: 13px; top: 34px; }
+  .stephd .stacts { margin-left: 0; }
+}
+@media print { .flowstep::before { display: none; } }
+/* the Import page's groups: the exports, the attendance, the IDs and KPI inputs */
+.impgrp { display: flex; align-items: center; gap: 2px; margin: var(--s2) 0 calc(-1 * var(--s1)); font: 600 13px/1.3 var(--text); color: var(--ink-2); }
+.impgrp[hidden] { display: none; }
+
 /* ------------------------------------------------------------------------------------------------------------- WFM › Report builder (the analysts) and WFM › Daily emails (the WFM manager) */
 .rb { display: grid; gap: 18px; min-width: 0; }
 .rbgrid { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -2734,7 +2774,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
   /* the dashboard: greeting and Today first, KPIs two per row, the chart without end labels, open month-close steps only */
   #dashBody { display: flex; flex-direction: column; }
   .dgrid, .dmain, .dside, .drow { display: contents; }
-  .dhead { order: 1; } #dashToday { order: 2; } #dashBody .card.empty { order: 3; } .kpis { order: 3; } .dclose { order: 4; } .dtrend { order: 5; } .dattn { order: 6; } .dlow { order: 7; } .ddata { order: 8; }
+  .dhead { order: 1; } #dashToday { order: 2; } #dashBody .card.empty { order: 3; } .kpis { order: 3; } .dclose { order: 4; } .dattn { order: 5; } .dlow { order: 6; } .dtrend { order: 7; } .ddata { order: 8; }
   .qacts { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .kpi { padding: 12px; }
@@ -3143,8 +3183,11 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     </div>
     <input type="file" id="picker" multiple accept=".csv,.txt,.xlsx,.xlsm,.xlsb,.xls,.msg" hidden>
     <ul class="pending" id="pending" aria-live="polite"></ul>
+    <h3 class="impgrp"><span class="tabn" aria-hidden="true">1</span>The four Genesys exports</h3>
     <div class="slots" id="slots"></div>
+    <h3 class="impgrp"><span class="tabn" aria-hidden="true">2</span>Attendance</h3>
     <article class="slot attcard" id="attCard" aria-label="Supervisors' attendance"></article>
+    <h3 class="impgrp" id="impG3"><span class="tabn" aria-hidden="true">3</span>IDs and KPI inputs</h3>
     <article class="slot attcard idscard" id="idsCard" aria-label="IDs file" hidden></article>
     <article class="slot attcard" id="kpiCardImp" aria-label="KPI file" hidden></article>
     <div class="csatslot" id="csatImp" hidden></div>
@@ -3178,10 +3221,10 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     </div>
     <div class="tabs" role="tablist" aria-label="Review">
       <button class="tab" role="tab" id="t-checks" aria-controls="p-checks" aria-selected="true" data-tab="checks">Checks <span class="badge" id="bChecks">0</span></button>
-      <button class="tab" role="tab" id="t-people" aria-controls="p-people" aria-selected="false" tabindex="-1" data-tab="people">People <span class="badge" id="bPeople">0</span></button>
       <button class="tab" role="tab" id="t-issues" aria-controls="p-issues" aria-selected="false" tabindex="-1" data-tab="issues">Issues <span class="badge" id="bIssues">0</span></button>
-      <button class="tab" role="tab" id="t-preview" aria-controls="p-preview" aria-selected="false" tabindex="-1" data-tab="preview">Preview</button>
+      <button class="tab" role="tab" id="t-people" aria-controls="p-people" aria-selected="false" tabindex="-1" data-tab="people">People <span class="badge" id="bPeople">0</span></button>
       <button class="tab" role="tab" id="t-kpi" aria-controls="p-kpi" aria-selected="false" tabindex="-1" data-tab="kpi">KPI results <span class="badge" id="bKpi">0</span></button>
+      <button class="tab" role="tab" id="t-preview" aria-controls="p-preview" aria-selected="false" tabindex="-1" data-tab="preview">Preview</button>
       <button class="tab" role="tab" id="t-history" aria-controls="p-history" aria-selected="false" tabindex="-1" data-tab="history">History <span class="badge" id="bHist">0</span></button>
     </div>
 
@@ -3421,7 +3464,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     <div id="wfmMail"></div>
   </section>
   <section class="view ws" id="v-cycle" aria-labelledby="h-cycle" hidden>
-    <div class="viewhead"><div><div class="eyebrow" id="cycEyebrow">Senior manager</div><h1 id="h-cycle">Supervisors</h1><p id="cycLead">Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month's emails.</p></div><div class="wsbar" id="cycleBar"></div></div>
+    <div class="viewhead"><div><div class="eyebrow" id="cycEyebrow">Senior manager</div><h1 id="h-cycle">Supervisors</h1><p id="cycLead">The month close in eight steps, in the order they are done: each one shows when it is done, and the next one is marked.</p></div><div class="wsbar" id="cycleBar"></div></div>
     <div id="cycleBody"></div>
     <div id="cycMail" hidden></div>
   </section>
@@ -3608,8 +3651,9 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
         <li>Your pages are in the <b>sidebar</b> on the left. On a laptop it narrows to icons (point at one for its name); the button at its foot widens it again, and this browser remembers your choice. On a phone the pages are in the bar at the bottom; with more than five, <b>More</b> holds the rest, and How to use and Settings are in the account menu.</li>
         <li><b>Search</b> (Ctrl K) is at the top of the sidebar (on a phone, in the header). The <b>header</b> carries the <b>bell</b> with your notifications: deadlines and what is yours to do (everyone), and the checks (for the people who build the month), the <b>month</b> the page shows and your account. A final month shows a lock and is read-only. On Build the month comes from the exports instead; change it in Settings › Month.</li>
         <li><b>Appearance</b>: choose Light, Dark or System in your account menu (your initials, top right) or in Settings. System, the first choice, follows your computer's light or dark setting and changes with it. The choice is kept in this browser.</li>
-        <li>The WFM roles and the senior manager start on the <b>Dashboard</b>: the month's six numbers against the month before, the trend, what needs attention, the senior manager's month close steps and how old each source is. Everyone else starts on their own page; what is theirs to do, with its deadline, is in the bell.</li>
-        <li><b>WFM team</b> holds the month's build as tabs: Import, Review, Export and Emails, next to Daily, Report builder, Analytics, Agents and Interactions. Review opens on <b>Checks</b>, the same checks as the bell, with what each one means and what happens until you act. Only three things stop a build: an empty roster, files still being read, and no export or attendance file at all.</li>
+        <li>The pages are in the order the month is done: the build (WFM team), the quality EVAL, the senior manager's month close (Supervisors), the one-to-ones (Team), the results. A page that holds a month's work shows it as <b>numbered steps</b> (Supervisors, Quality) or <b>numbered tabs</b> (WFM team, a supervisor's Team), in the order they are done: each step says when it is done and the next one is marked. What is there to look things up, and what is set once, come after the steps.</li>
+        <li>The WFM roles and the senior manager start on the <b>Dashboard</b>, by priority: the month's six numbers against the month before with the senior manager's month close steps, then what needs attention and the lowest adherence, then the trend and how old each source is. Everyone else starts on their own page; what is theirs to do, with its deadline, is in the bell.</li>
+        <li><b>WFM team</b> holds the month's build as numbered tabs: 1 Import, 2 Review, 3 Export and 4 Emails, next to Daily, Report builder, Analytics, Agents and Interactions. Review opens on <b>Checks</b>, the same checks as the bell, with what each one means and what happens until you act. Only three things stop a build: an empty roster, files still being read, and no export or attendance file at all.</li>
       </ul>
     </section>
     <section>
@@ -3663,11 +3707,11 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
       <h3>Roles and pages</h3>
       <ul>
         <li><b>Supervisor › Team</b>: their own agents (the roster's Supervisor column), the team's average of every KPI (their own KPIs as a supervisor), their supervisor scorecard, a one-to-one board, the month's attendance (counted from Genesys for CC and SM, from the supervisor's attendance template for TS, MG, CT, QA, DE and WF; only the supervisor can correct a day), the agents waiting for their approval, and <b>Finish my team</b>, which tells the senior manager in the tool and makes an email draft to him. It stays grey until every agent's one-to-one is done. The one-to-one: arrange it; an agent with an account fills in their part on their own page (what was discussed, the root cause, their comments, actions, the next review date) and sends it; the supervisor reads it, accepts or rejects it with a final comment and sends the final back; only then does the agent sign. For an agent without an account the supervisor fills in the form when they meet. Supervisors do not see the incentive amounts.</li>
-        <li><b>Senior manager › Supervisors › Incentive email</b>: the incentive data email to the champions, for review (with the review deadline) and then final (with what changed since the review). The attachment is the incentive file the WFM analysts built (WFM team › Export › Build incentive file), kept with the shared data and shown here by itself, without the National IDs; an edited file can be dropped there instead. Copy for Outlook or Download .eml, as on the WFM team's Emails. <b>Month close</b> (the page's other tab): the one-to-one deadline, which supervisors have finished (a notification and a count on the page button when one does), the supervisors' scorecards and their items (team averages, one-to-ones by the deadline, the quality team's leader items, or items he types), and the month's four emails: one-to-ones ready (to the supervisors), the deadline reminder (to those not finished), the results for review (“Hi All”: the ID, name, final % and earned SR of everyone on the incentive list who earned it, with the same table as an Excel file) and the final result form (his own form: everyone on the incentive list with their final % and earned SR, the month's total and the table the VP, HR Director, Finance Director and CEO sign, as an email and as the same Excel form). The <b>incentive list</b> on the same page says who is on those two, in order, with the names as the tool has them; add or remove people there. The emails carry no logo or name: Outlook adds your signature. <b>Results</b>: every agent; he decides who is eligible against the rules and finalizes the month.</li>
+        <li><b>Senior manager › Supervisors › Month close</b>: the month in eight numbered steps, in the order they are done: 1 the incentive data for review to the champions; 2 the results on the agents' pages; 3 the one-to-one deadline and “One-to-ones are ready” (to the supervisors); 4 which supervisors have finished (a notification and a count on the page button when one does), the agents' objections and the deadline reminder (to those not finished); 5 the results for review (“Hi All”: the ID, name, final % and earned SR of everyone on the incentive list who earned it, with the same table as an Excel file), with the <b>incentive list</b> under it: who is on this email and the final form, in order, with the names as the tool has them (add or remove people there); 6 Finalize on Results; 7 the final result form (the senior manager's own form: everyone on the incentive list with their final % and earned SR, the month's total and the table the VP, HR Director, Finance Director and CEO sign, as an email and as the same Excel form); 8 the final incentive data. After the steps: the supervisors' results and scorecards (team averages, one-to-ones by the deadline, the quality team's leader items, or items typed by hand), then what is set once (the scorecard, the email addresses, the due days). <b>Incentive email</b> (the page's other tab, and steps 1 and 8): the incentive data email to the champions, for review (with the review deadline) and then final, with the same body as always (what changed since the review is shown to the sender to check, not in the email). The attachment is the incentive file the WFM analysts built (WFM team › Export › Build incentive file), kept with the shared data and shown here by itself, without the National IDs; an edited file can be dropped there instead. Copy for Outlook or Download .eml, as on the WFM team's Emails. The emails carry no logo or name: Outlook adds your signature. <b>Results</b>: every agent; the senior manager decides who is eligible against the rules and finalizes the month.</li>
         <li><b>WFM</b>: Analytics by team, brand and month; Agents with every measure and the best and worst quarter marked; Daily with the stored days; <b>Report builder</b> (the WFM analysts: the day's exports, MC Leaders, the WFM Daily Review); <b>Daily emails</b> (the WFM manager: the four brand emails to send); Interactions from the interactions export; Emails with the deduction and absences emails (the WFM manager). The senior manager and the analysts read the rest of the page.</li>
         <li><b>Team page</b> for the senior manager, the WFM team and the admin: every team; the agents ranked lowest first (adherence, final %, exceptions, absence or tardiness), with a name search and the supervisor under each name.</li>
-        <li><b>Quality team › Quality</b>: drop the Final EVAL; Call QA fills Quality Observations (CT: the Final Score), critical errors are kept (an attitude error stops the incentive), the Leaders sheet scores the team leads. Any quality KPI can be corrected by hand until the month is final; each change is logged.</li>
-        <li><b>Agent › My page</b>: only their own results, attendance, daily adherence and forms. They fill in their part of the one-to-one and send it to their supervisor; when the supervisor sends the final back, they read it and sign it on screen, download the signed PDF and email it to themselves and their supervisor.</li>
+        <li><b>Quality team › Quality</b>, in six numbered steps: the EVAL template with IDs, the Final EVAL, the names, the DRC-CSAT, the check, the accepted objections. Drop the Final EVAL; Call QA fills Quality Observations (CT: the Final Score), critical errors are kept (an attitude error stops the incentive), the Leaders sheet scores the team leads. Any quality KPI can be corrected by hand until the month is final; each change is logged.</li>
+        <li><b>Agent › My page</b>: only their own results, attendance, daily adherence and forms; a one-to-one waiting for them comes first. They fill in their part of the one-to-one and send it to their supervisor; when the supervisor sends the final back, they read it and sign it on screen, download the signed PDF and email it to themselves and their supervisor.</li>
         <li><b>WFM analyst</b> and <b>admin</b> build the month. Incentive: base by brand (Virgin 1000, FRiENDi 500, FRiENDi Pay 500, a person's own base in the roster wins); nobody earns it with a final under 80%, an attitude critical error or fewer than 5 days attended, unless the senior manager decides otherwise.</li>
       </ul>
     </section>
@@ -13465,7 +13509,7 @@ const XKINDS = [
 const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
-const REVIEW_TABS = ['checks', 'people', 'issues', 'preview', 'kpi', 'history'];
+const REVIEW_TABS = ['checks', 'issues', 'people', 'kpi', 'preview', 'history'];   // what to decide first, then the names, the people, the KPI results, the workbook, the past months
 const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
@@ -15266,7 +15310,10 @@ function renderBadges() {
 }
 
 // ---- import
-function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); }
+function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); impGroups(); }
+/** the Import page in the order the month is put together: 1 the exports, 2 the attendance, 3 the IDs and KPI inputs (a heading
+    only when one of them is on the page) */
+function impGroups() { const g = $('impG3'); if (g) g.hidden = ['idsCard', 'kpiCardImp', 'csatImp'].every(id => $(id).hidden); }
 function renderPending() {
   Busy.set('parse', state.pending.length ? `Reading ${plural(state.pending.length, 'file')}…` : '');
   $('pending').innerHTML = state.pending.map(p => `<li><div class="row"><b>${esc(p.name)}</b><span>${fmtSize(p.size)}</span></div><div class="progress" role="progressbar" aria-label="Reading ${esc(p.name)}"><i></i></div><div class="hint">Reading and recognising the columns…</div></li>`).join('');
@@ -16799,12 +16846,6 @@ function incMailHtmlClassic(md, logoSrc, preview) {
   let b = lines(im.greeting).map(l => P(`<span lang="EN-GB">${l}</span>`)).join('') + gap;
   if (md.stage === 'final') {
     b += P(`<span lang="EN-GB" style="color:black">Kindly find attached the final data which will be used to calculate your </span><span lang="EN-GB">incentive for<b> ${esc(label)}</b>, after the review.</span>`) + gap;
-    if (md.changes && md.changes.length) {
-      b += P('<span lang="EN-GB">The following changes were made after the review:</span>') + gap;
-      const th = t => `<td style="background:#1F3864;padding:0in 5.4pt 0in 5.4pt;height:.3in"><p class="MsoNormal" style="margin:0in;${F}"><b><span style="font-size:10.0pt;color:white">${t}</span></b></p></td>`;
-      const td = t => `<td valign="top" style="border:solid #BFBFBF 1.0pt;padding:2pt 5.4pt 2pt 5.4pt"><p class="MsoNormal" style="margin:0in;${F}"><span style="font-size:10.0pt;color:black">${t}</span></p></td>`;
-      b += `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr>${th('Name')}${th('What changed')}</tr>${md.changes.map(c => `<tr>${td(esc(c.n))}${td(esc(c.what))}</tr>`).join('')}</table>` + gap;
-    } else if (md.changes) b += P('<span lang="EN-GB">No changes were made after the review.</span>') + gap;
   } else {
     b += P(`<span lang="EN-GB" style="color:black">Kindly find the attached data which will be used to calculate your </span><span lang="EN-GB">incentive for<b> ${esc(label)}</b></span>`) + gap;
     b += P(`<span lang="EN-GB">Please review it and If you have any concerns, please <b><u>refer to your direct leader, the deadline is ${esc(incDeadlineText())}.</u></b></span>`) + gap;
@@ -16820,8 +16861,6 @@ function incMailText(md) {
   const im = state.incMail, label = incLabel(md.y, md.m), out = [im.greeting, ''];
   if (md.stage === 'final') {
     out.push(`Kindly find attached the final data which will be used to calculate your incentive for ${label}, after the review.`, '');
-    if (md.changes && md.changes.length) { out.push('The following changes were made after the review:', '', 'Name\tWhat changed'); md.changes.forEach(c => out.push(`${c.n}\t${c.what}`)); out.push(''); }
-    else if (md.changes) out.push('No changes were made after the review.', '');
   } else out.push(`Kindly find the attached data which will be used to calculate your incentive for ${label}`, '', `Please review it and If you have any concerns, please refer to your direct leader, the deadline is ${incDeadlineText()}.`, '');
   out.push('The attached include 3 tabs:', '', '• Adherence data .', '• AHT.', '• Attendance data.', '');
   if (md.stage !== 'final') out.push('Make sure to send your objection to your direct leader and CC me', '');
@@ -17319,9 +17358,7 @@ function incMailHtml(md, logoSrc, preview) {
   let b = cardGreet(im.greeting);
   if (fin) {
     b += cardP(`Kindly find attached the final data which will be used to calculate your incentive for <b style="color:${CARD.ink}">${esc(label)}</b>, after the review.`);
-    b += cardBand(true, 'Final data', esc(label));
-    if (md.changes && md.changes.length) { b += cardH('Changes after the review'); b += cardTable(['Name', 'What changed'], md.changes.map(c => [{ t: esc(c.n), left: true }, { t: esc(c.what), left: true }]), [0, 1]); }
-    else if (md.changes) b += cardP('No changes were made after the review.', 'margin-top:12pt');
+    b += cardBand(true, 'Final data', esc(label));   // the final body as it always was: what changed since the review is the sender's to see, not in the email
   } else {
     b += cardP(`Kindly find the attached data which will be used to calculate your incentive for <b style="color:${CARD.ink}">${esc(label)}</b>`);
     b += cardP(`Please review it and If you have any concerns, please <b><u>refer to your direct leader, the deadline is ${esc(incDeadlineText())}.</u></b>`);
@@ -17444,7 +17481,8 @@ function renderEmail() {
   const sn = snapOf(state.mailKind);
   $('revState').hidden = !fin;
   if (fin) $('revState').innerHTML = `<h3>Compared with the review</h3>${sn ? `<p class="hint">${sn.src ? `File ${esc(sn.src)}` : `Saved ${esc(fmtWhen(sn.at))}${sn.by ? ' by ' + esc(sn.by) : ''} when the review email was copied or downloaded`}.</p>` : '<p class="hint">No review version yet for this month.</p>'}
-    <button class="btn sm" id="revPick">${sn ? 'Compare with a file instead' : 'Drop the file sent for review'}</button>${state.revWb[state.mailKind] ? ' <button class="linkbtn" data-revclear>Use the saved version</button>' : ''}`;
+    <button class="btn sm" id="revPick">${sn ? 'Compare with a file instead' : 'Drop the file sent for review'}</button>${state.revWb[state.mailKind] ? ' <button class="linkbtn" data-revclear>Use the saved version</button>' : ''}
+    ${inc && md.changes && md.changes.length ? `<details class="revchg"><summary>What changed for ${plural(md.changes.length, 'person', 'people')}, for you to check (the email does not list it)</summary><ul class="ilist">${md.changes.slice(0, 300).map(c => `<li><span class="nm" dir="auto">${esc(c.n)}</span><span class="sg">${esc(c.what)}</span></li>`).join('')}</ul></details>` : ''}`;
   // form
   const setv = (id, v) => { const el = $(id); if (document.activeElement !== el && el.value !== v) el.value = v; };
   setv('mTo', cfg.to); setv('mCc', cfg.cc); setv('mSubject', md.subject); setv('mDeadline', mailDeadlineIso());
@@ -17461,7 +17499,7 @@ function renderEmail() {
   $('attBtn').hidden = !md.attach; $('attBtn').title = md.attach ? `Save ${md.attach.name}` : '';
   $('mailWarns').innerHTML = md.warns.map(x => `<li>${esc(x)}</li>`).join('');
   const to = cm.to, cc = cm.cc;
-  const rowsInfo = inc ? (md.d ? `${plural(md.d.att.length, 'person', 'people')} in the attachment${fin && md.changes ? ` · ${plural(md.changes.length, 'person', 'people')} changed since the review` : ''}` : 'No data yet')
+  const rowsInfo = inc ? (md.d ? `${plural(md.d.att.length, 'person', 'people')} in the attachment${fin && md.changes ? ` · ${plural(md.changes.length, 'person', 'people')} changed since the review${md.changes.length ? ' (see Compared with the review; not listed in the email)' : ''}` : ''}` : 'No data yet')
     : `${plural(md.ded.length, 'person', 'people')} in Conformance Deduction${md.abs ? ` · ${plural(md.abs.rows.length, 'person', 'people')} absent` : ''}${fin && md.changes ? ` · ${plural(md.changes.ded.length + md.changes.abs.length, 'change')} since the review` : ''}`;
   $('mailHead').innerHTML = `<div><span>To</span><span>${esc(to.join('; ')) || '<i class="subtle">nobody yet</i>'}</span></div>${cc.length ? `<div><span>Cc</span><span>${esc(cc.join('; '))}</span></div>` : ''}
     <div><span>Subject</span><span><b>${esc(md.subject)}</b></span></div>${md.attach && cfg.attach ? `<div><span>Attached</span><span class="att"><svg width="12" height="12" aria-hidden="true"><use href="#i-file"/></svg>${esc(md.attach.name)}${md.attach.size ? ' · ' + fmtSize(md.attach.size) : ''}</span></div>` : ''}
@@ -19296,7 +19334,9 @@ document.addEventListener('click', e => { const b = e.target.closest && e.target
 // is saved as the analyst works; supervisors, the senior manager, the WFM manager, the quality team and the agents read the
 // same history, final results and one-to-ones, live. A month the senior manager finalizes is frozen in `final/<month>`.
 const WS_VIEWS = ['dash', 'team', 'results', 'cycle', 'wfm', 'quality', 'me', 'wait', 'blocked'];
-const WS_OF = { admin: ['dash', 'build', 'team', 'results', 'cycle', 'wfm', 'quality'], user: ['dash', 'build', 'team', 'wfm'], senior: ['dash', 'cycle', 'results', 'team', 'wfm'], wfm: ['dash', 'wfm', 'results', 'team'], spv: ['team'], quality: ['quality'], agent: ['me'], pending: [] };
+// each role's pages in the order the month is done: the build (the WFM team page), the quality EVAL, the senior manager's month
+// close (Supervisors), the one-to-ones (Team), the final results; the dashboard first, the role's own first page
+const WS_OF = { admin: ['dash', 'build', 'wfm', 'quality', 'cycle', 'team', 'results'], user: ['dash', 'build', 'wfm', 'team'], senior: ['dash', 'cycle', 'team', 'results', 'wfm'], wfm: ['dash', 'wfm', 'results', 'team'], spv: ['team'], quality: ['quality'], agent: ['me'], pending: [] };
 Object.assign(state, { ws: 'build', finals: {}, finVer: 0, frozen: {}, people: [], wsMonth: '', wsSpv: '', wsUnit: '', wsQ: '', resSort: 'name', resDir: 'asc', resUnit: '', resSpv: '', resQ: '',
   wfmMetric: 'adh', wfmGroup: 'unit', wfmUnit: '', teamMetric: 'adh', autoAt: 0, autoNote: '', boardAll: {}, wfmTab: 'analytics', spvDone: {}, spvDoneVer: 0, cycleLog: {} });
 const FORM_STATUS = [['planned', 'Arranged'], ['held', 'Held'], ['closed', 'Closed']];
@@ -19666,9 +19706,9 @@ function roleHeads(r) {
   $('cycLead').textContent = cycLeadText(r);
 }
 /** the Supervisors page's line under its title: the month close, or (its other tab) the incentive email */
-const cycLeadText = (r, mail) => (mail ? 'The month\'s incentive data to the champions: for review with its deadline, then final with what changed since the review. The incentive file the WFM analysts built is attached by itself.'
-  : r === 'senior' ? 'Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month\'s emails: the incentive data to the champions (Incentive email) and the four of the month close.'
-    : 'The senior manager\'s page, which you can stand in for: the one-to-one deadline, which supervisors have finished their team, their scorecards, and the month\'s emails, the incentive email to the champions included.');
+const cycLeadText = (r, mail) => (mail ? 'The month\'s incentive data to the champions (steps 1 and 8 of the month close): for review with its deadline, then the final after the review. The incentive file the WFM analysts built is attached by itself.'
+  : r === 'senior' ? 'The month close in eight steps, in the order they are done: each one shows when it is done, and the next one is marked. Below them, the supervisors\' results and what is set once.'
+    : 'The senior manager\'s page, which you can stand in for: the month close in eight steps, in the order they are done, then the supervisors\' results and what is set once.');
 let hashTaken = false;
 function applyRole() {
   const r = roleNow(), L = wsOfNow();
@@ -19716,7 +19756,7 @@ function leaveWs() { if (state.ws === 'build') return; state.ws = 'build'; for (
 function renderWs() {
   const w = state.ws;
   if (w === 'dash') renderDash(); else if (w === 'team') renderTeam(); else if (w === 'results') renderResults(); else if (w === 'wfm') renderWfmWs(); else if (w === 'quality') renderQuality(); else if (w === 'cycle') renderCycle(); else if (w === 'me') renderMe();
-  if (w === 'cycle') sectionNav('cycleBody');
+  if (w === 'cycle') sectionNav('cycleBody'); else if (w === 'results') sectionNav('resultsBody');
   renderAutoNote(); renderFresh(); cycleBadge(); renderToday(); syncNav();
   requestAnimationFrame(() => { segThumbs(); introOnce($('v-' + w)); });
 }
@@ -19808,7 +19848,9 @@ function renderResults() {
     <div class="tablewrap restab"><table><thead><tr>${COLS.map(th).join('')}</tr></thead><tbody>${L.map(x => `<tr>${COLS.map(([c]) => cell(x, c)).join('')}</tr>`).join('') || `<tr><td colspan="${COLS.length}" class="empty">Nobody matches.</td></tr>`}</tbody></table></div></div>`;
   const log = D.final && (D.final.log || []).length ? `<details class="card wslog"><summary>Change log · ${plural(D.final.log.length, 'entry', 'entries')}</summary><ul class="ilist">${D.final.log.slice().reverse().map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
   const keepFocus = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-resq]') ? document.activeElement.selectionStart : null;
-  body.innerHTML = `${statusBanner(k)}<div class="tiles wstiles">${tiles}</div>${teamTab}${spvTab}${agentTab}${log}${safeHtml(cmpCardHtml, k)}`;
+  // first what is decided here (every agent: who is eligible, a result adjusted by hand), then the month by team and by supervisor,
+  // then the tools (the old Excel next to the tool, the change log)
+  body.innerHTML = `${statusBanner(k)}<div class="tiles wstiles">${tiles}</div>${agentTab}${phaseHtml('By team and by supervisor', 'The same month, added up.')}${teamTab}${spvTab}${phaseHtml('Tools', 'The old Excel next to the tool, and every change by hand.')}${safeHtml(cmpCardHtml, k)}${log}`;
   if (keepFocus != null) { const i = body.querySelector('[data-resq]'); i.focus(); i.setSelectionRange(keepFocus, keepFocus); }
 }
 const progress = (n, d) => `<span class="prog" title="${n} of ${d}"><span class="bar"><i style="width:${d ? Math.round(n / d * 100) : 0}%"></i></span><span class="pv">${n}/${d}</span></span>`;
@@ -20841,6 +20883,7 @@ function renderCsat() {
     if (!el || el.contains(document.activeElement)) continue;
     const h = csatBoxHtml(k, ctx); if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h; } el.hidden = !h;
   }
+  impGroups();   // the Import page's third group shows when the box does
 }
 document.addEventListener('change', e => {
   const t = e.target; if (!t.matches || !t.matches('[data-csat]')) return;
@@ -20884,12 +20927,32 @@ function qTablesHtml(people, k, can, fixed, map) {
 function renderQuality() {
   const k = qMonthNow(), Q = state.quality[k] || null, locked = monthLocked(k), can = canQuality() && !locked, KP = qualityKpis();
   $('qualityBar').innerHTML = `<label class="wsfield"><span>Month</span><select class="cell" data-qmonth aria-label="Month">${qMonths().slice().reverse().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(ymLabel(x))}${monthLocked(x) ? ' · final' : ''}</option>`).join('')}</select></label>
-    ${csatBoxHtml(k, 'q')}<div class="wsacts">${can ? '<button class="btn sm primary" data-qdrop><svg width="14" height="14" aria-hidden="true"><use href="#i-up"/></svg>Drop the Final EVAL</button>' : ''}${canQuality() ? '<button class="btn sm" data-qtpl title="An EVAL workbook with every agent\'s national ID: filled in and dropped back, every row links by its ID"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>EVAL template with IDs</button>' : ''}<button class="btn sm" data-x="quality"${Q ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Excel</button></div>`;
+    <div class="wsacts"><button class="btn sm" data-x="quality"${Q ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Excel</button></div>`;
   const body = $('qualityBody');
   const head = Q ? `<div class="wsstatus ${locked ? 'final' : 'draft'}"><span class="dot"></span><div><b>${locked ? 'Final' : 'Open'}</b> · Final EVAL <b>${esc(Q.src || 'typed by hand')}</b>, ${esc(Q.by || '')} ${esc(Q.at ? fmtWhen(Q.at) : '')}.${locked ? ` ${esc(ymLabel(k))} was ${esc(finalBy(k))}; nothing here can change.` : ' Changes count straight away in every scorecard.'}</div></div>`
     + (qFixed(k) ? `<div class="banner info">${esc(ymLabel(k))}'s results came from the incentive file, so its scorecards are fixed: these numbers show on each agent's page but do not change the final %.${can ? ` If this EVAL is for another month, choose it: <select class="cell" data-qmove aria-label="Count it for">${qMonths().filter(x => x !== k && !monthLocked(x)).reverse().map(x => `<option value="${x}"${x === qMoveTo ? ' selected' : ''}>${esc(ymLabel(x))}${qFixed(x) ? '' : ' · built by the tool'}</option>`).join('')}</select> <button class="btn sm" data-qmovego>Count it for that month</button>` : ''}</div>` : '')
-    : `<div class="card empty"><b>No quality results for ${esc(ymLabel(k))} yet</b>${can ? 'Drop the month\'s Final EVAL workbook (Virgin, FRiENDi and Leaders sheets). Names are matched to the roster; anything left over can be linked here.' : 'The quality team has not added them yet.'}</div>`;
-  if (!Q) { body.innerHTML = head + safeHtml(objFixHtml, 'quality') + `<div class="card qdrop" data-qdropzone><svg width="22" height="22" aria-hidden="true"><use href="#i-up"/></svg><b>Drop the Final EVAL here</b><span>or use the button above</span></div>`; return; }
+    : '';
+  // the month's quality work, in the order it is done: the template, the Final EVAL, the names, the DRC-CSAT, the check, the objections
+  const qSteps = o => {
+    const ofx = safeHtml(objFixHtml, 'quality'), csat = csatAll(k) != null, U0 = Q ? (Q.unmatched || []) : [];
+    const L = [
+      { id: 'qs-tpl', short: 'EVAL template', title: 'Get the EVAL template', done: !!Q, cap: 'An EVAL workbook with every agent\'s national ID: filled in and dropped back, every row links by its ID.',
+        acts: canQuality() ? '<button class="btn sm" data-qtpl><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>EVAL template with IDs</button>' : '' },
+      { id: 'qs-drop', short: 'Final EVAL', title: 'Drop the Final EVAL', done: !!Q, note: Q ? `${Q.src || 'typed by hand'} · ${Q.by || ''} ${Q.at ? fmtWhen(Q.at) : ''}` : '',
+        cap: 'The month\'s Final EVAL workbook (Virgin, FRiENDi and Leaders sheets). Names are matched to the roster; anything left over is linked in the next step.',
+        acts: can ? `<button class="btn sm${Q ? '' : ' primary'}" data-qdrop><svg width="14" height="14" aria-hidden="true"><use href="#i-up"/></svg>${Q ? 'Drop a newer EVAL' : 'Drop the Final EVAL'}</button>` : '',
+        body: Q ? '' : can ? '<div class="card qdrop" data-qdropzone><svg width="22" height="22" aria-hidden="true"><use href="#i-up"/></svg><b>Drop the Final EVAL here</b><span>or use the button above</span></div>' : `<div class="card empty"><b>No quality results for ${esc(ymLabel(k))} yet</b>The quality team has not added them yet.</div>` },
+      { id: 'qs-names', short: 'Names', title: 'Link every name', done: !!Q && !U0.length, note: Q ? (U0.length ? `${plural(U0.length, 'name')} need you` : 'every name linked') : '',
+        cap: Q ? '' : 'The names the tool could not match to the roster show here, to link by hand.', body: o.unm || '' },
+      { id: 'qs-csat', short: 'DRC-CSAT', title: 'Type the month\'s DRC-CSAT', done: csat, body: csatBoxHtml(k, 'q') },   // only when a scorecard has DRC-CSAT
+      { id: 'qs-check', short: 'Check and correct', title: 'Check and correct the quality KPIs', done: locked, note: locked ? 'the month is final' : '',
+        cap: 'Each team\'s table and the team leads\' items. A change counts straight away in every scorecard, until the senior manager finalizes the month.', body: `${o.tab || ''}${o.lead || ''}` },
+      { id: 'qs-obj', short: 'Objections', title: 'Fix the accepted objections', done: !ofx, note: ofx ? '' : 'none to fix', cap: 'Objections on a quality KPI the supervisors accepted: correct the value, then mark it fixed.', body: ofx },
+    ].filter(x => x.id !== 'qs-csat' || x.body);
+    const sts = stepStates(L.map(x => x.done));
+    return `<div class="flow">${L.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i] })).join('')}</div>`;
+  };
+  if (!Q) { body.innerHTML = head + qSteps({}); return; }
   const R = rosterRows(), U = Q.unmatched || [], linked = new Set([...Object.keys(Q.rows || {}), ...Object.keys(Q.leaders || {})]);
   const C = (Q.check || []).map((c, i) => ({ ...c, i })).filter(c => linked.has(c.pid));
   const nmOf = pid => { const p = R.find(x => x._id === pid); return p ? gname(effP(pid) || p) || p.name : ''; };
@@ -20921,7 +20984,7 @@ function renderQuality() {
     </tbody></table></div></div>` : '';
   const log = (Q.log || []).length ? `<details class="card wslog"><summary>Changes by hand · ${Q.log.length}</summary><ul class="ilist">${Q.log.slice().reverse().map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
   const keep = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-qq]') ? document.activeElement.selectionStart : null;
-  body.innerHTML = head + safeHtml(objFixHtml, 'quality') + unm + tab + lead + log;
+  body.innerHTML = head + qSteps({ unm, tab, lead }) + (log ? phaseHtml('To look things up') + log : '');
   if (keep != null) { const i = body.querySelector('[data-qq]'); if (i) { i.focus(); i.setSelectionRange(keep, keep); } }
   reveal(body);
 }
@@ -21343,9 +21406,11 @@ function renderTeam() {
   const scoreCard = () => cur && (spv || isSenior() || Auth.isAdmin()) ? spvScoreHtml(cur, k, { showSR: !spv && (isSenior() || Auth.isAdmin()), cap: spv ? 'Set by the senior manager. Team items are your agents\' averages; the leader items come from the quality team\'s EVAL.' : `${supName(cur)}'s scorecard, as the senior manager set it.` }) : '';
   // the tabs: each keeps the filters
   const nObj = objList({ k, st: ['open', 'escalated', 'accepted'] }).filter(o => items.some(x => x.p._id === o.pid)).length, hasCalls = !!state.inter[k];
-  const TABS = [['agents', 'Agents', items.length], ['one', 'One-to-ones', `${held}/${items.length}`], ['att', 'Attendance', ''], ['obj', 'Objections', nObj || ''], ...(hasCalls ? [['calls', 'Calls', '']] : []), ['kpis', 'Team KPIs', ''], ...(spv ? [['wait', 'Waiting for approval', nWait || '']] : [])];
+  // the team first, then the month's work in the order it is done (the attendance, the agents' objections, the one-to-ones: a
+  // supervisor sees them numbered), then what is there to look things up, and the accounts to approve
+  const TABS = [['agents', 'Agents', items.length], ['att', 'Attendance', '', 1], ['obj', 'Objections', nObj || '', 2], ['one', 'One-to-ones', `${held}/${items.length}`, 3], ...(hasCalls ? [['calls', 'Calls', '']] : []), ['kpis', 'Team KPIs', ''], ...(spv ? [['wait', 'Waiting for approval', nWait || '']] : [])];
   const tab = TABS.some(t => t[0] === state.teamTab) ? state.teamTab : 'agents';
-  const tabsHtml = `<div class="tabs ttabs" role="tablist" aria-label="Team">${TABS.map(([v, l, n]) => `<button class="tab" role="tab" id="tt-${v}" aria-controls="tp-${v}" aria-selected="${v === tab}" tabindex="${v === tab ? 0 : -1}" data-ttab="${v}">${esc(l)}${n !== '' ? ` <span class="badge${v === 'wait' || (v === 'obj' && n) ? ' n' : ''}">${esc(String(n))}</span>` : ''}</button>`).join('')}</div>`;
+  const tabsHtml = `<div class="tabs ttabs" role="tablist" aria-label="Team">${TABS.map(([v, l, n, sn]) => `<button class="tab" role="tab" id="tt-${v}" aria-controls="tp-${v}" aria-selected="${v === tab}" tabindex="${v === tab ? 0 : -1}" data-ttab="${v}">${spv && sn ? `<span class="tabn" aria-hidden="true">${sn}</span><span class="sr">Step ${sn}: </span>` : ''}${esc(l)}${n !== '' ? ` <span class="badge${v === 'wait' || (v === 'obj' && n) ? ' n' : ''}">${esc(String(n))}</span>` : ''}</button>`).join('')}</div>`;
   const panel = tab === 'agents' ? teamTableHtml(items, set, showSR, spv)
     : tab === 'one' ? board()
     : tab === 'att' ? attTplBar(k) + (attGridHtml(items, k, spv && !monthLocked(k)) || emptyCard('No attendance yet', 'The month\'s attendance shows here once the schedule and the sign-ons (or the attendance sheets) are in.'))
@@ -21708,20 +21773,20 @@ function renderCycle() {
     mountMail('cyc'); renderEmail(); return;
   }
   mountMail(false);
-  $('cycleBar').innerHTML = `${tabs}${monthSelHtml(k, 'data-wsmonth')}${k ? `<label class="wsfield"><span>One-to-ones due</span><input type="date" class="cell" data-deadline value="${esc(C.deadline || '')}" ${can ? '' : 'disabled'} aria-label="Deadline for the one-to-ones"></label>` : ''}
-    <div class="wsacts">${can && k ? '<button class="btn sm" data-cyc="publish" title="Copy each agent\'s latest numbers and forms to their own page">Update the agents\' pages</button>' : ''}<button class="btn sm" data-rulesopen title="KPIs, weights, bands, bases and who earns the incentive, in force from a month">Incentive rules</button><button class="btn sm" data-x="cycle"${k ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Supervisors Excel</button></div>`;
+  $('cycleBar').innerHTML = `${tabs}${monthSelHtml(k, 'data-wsmonth')}
+    <div class="wsacts"><button class="btn sm" data-rulesopen title="KPIs, weights, bands, bases and who earns the incentive, in force from a month">Incentive rules</button><button class="btn sm" data-x="cycle"${k ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Supervisors Excel</button></div>`;
   const body = $('cycleBody');
   if (!k && stillReading()) { body.innerHTML = emptyCard('Reading the shared data…', 'The months appear here in a moment.'); return; }
   if (!k) { body.innerHTML = emptyCard('No months yet', 'The month appears here as soon as the WFM team starts building it.'); return; }
   const R = cycleRows(k), doneN = R.filter(r => r.done).length, prev = state.cycleSeenPrev;
   const dl = C.deadline, days = dl ? Math.ceil((new Date(dl + 'T23:59:59') - Date.now()) / 86400000) : null;
-  // notifications
+  // who finished their team (step 4)
   const fresh = R.filter(r => r.done && r.done.at > prev), notYet = R.filter(r => !r.done);
-  const notes = `<div class="card notecard"><div class="cardhead"><div><h2>Notifications</h2><p class="cap">${doneN} of ${R.length} supervisors finished their team for ${esc(ymLabel(k))}.${dl ? ` One-to-ones due ${esc(Forms.fmtDate(dl))}${days < 0 ? `, ${plural(-days, 'day')} ago` : days === 0 ? ', today' : `, in ${plural(days, 'day')}`}.` : ' No deadline set yet: choose one above.'}</p></div>${fresh.length ? '<button class="btn sm" data-cyc="seen">Mark as read</button>' : ''}</div>
+  const notes = `<div class="card notecard"><div class="cardhead"><div><h2>Who finished</h2><p class="cap">${doneN} of ${R.length} supervisors finished their team for ${esc(ymLabel(k))}.${dl ? ` One-to-ones due ${esc(Forms.fmtDate(dl))}${days < 0 ? `, ${plural(-days, 'day')} ago` : days === 0 ? ', today' : `, in ${plural(days, 'day')}`}.` : ' No deadline set yet: set it in step 3.'}</p></div>${fresh.length ? '<button class="btn sm" data-cyc="seen">Mark as read</button>' : ''}</div>
     <ul class="ilist notes">${fresh.map(r => `<li class="new"><span class="nm">${esc(r.name)} finished the team</span><span class="sg">${esc(fmtWhen(r.done.at))} · ${r.done.held}/${r.done.n} one-to-ones · ${r.done.signed || 0} signed by the agent</span></li>`).join('')}
     ${R.filter(r => r.done && !(r.done.at > prev)).map(r => `<li><span class="nm">${esc(r.name)} finished the team</span><span class="sg">${esc(fmtWhen(r.done.at))} · ${r.done.held}/${r.done.n} one-to-ones</span></li>`).join('')}
     ${notYet.length ? `<li class="${dl && days < 0 ? 'late' : ''}"><span class="nm">Not finished yet: ${esc(notYet.map(r => r.name).join(', '))}</span><span class="sg">${dl && days < 0 ? 'past the deadline' : dl ? 'before the deadline' : ''}</span></li>` : ''}</ul></div>`;
-  // progress and scorecards
+  // the supervisors' scorecards (to look things up)
   const card = spvCardNow(), its = card.items, base = +card.base || 0;
   const manual = its.filter(it => it.src === 'manual');
   const prog = `<div class="card"><div class="cardhead"><div><h2>Supervisor results · ${esc(ymLabel(k))}</h2><p class="cap">One-to-ones held and signed per team, whether the supervisor pressed Finish, and their scorecard.${manual.length && can ? ' Type the values of the items you score yourself.' : ''}</p></div></div>
@@ -21731,25 +21796,50 @@ function renderCycle() {
       ${r.sc.items.map(x => `<td class="r">${x.it.src === 'manual' && can ? `<input class="cell man" data-man="${esc(r.pid)}" data-it="${esc(x.it.id)}" value="${x.v == null ? '' : spvItemUnit(x.it) === 'pct' ? +(x.v * 100).toFixed(2) : x.v}" inputmode="decimal" placeholder="–" aria-label="${esc(x.it.name)} for ${esc(r.name)}">` : `<span class="num">${esc(spvItemFmt(x.it, x.v))}</span>`} ${x.r != null ? rankChip(x.r) : ''}</td>`).join('')}
       <td class="r num"><b>${pct1(r.sc.finalPct)}</b></td>${base ? `<td class="r num">${r.sc.earned == null ? '–' : r.sc.earned.toLocaleString('en-US')}</td>` : ''}</tr>`).join('') || `<tr><td colspan="${6 + its.length}" class="empty">No supervisors yet: fill the Supervisor column in the roster.</td></tr>`}
     </tbody></table></div></div>`;
-  // the four emails
-  const sent = C.sent || {}, sentTxt = x => (sent[x] ? `Prepared ${esc(fmtWhen(sent[x].at))}${sent[x].by ? ' by ' + esc(sent[x].by) : ''}` : 'Not prepared yet');
-  const incSent = x => (sent[x] ? `${esc(sent[x].how || 'Prepared')} ${esc(fmtWhen(sent[x].at))}${sent[x].by ? ' by ' + esc(sent[x].by) : ''}` : 'not prepared yet');
-  const mailCard = `<div class="card"><div class="cardhead"><div><h2>Emails for ${esc(ymLabel(k))}</h2><p class="cap">Each one downloads as an Outlook draft (.eml): open it, check it and press Send. Addresses come from the roster's Email column and the contacts below.</p></div></div>
-    <div class="mailgrid4">
-      <div class="m4"><b>Incentive data</b><span>To the champions: the incentive file the WFM analysts built (attendance, adherence and AHT, without National IDs) for review with its deadline, then the final after the review with what changed.</span><small>For review: ${incSent('incReview')} · Final: ${incSent('incFinal')}</small><button class="btn sm" data-cyctab="mail"${can ? '' : ' disabled'}>Open the email</button></div>
-      <div class="m4"><b>One-to-ones are ready</b><span>To every supervisor, with the deadline and each team's numbers.</span><small>${sentTxt('ready')}</small><button class="btn sm primary" data-mail4="ready"${can ? '' : ' disabled'}>Make the email</button></div>
-      <div class="m4"><b>Deadline reminder</b><span>To the ${plural(notYet.length, 'supervisor')} not finished yet.</span><small>${sentTxt('warn')}</small><button class="btn sm" data-mail4="warn"${can && notYet.length ? '' : ' disabled'}>Make the email</button></div>
-      <div class="m4"><b>Results for review</b><span>To ${esc(splitAddr(contactsNow().vp).map(x => x.replace(/\s*<.*$/, '')).join(', ') || 'the VP')}: “Hi All”, with the ID, name, final % and earned SR of everyone on the incentive list who earned it, and the same table as an Excel file.</span><small>${sentTxt('review')}</small><button class="btn sm" data-mail4="review"${can ? '' : ' disabled'}>Make the email</button></div>
-      <div class="m4"><b>Final result form</b><span>To ${esc(splitAddr(contactsNow().form).map(x => x.replace(/\s*<.*$/, '')).join(', ') || 'the WFM manager')}: everyone on the incentive list with their final % and earned SR, the month's total, the table the VP, HR, Finance and the CEO sign, and the same form as an Excel file.${monthLocked(k) ? '' : ' Finalize the month on Results first.'}</span><small>${sentTxt('final')}</small><button class="btn sm" data-mail4="final"${can ? '' : ' disabled'}>Make the email</button></div>
-    </div></div>`;
-  // scorecard editor and contacts
+  // set once: the supervisors' scorecard and the email addresses (and the month close's due days)
   const editor = can ? `<details class="card sced"${state.scEdit ? ' open' : ''} data-det="sc"><summary>Supervisor scorecard · ${plural(its.length, 'item')} · weights ${+(its.reduce((a, it) => a + (+it.weight || 0), 0) * 100).toFixed(1)}%</summary>${scEditorHtml(card)}</details>` : '';
   const C0 = contactsNow();
   const contacts = can ? `<details class="card"${state.ctEdit ? ' open' : ''} data-det="ct"><summary>Email addresses</summary><div class="grid2 tight">
     ${[['vp', 'VP (results for review)'], ['form', 'Final result form (to)'], ['senior', 'Senior manager (gets the supervisors\' "done" emails)'], ['mgmt', 'Management team (in copy)'], ['wfm', 'WFM (in copy of the supervisors\' emails)']].map(([f, l]) => `<div class="field"><span class="lbl">${esc(l)}</span><input class="cell" data-contact="${f}" value="${esc(C0[f] || '')}" spellcheck="false" placeholder="Name <name@company.com>"></div>`).join('')}
     <div class="field"><span class="lbl">Final result form: who signs (one per line: name | designation)</span><textarea class="cell" data-signers rows="4" spellcheck="false">${esc(signersNow().map(x => x.join(' | ')).join('\n'))}</textarea></div></div>
     <p class="hint">Supervisors' and agents' addresses come from the roster's Email column.</p></details>` : '';
-  body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${editor}${contacts}${safeHtml(calDaysHtml)}`;
+  // the month close, step by step, in the order it is done: each step says if it is done (and when, by whom) and has its own action
+  const sent = C.sent || {}, sentTxt = x => (sent[x] ? `Prepared ${fmtWhen(sent[x].at)}${sent[x].by ? ' by ' + sent[x].by : ''}` : '');
+  const incSent = x => (sent[x] ? `${sent[x].how || 'Prepared'} ${fmtWhen(sent[x].at)}${sent[x].by ? ' by ' + sent[x].by : ''}` : '');
+  let CS = {}; try { CS = Object.fromEntries(calSteps(k).map(x => [x.id, x])); } catch (e) { CS = {}; }
+  const calDone = id => !!(CS[id] && CS[id].st === 'done'), calNote = id => { const x = CS[id]; return !x ? '' : x.done || x.st === 'past' ? calStateText(x) : x.note || ''; };
+  const past = k < closeMonthNow(), calPast = id => !!(CS[id] && CS[id].st === 'past');   // a month closed before: a step not recorded is not "next"
+  const who = f => esc(splitAddr(contactsNow()[f]).map(a => a.replace(/\s*<.*$/, '')).join(', ')), dis = can ? '' : ' disabled', btn = on => `btn sm${on ? ' primary' : ''}`;
+  const L = [
+    { id: 'st-increv', short: 'Incentive data for review', title: 'Send the incentive data for review', done: !!sent.incReview, skip: past, note: incSent('incReview') || (past ? 'Not recorded' : ''),
+      cap: 'To the champions: the incentive file the WFM analysts built (attendance, adherence and AHT, without National IDs), with the review deadline.',
+      acts: on => `<button class="${btn(on)}" data-cycmail="review"${dis}>Open the email</button>` },
+    { id: 'st-shared', short: 'Agents\' pages', title: 'Put the results on the agents\' pages', done: calDone('shared'), skip: calPast('shared'), note: calNote('shared'),
+      cap: 'Each agent with an account sees their latest numbers and forms on their own page, and can object until the objection deadline.',
+      acts: on => `<button class="${btn(on)}" data-cyc="publish"${dis} title="Copy each agent's latest numbers and forms to their own page">Update the agents' pages</button>` },
+    { id: 'st-ready', short: 'Start the one-to-ones', title: 'Start the one-to-ones', done: calDone('ready'), skip: calPast('ready'), note: sentTxt('ready') || calNote('ready'),
+      cap: 'Set the deadline, then send “One-to-ones are ready” to every supervisor, with the deadline and each team\'s numbers.',
+      acts: on => `<label class="wsfield"><span>Due</span><input type="date" class="cell" data-deadline value="${esc(C.deadline || '')}"${dis} aria-label="Deadline for the one-to-ones"></label><button class="${btn(on)}" data-mail4="ready"${dis}>Make the email</button>` },
+    { id: 'st-follow', short: 'Follow the supervisors', title: 'Follow the supervisors and the objections', done: calDone('done'), skip: calPast('done'), note: `${doneN} of ${R.length} supervisors finished${sent.warn ? ` · reminder prepared ${fmtWhen(sent.warn.at)}` : ''}`,
+      cap: 'Who finished their team and who has not, and what the agents raised. The reminder goes to the supervisors not finished yet.',
+      acts: () => `<button class="btn sm" data-mail4="warn"${can && notYet.length ? '' : ' disabled'}>Deadline reminder</button>`,
+      body: `${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}` },
+    { id: 'st-review', short: 'Results for review', title: 'Send the results for review', done: calDone('review'), skip: calPast('review'), note: sentTxt('review') || calNote('review'),
+      cap: `To ${who('vp') || 'the VP'}: “Hi All”, with the ID, name, final % and earned SR of everyone on the incentive list who earned it, and the same table as an Excel file.`,
+      acts: on => `<button class="${btn(on)}" data-mail4="review"${dis}>Make the email</button>`, body: can ? safeHtml(incListHtml, k) : '' },
+    { id: 'st-final', short: 'Finalize', title: 'Finalize the month', done: calDone('final'), skip: calPast('final'), note: calNote('final'),
+      cap: 'On Results: decide who is eligible where the rules say otherwise, then Finalize. After that only you can change the results.',
+      acts: on => `<button class="${btn(on)}" data-cycgo="results">Open Results</button>` },
+    { id: 'st-form', short: 'Final result form', title: 'Send the final result form', done: calDone('finalmail'), skip: calPast('finalmail'), note: sentTxt('final') || calNote('finalmail'),
+      cap: `To ${who('form') || 'the WFM manager'}: everyone on the incentive list with their final % and earned SR, the month's total, the table the VP, HR, Finance and the CEO sign, and the same form as an Excel file.${monthLocked(k) ? '' : ' Finalize the month first.'}`,
+      acts: on => `<button class="${btn(on)}" data-mail4="final"${dis}>Make the email</button>` },
+    { id: 'st-incfin', short: 'Final incentive data', title: 'Send the final incentive data', done: !!sent.incFinal, skip: past, note: incSent('incFinal') || (past ? 'Not recorded' : ''),
+      cap: 'To the champions after the review deadline, with the final incentive file.',
+      acts: on => `<button class="${btn(on)}" data-cycmail="final"${dis}>Open the email</button>` },
+  ];
+  const sts = stepStates(L.map(x => x.done), L.map(x => x.skip));
+  const steps = `<div class="flow">${L.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i], acts: x.acts(sts[i] === 'next') })).join('')}</div>`;
+  body.innerHTML = `${statusBanner(k)}${steps}${phaseHtml('To look things up', 'How each supervisor scores this month.')}${prog}${can ? `${phaseHtml('Set once', 'Every month uses them.')}${editor}${contacts}${safeHtml(calDaysHtml)}` : ''}`;
   if (canCycle() && unseenDone().length && state.ws === 'cycle') { lsSet(seenKey(), new Date().toISOString()); cycleBadge(); }
   reveal(body);
 }
@@ -22049,15 +22139,15 @@ async function exportCycle() {
 }
 
 // ---------------------------------------------------------------- events
-$('cycleBar').addEventListener('change', e => {
-  const t = e.target;
-  if (t.matches('[data-deadline]')) { const k = wsMonthNow(), v = t.value; cycleUpdate(k, c => { c.deadline = v; }, v ? `Set the one-to-one deadline to ${Forms.fmtDate(v)}` : 'Removed the deadline'); }
-});
+/** the one-to-ones' deadline (step 3) and the agents' pages (step 2), from the page */
+function cycDeadline(t) { const k = wsMonthNow(), v = t.value; cycleUpdate(k, c => { c.deadline = v; }, v ? `Set the one-to-one deadline to ${Forms.fmtDate(v)}` : 'Removed the deadline'); }
+async function cycPublish(b) { const k = wsMonthNow(); b.disabled = true; const n = await publishMonthToAgents(k).catch(() => 0); b.disabled = false; toast(n ? `${plural(n, 'agent')} now see their latest ${ymLabel(k)} numbers and forms.` : 'No agent has an account yet.'); if (n) logCycle(k, `Updated ${plural(n, 'agent')}'s own pages`); }
+$('cycleBar').addEventListener('change', e => { if (e.target.matches('[data-deadline]')) cycDeadline(e.target); });
 $('cycleBar').addEventListener('click', async e => {
   const tb = e.target.closest('[data-cyctab]'); if (tb) { cycTabGo(tb.dataset.cyctab); return; }
-  const b = e.target.closest('[data-cyc="publish"]');
-  if (b) { const k = wsMonthNow(); b.disabled = true; const n = await publishMonthToAgents(k).catch(() => 0); b.disabled = false; toast(n ? `${plural(n, 'agent')} now see their latest ${ymLabel(k)} numbers and forms.` : 'No agent has an account yet.'); if (n) logCycle(k, `Updated ${plural(n, 'agent')}'s own pages`); }
+  const b = e.target.closest('[data-cyc="publish"]'); if (b) cycPublish(b);
 });
+$('cycleBody').addEventListener('change', e => { if (e.target.matches('[data-deadline]')) cycDeadline(e.target); });
 /** the Supervisors page's tabs: the month close, or the incentive email */
 function cycTabGo(t) {
   if (state.cycTab === t) return; state.cycTab = t; renderWs(); window.scrollTo({ top: 0 });
@@ -22070,6 +22160,9 @@ $('cycMail').addEventListener('click', e => {
 $('cycleBody').addEventListener('click', e => {
   const t = e.target;
   const ct = t.closest('[data-cyctab]'); if (ct) { cycTabGo(ct.dataset.cyctab); return; }
+  const cm = t.closest('[data-cycmail]'); if (cm) { openIncMail(cm.dataset.cycmail); return; }
+  if (t.closest('[data-cycgo="results"]')) { setWs('results'); return; }
+  const pb = t.closest('[data-cyc="publish"]'); if (pb) { cycPublish(pb); return; }
   const m4 = t.closest('[data-mail4]'); if (m4) { mail4(m4.dataset.mail4); return; }
   if (t.closest('[data-cyc="seen"]')) { lsSet(seenKey(), new Date().toISOString()); state.cycleSeenPrev = seenAt(); renderWs(); return; }
   const tm = t.closest('[data-cyc="team"]'); if (tm) { state.wsSpv = tm.dataset.spv; setWs('team'); return; }
@@ -22179,7 +22272,7 @@ function renderMe() {
   const tiles = tile(pct(r.adh, 1), T('adherence'), T('target {t}', { t: pct(set.target, 0) }), r.adh != null && r.adh < set.target ? 'alert' : '') + (run ? '' : tile(pct1(r.fin), T('final % (KPI)'), r.kc || ''))
     + (run ? '' : fin ? tile(r.earned == null ? '–' : `${Math.round(r.earned).toLocaleString('en-US')} ${T('SR')}`, T('incentive'), el && !el.ok ? T('not eligible: {why}', { why: whyT(el.why) }) : '') : tile(el ? (el.ok ? T('Yes') : T('Not yet')) : '–', T('eligibility'), el && !el.ok ? whyT(el.why) : T('shown in full when the month is final')))
     + tile(mss(r.aht), T('AHT'), '') + tile(String(r.absent ?? '–'), T('absent days'), '') + tile(r.tardy == null ? '–' : String(Math.round(r.tardy)), T('tardy minutes'), '');
-  let h = prof + status + safeHtml(mtdCardHtml, rec) + `<div class="tiles wstiles">${tiles}</div>`;
+  let h = safeHtml(mtdCardHtml, rec) + `<div class="tiles wstiles">${tiles}</div>`;
   if (r.kpi && r.kpi.length) h += `<div class="card"><h2>${esc(T('KPI results'))}${r.kc ? ' · ' + esc(r.kc) : ''}</h2><div class="tablewrap formtab"><table><thead><tr><th>${esc(T('KPI'))}</th><th class="r">${esc(T('Weight'))}</th><th>${esc(T('Target'))}</th><th class="r">${esc(T('Result'))}</th><th class="r">${esc(T('Ranking'))}</th>${ob ? '<th></th>' : ''}</tr></thead><tbody>${r.kpi.map(([n, wt, t, v, rk]) => `<tr><td>${esc(n)}</td><td class="r">${wt}%</td><td>${ltr(t)}</td><td class="r num">${ltr(v)}</td><td class="r">${rankChip(rk)}</td>${ob ? `<td class="r"><button class="linkbtn objlink" data-meobj="kpi|${esc(n)}">${esc(T('Object'))}</button></td>` : ''}</tr>`).join('')}<tr class="tot"><td>${esc(T('Final'))}</td><td></td><td></td><td class="r num">${pct1(r.fin)}</td><td class="r">${r.fr != null ? (+r.fr).toFixed(2) : '–'}</td>${ob ? '<td></td>' : ''}</tr></tbody></table></div>${r.ks != null ? `<p class="hint">${esc(T('Days attended {a} of {s} scheduled.', { a: r.ka ?? '–', s: r.ks }))}</p>` : ''}</div>`;
   if (r.hnd != null) h += `<div class="card"><h2>${esc(T('Performance'))}</h2><div class="pfgrid">${['ans', 'hnd', 'pAht', 'talk', 'hold', 'acw', 'heldR', 'xferR', 'out'].map(c => `<div><span>${esc(T(PFM[c][0]))}</span><b>${esc(PFM[c][1](pfVal(r, c)))}</b></div>`).join('')}</div></div>`;
   if (r.wfShift != null) h += `<div class="card"><h2>${esc(T('Shifts and exceptions'))}</h2><div class="pfgrid wfgrid"><div><span>${esc(T('Shifts'))}</span><b>${r.wfShift}</b></div><div class="${r.wfWorked < r.wfShift ? 'bad' : ''}"><span>${esc(T('Worked'))}</span><b>${r.wfWorked}</b></div><div class="${r.wfAbs ? 'bad' : ''}"><span>${esc(T('No sign-on'))}</span><b>${r.wfAbs}</b></div><div class="${r.wfLate ? 'bad' : ''}"><span>${esc(T('Late sign-ons'))}</span><b>${r.wfLate}</b><small>${hmin(r.wfLateMin)}</small></div><div class="${r.wfShort ? 'bad' : ''}"><span>${esc(T('Short of shift'))}</span><b>${r.wfShort}</b><small>${hmin(r.wfShortMin)}</small></div><div><span>${esc(T('Break changes'))}</span><b>${r.wfBrk}</b></div><div><span>${esc(T('Signed on'))}</span><b>${hmin(r.wfLogged)}</b></div><div class="${r.wfExc ? 'bad' : 'good'}"><span>${esc(T('Exceptions'))}</span><b>${r.wfExc}</b></div></div></div>`;
@@ -22191,7 +22284,7 @@ function renderMe() {
   if (r.d || r.dx) { const days = daysOfRow(r, ND); h += `<div class="card"><h2>${esc(T('Attendance'))}</h2><div class="astrip${ob ? ' pick' : ''}">${days.map((v, i) => `<${cellTag} class="${ATT_CLS(v)}"${ob ? ` data-meobj="att|${i + 1}" type="button"` : ''} title="${esc(dn(i + 1))}: ${esc(attWord(v))}"><small>${i + 1}</small><b>${esc(ATT_SHORT(v))}</b></${cellTag}>`).join('')}</div><p class="hint">${esc(T('Counted from your schedule and sign-ons, corrected by your supervisor where needed. Questions? Ask {spv}.', { spv: P.spvName || T('your supervisor') }))}${ob ? ' ' + esc(T('Select a day to object to it.')) : ''}</p></div>`; }
   // forms
   const F = Object.entries(M.forms).map(([id, f]) => ({ ...f, id })).filter(f => fkey(f) === k).sort((a, b) => String(a.kind).localeCompare(String(b.kind)));
-  h += `<div class="card"><h2>${esc(T('One-to-ones · {m}', { m: ymLabelT(k) }))}</h2>${!meFormsReady() ? `<p class="subtle"><span class="spin" aria-hidden="true"></span> ${esc(T('Loading your page…'))}</p>` : F.length ? `<ul class="ilist">${F.map(f => {
+  const forms = `<div class="card"><h2>${esc(T('One-to-ones · {m}', { m: ymLabelT(k) }))}</h2>${!meFormsReady() ? `<p class="subtle"><span class="spin" aria-hidden="true"></span> ${esc(T('Loading your page…'))}</p>` : F.length ? `<ul class="ilist">${F.map(f => {
     const st = meSigState(f), planned = f.status === 'planned', w = meFormWhere(f);
     const chip = st === 'signed' ? `<span class="sgn ok">${esc(T('Signed {when}', { when: fmtWhen(M.sigs[f.id].at) }))}</span>` : st === 'changed' ? `<span class="sgn warn">${esc(T('Changed since you signed: please sign again'))}</span>`
       : w === 'sign' ? `<span class="sgn todo">${esc(T('Final from your supervisor: sign it'))}</span>` : w === 'sent' ? `<span class="sgn">${esc(T('Sent {when}: waiting for your supervisor', { when: agoT(M.replies[f.id].at) }))}</span>`
@@ -22199,6 +22292,9 @@ function renderMe() {
     const btn = st === 'signed' || w === 'sent' ? ['', 'Open'] : w === 'sign' || st === 'changed' ? [' primary', 'Read and sign'] : [' primary', 'Fill in'];
     return `<li><span class="nm">${esc(T(FORM_TITLE[f.kind] || 'Form'))}</span><span class="sg">${chip}${f.supervisor ? esc(T(' · with {spv}', { spv: f.supervisor })) : ''}${f.date && !planned ? ` · ${esc(fmtDateT(f.date))}` : ''}</span><span class="sp"></span><span class="acts"><button class="btn sm${btn[0]}" data-meform="${esc(f.id)}">${esc(T(btn[1]))}</button></span></li>`;
   }).join('')}</ul>` : `<p class="subtle">${esc(T('No one-to-one for this month yet.'))}</p>`}</div>`;
+  // by priority: a one-to-one waiting for the agent (their part, or the final to sign) comes straight after the month's status
+  const need = meFormsReady() && F.some(f => { const st = meSigState(f), w = meFormWhere(f); return st === 'changed' || (st !== 'signed' && w !== 'sent'); });
+  h = prof + status + (need ? forms + h : h + forms);
   h += safeHtml(meObjHtml, k, rec);
   body.innerHTML = h;
   reveal(body);
@@ -23940,7 +24036,9 @@ function renderWfmHead() {
     if (t === 'emails') return unsent ? `<span class="cnt warn" aria-label="${plural(unsent, 'daily email')} to send">${unsent}</span>` : '';
     return '';
   };
-  $('wfmTabs').innerHTML = WFM_GROUPS.map(([g, L]) => { const T = L.filter(t => have.has(t)); return T.length ? `<div class="wfmgrp"><small aria-hidden="true">${esc(g)}</small><div class="seg wftabs" role="group" aria-label="${esc(g)}">${T.map(t => `<button data-wt="${t}" aria-pressed="${t === cur}"${t === cur ? ' aria-current="page"' : ''}>${esc(lab[t])}${badge(t)}</button>`).join('')}</div></div>` : ''; }).join('');
+  // the month's build is numbered in the order it is done (1 Import, 2 Review, 3 Export, 4 Emails); the other groups are not steps
+  const num = (g, T, t) => (g === 'This month' && T.length > 1 ? `<span class="tabn" aria-hidden="true">${T.indexOf(t) + 1}</span><span class="sr">Step ${T.indexOf(t) + 1}: </span>` : '');
+  $('wfmTabs').innerHTML = WFM_GROUPS.map(([g, L]) => { const T = L.filter(t => have.has(t)); return T.length ? `<div class="wfmgrp"><small aria-hidden="true">${esc(g)}</small><div class="seg wftabs" role="group" aria-label="${esc(g)}">${T.map(t => `<button data-wt="${t}" aria-pressed="${t === cur}"${t === cur ? ' aria-current="page"' : ''}>${num(g, T, t)}${esc(lab[t])}${badge(t)}</button>`).join('')}</div></div>` : ''; }).join('');
   const r = roleNow(), cov = rolesNow().length > 1;
   $('wfmEyebrow').textContent = (ROLE_NAME[r] || 'Workforce') + (cov ? ` · covering for the ${ROLE_NAME[rolesNow()[1]] || 'team'}` : '');
   const build = state.ws === 'build';
@@ -26924,11 +27022,28 @@ window.addEventListener('beforeunload', e => { if (state.pending.length || infli
 // ---- the header's shadow once the page scrolls under it, and the skip link lands on the page
 $('skipLink').addEventListener('click', e => { e.preventDefault(); const m = $('main'); m.focus({ preventScroll: true }); m.scrollIntoView({ block: 'start' }); });
 applyRail();
-// ---- a long page (Supervisors) gets a local list of its sections, so each one is a click away
+// ---- steps: a page's work in the order it is done, then what is there to look things up, then what is set once (a .flow of
+// .flowstep sections: .step is the build's own step bar)
+/** one numbered step of a page: its number on a line down the left, its title, its state (done, next, or still to come), a short
+    note (done when and by whom, how far it is), its actions, what it is for, then its own cards. title and note are text; cap,
+    acts and body are HTML the caller made safe. short: the step's name in the page's "On this page" list */
+function stepHtml(n, { id, title, short, cap = '', st = '', note = '', acts = '', body = '' }) {
+  const hid = `sth-${id || n}`, chip = st === 'done' ? '<span class="pill good">Done</span>' : st === 'next' ? '<span class="pill info">Next</span>' : '';
+  return `<section class="flowstep${st ? ' ' + st : ''}"${id ? ` id="${esc(id)}"` : ''} data-n="${n}" data-short="${esc(short || title)}" aria-labelledby="${esc(hid)}"><span class="stepn" aria-hidden="true">${st === 'done' ? '✓' : n}</span>
+    <div class="stepbody"><div class="stephd"><h2 id="${esc(hid)}"><span class="sr">Step ${n}: </span>${esc(title)}</h2>${chip}${note ? `<small class="stnote">${esc(note)}</small>` : ''}${acts ? `<div class="stacts">${acts}</div>` : ''}</div>${cap ? `<p class="cap stcap">${cap}</p>` : ''}${body}</div></section>`;
+}
+/** the steps' states in order: each one done, or the first not done (next), or still to come. skipL: steps that cannot be next
+    (a month closed before, where a step the tool did not see is "not recorded") */
+function stepStates(doneL, skipL = []) { let seen = false; return doneL.map((d, i) => (d ? 'done' : seen || skipL[i] ? '' : ((seen = true), 'next'))); }
+/** a heading between the steps and the rest of a page: what is there to look things up, what is set once */
+const phaseHtml = (t, cap = '') => `<div class="phase"><h2>${esc(t)}</h2>${cap ? `<p class="cap">${esc(cap)}</p>` : ''}</div>`;
+// ---- a long page (Supervisors) gets a local list of its sections, so each one is a click away (its steps first, numbered)
 function sectionNav(bodyId) {
   const body = $(bodyId); if (!body) return;
   const old = body.querySelector(':scope > .secnav'); if (old) old.remove();
-  const S = [...body.children].filter(el => el.matches('.card, details.card')).map((el, i) => {
+  const kids = [...body.children].flatMap(el => (el.matches('.flow') ? [...el.children] : [el]));
+  const S = kids.filter(el => el.matches('.card, details.card, .flowstep')).map((el, i) => {
+    if (el.matches('.flowstep')) { if (!el.id) el.id = `${bodyId}-st${i}`; return { id: el.id, t: `${el.dataset.n} · ${el.dataset.short}` }; }
     const h = el.matches('details') ? el.querySelector(':scope > summary') : el.querySelector('h2'); if (!h) return null;
     const t = normSpace(h.textContent).replace(/\s*·.*$/, ''); if (!t) return null;
     if (!el.id) el.id = `${bodyId}-s${i}`; return { id: el.id, t };
@@ -26952,7 +27067,7 @@ const DEPT = [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
-    'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
+    'At month end, the numbered tabs are the month\'s steps, in order: <b>1 Import</b>, <b>2 Review</b>, <b>3 Export</b>, <b>4 Emails</b>. On <b>Import</b>, drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     'On <b>Review › KPI results</b>, under the table: <b>Month figures</b> takes the floor\'s numbers once a month, one per brand (Service Level, Floor QoS / Empowerment, AHT, Resources Adherence, Utilization, Digital and Complaints resolution time) for the SPVs\', specialists\' and managers\' cards; <b>Typed by hand</b> takes a value for one person that is in no file (Staff Satisfaction, Digital projects, CST compliance…), or NA when a KPI does not apply. The scores follow at once.',
@@ -26973,36 +27088,37 @@ const DEPT = [
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
     'The <b>Dashboard</b> and <b>WFM team › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
   ['senior', 'Senior manager', [
-    '<b>Supervisors</b>: set the one-to-ones deadline and the month close days, and keep the <b>incentive rules</b>: the scorecards, the bases, who is eligible and how the days and KPIs are counted. Percent KPIs and the Final % are rounded to a whole % before they count (94.99% → 95%); the days % is never rounded.',
+    '<b>Supervisors › Month close</b> is the month in eight numbered steps, in the order they are done; each shows when it is done, and the next one is marked: 1 the incentive data for review to the champions, 2 the results on the agents\' pages, 3 the one-to-ones deadline and the "One-to-ones are ready" email, 4 the supervisors who finished and the objections (with the deadline reminder), 5 the results for review to the VP, 6 Finalize on Results, 7 the final result form, 8 the final incentive data.',
+    'Under the steps, <b>Set once</b>: the supervisor scorecard, the email addresses and the month close days. <b>Incentive rules</b> (at the top) keeps the scorecards, the bases, who is eligible and how the days and KPIs are counted. Percent KPIs and the Final % are rounded to a whole % before they count (94.99% → 95%); the days % is never rounded.',
     'Every department has a scorecard (CC, SM, CT, QA, WF, TS, DE, the SPVs), and the managers and some leads a card of their own (CT-SPV, CT-CCM, CT-SGM, OP-DIG, QA-MGR, WF-MGR, DE-MGR), which the WFM team gives on the person\'s page (Edit › Scorecard) or with a Scorecard column in the roster file. A card can have its own base per brand (the SPVs: 1600 SR Virgin, 1000 SR FRiENDi). Team Performance is the average final % of the people they supervise.',
     '<b>Results</b>: decide on eligibility where the rules say otherwise, adjust a result where needed (every change is logged), and <b>Finalize</b> the month.',
     '<b>Results › Reconcile with the old Excel</b>: drop the old final result (and the incentive or deduction workbook). The tool lines up every person and says why each number differs: an own base, an absence rule, a typing error in the old file. Each has a fix.',
-    '<b>Supervisors › Incentive email</b>: the incentive data email to the champions, for review and then final (it lists what changed since the review). The incentive file the WFM analysts built is attached by itself, without National IDs; drop an edited one to use it instead. <b>Copy for Outlook</b> or <b>Download .eml</b>.',
-    'Send the four emails from <b>Supervisors › Month close</b>: one-to-ones are ready, the deadline reminder, results for review to the VP, and the final result form.',
+    'The incentive email (steps 1 and 8, or <b>Supervisors › Incentive email</b>): the incentive data to the champions, for review and then final. The incentive file the WFM analysts built is attached by itself, without National IDs; drop an edited one to use it instead. The final has its usual body; what changed since the review is shown for you to check, not in the email. <b>Copy for Outlook</b> or <b>Download .eml</b>.',
     'The <b>bell</b> lists what is late or due soon.']],
   ['spv', 'Supervisor', [
-    '<b>Team</b> shows your own agents with their numbers for the month; the header\'s month picker changes the month.',
-    '<b>One-to-ones</b>: hold each one, fill in the form and send it to the agent; they add their part and sign the final.',
+    '<b>Team</b> shows your own agents with their numbers for the month; the header\'s month picker changes the month. The numbered tabs are your month\'s steps, in order: <b>1 Attendance</b>, <b>2 Objections</b>, <b>3 One-to-ones</b>.',
     '<b>Attendance</b>: correct a day when Genesys is wrong (only an agent\'s supervisor can). In CC and SM the days come from Genesys, which shows a sick day as absent: correct those to SL here.',
     'TS, MG, CT, QA, DE and WF: <b>Attendance › Get the template</b> for the month (or Search › Attendance templates): your department\'s file. It opens on How to fill, with examples. Write a row only for each day someone was late, absent, on leave or off on another day than their weekly days off (a From and a To date for several days), and send the file to the WFM team. Every other day counts as a working day.',
     '<b>Objections</b>: answer your agents\' objections before the deadline, and correct the accepted ones.',
-    '<b>Waiting for approval</b>: approve new agent accounts and link each one to their name.',
-    'When every one-to-one is done, <b>Finish your team</b>: the senior manager is told straight away. The <b>bell</b> lists what is due.']],
+    '<b>One-to-ones</b>: hold each one, fill in the form and send it to the agent; they add their part and sign the final.',
+    'When every one-to-one is done, <b>Finish your team</b>: the senior manager is told straight away.',
+    '<b>Waiting for approval</b>: approve new agent accounts and link each one to their name. The <b>bell</b> lists what is due.']],
   ['quality', 'Quality team', [
-    '<b>Quality</b>: drop the month\'s Final EVAL in your template: Agent Name, Call QA, Ticket QA / Empowerment Utilization, Call Reason &amp; FCR Accuracy, Final Score, Critical Error and Number of Critical Errors (CT: Evaluation score). The analysts can also drop it on WFM team › Import with everything else.',
+    '<b>Quality</b> is the month\'s quality work in six numbered steps, in order; the next one is marked. First, <b>EVAL template with IDs</b> gives you a workbook in your template with every agent\'s National ID, so each row links by its ID.',
+    'Drop the month\'s Final EVAL in your template: Agent Name, Call QA, Ticket QA / Empowerment Utilization, Call Reason &amp; FCR Accuracy, Final Score, Critical Error and Number of Critical Errors (CT: Evaluation score). The analysts can also drop it on WFM team › Import with everything else.',
     'Call QA counts as Quality Observations, Ticket QA as Empowerment Utilization and CR as Call Reason &amp; FCR Accuracy (CT: the Final Score as Quality Observations and the Evaluation score as QA Evaluation). The Final Score itself is shown but does not count.',
     'Check the names the tool linked and link the ones left; the answers are remembered next month.',
     'Type <b>DRC-CSAT</b> once for the month: it counts for every agent.',
     'Correct any score in the table (logged). An Attitude critical error stops the incentive.',
-    '<b>EVAL template with IDs</b> gives you a workbook in your template with every agent\'s National ID, so each row links by its ID.']],
+    'Last, fix the objections the supervisors accepted on a quality KPI, and mark each one fixed.']],
   ['agent', 'Agent', [
     '<b>My page</b> shows your adherence, KPI results, attendance and one-to-ones. Change the month with the <b>month box</b> at the top (the arrows, or the list).',
-    'One-to-ones: fill in your part and send it to your supervisor; sign the final when it arrives.',
+    'One-to-ones: fill in your part and send it to your supervisor; sign the final when it arrives. One waiting for you shows at the top of the page.',
     'If a number is not right, <b>object</b> within the window shown on the page.',
     'The <b>bell</b> tells you what you need to do (sign, answer).',
     'The <b>العربية</b> button shows your page in Arabic.'], [
     '<b>صفحتي</b> تعرض التزامك بالجدول ونتائج مؤشرات الأداء والحضور والاجتماعات الفردية. غيّر الشهر من <b>مربع الشهر</b> في الأعلى (الأسهم أو القائمة).',
-    'الاجتماعات الفردية: املأ جزأك وأرسله إلى مشرفك، ثم وقّع على القرار النهائي عند وصوله.',
+    'الاجتماعات الفردية: املأ جزأك وأرسله إلى مشرفك، ثم وقّع على القرار النهائي عند وصوله. ما ينتظرك منها يظهر في أعلى الصفحة.',
     'إذا كان هناك رقم غير صحيح، <b>اعترض</b> خلال المدة الظاهرة في الصفحة.',
     '<b>الجرس</b> يخبرك بما عليك فعله (توقيع أو رد).',
     'زر <b>English</b> يعرض صفحتك بالإنجليزية.']],
@@ -28160,8 +28276,8 @@ function dashData() {
 const DASH_ACTS = {
   wfm: [['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Interactions', 'Add this week\'s export', 'wfm:inter', 'i-chart'], ['Every team', 'Agents ranked, one-to-ones', 'ws:team', 'i-team']],
   user: [['Import this month\'s files', 'Exports, attendance, IDs, KPI file', 'step:import', 'i-up'], ['Review the checks', 'Names, attendance, decisions', 'step:checks', 'i-check'], ['Report builder', 'MC Leaders and the WFM Daily Review', 'wfm:builder', 'i-file'], ['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Daily data', 'Every stored day', 'wfm:daily', 'i-day']],
-  senior: [['Supervisors and month close', 'Deadline, scorecards, the month\'s emails', 'ws:cycle', 'i-clock'], ['Results', 'Eligibility, finalize the month', 'ws:results', 'i-check'], ['Every team', 'Where each one-to-one stands', 'ws:team', 'i-team'], ['Analytics', 'Every department and month', 'wfm:analytics', 'i-chart']],
-  admin: [['Build the month', 'Import, review, export, email', 'step:import', 'i-up'], ['Manage accounts', 'Roles, access, resets', 'accounts', 'i-user'], ['Supervisors', 'The senior manager\'s page', 'ws:cycle', 'i-clock'], ['Results', 'Every agent for the month', 'ws:results', 'i-check']],
+  senior: [['Supervisors and month close', 'The month close, step by step', 'ws:cycle', 'i-clock'], ['Every team', 'Where each one-to-one stands', 'ws:team', 'i-team'], ['Results', 'Eligibility, finalize the month', 'ws:results', 'i-check'], ['Analytics', 'Every department and month', 'wfm:analytics', 'i-chart']],
+  admin: [['Build the month', 'Import, review, export, email', 'step:import', 'i-up'], ['Supervisors', 'The senior manager\'s page', 'ws:cycle', 'i-clock'], ['Results', 'Every agent for the month', 'ws:results', 'i-check'], ['Manage accounts', 'Roles, access, resets', 'accounts', 'i-user']],
 };
 function greetWord() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
 function renderDash() {
@@ -28182,8 +28298,8 @@ function renderDash() {
   const intro = !dashPlayed && !RM(); dashPlayed = true;
   el.innerHTML = `${head}
     <div class="drow r1"><div class="kpis" role="list" aria-label="${esc(ymLabel(k))} at a glance">${dashKpisHtml(k, months)}</div>${safeHtml(dashClose, k)}</div>
-    <div class="drow r2">${safeHtml(dashTrendCard, months)}${safeHtml(dashData)}</div>
-    <div class="drow r3">${safeHtml(dashAttention, k)}</div>`;
+    <div class="drow r3">${safeHtml(dashAttention, k)}</div>
+    <div class="drow r2">${safeHtml(dashTrendCard, months)}${safeHtml(dashData)}</div>`;   // by priority: the month and its steps, what needs someone, then the trend
   el.querySelectorAll('.kpi').forEach(x => x.setAttribute('role', 'listitem'));
   if (intro) { el.classList.add('intro'); clearTimeout(dashIntroT); dashIntroT = setTimeout(() => el.classList.remove('intro'), 1500); }
 }

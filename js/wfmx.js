@@ -27,7 +27,9 @@ function renderWfmHead() {
     if (t === 'emails') return unsent ? `<span class="cnt warn" aria-label="${plural(unsent, 'daily email')} to send">${unsent}</span>` : '';
     return '';
   };
-  $('wfmTabs').innerHTML = WFM_GROUPS.map(([g, L]) => { const T = L.filter(t => have.has(t)); return T.length ? `<div class="wfmgrp"><small aria-hidden="true">${esc(g)}</small><div class="seg wftabs" role="group" aria-label="${esc(g)}">${T.map(t => `<button data-wt="${t}" aria-pressed="${t === cur}"${t === cur ? ' aria-current="page"' : ''}>${esc(lab[t])}${badge(t)}</button>`).join('')}</div></div>` : ''; }).join('');
+  // the month's build is numbered in the order it is done (1 Import, 2 Review, 3 Export, 4 Emails); the other groups are not steps
+  const num = (g, T, t) => (g === 'This month' && T.length > 1 ? `<span class="tabn" aria-hidden="true">${T.indexOf(t) + 1}</span><span class="sr">Step ${T.indexOf(t) + 1}: </span>` : '');
+  $('wfmTabs').innerHTML = WFM_GROUPS.map(([g, L]) => { const T = L.filter(t => have.has(t)); return T.length ? `<div class="wfmgrp"><small aria-hidden="true">${esc(g)}</small><div class="seg wftabs" role="group" aria-label="${esc(g)}">${T.map(t => `<button data-wt="${t}" aria-pressed="${t === cur}"${t === cur ? ' aria-current="page"' : ''}>${num(g, T, t)}${esc(lab[t])}${badge(t)}</button>`).join('')}</div></div>` : ''; }).join('');
   const r = roleNow(), cov = rolesNow().length > 1;
   $('wfmEyebrow').textContent = (ROLE_NAME[r] || 'Workforce') + (cov ? ` · covering for the ${ROLE_NAME[rolesNow()[1]] || 'team'}` : '');
   const build = state.ws === 'build';

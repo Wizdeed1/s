@@ -1,0 +1,35 @@
+/* ================================================================ STEPS: a page's work in the order it is done
+   A number on a line down the left, the step's title with its state (done, next) and its actions, what it is for, then its own
+   cards. After the steps: what is there to look things up, and what is set once, each under a small heading (.phase). */
+.flow { display: grid; gap: var(--s5); }
+.flowstep { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: var(--s4); align-items: start; }
+.flowstep::before { content: ''; position: absolute; left: 17px; top: 44px; bottom: calc(-1 * var(--s5) + 8px); width: 2px; border-radius: 2px; background: var(--line); }
+.flowstep:last-child::before { display: none; }
+.stepn { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 700 14px/1 var(--display); color: var(--ink-2); background: var(--surface); border: 1.5px solid var(--line-2); box-shadow: var(--shadow-card); }
+.flowstep.next .stepn { background: var(--accent-fill); color: var(--on-accent); border-color: transparent; }   /* the filled accent: white text keeps its contrast */
+.flowstep.done .stepn { background: var(--good-soft); color: var(--good); border-color: transparent; }
+.flowstep.done::before { background: var(--good-line); }
+.stepbody { display: grid; gap: var(--s3); min-width: 0; }
+.stephd { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 36px; }
+.stephd h2 { margin: 0; font: 600 17px/1.3 var(--display); letter-spacing: -0.01em; }
+.flowstep.done .stephd h2 { color: var(--ink-2); }
+.stephd .stnote { color: var(--muted); font-size: 12.5px; }
+.stephd .stacts { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stephd .stacts .wsfield { display: inline-flex; align-items: center; gap: 6px; }
+.stepbody > .stcap { margin: calc(4px - var(--s3)) 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; max-width: 82ch; }   /* under the title line, whatever its length */
+.phase { display: grid; gap: 2px; margin-top: var(--s4); padding-top: var(--s4); border-top: 1px solid var(--line); }
+.phase h2 { margin: 0; font: 600 12px/1.3 var(--text); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.phase .cap { margin: 0; font-size: 12.5px; color: var(--muted); }
+/* numbered tabs: a step of the month in a row of tabs */
+.tabn { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-right: 6px; padding: 0 4px; border-radius: 9px; font: 700 11px/1 var(--display); background: var(--fill); color: var(--ink-2); }
+[aria-pressed="true"] > .tabn, [aria-selected="true"] > .tabn { background: var(--accent-fill); color: var(--on-accent); }
+@media (max-width: 640px) {
+  .flowstep { grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; }
+  .stepn { width: 28px; height: 28px; font-size: 12px; }
+  .flowstep::before { left: 13px; top: 34px; }
+  .stephd .stacts { margin-left: 0; }
+}
+@media print { .flowstep::before { display: none; } }
+/* the Import page's groups: the exports, the attendance, the IDs and KPI inputs */
+.impgrp { display: flex; align-items: center; gap: 2px; margin: var(--s2) 0 calc(-1 * var(--s1)); font: 600 13px/1.3 var(--text); color: var(--ink-2); }
+.impgrp[hidden] { display: none; }

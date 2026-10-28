@@ -59,7 +59,9 @@ const near = (a, b) => a == null || b == null ? a === b : Math.abs(a - b) < 1e-4
   const heads = await p.$eval('#qualityBody .qteam', S => [...S.querySelectorAll('thead th')].map(h => h.textContent.trim()));
   assert.ok(teams.length >= 4, 'one table per team: ' + teams.join(' | '));
   assert.deepEqual(heads.slice(0, 7), ['Agent Name', 'Call QA', 'Ticket QA / Empowerment Utilization', 'Call Reason & FCR Accuracy', 'Final Score (Average of Call QA, Ticket QA & CR)', 'Critical Error', 'Number of Critical Errors']);
-  assert.ok(await p.$('#qualityBar input[data-csat]'), 'the DRC-CSAT box is on the Quality page');
+  assert.ok(await p.$('#qualityBody #qs-csat input[data-csat]'), 'the DRC-CSAT box is on the Quality page, in its own step');
+  const qs = await p.$$eval('#qualityBody .flow > .flowstep', L => L.map(x => x.id));
+  assert.deepEqual(qs, ['qs-tpl', 'qs-drop', 'qs-names', 'qs-csat', 'qs-check', 'qs-obj'], 'the Quality page in the order the work is done: ' + qs.join(', '));
   await p.screenshot({ path: path.join(out, 'quality-page.png'), fullPage: true });
   console.log('Quality page:', teams.join(' | '));
 

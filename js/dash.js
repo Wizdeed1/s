@@ -165,8 +165,8 @@ function dashData() {
 const DASH_ACTS = {
   wfm: [['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Interactions', 'Add this week\'s export', 'wfm:inter', 'i-chart'], ['Every team', 'Agents ranked, one-to-ones', 'ws:team', 'i-team']],
   user: [['Import this month\'s files', 'Exports, attendance, IDs, KPI file', 'step:import', 'i-up'], ['Review the checks', 'Names, attendance, decisions', 'step:checks', 'i-check'], ['Report builder', 'MC Leaders and the WFM Daily Review', 'wfm:builder', 'i-file'], ['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Daily data', 'Every stored day', 'wfm:daily', 'i-day']],
-  senior: [['Supervisors and month close', 'Deadline, scorecards, the month\'s emails', 'ws:cycle', 'i-clock'], ['Results', 'Eligibility, finalize the month', 'ws:results', 'i-check'], ['Every team', 'Where each one-to-one stands', 'ws:team', 'i-team'], ['Analytics', 'Every department and month', 'wfm:analytics', 'i-chart']],
-  admin: [['Build the month', 'Import, review, export, email', 'step:import', 'i-up'], ['Manage accounts', 'Roles, access, resets', 'accounts', 'i-user'], ['Supervisors', 'The senior manager\'s page', 'ws:cycle', 'i-clock'], ['Results', 'Every agent for the month', 'ws:results', 'i-check']],
+  senior: [['Supervisors and month close', 'The month close, step by step', 'ws:cycle', 'i-clock'], ['Every team', 'Where each one-to-one stands', 'ws:team', 'i-team'], ['Results', 'Eligibility, finalize the month', 'ws:results', 'i-check'], ['Analytics', 'Every department and month', 'wfm:analytics', 'i-chart']],
+  admin: [['Build the month', 'Import, review, export, email', 'step:import', 'i-up'], ['Supervisors', 'The senior manager\'s page', 'ws:cycle', 'i-clock'], ['Results', 'Every agent for the month', 'ws:results', 'i-check'], ['Manage accounts', 'Roles, access, resets', 'accounts', 'i-user']],
 };
 function greetWord() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
 function renderDash() {
@@ -187,8 +187,8 @@ function renderDash() {
   const intro = !dashPlayed && !RM(); dashPlayed = true;
   el.innerHTML = `${head}
     <div class="drow r1"><div class="kpis" role="list" aria-label="${esc(ymLabel(k))} at a glance">${dashKpisHtml(k, months)}</div>${safeHtml(dashClose, k)}</div>
-    <div class="drow r2">${safeHtml(dashTrendCard, months)}${safeHtml(dashData)}</div>
-    <div class="drow r3">${safeHtml(dashAttention, k)}</div>`;
+    <div class="drow r3">${safeHtml(dashAttention, k)}</div>
+    <div class="drow r2">${safeHtml(dashTrendCard, months)}${safeHtml(dashData)}</div>`;   // by priority: the month and its steps, what needs someone, then the trend
   el.querySelectorAll('.kpi').forEach(x => x.setAttribute('role', 'listitem'));
   if (intro) { el.classList.add('intro'); clearTimeout(dashIntroT); dashIntroT = setTimeout(() => el.classList.remove('intro'), 1500); }
 }

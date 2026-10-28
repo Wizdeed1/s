@@ -437,12 +437,13 @@ function parseRoster(rows) {
   const col = re => hdr.findIndex(x => re.test(normSpace(x)));
   const em = col(/^(e-?mail|email address|work email)$/i), sp = col(/^(supervisor|team lead(er)?|leader|spv|direct (manager|leader))$/i), bs = col(/^(incentive base|base|incentive base \(sr\))$/i);
   const jd = col(/^(joining date|join date|date of joining|doj|joined|joined on|hire date|hiring date|date of hire|date joined|start date|joining)$/i);
+  const sc = col(/^(scorecard|kpi scorecard|kpi card|incentive scorecard|incentive card)$/i);   // a role's own card (CT-SPV, or its name)
   return body.map(r => ({
     name: normSpace(r[ic.name]), id: cleanId(r[ic.id]), sys: ic.sys >= 0 ? normSpace(r[ic.sys]) : '',
     team: g.team >= 0 ? normTeam(r[g.team]) : '', dep: g.dep >= 0 ? normDep(r[g.dep]) : '',
     status: ic.status >= 0 ? normStatus(r[ic.status]) : '',
     email: em >= 0 ? normSpace(r[em]).toLowerCase() : '', spvName: sp >= 0 ? normSpace(r[sp]) : '', base: bs >= 0 && Number.isFinite(+r[bs]) && +r[bs] > 0 ? +r[bs] : null,
-    joined: jd >= 0 ? cleanDate(r[jd]) : '',
+    joined: jd >= 0 ? cleanDate(r[jd]) : '', ...(sc >= 0 ? { card: normSpace(r[sc]) } : {}),
   }));
 }
 

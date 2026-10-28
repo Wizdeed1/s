@@ -7,7 +7,7 @@
 function mtdProj(pid, k) {
   const H = state.history[k]; if (!H || !H.daily || monthLocked(k)) return null;
   const p = state.roster.find(x => x._id === pid), r = p ? rowOf(pid, k) : null; if (!r) return null;
-  const card = cardFor(p.team, k); if (!card) return null;
+  const card = cardOf(p, k); if (!card) return null;
   const days = (H.days || []).slice().sort(), asOf = days[days.length - 1] || '', last = asOf ? +asOf.slice(8) : 0, ND = Core.daysIn(+k.slice(0, 4), +k.slice(5));
   const scale = last ? Math.max(1, ND / last) : 1;
   const file = fileValues(card, k, p, r), pr = rowOf(pid, prevKey(k)), borrowed = [];
@@ -17,7 +17,7 @@ function mtdProj(pid, k) {
     if (v == null) { const z = (pr.kpi || []).find(x => normName(x[0]) === normName(kk.name)); v = z ? kpiNum(z[3], kk) : null; }
     if (v != null) { file[kk.id] = v; borrowed.push(kk.name); }
   }
-  const vals = { adh: r.adh ?? null, adhUnder: r.adhUnder != null ? Math.round(r.adhUnder * scale) : null, aht: r.aht ?? null, tardy: r.tardy != null ? Math.round(r.tardy * scale) : null, file };
+  const vals = { adh: r.adh ?? null, adhUnder: r.adhUnder != null ? Math.round(r.adhUnder * scale) : null, aht: r.aht ?? null, tardy: r.tardy != null ? Math.round(r.tardy * scale) : null, file, ...kpiOver(card, k, p, r) };
   // the days attended (not those counted after an absence penalty, which Kpi.score takes off again), absences scaled like the rest
   const att = r.ks != null && r.ks > 0 ? { sched: Math.round(r.ks * scale), attended: Math.round((r.kat ?? r.ka ?? 0) * scale), absent: Math.round((r.absent || 0) * scale), runs: Math.round((r.kr || 0) * scale) } : null;
   const res = Kpi.score(card, vals, att, baseOf(p, r, k), countFor(k)), el = eligibility(res, qRow(k, pid), null, k, p);

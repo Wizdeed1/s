@@ -1441,6 +1441,11 @@ b.bad, .astats b.bad { color: var(--bad); }
 .upn small { color: var(--muted); font-size: 12px; }
 .upa { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .upa select.cell { min-height: 28px; font-size: 12.5px; }
+/* Review › KPI results: the month's figures and the values typed by hand */
+.kxcard .formtab input.cell { width: 100%; min-width: 84px; }
+.kxadd { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.kxadd select.cell { flex: 0 1 260px; min-width: 0; }
+.kxadd input.cell { flex: 0 0 130px; width: 130px; }
 
 /* Quality: the DRC-CSAT box (one score for every agent) and the Final EVAL tables in the quality team's template */
 .csatslot:not([hidden]) { display: block; }
@@ -3265,6 +3270,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
           <p class="hint" id="kpiCount"></p>
         </div>
         <div id="kpiBody"></div>
+        <div id="kpiExtra" class="view" style="gap:12px"></div>
       </div>
     </div>
 
@@ -3684,7 +3690,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     </section>
     <section>
       <h3>Incentive rules</h3>
-      <p>The scorecards (KPIs, weights, bands), the incentive bases and who earns the incentive (lowest final %, fewest days attended, months in the job: 6 by default, the incentive starts with the 6th full month, so someone who joined on 1 January earns from June and someone who joined on 18 January from July; it needs the joining date on the roster) are one set of rules. The absence penalty (How it is counted) takes days off the actual days for each Absent day, never for SL or another leave: with 3, one absent day out of 22 leaves 21 − 3 = 18 days, 4 fewer than scheduled. Only the senior manager or an admin changes them (<b>Supervisors › Incentive rules</b>, or Settings › Scorecards); everyone else sees them read-only. <b>Start new rules from</b> a month: that month and the ones after it use the new set, the months before keep theirs, and a final month never changes. Every change is logged.</p>
+      <p>The scorecards (KPIs, weights, bands), the incentive bases and who earns the incentive (lowest final %, fewest days attended, months in the job: 6 by default, the incentive starts with the 6th full month, so someone who joined on 1 January earns from June and someone who joined on 18 January from July; it needs the joining date on the roster) are one set of rules. The absence penalty (How it is counted) takes days off the actual days for each Absent day, never for SL or another leave: with 3, one absent day out of 22 leaves 21 − 3 = 18 days, 4 fewer than scheduled. Every department has a scorecard, as the September 2026 incentive file counts it: CC, SM, CT, QA, WF, TS, DE and OP (the SPVs), and a card of their own for the managers and some leads (CT-SPV, CT-CCM, CT-SGM, OP-DIG, QA-MGR, WF-MGR, DE-MGR), given on the person's page (Edit › Scorecard) or with a Scorecard column in the roster file. Team Performance is the average final % of the people someone supervises. Service Level, Floor QoS, AHT and the other figures of the whole floor are typed once a month on Review › KPI results (Month figures); a value that is in no file (Staff Satisfaction, Digital projects…) is typed there for one person (Typed by hand), and NA ranks 5. A card can have its own base per brand (the SPVs: 1600 SR Virgin, 1000 SR FRiENDi). Only the senior manager or an admin changes them (<b>Supervisors › Incentive rules</b>, or Settings › Scorecards); everyone else sees them read-only. <b>Start new rules from</b> a month: that month and the ones after it use the new set, the months before keep theirs, and a final month never changes. Every change is logged.</p>
     </section>
     <section>
       <h3>Reconcile with the old Excel, and the EVAL with IDs</h3>
@@ -9503,12 +9509,13 @@ function parseRoster(rows) {
   const col = re => hdr.findIndex(x => re.test(normSpace(x)));
   const em = col(/^(e-?mail|email address|work email)$/i), sp = col(/^(supervisor|team lead(er)?|leader|spv|direct (manager|leader))$/i), bs = col(/^(incentive base|base|incentive base \(sr\))$/i);
   const jd = col(/^(joining date|join date|date of joining|doj|joined|joined on|hire date|hiring date|date of hire|date joined|start date|joining)$/i);
+  const sc = col(/^(scorecard|kpi scorecard|kpi card|incentive scorecard|incentive card)$/i);   // a role's own card (CT-SPV, or its name)
   return body.map(r => ({
     name: normSpace(r[ic.name]), id: cleanId(r[ic.id]), sys: ic.sys >= 0 ? normSpace(r[ic.sys]) : '',
     team: g.team >= 0 ? normTeam(r[g.team]) : '', dep: g.dep >= 0 ? normDep(r[g.dep]) : '',
     status: ic.status >= 0 ? normStatus(r[ic.status]) : '',
     email: em >= 0 ? normSpace(r[em]).toLowerCase() : '', spvName: sp >= 0 ? normSpace(r[sp]) : '', base: bs >= 0 && Number.isFinite(+r[bs]) && +r[bs] > 0 ? +r[bs] : null,
-    joined: jd >= 0 ? cleanDate(r[jd]) : '',
+    joined: jd >= 0 ? cleanDate(r[jd]) : '', ...(sc >= 0 ? { card: normSpace(r[sc]) } : {}),
   }));
 }
 
@@ -12089,11 +12096,31 @@ if (typeof module !== 'undefined') module.exports = History;
 const Kpi = ((C) => {
 const { normSpace, normName } = C;
 // src: where the value comes from. adh = monthly adherence (Genesys), adhUnder = days under the adherence target,
-// aht = AHT seconds (Genesys), tardy = tardy minutes (attendance), file = a column in the KPI file.
-// unit: pct (0-1), sec, min, days. dir: high = higher is better (bands are minimums), low = lower is better (bands are maximums).
+// aht = AHT seconds (Genesys), tardy = tardy minutes (attendance), file = a column in the KPI file, team = the average final % of
+// the people the person supervises (Team Performance).
+// unit: pct (0-1), sec, min, days, num. dir: high = higher is better (bands are minimums), low = lower is better (bands are maximums).
 // bands: [rank5, rank4, rank3, rank2] thresholds; null = that rank is not used ("NIL"/"n/a"). Anything outside rank 2 (or 3) = 1.
-const K = (id, name, src, unit, dir, weight, bands, aliases = []) => ({ id, name, src, unit, dir, weight, bands, aliases });
-const PCT4 = [0.95, 0.90, 0.85, 0.80];
+// fig: the KPI takes the month's figure (one number per brand, typed once a month) when there is one. A card's scope says which
+// figure: 'all' (all brands; the average of the brands when no all-brands figure is typed) or 'brand' (the person's brand).
+// A card's pay: its own incentive base, one number or one per brand (the SPVs' and the managers' cards); none = the brand's base.
+const K = (id, name, src, unit, dir, weight, bands, aliases = [], more) => ({ id, name, src, unit, dir, weight, bands, aliases, ...(more || {}) });
+const PCT4 = [0.95, 0.90, 0.85, 0.80], QOW = [0.98, 0.95, 0.90, null], AHT4 = [150, 160, 170, 180], SL4 = [0.85, 0.80, 0.75, 0.70];
+const FIG = { fig: true };
+// the leads' base: 1600 SR for Virgin, 1000 SR for FRiENDi (the managers with no base in the file take the brand's until one is set)
+const LEAD = { Virgin: 1600, Friendi: 1000, 'Friendi Pay': 1000 };
+// the KPIs many cards share (as the September 2026 incentive file has them)
+const csat = w => K('csat', 'DRC-CSAT', 'file', 'pct', 'high', w, [0.85, 0.80, 0.60, null], ['drc csat', 'csat', 'drccsat']);
+const qow = (w, b = QOW) => K('qow', 'Quality of Work', 'file', 'pct', 'high', w, b, ['quality', 'quality of work']);
+const adhd = w => K('adhd', 'Adherence (days under 95%)', 'adhUnder', 'days', 'low', w, [2, 4, 6, null], []);
+const fqos = w => K('fqos', 'Floor Quality of Service / Empowerment', 'file', 'pct', 'high', w, PCT4, ['floor quality of service', 'floor quality of service empowerment', 'floor quality', 'empowerment'], FIG);
+const ahtF = w => K('aht', 'AHT', 'aht', 'sec', 'low', w, AHT4, ['average handling time', 'average handling time aht'], FIG);
+const sl = w => K('sl', 'Service Level', 'file', 'pct', 'high', w, SL4, ['service level', 'service level %', 'sla'], FIG);
+const radh = w => K('radh', 'Resources Adherence', 'file', 'pct', 'high', w, PCT4, ['resources adherence', 'resource adherence', 'resources adherance'], FIG);
+const tperf = w => K('tperf', 'Team Performance', 'team', 'pct', 'high', w, SL4, ['team performance']);
+const cresp = w => K('cresp', 'Complaints Resolution Time', 'file', 'pct', 'high', w, [0.85, 0.80, 0.70, 0.60], ['complaints resolution time', 'complaint resolution time', 'complaints resoluion time'], FIG);
+const ssat = w => K('ssat', 'Staff Satisfaction (HR)', 'file', 'pct', 'high', w, [0.74, 0.70, 0.65, null], ['staff satisfaction hr', 'staff satisfaction', 'staff satisfaction -hr']);
+const ssmc = w => K('ssmc', 'Staff Satisfaction (MC)', 'file', 'pct', 'high', w, [0.80, 0.75, 0.70, null], ['staff satisfaction mc', 'staff satisfaction-mc']);
+const util = (w, more) => K('util', 'Utilization', 'file', 'pct', 'high', w, PCT4, ['utilisation'], more);
 const DEFAULTS = {
   base: 1000,
   teams: {
@@ -12121,22 +12148,48 @@ const DEFAULTS = {
       K('util', 'Utilization', 'file', 'pct', 'high', 0.20, PCT4, ['utilisation']),
       K('adhd', 'Adherence (days under 95%)', 'adhUnder', 'days', 'low', 0.10, [2, 4, 6, null], []),
     ] },
-    QA: { title: 'Member Care Quality Specialist', kpis: [
+    // the specialists rank their own brand's figures (Virgin's Floor QoS and AHT for a Virgin specialist)
+    QA: { title: 'Member Care Quality Specialist', scope: 'brand', kpis: [
       K('csat', 'DRC-CSAT', 'file', 'pct', 'high', 0.25, [0.85, 0.80, 0.60, null], ['drc csat', 'csat']),
-      K('fqos', 'Floor Quality of Service / Empowerment', 'file', 'pct', 'high', 0.25, PCT4, ['floor quality of service', 'floor quality', 'empowerment']),
-      K('aht', 'AHT', 'aht', 'sec', 'low', 0.10, [150, 160, 170, 180], ['average handling time']),
+      K('fqos', 'Floor Quality of Service / Empowerment', 'file', 'pct', 'high', 0.25, PCT4, ['floor quality of service', 'floor quality', 'empowerment'], FIG),
+      K('aht', 'AHT', 'aht', 'sec', 'low', 0.10, [150, 160, 170, 180], ['average handling time'], FIG),
       K('qow', 'Quality of Work', 'file', 'pct', 'high', 0.20, [0.98, 0.95, 0.90, null], ['quality', 'quality of work']),
       K('dev', 'Agent Development', 'file', 'pct', 'high', 0.20, PCT4, ['agent development', 'development']),
     ] },
     WF: { title: 'Member Care Support WF Specialist', kpis: [
-      K('sl', 'Service Level', 'file', 'pct', 'high', 0.30, [0.85, 0.80, 0.75, 0.70], ['service level']),
-      K('radh', 'Resources Adherence', 'file', 'pct', 'high', 0.25, PCT4, ['resources adherence', 'resource adherence', 'resources adherance']),
+      K('sl', 'Service Level', 'file', 'pct', 'high', 0.30, [0.85, 0.80, 0.75, 0.70], ['service level'], FIG),
+      K('radh', 'Resources Adherence', 'file', 'pct', 'high', 0.25, PCT4, ['resources adherence', 'resource adherence', 'resources adherance'], FIG),
       K('qow', 'Quality of Work', 'file', 'pct', 'high', 0.40, PCT4, ['quality', 'quality of work']),   // the WF card ranks 95% as 5
       K('adhd', 'Adherence (days under 95%)', 'adhUnder', 'days', 'low', 0.05, [2, 4, 6, null], []),
     ] },
+    TS: { title: 'Tele Sales Champion', pay: 1000, kpis: [
+      K('qobs', 'Quality Observations', 'file', 'pct', 'high', 0.25, PCT4, ['quality', 'quality observation', 'quality observations']),
+      K('cfb', 'Customer Feedback / Wrap-up Code', 'file', 'pct', 'high', 0.20, PCT4, ['customer feedback wrap up code', 'customer feedback', 'wrap up code']),
+      util(0.20),
+      K('crate', 'Contact Rate', 'file', 'num', 'high', 0.25, [100, 90, 80, 70], ['contact rate']),
+      adhd(0.10),
+    ] },
+    DE: { title: 'Member Care Digital Experience Champion', pay: 1600, kpis: [csat(0.25), fqos(0.20), ahtF(0.15), qow(0.30), adhd(0.10)] },
+    OP: { title: 'Member Care SPV / Leaders', pay: LEAD, kpis: [tperf(0.25), sl(0.30), ahtF(0.10), qow(0.25), ssmc(0.10)] },
+    // the cards of one role (a person takes one on their page, or with the roster's Scorecard column)
+    'OP-DIG': { title: 'Member Care Digital Manager', pay: LEAD, kpis: [tperf(0.25), util(0.20, FIG),
+      K('dres', 'Digital Team Resolution Time', 'file', 'sec', 'low', 0.20, [1800, 2099, 2399, 2699], ['digital team resolution time', 'digtal team resolution time'], FIG), qow(0.25), ssmc(0.10)] },
+    'CT-SPV': { title: 'Complaint SPV', pay: LEAD, kpis: [csat(0.25), tperf(0.20), cresp(0.20), qow(0.25), ssmc(0.10)] },
+    'CT-CCM': { title: 'Member Care Complaint and Control Manager', pay: 1000, kpis: [csat(0.25), K('cstc', 'CST Compliance', 'file', 'pct', 'high', 0.15, PCT4, ['cst compliance']), cresp(0.20),
+      K('csts', 'CST SLA', 'file', 'pct', 'high', 0.20, PCT4, ['cst sla']), qow(0.20)] },
+    'CT-SGM': { title: 'Member Care Complaint Management & Service Governance Senior Manager', kpis: [csat(0.25), tperf(0.20), cresp(0.20), qow(0.25), ssat(0.10)] },
+    'QA-MGR': { title: 'Member Care Quality Manager', kpis: [csat(0.25), fqos(0.30), ahtF(0.10), qow(0.25), ssat(0.10)] },
+    'WF-MGR': { title: 'Member Care Support WF Manager', kpis: [sl(0.30), radh(0.25), qow(0.35), ssat(0.10)] },
+    'DE-MGR': { title: 'Member Care Digital Experience Manager', kpis: [csat(0.25), fqos(0.20), ssat(0.10), sl(0.10),
+      K('dproj', 'Digital Projects Achievements', 'file', 'pct', 'high', 0.35, PCT4, ['digital projects achievements', 'digital projects'])] },
   },
 };
-const SRC = { adh: 'Adherence from Genesys', adhUnder: 'Days under the adherence target (Genesys)', aht: 'AHT from Genesys (seconds)', tardy: 'Tardy minutes from the attendance', file: 'KPI file column' };
+/** the cards of one role, not of a whole team (their keys are not departments) */
+const isRoleCard = key => /-/.test(String(key || ''));
+const SRC = { adh: 'Adherence from Genesys', adhUnder: 'Days under the adherence target (Genesys)', aht: 'AHT from Genesys (seconds)', tardy: 'Tardy minutes from the attendance', file: 'KPI file column',
+  team: 'Team Performance: the average final % of the people they supervise' };
+/** a KPI that is not applicable this month ("NA" in the KPI file, or typed by hand) */
+const NA = 'NA';
 const clone = o => JSON.parse(JSON.stringify(o));
 
 /** rank 1-5 for one value; null when there is no value. edge 'out': a value exactly on a band edge does not reach it */
@@ -12168,9 +12221,11 @@ const CODES = [...DAY_CODES, ...MORE_CODES].map(d => d.code);
 const dayCode = code => DAY_CODES.find(d => d.code === code) || MORE_CODES.find(d => d.code === code) || DC(code, code, code, same(code));
 // the defaults count as the tool always did, except that percent KPIs and the final % are rounded to a whole % (94.99% → 95%), as the
 // old incentive files did. The days % is never rounded: the old files pay with the exact days. cv: 2 marks a section saved since then.
+// secDp: seconds KPIs (AHT) are ranked on whole seconds, as the incentive file shows them (150.29 s ranks as 150, 159.97 s as 160).
+// na: a KPI marked NA for a person ranks 5, as the September 2026 file has it ('scale': it is left out and the others are scaled).
 const CV = 2;
 const COUNT0 = { sched: DAY_CODES.map(d => d.code), lateOver: 0, absentExtra: 0, absentPer: 'day', absentFlat: 0, countedMin: 0, eligDays: 'attended', missing: 'scale', edge: 'in',
-  rankDp: 2, valDp: 0, pctOf: 'rank5', pctTable: [], pctDp: 2, daysPct: 'ratio', money: 'round', attitude: 'attitude|abuse|hr action', cv: CV };
+  rankDp: 2, valDp: 0, secDp: 0, na: 'rank5', pctOf: 'rank5', pctTable: [], pctDp: 2, daysPct: 'ratio', money: 'round', attitude: 'attitude|abuse|hr action', cv: CV };
 const NORMED = new WeakSet();   // sections already made whole (they are never changed: an edit makes a new one)
 /** a saved 'count' section made whole and safe: anything missing or out of range takes the default */
 function normCount(c) {
@@ -12186,7 +12241,7 @@ function normCount(c) {
   try { new RegExp(attitude, 'i'); } catch (e) { attitude = D.attitude; }
   const n = { sched, lateOver: num(o.lateOver, 0, 1440, 0), absentExtra: num(o.absentExtra, 0, 31, 0), absentPer: one(o.absentPer, ['day', 'run'], 'day'), absentFlat: num(o.absentFlat, 0, 31, 0),
     countedMin: num(o.countedMin, 0, 31, 0), eligDays: one(o.eligDays, ['attended', 'counted'], 'attended'), missing: one(o.missing, ['scale', 'rank1', 'none'], 'scale'), edge: one(o.edge, ['in', 'out'], 'in'),
-    rankDp: num(o.rankDp, -1, 4, 2), valDp: num(o.valDp, -1, 4, 0), pctOf: one(o.pctOf, ['rank5', 'table'], 'rank5'), pctTable, pctDp: num(o.pctDp, -1, 6, 2),
+    rankDp: num(o.rankDp, -1, 4, 2), valDp: num(o.valDp, -1, 4, 0), secDp: num(o.secDp, -1, 3, 0), na: one(o.na, ['rank5', 'scale'], 'rank5'), pctOf: one(o.pctOf, ['rank5', 'table'], 'rank5'), pctTable, pctDp: num(o.pctDp, -1, 6, 2),
     daysPct: one(o.daysPct, ['ratio', 'full'], 'ratio'), money: one(o.money, ['round', 'floor', 'ceil'], 'round'), attitude, cv: CV };
   NORMED.add(n); return n;
 }
@@ -12243,12 +12298,22 @@ function bandOf(k, r, edge) {
   const used = b.filter(t => t != null && t !== ''), t = used[used.length - 1];
   return t == null ? 'no bands' : `${lo ? (out ? '≥' : '>') : (out ? '≤' : '<')} ${bandVal(k, t)}`;
 }
-/** turn a raw file value into the KPI's unit: percentages may come as 0.89, 89, "89%" or a 1-5 score (CSAT) */
+/** seconds from a time typed as h:mm:ss or mm:ss ('2:32' is 152), or null */
+function clockSec(t) { const m = /^(\d+):([0-5]?\d)(?::([0-5]?\d(?:\.\d+)?))?$/.exec(t); if (!m) return null; return m[3] == null ? +m[1] * 60 + +m[2] : +m[1] * 3600 + +m[2] * 60 + +m[3]; }
+/** turn a raw file value into the KPI's unit: percentages may come as 0.89, 89, "89%" or a 1-5 score (CSAT); seconds as 152, '2:32' or
+    an Excel time (a fraction of a day). "NA" or "N/A" marks a KPI that is not applicable this month (NA); any other text is no value */
 function normValue(k, raw) {
   if (raw == null || raw === '') return null;
+  if (raw === NA) return NA;
   let s = raw, pctSign = false;
-  if (typeof s === 'string') { s = normSpace(s); pctSign = /%$/.test(s); s = s.replace(/[%,\s]/g, ''); if (!s || !Number.isFinite(+s)) return null; s = +s; }
+  if (raw instanceof Date && k.unit === 'sec') return Number.isFinite(raw.getTime()) ? raw.getUTCHours() * 3600 + raw.getUTCMinutes() * 60 + raw.getUTCSeconds() : null;
+  if (typeof s === 'string') {
+    s = normSpace(s); if (/^n\s*[./]?\s*a\.?$/i.test(s)) return NA;
+    if (k.unit === 'sec' && s.includes(':')) return clockSec(s);
+    pctSign = /%$/.test(s); s = s.replace(/[%,\s]/g, ''); if (!s || !Number.isFinite(+s)) return null; s = +s;
+  }
   if (typeof s !== 'number' || !Number.isFinite(s)) return null;
+  if (k.unit === 'sec' && s > 0 && s < 1) return Math.round(s * 86400 * 1000) / 1000;   // an Excel time: 0:02:32 is 0.00176 of a day
   if (k.unit === 'pct') {
     if (pctSign) return s / 100;
     if (k.id === 'csat' && s > 1 && s <= 5) return s / 5;      // a 1-5 satisfaction score
@@ -12259,6 +12324,7 @@ function normValue(k, raw) {
 }
 const fmtVal = (k, v) => {
   if (v == null) return '–';
+  if (v === NA) return 'N/A';
   if (k.unit === 'pct') { const p = Math.round(v * 10000) / 100; return p.toFixed(Number.isInteger(p) ? 0 : 2) + '%'; }   // 0.57 reads 57%, not 57.00%
   if (k.unit === 'sec') return String(Math.round(v * 10) / 10);
   return String(Math.round(v * 100) / 100);
@@ -12274,25 +12340,31 @@ const target = k => (k.bands[0] == null ? '' : (k.dir === 'low' ? '≤ ' : '≥ 
 const roundTo = (x, dp) => { const f = Math.pow(10, dp); return Math.round(x * f) / f; };
 /** rounded half up as Excel shows it, on the 15 digits it keeps: 28.5% is 29%, though 0.285 × 100 is 28.499999999999996 */
 const roundXl = (x, dp) => { const f = Math.pow(10, dp); return Math.round(+(x * f).toPrecision(15)) / f; };
-/** the value a KPI was ranked with: rounded when the rules round percent KPIs */
-const rankedVal = x => (x.vr !== undefined ? x.vr : x.v);
+/** the value a KPI was ranked with: rounded when the rules round percent KPIs (or seconds), NA when it was not applicable */
+const rankedVal = x => (x.na ? NA : x.vr !== undefined ? x.vr : x.v);
 /**
- * score one person. vals: {adh, adhUnder, aht, tardy, file: {kpiId: value}} ; att: {sched, attended (or actual), absent, runs} ;
+ * score one person. vals: {adh, adhUnder, aht, tardy, team, file: {kpiId: value}, over: {kpiId: value}, from: {kpiId: 'hand' | 'fig'}}:
+ * over = values that win over the KPI's own source (typed by hand, or the month's figure), from = where each of those came from;
+ * att: {sched, attended (or actual), absent, runs} ;
  * cfg: the month's 'count' rules (the defaults when left out). actual = the days counted (attended less any absence penalty),
  * worked out here only, so a penalty is never taken twice. how = every step, for "How this was counted".
  */
 function score(card, vals, att, base, cfg) {
-  const c = normCount(cfg);
+  const c = normCount(cfg), over = vals.over || {}, from = vals.from || {};
   const rows = card.kpis.map(k => {
-    const v = k.src === 'file' ? (vals.file ? vals.file[k.id] ?? null : null) : (vals[k.src] ?? null);
-    const vr = c.valDp >= 0 && k.unit === 'pct' && v != null && Number.isFinite(v) ? roundXl(v * 100, c.valDp) / 100 : v;
-    return vr === v ? { k, v, r: rank(k, v, c.edge), w: +k.weight || 0 } : { k, v, vr, r: rank(k, vr, c.edge), w: +k.weight || 0 };
+    const s = over[k.id] != null ? from[k.id] || 'hand' : null, w = +k.weight || 0;
+    const v = s ? over[k.id] : k.src === 'file' ? (vals.file ? vals.file[k.id] ?? null : null) : (vals[k.src] ?? null);
+    if (v === NA) return { k, v: null, na: true, r: c.na === 'rank5' ? 5 : null, w, ...(s ? { s } : {}) };   // not applicable: ranks 5, or is left out
+    const vr = v == null || !Number.isFinite(v) ? v : c.valDp >= 0 && k.unit === 'pct' ? roundXl(v * 100, c.valDp) / 100 : c.secDp >= 0 && k.unit === 'sec' ? roundXl(v, c.secDp) : v;
+    return { k, v, ...(vr === v ? {} : { vr }), r: rank(k, vr, c.edge), w, ...(s ? { s } : {}) };
   });
-  const have = rows.filter(x => x.r != null), wSum = rows.reduce((a, x) => a + x.w, 0), wHave = have.reduce((a, x) => a + x.w, 0);
-  const missing = rows.filter(x => x.r == null).map(x => x.k.name);
+  // a KPI left out as not applicable weighs nothing: the others make the final rank, whatever is done with missing ones
+  const used = rows.filter(x => !(x.na && x.r == null)), have = used.filter(x => x.r != null), wAll = rows.reduce((a, x) => a + x.w, 0);
+  const wSum = used.reduce((a, x) => a + x.w, 0), wHave = have.reduce((a, x) => a + x.w, 0);
+  const missing = used.filter(x => x.r == null).map(x => x.k.name);
   // missing KPIs: the final rank uses the KPIs that have a value, scaled to their weights (or ranks them 1, or waits for them)
   const fr = c.missing === 'none' && missing.length ? null
-    : c.missing === 'rank1' && missing.length ? (have.length && wSum > 0 ? rows.reduce((a, x) => a + (x.r ?? 1) * x.w, 0) / wSum : null)
+    : c.missing === 'rank1' && missing.length ? (have.length && wSum > 0 ? used.reduce((a, x) => a + (x.r ?? 1) * x.w, 0) / wSum : null)
     : wHave > 0 ? have.reduce((a, x) => a + x.r * x.w, 0) / wHave : null;
   const finalRank = fr == null ? null : c.rankDp >= 0 ? roundTo(fr, c.rankDp) : fr;
   let finalPct = finalRank == null ? null : finalRank / 5, tRow = null;
@@ -12308,10 +12380,12 @@ function score(card, vals, att, base, cfg) {
   const earned = daysPct == null || finalPct == null ? null : M ? M(B * daysPct * finalPct) : Math.round(B * daysPct * finalPct + 1e-9);
   // every step in short keys (kept on the month's rows as kx, without the KPIs, which the rows carry already)
   const how = { rr: fr, ws: wHave, wt: wSum, mm: c.missing, rd: c.rankDp, fr: finalRank, po: c.pctOf, tr: tRow ? { min: tRow.min, pct: tRow.pct } : null, pd: c.pctDp, fp: finalPct, vd: c.valDp, ed: c.edge,
+    ...(c.secDp !== COUNT0.secDp ? { sd: c.secDp } : {}), ...(rows.some(x => x.na) ? { na: c.na } : {}),
     s: sched, a: attended, ab: absent, ru: runs, ex: pen.extra, pen: pen.extra ? { k: c.absentExtra, per: c.absentPer, flat: c.absentFlat, min: c.countedMin } : null, c: actual,
     df: c.daysPct, dp: daysPct, b: B, mo: c.money, t: tgt, e: earned,
-    kpis: rows.map(x => ({ id: x.k.id, name: x.k.name, v: x.v, ...(x.vr !== undefined ? { vr: x.vr } : {}), band: bandOf(x.k, x.r, c.edge), r: x.r, w: x.w })) };
-  return { rows, finalRank, finalPct, sched, actual, daysPct, target: tgt, earned, missing, complete: !missing.length, weightsOk: Math.abs(wSum - 1) < 0.001,
+    kpis: rows.map(x => ({ id: x.k.id, name: x.k.name, v: x.v, ...(x.vr !== undefined ? { vr: x.vr } : {}), ...(x.na ? { na: 1 } : {}), ...(x.s ? { s: x.s } : {}),
+      band: x.na ? (x.r ? 'N/A counts as 5' : 'N/A, left out') : bandOf(x.k, x.r, c.edge), r: x.r, w: x.w })) };
+  return { rows, finalRank, finalPct, sched, actual, daysPct, target: tgt, earned, missing, complete: !missing.length, weightsOk: Math.abs(wAll - 1) < 0.001,
     attended, absent, runs, extra: pen.extra, how };
 }
 
@@ -12359,7 +12433,7 @@ function validate(cards) {
   }
   return issues;
 }
-return { DEFAULTS: () => clone(DEFAULTS), SRC, rank, score, normValue, fmtVal, rankedVal, bandText, target, readFile, fileValue, key, validate,
+return { DEFAULTS: () => clone(DEFAULTS), SRC, NA, isRoleCard, clockSec, rank, score, normValue, fmtVal, rankedVal, bandText, target, readFile, fileValue, key, validate,
   COUNT0: () => clone(COUNT0), normCount, fromSaved, countDiff, countDays, penalty, dayRulesKey, DAY_CODES, CODES, dayCode, bandOf, bandVal };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Kpi;
@@ -15557,7 +15631,7 @@ async function save(filename, blob) { const c = await saveRaw(filename, blob); t
 // ---------------------------------------------------------------- roster import / export
 function rosterCsv() {
   const cell = v => { let s = String(v ?? ''); if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };   // text that starts like a formula stays text in Excel
-  const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base', 'Joining date'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || '', p.joined || ''])];
+  const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base', 'Joining date', 'Scorecard'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || '', p.joined || '', p.card || ''])];
   return '﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 async function importRosterFile(file, o = {}) {
@@ -15582,13 +15656,13 @@ function prepareMerge(rows, src) {
   const seen = new Set();
   for (const x of rows) {
     const name = normSpace(x.name); if (!name) continue;
-    const inc = { name, nid: x.id || '', brand: x.team || '', team: x.dep || '', sys: normSpace(x.sys), status: x.status || '', email: x.email || '', base: x.base || null, spvName: x.spvName || '', joined: x.joined || '' };
+    const inc = { name, nid: x.id || '', brand: x.team || '', team: x.dep || '', sys: normSpace(x.sys), status: x.status || '', email: x.email || '', base: x.base || null, spvName: x.spvName || '', joined: x.joined || '', card: x.card || '' };
     const cur = (inc.nid && byId.get(inc.nid)) || byName.get(normName(name)) || (inc.sys && byName.get(normName(inc.sys)));
     if (cur && seen.has(cur._id)) continue;
-    if (!cur) { const { spvName, ...rest } = inc; plan.adds.push({ ...rest, ...(rest.joined ? {} : { joined: undefined }), brand: inc.brand || 'Virgin', team: inc.team || 'CC', status: inc.status || 'Active', ...(inc.base ? {} : { base: undefined }) }); if (spvName) (plan.sup = plan.sup || []).push([name, spvName]); continue; }
+    if (!cur) { const { spvName, ...rest } = inc; plan.adds.push({ ...rest, ...(rest.joined ? {} : { joined: undefined }), ...(rest.card ? {} : { card: undefined }), brand: inc.brand || 'Virgin', team: inc.team || 'CC', status: inc.status || 'Active', ...(inc.base ? {} : { base: undefined }) }); if (spvName) (plan.sup = plan.sup || []).push([name, spvName]); continue; }
     seen.add(cur._id);
     const patch = {};
-    for (const f of ['name', 'nid', 'brand', 'team', 'sys', 'status', 'email', 'joined']) if (inc[f] && normSpace(cur[f]) !== inc[f] && !(f === 'nid' && Core.cleanId(cur.nid) === inc.nid)) patch[f] = inc[f];
+    for (const f of ['name', 'nid', 'brand', 'team', 'sys', 'status', 'email', 'joined', 'card']) if (inc[f] && normSpace(cur[f]) !== inc[f] && !(f === 'nid' && Core.cleanId(cur.nid) === inc.nid)) patch[f] = inc[f];
     if (inc.base && +cur.base !== inc.base) patch.base = inc.base;
     if (inc.spvName && normName(supName(cur.spv)) !== normName(inc.spvName)) (plan.sup = plan.sup || []).push([cur.name, inc.spvName]);
     if (Object.keys(patch).length) plan.updates.push({ id: cur._id, name: cur.name, patch }); else if (!(inc.spvName && normName(supName(cur.spv)) !== normName(inc.spvName))) plan.same++;
@@ -15599,7 +15673,7 @@ function prepareMerge(rows, src) {
   $('confirmBody').innerHTML = `<p style="margin:0">From <b>${esc(src)}</b>: ${plural(rows.length, 'person', 'people')}.</p>
     <div class="minis"><div><b>${plan.adds.length}</b><span>new</span></div><div><b>${plan.updates.length}</b><span>updated</span></div><div><b>${plan.same}</b><span>unchanged</span></div><div><b>${rosterRows().length}</b><span>on the roster now</span></div></div>
     ${plan.adds.length ? `<section class="sec"><h3>New</h3><ul class="ilist">${lim(plan.adds, a => `<li><span class="nm" dir="auto">${esc(a.name)}</span><span class="sg">${esc(a.brand)} · ${esc(a.team)}</span></li>`)}</ul></section>` : ''}
-    ${plan.updates.length ? `<section class="sec"><h3>Updated</h3><ul class="ilist">${lim(plan.updates, u => `<li><span class="nm" dir="auto">${esc(u.name)}</span><span class="sg">${esc(Object.entries(u.patch).map(([k, v]) => `${{ nid: 'ID', sys: 'system name', joined: 'joined' }[k] || k}: ${k === 'joined' ? Forms.fmtDate(v) : v}`).join(', '))}</span></li>`)}</ul></section>` : ''}
+    ${plan.updates.length ? `<section class="sec"><h3>Updated</h3><ul class="ilist">${lim(plan.updates, u => `<li><span class="nm" dir="auto">${esc(u.name)}</span><span class="sg">${esc(Object.entries(u.patch).map(([k, v]) => `${{ nid: 'ID', sys: 'system name', joined: 'joined', card: 'scorecard' }[k] || k}: ${k === 'joined' ? Forms.fmtDate(v) : v}`).join(', '))}</span></li>`)}</ul></section>` : ''}
     <p class="hint">People on the roster who are not in the file stay as they are. Empty cells in the file do not clear anything. Tip: use Export roster first to keep a backup.</p>`;
   $('confirmOk').disabled = !total; $('confirmOk').textContent = total ? `Import ${plural(total, 'change')}` : 'Nothing to import';
   openDrawer('dConfirm');
@@ -16196,6 +16270,14 @@ async function exportHistory() {
 
 // ---------------------------------------------------------------- KPI scorecards: results per agent, the KPI file, exports, editor
 const cardFor = (team, k) => ((curCards(k).teams || {})[normSpace(team)] || null);   // the card in force for a month (the month looked at, when none is given)
+/** the key of the card a person is scored with in a month: the scorecard set on their page (p.card: a card's key or name, for the
+    roles with a card of their own: SPVs, managers), else their team's ('' when there is none) */
+function cardKeyOf(p, k) {
+  const T = curCards(k).teams || {}, c = normSpace(p && p.card);
+  if (c) { if (T[c]) return c; const n = normName(c), hit = Object.keys(T).find(x => normName(x) === n || normName(T[x].title) === n); if (hit) return hit; }
+  const t = normSpace(p && p.team); return T[t] ? t : '';
+}
+const cardOf = (p, k) => { const key = cardKeyOf(p, k); return key ? curCards(k).teams[key] : null; };
 const kpiFileNow = () => state.kpiFiles[monthKey()] || null;
 const pct1 = x => (x == null ? '–' : `${+(x * 100).toFixed(1)}%`);
 function kpiFileRowFor(p) {
@@ -16206,16 +16288,19 @@ function kpiFileRowFor(p) {
 function computeKpi() {
   const out = new Map(); if (!state.model) return out;
   const md = incModel(), attByPid = md ? new Map(md.att.map(r => [r.pid, r])) : new Map(), target = state.settings.target, k0 = monthKey();
-  for (const m of state.model) {
-    if (!m.shown) continue; const card = cardFor(m.p.team, k0); if (!card) continue;
-    const a = attOf(m.p._id), cnt = a ? Att.counts(a.days, a.tardyFile) : null, fr = kpiFileRowFor(m.p), file = fileValues(card, monthKey(), m.p, null);
-    const vals = { adh: m.avg, adhUnder: m.adh ? m.adh.filter(v => v != null && v < target).length : null, aht: m.aht, tardy: cnt ? cnt.tardyMin : null, file };
+  const one = (m, card, team) => {
+    const a = attOf(m.p._id), cnt = a ? Att.counts(a.days, a.tardyFile) : null, fr = kpiFileRowFor(m.p), file = fileValues(card, k0, m.p, null);
+    const vals = { adh: m.avg, adhUnder: m.adh ? m.adh.filter(v => v != null && v < target).length : null, aht: m.aht, tardy: cnt ? cnt.tardyMin : null, team: team ?? null, file, ...kpiOver(card, k0, m.p, null) };
     const ar = attByPid.get(m.p._id);   // the days as the month's rules count them (attended: the penalty for absence is taken in Kpi.score)
     const res = Kpi.score(card, vals, ar && ar.has ? { sched: ar.sched, attended: ar.attended, absent: ar.absent, runs: ar.runs } : null, baseOf(m.p, null, k0), countFor(k0));
     res.elig = eligibility(res, qRow(k0, m.p._id), null, k0, m.p);
     if (!res.elig.ok && res.earned != null) { res.earnedCalc = res.earned; res.earned = 0; }
-    out.set(m.p._id, { m, card, fileRow: fr, res });
-  }
+    out.set(m.p._id, { m, card, ck: cardKeyOf(m.p, k0), fileRow: fr, res });
+  };
+  for (const m of state.model) { if (!m.shown) continue; const card = cardOf(m.p, k0); if (card) one(m, card); }
+  // Team Performance: the supervisors' cards rank their team's average final %, so they are scored again once their team is
+  const lead = [...out.values()].filter(K => hasTeamKpi(K.card));
+  for (let i = 0; i < 3 && lead.length; i++) for (const K of lead) one(K.m, K.card, teamPerf(K.m.p._id, pid => { const X = out.get(pid); return X ? X.res.finalPct : null; }));
   return out;
 }
 const kpiSum = r => ({ finalRank: r.finalRank == null ? '–' : r.finalRank.toFixed(2), finalPct: pct1(r.finalPct), sched: r.sched, actual: r.actual, daysPct: pct1(r.daysPct), target: srHidden() ? '–' : r.target, earned: srHidden() ? '–' : r.earned, missing: r.missing.join(', ') });
@@ -16227,7 +16312,7 @@ function kpiCardHtml(pid) {
   const K = state.kpi.get(pid);
   if (!K) {
     if (!state.ctx) return '';
-    return `<section class="sec"><h3>KPI results</h3><p class="subtle">${cardFor(p.team, monthKey()) ? 'Not in the reports this month.' : `No scorecard for ${esc(p.team || 'this team')} yet. Add it in Settings › Scorecards.`}</p></section>`;
+    return `<section class="sec"><h3>KPI results</h3><p class="subtle">${cardOf(p, monthKey()) ? 'Not in the reports this month.' : `No scorecard for ${esc(p.team || 'this team')} yet. Add it in Settings › Scorecards.`}</p></section>`;
   }
   const r = K.res, S = kpiSum(r);
   return `<section class="sec"><h3>KPI results · ${esc(K.card.title)}</h3>
@@ -16242,9 +16327,9 @@ function kpiNotes(add) {
   const v = Kpi.validate(curCards(monthKey()));
   v.forEach(t => add({ id: 'kpi:v:' + t, sev: 'warn', group: 'Scorecards', title: t, body: 'Fix it in Settings › Scorecards.' }));
   if (!state.model) return;
-  const shown = state.model.filter(m => m.shown), noCard = [...new Set(shown.filter(m => !cardFor(m.p.team, monthKey()) && !['MG', 'OP'].includes(m.p.team)).map(m => m.p.team || '–'))];
+  const shown = state.model.filter(m => m.shown), noCard = [...new Set(shown.filter(m => !cardOf(m.p, monthKey()) && !['MG', 'OP'].includes(m.p.team)).map(m => m.p.team || '–'))];
   if (noCard.length) add({ id: 'kpi:nocard', sev: 'info', group: 'Scorecards', title: `No scorecard yet for ${noCard.join(', ')}`, body: 'Their KPI results are left out until a scorecard is added in Settings › Scorecards.' });
-  const mm = rulesFor(monthKey()).elig.minMonths, noJoin = mm > 0 ? shown.filter(m => cardFor(m.p.team, monthKey()) && !m.p.joined) : [];
+  const mm = rulesFor(monthKey()).elig.minMonths, noJoin = mm > 0 ? shown.filter(m => cardOf(m.p, monthKey()) && !m.p.joined) : [];
   if (noJoin.length) add({ id: 'kpi:nojoin', sev: 'info', group: 'Scorecards', title: `No joining date for ${plural(noJoin.length, 'person', 'people')}`, body: `The incentive starts after ${mm} months in the job, counted from the joining date on the roster. Without one the rule is not checked: ${noJoin.slice(0, 6).map(m => m.exp).join(', ')}${noJoin.length > 6 ? ` and ${noJoin.length - 6} more` : ''}. Add it on each person's page (Edit), or import the roster with a "Joining date" column.` });
   const miss = new Map();
   for (const K of state.kpi.values()) for (const x of K.res.rows) if (x.r == null) { if (!miss.has(x.k.name)) miss.set(x.k.name, []); miss.get(x.k.name).push(K.m.exp); }
@@ -16280,14 +16365,15 @@ function renderKpiTab() {
   $('bKpi').textContent = all.length;
   if (!state.ctx) { el.innerHTML = emptyCard('No data yet', 'Drop the exports and the attendance files on Import, then the KPI file. Every agent with a scorecard gets a KPI result here.'); $('kpiTools').hidden = true; return; }
   $('kpiTools').hidden = false;
-  const teams = [...new Set(all.map(K => normSpace(K.m.p.team)))].sort((a, b) => (DEP_ORDER.indexOf(a) + 1 || 99) - (DEP_ORDER.indexOf(b) + 1 || 99));
-  if (state.kpiTeam && !teams.includes(state.kpiTeam)) state.kpiTeam = '';
-  $('kTeam').innerHTML = `<option value="">All teams</option>${teams.map(t => `<option value="${esc(t)}"${t === state.kpiTeam ? ' selected' : ''}>${esc(t)} – ${esc((cardFor(t, monthKey()) || { title: '' }).title)}</option>`).join('')}`;
+  // one choice per scorecard (a team's, or a role's such as the SPVs'), so the KPI columns always fit the people shown
+  const cks = [...new Set(all.map(K => K.ck))].sort(cardOrder), CT = curCards(monthKey()).teams || {};
+  if (state.kpiTeam && !cks.includes(state.kpiTeam)) state.kpiTeam = '';
+  $('kTeam').innerHTML = `<option value="">All scorecards</option>${cks.map(t => `<option value="${esc(t)}"${t === state.kpiTeam ? ' selected' : ''}>${esc(t)} – ${esc((CT[t] || { title: '' }).title)}</option>`).join('')}`;
   const q = normName(state.kpiQ || '');
-  let L = all.filter(K => (!state.kpiTeam || normSpace(K.m.p.team) === state.kpiTeam) && (!q || normName(`${K.m.exp} ${K.m.p.name} ${K.m.p.nid}`).includes(q)));
+  let L = all.filter(K => (!state.kpiTeam || K.ck === state.kpiTeam) && (!q || normName(`${K.m.exp} ${K.m.p.name} ${K.m.p.nid}`).includes(q)));
   const dir = state.kpiSort || 'desc';
   L.sort((a, b) => (dir === 'name' ? a.m.exp.localeCompare(b.m.exp) : (a.res.finalRank == null) - (b.res.finalRank == null) || (dir === 'asc' ? 1 : -1) * ((a.res.finalRank ?? 0) - (b.res.finalRank ?? 0)) || a.m.exp.localeCompare(b.m.exp)));
-  const card = state.kpiTeam ? cardFor(state.kpiTeam, monthKey()) : null;
+  const card = state.kpiTeam ? CT[state.kpiTeam] || null : null;
   const tot = L.reduce((t, K) => t + (K.res.earned || 0), 0), full = L.filter(K => K.res.complete).length;
   const sr = !srHidden();   // the WFM analysts do not see the incentive amounts
   $('kpiCount').textContent = `${plural(L.length, 'agent')} · ${full} with every KPI${sr ? ` · earned ${tot.toLocaleString('en-US')} SR in total` : ''}${kpiFileNow() ? '' : ' · no KPI file yet'}`;
@@ -16298,12 +16384,80 @@ function renderKpiTab() {
       ${card ? r.rows.map(x => `<td class="r num">${esc(Kpi.fmtVal(x.k, Kpi.rankedVal(x)))} ${rankChip(x.r)}</td>`).join('') : ''}
       <td class="r num">${r.finalRank == null ? '–' : r.finalRank.toFixed(2)}</td><td class="r num"><b>${pct1(r.finalPct)}</b></td><td class="r num">${pct1(r.daysPct)}</td>${sr ? `<td class="r num">${r.target ?? '–'}</td><td class="r num"><b>${r.earned ?? '–'}</b></td>` : ''}${card ? '' : `<td class="subtle">${esc(r.missing.join(', '))}</td>`}</tr>`; }).join('');
   el.innerHTML = `<div class="tablewrap histgrid kpigrid"><table><thead>${head}</thead><tbody>${body || '<tr><td colspan="10" class="empty">Nobody matches.</td></tr>'}</tbody></table></div>
-    ${card ? `<p class="hint">${card.kpis.map(k => `<b>${esc(k.name)}</b> (${esc(Kpi.SRC[k.src] || k.src)}): ${esc(Kpi.bandText(k))}`).join('<br>')}</p>` : ''}`;
+    ${card ? `<p class="hint">${card.kpis.map(k => `<b>${esc(k.name)}</b> (${esc(k.fig ? "the month's figure, else " : '')}${esc(Kpi.SRC[k.src] || k.src)}): ${esc(Kpi.bandText(k))}`).join('<br>')}</p>` : ''}`;
+  renderKpiExtra();
 }
+// ---- the month's figures and the values typed by hand (Review › KPI results)
+const canKx = () => hasRole('admin', 'user', 'wfm', 'senior');
+/** the KPIs of the cards in force that take a month figure, once each, with the cards that use them */
+function figKpis(k) {
+  const m = new Map();
+  for (const [key, c] of Object.entries(curCards(k).teams || {})) for (const kk of c.kpis) if (kk.fig) { const x = m.get(kk.id) || { k: kk, cards: [] }; x.cards.push(key); m.set(kk.id, x); }
+  return [...m.values()];
+}
+/** a stored value as it is typed: 88.5% for a percent, seconds, NA */
+const kxIn = (kk, v) => (v == null ? '' : v === Kpi.NA ? 'NA' : kk.unit === 'pct' ? `${+(v * 100).toFixed(2)}%` : String(+(+v).toFixed(3)));
+function kxSaved(col, k, what, undo) {
+  const body = (col === 'kfig' ? state.kfig : state.khand)[k] || {};
+  if (state.db) queueWrite(`${col}/${k}`, () => (Object.keys(body).length ? state.db.doc(`${col}/${k}`).set(JSON.parse(JSON.stringify(body))) : state.db.doc(`${col}/${k}`).delete()));
+  state.kxVer++; if (state.ctx) state.kpi = computeKpi(); renderKpiTab(); if (state.ws !== 'build') renderWs();
+  if (what) toast(what, undo ? { label: 'Undo', fn: undo } : undefined);
+}
+function renderKpiExtra() {
+  const el = $('kpiExtra'); if (!el) return;
+  if (!state.ctx) { el.innerHTML = ''; return; }
+  const k = monthKey(), can = canKx(), F = state.kfig[k] || {}, H = state.khand[k] || {}, L = figKpis(k), CT = curCards(k).teams || {};
+  const cols = [['Virgin', 'Virgin'], ['Friendi', 'FRiENDi'], ['Friendi Pay', 'FRiENDi Pay'], ['all', 'All brands']];
+  const figs = L.length ? `<div class="tablewrap formtab"><table><thead><tr><th>KPI</th>${cols.map(([, l]) => `<th class="r">${esc(l)}</th>`).join('')}<th>Used by</th></tr></thead><tbody>${L.map(({ k: kk, cards }) => `<tr><td>${esc(kk.name)}<br><small class="subtle">${esc(kk.unit === 'pct' ? '%' : kk.unit === 'sec' ? 'seconds or m:ss' : kk.unit)}</small></td>${cols.map(([c, l]) => `<td><input class="cell r" data-kfig="${esc(kk.id)}|${esc(c)}" value="${esc(kxIn(kk, F[kk.id] ? F[kk.id][c] : null))}" placeholder="–" inputmode="decimal" aria-label="${esc(kk.name)}, ${esc(l)}"${can ? '' : ' disabled'}></td>`).join('')}<td><small>${esc(cards.join(', '))}</small></td></tr>`).join('')}</tbody></table></div>` : '<p class="subtle">No scorecard takes a month figure.</p>';
+  // typed by hand: one value for one person, for any KPI of their card
+  const people = [...state.kpi.values()].sort((a, b) => cardOrder(a.ck, b.ck) || a.m.exp.localeCompare(b.m.exp));
+  if (!people.some(K => K.m.p._id === state.khPid)) state.khPid = people[0] ? people[0].m.p._id : '';
+  const cur = state.kpi.get(state.khPid), list = [];
+  for (const [pid, o] of Object.entries(H)) { const K = state.kpi.get(pid), p = K ? K.m.p : state.roster.find(x => x._id === pid), card = K ? K.card : p ? cardOf(p, k) : null; for (const [id, v] of Object.entries(o || {})) { const kk = card && card.kpis.find(q => q.id === id); list.push({ pid, id, name: K ? K.m.exp : p ? gname(effP(pid) || p) || p.name : '(not in the roster)', kpi: kk ? kk.name : id, val: kk ? Kpi.fmtVal(kk, v) : String(v) }); } }
+  list.sort((a, b) => a.name.localeCompare(b.name) || a.kpi.localeCompare(b.kpi));
+  const hand = `${can && people.length ? `<div class="toolbar kxadd"><select class="cell" data-khp aria-label="Person">${people.map(K => `<option value="${esc(K.m.p._id)}"${K.m.p._id === state.khPid ? ' selected' : ''}>${esc(K.m.exp)} · ${esc(K.ck)}</option>`).join('')}</select>
+      <select class="cell" data-khk aria-label="KPI">${cur ? cur.card.kpis.map(kk => `<option value="${esc(kk.id)}">${esc(kk.name)}</option>`).join('') : ''}</select>
+      <input class="cell" data-khv placeholder="91% or NA" aria-label="Value" spellcheck="false"><button class="btn sm" data-khadd>Add</button></div>` : ''}
+    ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Name</th><th>KPI</th><th class="r">Value</th>${can ? '<th></th>' : ''}</tr></thead><tbody>${list.map(x => `<tr><td dir="auto">${esc(x.name)}</td><td>${esc(x.kpi)}</td><td class="r num">${esc(x.val)}</td>${can ? `<td><button class="rowbtn danger" data-khdel="${esc(x.pid)}|${esc(x.id)}" aria-label="Remove ${esc(x.kpi)} of ${esc(x.name)}">Remove</button></td>` : ''}</tr>`).join('')}</tbody></table></div>` : '<p class="subtle">Nothing typed by hand this month.</p>'}`;
+  el.innerHTML = `<section class="card kxcard"><div class="cardhead"><div><h2>Month figures · ${esc(ymLabel(k))}</h2><p class="cap">One number per brand for the KPIs that rank a figure of the whole floor (Service Level, Floor QoS, AHT…). A card of the person's brand takes their brand's; the others take All brands, or the brands' average when it is empty. Type % values as 88.5%, seconds as 152 or 2:32.</p></div></div>${figs}</section>
+    <section class="card kxcard"><div class="cardhead"><div><h2>Typed by hand · ${esc(ymLabel(k))}</h2><p class="cap">A value for one person that is in no file: Staff Satisfaction, Digital projects, CST compliance, a Team Performance given by the senior manager… It wins over every other source. NA = does not apply this month (${esc(countFor(k).na === 'scale' ? 'left out' : 'counts as ranking 5')}).</p></div></div>${hand}</section>`;
+}
+$('kpiExtra').addEventListener('change', e => {
+  const el = e.target, k = monthKey();
+  if (el.matches('[data-khp]')) { state.khPid = el.value; renderKpiExtra(); return; }
+  if (!el.dataset.kfig || !canKx()) return;
+  const [id, col] = el.dataset.kfig.split('|'), hit = figKpis(k).find(x => x.k.id === id); if (!hit) return;
+  const raw = normSpace(el.value), v = raw === '' ? null : Kpi.normValue(hit.k, raw);
+  if (raw !== '' && v == null) { toast(`Type ${hit.k.unit === 'pct' ? 'a % such as 88.5%' : hit.k.unit === 'sec' ? 'seconds such as 152, or 2:32' : 'a number'}, or NA.`); renderKpiExtra(); return; }
+  const F = state.kfig[k] = { ...(state.kfig[k] || {}) }, old = F[id] ? { ...F[id] } : null, row = { ...(F[id] || {}) };
+  if (v == null) delete row[col]; else row[col] = v;
+  if (Object.keys(row).length) F[id] = row; else delete F[id];
+  const lab = col === 'all' ? 'all brands' : col;
+  kxSaved('kfig', k, `${hit.k.name}, ${lab}: ${v == null ? 'cleared' : Kpi.fmtVal(hit.k, v)}`, () => { const G = state.kfig[k] = { ...(state.kfig[k] || {}) }; if (old) G[id] = old; else delete G[id]; kxSaved('kfig', k); });
+});
+$('kpiExtra').addEventListener('click', e => {
+  if (!canKx()) return;
+  const k = monthKey(), add = e.target.closest('[data-khadd]'), del = e.target.closest('[data-khdel]');
+  if (add) {
+    const box = add.closest('.kxadd'), pid = box.querySelector('[data-khp]').value, id = box.querySelector('[data-khk]').value, K = state.kpi.get(pid), kk = K && K.card.kpis.find(q => q.id === id); if (!kk) return;
+    const raw = normSpace(box.querySelector('[data-khv]').value), v = Kpi.normValue(kk, raw);
+    if (v == null) { toast(`Type ${kk.unit === 'pct' ? 'a % such as 91%' : kk.unit === 'sec' ? 'seconds such as 152, or 2:32' : 'a number'}, or NA.`); box.querySelector('[data-khv]').focus(); return; }
+    const H = state.khand[k] = { ...(state.khand[k] || {}) }, old = H[pid] ? { ...H[pid] } : null; H[pid] = { ...(H[pid] || {}), [id]: v };
+    kxSaved('khand', k, `${K.m.exp}: ${kk.name} ${Kpi.fmtVal(kk, v)}`, () => { const G = state.khand[k] = { ...(state.khand[k] || {}) }; if (old) G[pid] = old; else delete G[pid]; kxSaved('khand', k); });
+    return;
+  }
+  if (del) {
+    const [pid, id] = del.dataset.khdel.split('|'), H = state.khand[k] = { ...(state.khand[k] || {}) }, old = H[pid] ? { ...H[pid] } : null; if (!old) return;
+    const o = { ...old }; delete o[id]; if (Object.keys(o).length) H[pid] = o; else delete H[pid];
+    kxSaved('khand', k, 'Removed the value typed by hand', () => { const G = state.khand[k] = { ...(state.khand[k] || {}) }; G[pid] = old; kxSaved('khand', k); });
+  }
+});
 // ---- exports
 const kpiPeriod = () => `${MONTH_LONG[state.m - 1]} ${state.y}`;
 function kpiList(pids) { return pids.map(id => state.kpi.get(id)).filter(Boolean); }
-function visibleKpi() { const q = normName(state.kpiQ || ''); return [...state.kpi.values()].filter(K => (!state.kpiTeam || normSpace(K.m.p.team) === state.kpiTeam) && (!q || normName(`${K.m.exp} ${K.m.p.name} ${K.m.p.nid}`).includes(q))); }
+function visibleKpi() { const q = normName(state.kpiQ || ''); return [...state.kpi.values()].filter(K => (!state.kpiTeam || K.ck === state.kpiTeam) && (!q || normName(`${K.m.exp} ${K.m.p.name} ${K.m.p.nid}`).includes(q))); }
+/** scorecards in the order of the departments, each team's role cards after it (CT, CT-SPV, CT-CCM…) */
+const cardOrder = (a, b) => { const d = x => (DEP_ORDER.indexOf(String(x).split('-')[0]) + 1 || 99); return d(a) - d(b) || (Kpi.isRoleCard(a) - Kpi.isRoleCard(b)) || String(a).localeCompare(String(b)); };
 async function kpiPdf(list, name) {
   if (!list.length) { toast('Nobody to export.'); return; }
   try {
@@ -16333,14 +16487,14 @@ async function kpiExcel(list, name, single) {
     put('Incentive Target', srHidden() ? null : r.target, val, labY); put('Earned SR', srHidden() ? null : r.earned, val); put('Comment', r.missing.length ? 'Missing: ' + r.missing.join(', ') : '', val);
     W.logoAt(4, 1, 52, 8, 4); sheets.push(W);
   } else {
-    const byTeam = new Map(); list.forEach(K => { const t = normSpace(K.m.p.team); if (!byTeam.has(t)) byTeam.set(t, []); byTeam.get(t).push(K); });
-    for (const [t, L] of [...byTeam].sort((a, b) => (DEP_ORDER.indexOf(a[0]) + 1 || 99) - (DEP_ORDER.indexOf(b[0]) + 1 || 99))) {
-      const card = cardFor(t, monthKey()) || L[0].card, W = new Sh(`${t} KPI`.slice(0, 31)); W.tab = 'FF1F3864'; W.set(1, 1, `KPI results - ${kpiPeriod()} - ${t} (${card.title})`, ttl);
+    const byTeam = new Map(); list.forEach(K => { const t = K.ck || normSpace(K.m.p.team); if (!byTeam.has(t)) byTeam.set(t, []); byTeam.get(t).push(K); });
+    for (const [t, L] of [...byTeam].sort((a, b) => cardOrder(a[0], b[0]))) {
+      const card = L[0].card, W = new Sh(`${t} KPI`.slice(0, 31)); W.tab = 'FF1F3864'; W.set(1, 1, `KPI results - ${kpiPeriod()} - ${t} (${card.title})`, ttl);
       const H = ['ID', 'Name', 'Team', 'Dep', ...card.kpis.flatMap(k => [k.name, 'Ranking']), 'Final ranking', 'Final %', 'Scheduled day', 'Actual days', 'Actual Days %', 'Incentive Target', 'Earned SR', 'Comment'];
       H.forEach((h, j) => { W.set(3, j + 1, h, hd); W.width(j + 1, j === 1 ? 30 : j === 0 ? 13 : 11); }); W.heights[3] = 32;
       L.sort((a, b) => a.m.exp.localeCompare(b.m.exp)).forEach((K, i) => {
         const r = K.res, R = i + 4; let c = 1;
-        W.set(R, c++, Core.cleanId(K.m.p.nid) || 'NA', txt); W.set(R, c++, K.m.exp, txt); W.set(R, c++, normSpace(K.m.p.brand), num); W.set(R, c++, t, num);
+        W.set(R, c++, Core.cleanId(K.m.p.nid) || 'NA', txt); W.set(R, c++, K.m.exp, txt); W.set(R, c++, normSpace(K.m.p.brand), num); W.set(R, c++, normSpace(K.m.p.team) || t, num);
         for (const x of r.rows) { W.set(R, c++, cellV(x.k, Kpi.rankedVal(x)), x.k.unit === 'pct' ? npc : num); W.set(R, c++, x.r, num); }
         W.set(R, c++, r.finalRank, num); W.set(R, c++, r.finalPct, npc); W.set(R, c++, r.sched, num); W.set(R, c++, r.actual, num); W.set(R, c++, r.daysPct, npc); W.set(R, c++, srHidden() ? null : r.target, num); W.set(R, c++, srHidden() ? null : r.earned, num);
         W.set(R, c++, r.missing.length ? 'Missing: ' + r.missing.join(', ') : '', txt);
@@ -16351,7 +16505,7 @@ async function kpiExcel(list, name, single) {
   const SC = new Sh('Scorecards'); SC.width(1, 10); SC.width(2, 34); SC.width(3, 10); SC.width(4, 12); SC.width(5, 60); SC.width(6, 34);
   SC.set(1, 1, `KPI scorecards - ${kpiPeriod()}`, ttl);
   ['Team', 'KPI', 'Weight', 'Target', 'Ranking bands', 'Source'].forEach((h, j) => SC.set(3, j + 1, h, hd));
-  let sr = 4; const used = new Set(list.map(K => normSpace(K.m.p.team)));
+  let sr = 4; const used = new Set(list.map(K => K.ck || normSpace(K.m.p.team)));
   const CK = curCards(monthKey());
   for (const [t, c] of Object.entries(CK.teams)) { if (!used.has(t)) continue; for (const k of c.kpis) { SC.set(sr, 1, t, num); SC.set(sr, 2, k.name, txt); SC.set(sr, 3, k.weight, npc); SC.set(sr, 4, Kpi.target(k), num); SC.set(sr, 5, Kpi.bandText(k), txt); SC.set(sr, 6, Kpi.SRC[k.src] || k.src, txt); sr++; } }
   SC.set(sr + 1, 2, `Incentive: the base (${Object.entries({ ...BASES0, ...(CK.bases || {}) }).map(([b, v]) => `${b} ${v}`).join(', ')} SR) × actual days % = target; × final % = earned (rounded).`, txt);
@@ -16375,12 +16529,12 @@ async function kpiTemplate() {
   const ttlT = S.get({ font: { sz: 16, b: true, color: 'FF000000' } });
   const shown = (state.model || []).filter(m => m.shown);
   for (const [t, c] of Object.entries(curCards(monthKey()).teams)) {
-    const fk = c.kpis.filter(k => k.src === 'file'); if (!fk.length) continue;
-    const L = shown.filter(m => normSpace(m.p.team) === t), W = new Sh(`${t}`); W.tab = 'FF1F3864';
+    const fk = c.kpis.filter(k => k.src === 'file'), L = shown.filter(m => cardKeyOf(m.p, monthKey()) === t); if (!fk.length || (Kpi.isRoleCard(t) && !L.length)) continue;   // a role's card only when someone has it
+    const W = new Sh(`${t}`); W.tab = 'FF1F3864';
     W.set(1, 1, `KPI input - ${t} - ${MON[state.m - 1]} ${state.y}`, ttlT);
     const H = ['ID', 'Name', 'Brand', 'Team', ...fk.map(k => k.name)];
     H.forEach((h, j) => { W.set(3, j + 1, h, hd); W.width(j + 1, j === 1 ? 32 : j < 4 ? 12 : 18); }); W.heights[3] = 30;
-    L.forEach((m, i) => { const R = i + 4; W.set(R, 1, Core.cleanId(m.p.nid) || '', tx); W.set(R, 2, m.exp, tx); W.set(R, 3, normSpace(m.p.brand), tx); W.set(R, 4, t, tx); fk.forEach((k, j) => W.set(R, 5 + j, null, inp)); });
+    L.forEach((m, i) => { const R = i + 4; W.set(R, 1, Core.cleanId(m.p.nid) || '', tx); W.set(R, 2, m.exp, tx); W.set(R, 3, normSpace(m.p.brand), tx); W.set(R, 4, normSpace(m.p.team) || t, tx); fk.forEach((k, j) => W.set(R, 5 + j, null, inp)); });
     for (let R = L.length + 4; R <= L.length + 13; R++) fk.forEach((k, j) => W.set(R, 5 + j, null, inp));
     W.freeze = [4, 3]; W.titleLogo(); sheets.push(W);
   }
@@ -16390,35 +16544,50 @@ async function kpiTemplate() {
   await save(`KPI input - ${MON[state.m - 1]} ${state.y}.xlsx`, new Blob([await Writer2.pack(sheets, S, {}, { logo: await xlLogo() })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
 }
 // ---- scorecard editor
-// saved scorecards from before the WF card fix: Quality of Work 95% ranks 5 on the WF card
+// saved scorecards from before the WF card fix: Quality of Work 95% ranks 5 on the WF card. Saved before every department had a card
+// (the September 2026 incentive file): the new cards are added (TS, DE, the SPVs and the managers' cards), and the QA and WF cards
+// take the month's figures for the KPIs that rank a figure of the whole floor (the QA specialists their own brand's)
 function migrateCards(teams) {
-  const q = teams && teams.WF && (teams.WF.kpis || []).find(k => k.id === 'qow');
+  if (!teams || typeof teams !== 'object') return;
+  const q = teams.WF && (teams.WF.kpis || []).find(k => k.id === 'qow');
   if (q && JSON.stringify(q.bands) === JSON.stringify([0.98, 0.95, 0.9, null])) q.bands = [0.95, 0.90, 0.85, 0.80];
+  const D = Kpi.DEFAULTS().teams;
+  for (const [t, ids] of [['QA', ['fqos', 'aht']], ['WF', ['sl', 'radh']]]) {
+    const c = teams[t]; if (!c || !Array.isArray(c.kpis)) continue;
+    for (const k of c.kpis) if (ids.includes(k.id) && k.fig === undefined) k.fig = true;
+    if (t === 'QA' && c.scope === undefined) c.scope = 'brand';
+  }
+  for (const t of Object.keys(D)) if (!teams[t]) teams[t] = D[t];
 }
 function persistCards() { if (!state.db) return; const body = JSON.parse(JSON.stringify(state.cards)); queueWrite('config/scorecards', () => state.db.doc('config/scorecards').set(body)); }
 function renderScore() {
   const can = canRules(), C = ruleCards(), teams = Object.keys(C.teams), t = teams.includes(state.scoreTeam) ? state.scoreTeam : teams[0]; state.scoreTeam = t;
-  const card = C.teams[t], issues = Kpi.validate({ teams: { [t]: card } }), wsum = card.kpis.reduce((a, k) => a + (+k.weight || 0), 0);
+  const card = C.teams[t], issues = Kpi.validate({ teams: { [t]: card } }), wsum = card.kpis.reduce((a, k) => a + (+k.weight || 0), 0), pay = card.pay;
+  const payOf = b => (pay == null ? '' : typeof pay === 'object' ? (Number(pay[b]) > 0 ? pay[b] : '') : Number(pay) > 0 ? pay : '');
   const free = DEP_ORDER.filter(x => !teams.includes(x)), B = { ...BASES0, ...(C.bases || {}) };
   const bandIn = (k, i) => { const v = k.bands[i]; const shown = v == null || v === '' ? '' : k.unit === 'pct' ? +(v * 100).toFixed(3) : v; return `<input class="cell bandin" data-sb="${i}" value="${esc(shown)}" placeholder="–" inputmode="decimal" aria-label="Rank ${5 - i} ${k.dir === 'low' ? 'up to' : 'from'}">`; };
   $('scoreBody').innerHTML = `${rulesBarHtml()}
-    <div class="field"><span class="lbl">Team</span><div class="seg wrap" id="scTeams">${teams.map(x => `<button data-f="${esc(x)}" aria-pressed="${x === t}">${esc(x)}</button>`).join('')}</div>
+    <div class="field"><span class="lbl">Scorecard</span><div class="seg wrap" id="scTeams">${teams.slice().sort(cardOrder).map(x => `<button data-f="${esc(x)}" aria-pressed="${x === t}" title="${esc(C.teams[x].title)}">${esc(x)}</button>`).join('')}</div>
+      <small>A team's card scores everyone in the team. A role's card (CT-SPV, QA-MGR…) scores the people given it on their page or with the roster's Scorecard column.</small>
       ${free.length && can ? `<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><select class="cell" id="scAddTeam" aria-label="Team to add">${free.map(x => `<option value="${x}">${x} – ${esc(DEP_NAMES[x] || '')}</option>`).join('')}</select><button class="btn sm" id="scAdd">Add a scorecard</button></div>` : ''}</div>
     <fieldset class="formlock rulesfs"${can ? '' : ' disabled'}>
-    <div class="field"><span class="lbl">Incentive base (SR)</span><div class="basegrid">${BRANDS.map(b => `<label><span>${esc(b)}</span><input type="number" min="0" step="1" data-base="${esc(b)}" value="${B[b]}" aria-label="Incentive base for ${esc(b)}"></label>`).join('')}</div><small>Incentive target = base × actual days %. Earned = target × final %. A person's own base in the roster (for team leads and specialists) wins.</small></div>
+    <div class="field"><span class="lbl">Incentive base (SR)</span><div class="basegrid">${BRANDS.map(b => `<label><span>${esc(b)}</span><input type="number" min="0" step="1" data-base="${esc(b)}" value="${B[b]}" aria-label="Incentive base for ${esc(b)}"></label>`).join('')}</div><small>Incentive target = base × actual days %. Earned = target × final %. A person's own base in the roster wins, then the scorecard's base below.</small></div>
     ${eligEditHtml()}
     ${countEditHtml()}
     <div class="field"><label for="scTitle">Scorecard name</label><input id="scTitle" value="${esc(card.title)}"></div>
+    <div class="field"><span class="lbl">Base for this scorecard (SR)</span><div class="basegrid">${BRANDS.map(b => `<label><span>${esc(b)}</span><input type="number" min="0" step="1" data-cpay="${esc(b)}" value="${esc(payOf(b))}" placeholder="${esc(B[b])}" aria-label="${esc(t)} base for ${esc(b)}"></label>`).join('')}</div><small>Empty = the brand's base above. The SPVs' card pays 1600 SR for Virgin and 1000 SR for FRiENDi, as in the September 2026 incentive file.</small></div>
+    <div class="field"><span class="lbl">Month figures</span><div class="seg sm wrap" role="group" aria-label="Which month figure this card ranks"><button type="button" data-cscope="all" aria-pressed="${card.scope !== 'brand'}">All brands</button><button type="button" data-cscope="brand" aria-pressed="${card.scope === 'brand'}">The person's brand</button></div><small>For the KPIs entered as a month figure (Service Level, Floor QoS, AHT…), typed once a month on Review › KPI results. All brands = the all-brands figure, or the brands' average.</small></div>
     <div class="tablewrap formtab sctab"><table><thead><tr><th>KPI</th><th>From</th><th>Entered by</th><th class="r">Weight %</th><th>Better</th><th class="r">5</th><th class="r">4</th><th class="r">3</th><th class="r">2</th><th></th></tr></thead><tbody>
     ${card.kpis.map((k, i) => `<tr data-ki="${i}"><td><input class="cell" data-sf="name" value="${esc(k.name)}" aria-label="KPI name"></td>
-      <td><select class="cell" data-sf="src" aria-label="Source">${Object.entries(Kpi.SRC).map(([v, l]) => `<option value="${v}"${k.src === v ? ' selected' : ''} title="${esc(l)}">${esc({ adh: 'Adherence %', adhUnder: 'Days under target', aht: 'AHT (sec)', tardy: 'Tardy (min)', file: 'KPI file' }[v])}</option>`).join('')}</select></td>
-      <td>${k.src === 'file' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="quality"${ownerOf(k) === 'quality' ? ' selected' : ''}>Quality team</option><option value="file"${ownerOf(k) === 'file' ? ' selected' : ''}>KPI file</option></select>` : '<span class="subtle">Genesys</span>'}</td>
+      <td><select class="cell" data-sf="src" aria-label="Source">${Object.entries(Kpi.SRC).map(([v, l]) => `<option value="${v}"${k.src === v ? ' selected' : ''} title="${esc(l)}">${esc({ adh: 'Adherence %', adhUnder: 'Days under target', aht: 'AHT (sec)', tardy: 'Tardy (min)', file: 'KPI file', team: 'Team performance' }[v])}</option>`).join('')}</select></td>
+      <td>${k.src === 'file' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="quality"${!k.fig && ownerOf(k) === 'quality' ? ' selected' : ''}>Quality team</option><option value="file"${!k.fig && ownerOf(k) === 'file' ? ' selected' : ''}>KPI file</option><option value="fig"${k.fig ? ' selected' : ''}>Month figure</option></select>`
+        : k.src === 'team' ? '<span class="subtle">Their team</span>' : k.src === 'aht' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="genesys"${k.fig ? '' : ' selected'}>Genesys</option><option value="fig"${k.fig ? ' selected' : ''}>Month figure</option></select>` : '<span class="subtle">Genesys</span>'}</td>
       <td><input class="cell r" data-sf="weight" value="${+(k.weight * 100).toFixed(2)}" inputmode="decimal" aria-label="Weight %"></td>
       <td><select class="cell" data-sf="dir" aria-label="Better"><option value="high"${k.dir === 'high' ? ' selected' : ''}>Higher</option><option value="low"${k.dir === 'low' ? ' selected' : ''}>Lower</option></select></td>
       ${[0, 1, 2, 3].map(j => `<td>${bandIn(k, j)}</td>`).join('')}
       <td>${can ? `<button class="rowbtn danger" data-sdel="${i}" aria-label="Remove ${esc(k.name)}">Remove</button>` : ''}</td></tr>`).join('')}
     </tbody></table></div>
-    <p class="hint">Bands: the lowest value for each ranking when higher is better, or the highest value when lower is better. Percent KPIs are typed as %. Leave a ranking empty when it is not used (for example "NIL"). Below the last band is ranking 1.</p>
+    <p class="hint">Bands: the lowest value for each ranking when higher is better, or the highest value when lower is better. Percent KPIs are typed as %. Leave a ranking empty when it is not used (for example "NIL"). Below the last band is ranking 1. A month figure is typed once a month on Review › KPI results; until it is, the KPI's own source counts. A value typed there for one person wins over every source.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${can ? '<button class="btn sm" id="scKpiAdd">Add a KPI</button>' : ''}<span class="pill ${Math.abs(wsum - 1) < 0.001 ? 'good' : 'bad'}">Weights ${+(wsum * 100).toFixed(1)}%</span>${issues.map(x => `<span class="pill bad">${esc(x.replace(/^[A-Z]+: /, ''))}</span>`).join('')}</div>
     ${can ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm ghost" id="scReset">Reset ${esc(t)} to kpi.xlsx</button>${Kpi.DEFAULTS().teams[t] ? '' : `<button class="btn sm ghost" id="scRemove">Remove the ${esc(t)} scorecard</button>`}</div>` : ''}</fieldset>`;
 }
@@ -17440,16 +17609,23 @@ function profileHtml(p) {
       <span>${normSpace(p.sys) && normName(p.sys) !== normName(p.name) ? `Roster name: <span dir="auto">${esc(p.name)}</span> · ` : ''}${esc(DEP_NAMES[p.team] || p.team || '')}</span></div>
       <button class="sw" role="switch" aria-checked="${on}" data-psw aria-label="Status"><i></i>${on ? 'Active' : 'Inactive'}</button></div>
     <div class="pfacts"><div><span>National ID</span><b class="num">${id ? esc(id) : '<span class="warnline">Missing</span>'}</b>${filled ? '<small>from the IDs file</small>' : ''}</div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b><small>${esc(DEP_NAMES[p.team] || '')}</small></div><div><span>Genesys name</span><b dir="auto">${esc(gname(p) || '–')}</b><small dir="auto">${normSpace(p.sys) ? 'system name' : 'same as the roster'}${akaOf(p).length ? ` · also written ${esc(akaOf(p).join(', '))}` : ''}</small></div></div>
-    <details class="pedit"${state.peditOpen ? ' open' : ''}><summary>Edit name, ID, brand, team and joining date</summary><div class="pfields">
+    <details class="pedit"${state.peditOpen ? ' open' : ''}><summary>Edit name, ID, brand, team, scorecard and joining date</summary><div class="pfields">
       ${fld('name', 'Name', p.name, 'dir="auto" placeholder="Full name"')}${fld('nid', 'National ID', p.nid, 'inputmode="numeric" placeholder="10 digits or NA"')}
-      ${sel('brand', 'Brand', BRANDS, p.brand)}${sel('team', 'Team', DEP_ORDER, p.team, DEP_NAMES)}
+      ${sel('brand', 'Brand', BRANDS, p.brand)}${sel('team', 'Team', DEP_ORDER, p.team, DEP_NAMES)}${scorecardSel(p)}
       ${fld('sys', 'System name (Genesys)', p.sys, 'dir="auto" list="sysNames" autocomplete="off" placeholder="Same as the name"')}
       ${fld('spvName', 'Supervisor', supName(p.spv), 'list="supNames" dir="auto" placeholder="–"')}${fld('email', 'Work email', p.email || '', 'type="email" placeholder="name@company.com" spellcheck="false"')}
       ${fld('joined', 'Joining date', p.joined || '', `type="date" min="1990-01-01" max="2100-12-31" title="${(n => (n > 0 ? `The incentive starts the month after ${n} months in the job` : 'The rules do not count time in the job'))(rulesFor(monthKey()).elig.minMonths)}"`)}
-      ${fld('base', 'Incentive base (SR)', p.base || '', `inputmode="numeric" placeholder="${basesNow()[normBrand(p.brand)] ?? 1000} (the brand's)"`)}
+      ${fld('base', 'Incentive base (SR)', p.base || '', `inputmode="numeric" placeholder="${(cp => (cp ? `${cp.base} (the scorecard's)` : `${basesNow()[normBrand(p.brand)] ?? 1000} (the brand's)`))(cardPay(p, null, monthKey()))}"`)}
       <div class="pfoot"><span class="hint">Saved as you leave each field. The Genesys name is what the exports are matched on.</span><button class="btn sm ghost danger" data-premove>Remove from the roster</button></div></div></details></section>`;
 }
 
+/** the person's scorecard: their team's, or a role's own (an SPV, a manager), for the month looked at */
+function scorecardSel(p) {
+  const T = curCards(monthKey()).teams || {}, ck = normSpace(p.card) ? cardKeyOf(p, monthKey()) : '', lost = normSpace(p.card) && !(ck && ck !== normSpace(p.team)) && !T[normSpace(p.card)] ? normSpace(p.card) : '';
+  const own = `<option value="">${esc(T[normSpace(p.team)] ? `The team's: ${T[normSpace(p.team)].title}` : 'The team\'s (none yet)')}</option>`;
+  const L = Object.keys(T).filter(x => x !== normSpace(p.team)).sort(cardOrder).map(x => `<option value="${esc(x)}"${x === ck ? ' selected' : ''}>${esc(x)} – ${esc(T[x].title)}</option>`).join('');
+  return `<label class="pf"><span>Scorecard</span><select data-pf="card" title="The KPIs, weights and base the incentive is counted with. SPVs and managers have a card of their own.">${own}${L}${lost ? `<option value="${esc(lost)}" selected>${esc(lost)} (not in the rules)</option>` : ''}</select></label>`;
+}
 // ---- history for one agent: chart, table, export
 const PH = ['adh', 'fin', 'earned', 'aht', 'ded', 'conf', 'absent', 'tardy', 'adhUnder', 'worked', 'wfExc', 'wfAbs', 'wfLate', 'wfShort', 'occ', 'ans', 'hnd', 'pAht', 'hold', 'acw', 'xferR', 'heldR'];
 const PH_SHORT = { adh: 'Adherence', fin: 'Final %', earned: 'Earned', aht: 'AHT', ded: 'Deduction', conf: 'Conformance', absent: 'Absent', tardy: 'Tardy', adhUnder: 'Days under', worked: 'Worked', wfExc: 'Exceptions', wfAbs: 'No sign-on', wfLate: 'Late', wfShort: 'Short of shift', occ: 'Occupancy', ans: 'Answered', hnd: 'Handled', pAht: 'Avg handle', hold: 'Hold', acw: 'ACW', xferR: 'Transfers', heldR: 'Hold rate' };
@@ -18350,6 +18526,7 @@ $('scoreBody').addEventListener('click', e => {
   if (countClick(e)) return;   // How it is counted (rules.js)
   if (!canRules()) return;
   const C = ruleCards(), card = C.teams[state.scoreTeam], T = state.scoreTeam;
+  const sc = e.target.closest('[data-cscope]'); if (sc) { const v = sc.dataset.cscope; if ((card.scope || 'all') === v) return; if (v === 'brand') card.scope = 'brand'; else delete card.scope; scoreChanged(`${T}: month figures ${v === 'brand' ? 'of the person\'s brand' : 'of all brands'}`); return; }
   if (e.target.closest('#scAdd')) { const t = $('scAddTeam').value; C.teams[t] = { title: `${DEP_NAMES[t] || t} scorecard`, kpis: JSON.parse(JSON.stringify(C.teams.CC ? C.teams.CC.kpis : [])) }; state.scoreTeam = t; scoreChanged(`Added a ${t} scorecard, copied from CC`); toast(`Added a ${t} scorecard, copied from CC. Change the KPIs to match.`); return; }
   if (e.target.closest('#scKpiAdd')) { card.kpis.push({ id: 'k' + Date.now().toString(36), name: 'New KPI', src: 'file', unit: 'pct', dir: 'high', weight: 0, bands: [0.95, 0.9, 0.85, 0.8], aliases: [] }); scoreChanged(`${T}: added a KPI`); return; }
   const d = e.target.closest('[data-sdel]'); if (d) { const i = +d.dataset.sdel, old = card.kpis[i]; card.kpis.splice(i, 1); scoreChanged(`${T}: removed ${old.name}`); toast(`Removed ${old.name}`, { label: 'Undo', fn: () => { card.kpis.splice(i, 0, old); scoreChanged(`${T}: put ${old.name} back`); } }); return; }
@@ -18370,15 +18547,26 @@ $('scoreBody').addEventListener('change', e => {
     tgt.elig = { ...ELIG0, ...(tgt.elig || {}), [f]: v };
     scoreChanged(f === 'minFinal' ? `Lowest final % for the incentive: ${pct1(old)} → ${pct1(v)}` : f === 'minMonths' ? `Months in the job before the incentive: ${old} → ${v}` : `Fewest days attended for the incentive: ${old} → ${v}`); return;
   }
+  if (el.dataset.cpay) {
+    const b = el.dataset.cpay, raw = normSpace(el.value), v = raw === '' ? null : parseFloat(raw); if (v != null && !(Number.isFinite(v) && v > 0)) { renderScore(); return; }
+    const old = card.pay, o = old == null ? {} : typeof old === 'object' ? { ...old } : Object.fromEntries(BRANDS.map(x => [x, old])), was = o[b];
+    if (v == null) delete o[b]; else o[b] = v;
+    if (Object.keys(o).length) card.pay = o; else delete card.pay;
+    const what = `${T}: base for ${b} ${was ? `${was} SR` : 'the brand\'s'} → ${v ? `${v} SR` : 'the brand\'s'}`; scoreChanged(what);
+    toast(what, { label: 'Undo', fn: () => { if (old === undefined) delete card.pay; else card.pay = old; scoreChanged(`${T}: base for ${b} back`); } }); return;
+  }
   if (el.id === 'scTitle') { const old = card.title; card.title = normSpace(el.value) || card.title; scoreChanged(`${T}: scorecard name "${old}" → "${card.title}"`); return; }
   const tr = el.closest('tr[data-ki]'); if (!tr) return; const k = card.kpis[+tr.dataset.ki];
   const f = el.dataset.sf, bt = (kk, v) => (v == null || v === '' ? 'not used' : kk.unit === 'pct' ? `${+(v * 100).toFixed(2)}%` : String(v));
   let what = '';
   if (f === 'name') { const old = k.name; k.name = normSpace(el.value) || k.name; if (k.src === 'file') k.aliases = [...new Set([...(k.aliases || [])])]; what = `renamed ${old} to ${k.name}`; }
-  if (f === 'src') { k.src = el.value; k.unit = { adh: 'pct', adhUnder: 'days', aht: 'sec', tardy: 'min' }[k.src] || 'pct'; k.dir = k.src === 'adh' || k.src === 'file' ? 'high' : 'low'; what = `${k.name} now comes from ${Kpi.SRC[k.src] || k.src}`; }
+  if (f === 'src') { k.src = el.value; k.unit = { adh: 'pct', adhUnder: 'days', aht: 'sec', tardy: 'min' }[k.src] || 'pct'; k.dir = ['adh', 'file', 'team'].includes(k.src) ? 'high' : 'low'; if (!['file', 'aht'].includes(k.src)) delete k.fig; what = `${k.name} now comes from ${Kpi.SRC[k.src] || k.src}`; }
   if (f === 'weight') { const v = parseFloat(el.value); if (!Number.isFinite(v)) { renderScore(); return; } const old = k.weight; k.weight = v / 100; what = `${k.name} weight ${+(old * 100).toFixed(2)}% → ${+v.toFixed(2)}%`; }
   if (f === 'dir') { k.dir = el.value; what = `${k.name}: ${k.dir === 'low' ? 'lower' : 'higher'} is better`; }
-  if (f === 'owner') { k.owner = el.value; what = `${k.name} is entered by ${k.owner === 'quality' ? 'the quality team' : 'the KPI file'}`; }
+  if (f === 'owner') {
+    if (el.value === 'fig') { k.fig = true; what = `${k.name} is the month's figure`; }
+    else { delete k.fig; if (el.value !== 'genesys') k.owner = el.value; what = `${k.name} is entered by ${el.value === 'genesys' ? 'Genesys' : k.owner === 'quality' ? 'the quality team' : 'the KPI file'}`; }
+  }
   if (el.dataset.sb != null) { const i = +el.dataset.sb, v = parseFloat(String(el.value).replace('%', '')), old = k.bands[i]; k.bands[i] = el.value.trim() === '' || !Number.isFinite(v) ? null : k.unit === 'pct' ? v / 100 : v; what = `${k.name} ranking ${5 - i}: ${bt(k, old)} → ${bt(k, k.bands[i])}`; }
   scoreChanged(`${T}: ${what}`);
 });
@@ -18453,6 +18641,7 @@ $('personBody').addEventListener('change', e => {
   const prev = p[f] ?? '';
   updatePerson(p._id, { [f]: v });
   if (f === 'sys') afterSysEdit(p, prev, v);
+  else if (f === 'card') { const c = cardOf({ ...p, card: v }, monthKey()); toast(`Scored with ${c ? c.title : 'no scorecard'}${v ? '' : ' (the team\'s)'}.`, { label: 'Undo', fn: () => updatePerson(p._id, { card: prev }) }); }
   else if (f === 'name') toast(`Saved. Name: ${v || '(empty)'}`, { label: 'Undo', fn: () => updatePerson(p._id, { [f]: prev }) });
 });
 $('personBody').addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('pedit')) state.peditOpen = e.target.open; }, true);
@@ -18828,7 +19017,7 @@ Object.assign(state, { cntOpen: false });
 const CNT_MISSING = { scale: 'left out; the other KPIs count as 100%', rank1: 'counts as ranking 1', none: 'no final % until every KPI has a value' };
 const CNT_EDGE = { in: 'gets that ranking', out: 'gets the ranking below' }, CNT_MONEY = { round: 'rounded', floor: 'rounded down', ceil: 'rounded up' };
 const CNT_LBL = { sched: 'Scheduled days', lateOver: 'Late days', pen: 'Absence penalty', eligDays: 'Fewest days for the incentive', missing: 'A KPI with no value', edge: 'A value exactly on a band',
-  valDp: 'Percent KPIs before ranking', rankDp: 'Final ranking', pct: 'Final %', pctDp: 'Final % rounding', daysPct: 'Days %', money: 'Whole SR', attitude: 'Critical errors that stop the incentive' };
+  valDp: 'Percent KPIs before ranking', secDp: 'Seconds KPIs before ranking', na: 'A KPI marked N/A', rankDp: 'Final ranking', pct: 'Final %', pctDp: 'Final % rounding', daysPct: 'Days %', money: 'Whole SR', attitude: 'Critical errors that stop the incentive' };
 const cntGroup = f => (['absentExtra', 'absentPer', 'absentFlat', 'countedMin'].includes(f) ? 'pen' : ['pctOf', 'pctTable'].includes(f) ? 'pct' : f);
 const pctDpText = dp => (dp < 0 ? 'not rounded' : dp === 2 ? 'rounded to a whole %' : dp > 2 ? `rounded to ${plural(dp - 2, 'decimal')}` : `rounded to steps of ${Math.pow(10, 2 - dp)}%`);
 /** the absence penalty in words ('4 more days off per absent day, never below 1 counted day') */
@@ -18849,6 +19038,8 @@ function cntText(g, c) {
   if (g === 'missing') return CNT_MISSING[c.missing];
   if (g === 'edge') return CNT_EDGE[c.edge];
   if (g === 'valDp') return c.valDp < 0 ? 'not rounded' : c.valDp === 0 ? 'rounded to a whole %' : `rounded to ${plural(c.valDp, 'decimal')}`;
+  if (g === 'secDp') return c.secDp < 0 ? 'not rounded' : c.secDp === 0 ? 'rounded to whole seconds' : `rounded to ${plural(c.secDp, 'decimal')}`;
+  if (g === 'na') return c.na === 'scale' ? 'left out; the other KPIs count as 100%' : 'counts as ranking 5';
   if (g === 'rankDp') return c.rankDp < 0 ? 'not rounded' : `rounded to ${plural(c.rankDp, 'decimal')}`;
   if (g === 'pct') return c.pctOf === 'table' && c.pctTable.length ? `from the table (${c.pctTable.map(x => `${x.min} or more: ${pct1(x.pct)}`).join(', ')})` : 'ranking ÷ 5';
   if (g === 'pctDp') return pctDpText(c.pctDp);
@@ -18881,6 +19072,8 @@ function countEditHtml() {
     ${row('A KPI with no value', cntSeg('missing', c.missing, [['scale', 'is left out'], ['rank1', 'counts as ranking 1'], ['none', 'no final % yet']], 'A KPI with no value'), esc(cntText('missing', c)[0].toUpperCase() + cntText('missing', c).slice(1)) + '.')}
     ${row('A value exactly on a band', cntSeg('edge', c.edge, [['in', 'gets that ranking'], ['out', 'gets the ranking below']], 'A value exactly on a band'))}
     ${row('Percent KPIs before ranking', cntSel('valDp', c.valDp, [[0, 'whole % (94.99% → 95%)'], [1, '1 decimal'], [2, '2 decimals'], [-1, 'not rounded']], 'Percent KPIs before ranking'), 'Rounded as Excel shows them, half up: 94.5% → 95%, 94.49% → 94%. The ranking and the band use the rounded value.')}
+    ${row('Seconds KPIs before ranking', cntSel('secDp', c.secDp, [[0, 'whole seconds (159.97 → 160)'], [1, '1 decimal'], [-1, 'not rounded']], 'Seconds KPIs before ranking'), 'AHT and other KPIs in seconds, as the incentive file shows them: 150.29 s ranks as 150, 159.97 s as 160.')}
+    ${row('A KPI marked N/A', cntSeg('na', c.na, [['rank5', 'counts as ranking 5'], ['scale', 'is left out']], 'A KPI marked N/A'), 'NA or N/A in the KPI file, or typed by hand, for a KPI that does not apply to someone that month. The September 2026 file ranks it 5.')}
     ${row('Final ranking', cntSel('rankDp', c.rankDp, [[2, '2 decimals'], [1, '1 decimal'], [0, 'whole number'], [3, '3 decimals'], [-1, 'not rounded']], 'Final ranking decimals'))}
     ${row('Final %', cntSeg('pctOf', c.pctOf, [['rank5', 'ranking ÷ 5'], ['table', 'from a table']], 'Final %') + table)}
     ${row('Final % rounding', cntSel('pctDp', c.pctDp, [[2, 'whole %'], [3, '1 decimal'], [4, '2 decimals'], [-1, 'not rounded']], 'Final % rounding'), 'For example 95.6% (when a KPI is left out) counts as 96%.')}
@@ -18921,7 +19114,7 @@ function countChange(el) {
   if (f === 'sched') { const s = new Set(c.sched); if (el.checked) s.add(el.dataset.code); else s.delete(el.dataset.code); countSet({ sched: [...s] }); return; }
   if (['lateOver', 'absentExtra', 'absentFlat', 'countedMin'].includes(f)) { const v = el.value.trim() === '' ? 0 : Number(el.value); if (!(Number.isFinite(v) && v >= 0)) { renderScore(); return; } countSet({ [f]: Math.round(v) }); return; }
   if (f === 'absentPer') { countSet({ absentPer: el.value }); return; }
-  if (['valDp', 'rankDp', 'pctDp'].includes(f)) { countSet({ [f]: Number(el.value) }); return; }
+  if (['valDp', 'secDp', 'rankDp', 'pctDp'].includes(f)) { countSet({ [f]: Number(el.value) }); return; }
   if (f === 'attitude') { const v = normSpace(el.value).replace(/\s*\|\s*/g, '|').replace(/^\||\|$/g, ''); try { new RegExp(v, 'i'); } catch (e) { toast('That is not a list of words separated by |.'); renderScore(); return; } countSet({ attitude: v }); return; }
   if (f === 'tmin' || f === 'tpct') {
     const i = +el.dataset.i, v = Number(el.value), t = c.pctTable.map(x => ({ ...x })); if (!t[i] || !(Number.isFinite(v) && v >= 0)) { renderScore(); return; }
@@ -18986,6 +19179,8 @@ function peopleBasesClick(e) {
 }
 
 // ---------------------------------------------------------------- how this was counted: one person's month, step by step
+/** where a KPI's value came from, when not from its own source */
+const HOW_FROM = { hand: '(typed by hand)', fig: "(the month's figure)", team: '(their team\'s average final %)' };
 /** a Build-month KPI result (state.kpi) as a month row, for the explanation */
 function kpiRowOfK(K) {
   const res = K.res;
@@ -19019,10 +19214,10 @@ function howHtml(r, k, o = {}) {
     const rows = T.map(([name, w, , val, rk, band], i) => {
       // a KPI rounded before it was ranked reads 'what it was → what it counted as' (x.vr and r.kv are kept by KPI id)
       const kk = kOf(name, i), vr = x && x.vr && kk ? x.vr[kk.id] : undefined, raw = vr != null && r.kv ? r.kv[kk.id] : undefined;
-      const pts = rk != null ? f2(rk * w / 100) : mm === 'rank1' ? f2(w / 100) : '–';
-      return `<tr><td>${esc(name)}</td><td class="r num">${vr != null ? `${esc(raw != null ? Kpi.fmtVal(kk, raw) : val)} <small>→ ${esc(Kpi.fmtVal(kk, vr))}</small>` : esc(val)}</td><td>${rk == null ? '<span class="subtle">no value</span>' : esc(band || '–')}</td><td class="r">${rankChip(rk)}</td><td class="r num">${esc(w)}%</td><td class="r num">${pts}</td></tr>`; }).join('');
+      const pts = rk != null ? f2(rk * w / 100) : mm === 'rank1' && val !== 'N/A' ? f2(w / 100) : '–', from = (kk && x && x.vs && HOW_FROM[x.vs[kk.id]]) || (kk && kk.src === 'team' ? HOW_FROM.team : '');
+      return `<tr><td>${esc(name)}${from ? ` <small class="subtle">${esc(from)}</small>` : ''}</td><td class="r num">${vr != null ? `${esc(raw != null ? Kpi.fmtVal(kk, raw) : val)} <small>→ ${esc(Kpi.fmtVal(kk, vr))}</small>` : esc(val)}</td><td>${rk == null ? `<span class="subtle">${val === 'N/A' ? 'N/A, left out' : 'no value'}</span>` : esc(band || '–')}</td><td class="r">${rankChip(rk)}</td><td class="r num">${esc(w)}%</td><td class="r num">${pts}</td></tr>`; }).join('');
     step('Each KPI', `<div class="tablewrap howtab"><table><thead><tr><th>KPI</th><th class="r">Result</th><th>Band reached</th><th class="r">Ranking</th><th class="r">Weight</th><th class="r">Points</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <p>Points = ranking × weight.${x && x.vd >= 0 ? ` Percent KPIs are rounded to ${x.vd ? plural(x.vd, 'decimal') : 'a whole %'} before they are ranked.` : ''}${x && x.ed === 'out' ? ' A value exactly on a band gets the ranking below.' : ''}</p>
+      <p>Points = ranking × weight.${x && x.vd >= 0 ? ` Percent KPIs are rounded to ${x.vd ? plural(x.vd, 'decimal') : 'a whole %'} before they are ranked.` : ''}${x && x.vr && T.some((t, i) => { const q = kOf(t[0], i); return q && q.unit === 'sec' && x.vr[q.id] !== undefined; }) ? ` Seconds are rounded to ${x.sd ? plural(x.sd, 'decimal') : 'whole seconds'} before they are ranked.` : ''}${x && x.na ? ` A KPI marked N/A ${x.na === 'scale' ? 'is left out' : 'counts as ranking 5'}.` : ''}${x && x.ed === 'out' ? ' A value exactly on a band gets the ranking below.' : ''}</p>
       ${miss.length ? `<p class="hownote">${esc(andList(miss))} had no value: ${mm === 'rank1' ? `${miss.length > 1 ? 'they count' : 'it counts'} as ranking 1.` : mm === 'none' ? 'no final % until every KPI has one.' : `${miss.length > 1 ? 'they are' : 'it is'} left out, and the other weights (${esc(pct1(x ? x.ws : T.filter(t => t[4] != null).reduce((a, t) => a + t[1] / 100, 0)))}) count as 100%.`}</p>` : ''}`);
   }
   // 2. final ranking and final %
@@ -19170,6 +19365,9 @@ function watchShared(db) {
   live('fresh', sn => { const f = {}; sn.docs.forEach(d => { f[d.id] = d.data(); }); state.fresh = f; renderFresh(); });
   live('cycle', sn => { const c = {}; sn.docs.forEach(d => { c[d.id] = d.data(); }); state.cycles = c; });
   live('kpi', sn => { sn.docs.forEach(d => { const x = d.data(); if (x && Array.isArray(x.rows)) state.kpiFiles[d.id] = x; }); });
+  // the month's figures and the values typed by hand (Review › KPI results): every month is scored again with them
+  const kx = (c, f) => live(c, sn => { const o = {}; sn.docs.forEach(d => { const x = d.data(); if (x && typeof x === 'object' && /^\d{4}-\d{2}$/.test(d.id)) o[d.id] = x; }); state[f] = o; state.kxVer++; if (state.ctx) state.kpi = computeKpi(); });
+  kx('kfig', 'kfig'); kx('khand', 'khand');
   live('spvdone', sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); const before = state.spvDone; state.spvDone = o; state.spvDoneVer++; notifyDone(before, o); });
   live('cyclelog', sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); state.cycleLog = o; });
   live('rules', rulesLoaded);
@@ -19251,8 +19449,8 @@ const kvOf = res => Object.fromEntries(res.rows.filter(z => z.v != null).map(z =
 /** every step of a score but the KPIs (the rows carry those), kept on the rows as kx for "How this was counted" */
 function howLite(res) {
   if (!res || !res.how) return null;
-  const { kpis, ...h } = res.how, vr = {}; kpis.forEach(x => { if (x.vr !== undefined) vr[x.id] = x.vr; });
-  return Object.keys(vr).length ? { ...h, vr } : h;
+  const { kpis, ...h } = res.how, vr = {}, vs = {}; kpis.forEach(x => { if (x.vr !== undefined) vr[x.id] = x.vr; if (x.s) vs[x.id] = x.s; });
+  return { ...h, ...(Object.keys(vr).length ? { vr } : {}), ...(Object.keys(vs).length ? { vs } : {}) };
 }
 /** the days a scored row keeps for the incentive: attended (kat), runs of absence (kr), absences as the rules count them (kab, only
     when they differ from the plain count) and the day rules (kdr, only when they are not the defaults) */
@@ -19283,7 +19481,7 @@ function monthData(k) {
 }
 /** a draft month built by the tool is scored again with today's inputs: the quality team's numbers, the supervisors' attendance
     corrections, the incentive bases and the eligibility rules. Months from older incentive files keep their own numbers. */
-function liveRow(r, p, k, rec) {
+function liveRow(r, p, k, rec, team) {
   const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5));
   const E = attEditsOf(k), ed = E && p ? E.get(p._id) : null;
   const F = state.finals[k], adj = F && F.adj ? F.adj[rowKey(r)] : null;
@@ -19293,7 +19491,7 @@ function liveRow(r, p, k, rec) {
     x = { ...z, ks: adj.ks, ka: adj.ka, kat: adj.ka, ...(dk === KDR0 ? {} : { kdr: dk }) };
   }
   if (!(rec && (rec.tool || rec.auto || rec.page || rec.daily))) return withAdj(x, adj);
-  const s = scoreLive(x, p, k); if (!s) return withAdj(x, adj);
+  const s = scoreLive(x, p, k, team); if (!s) return withAdj(x, adj);
   const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k, p);
   // ka = the days counted (after any absence penalty), kat = the days attended: kept apart so a penalty is never taken twice
   const { kat, kr, kab, kdr, ...y } = x, kept = s.again || res.sched != null ? countKept(res, x, k) : Object.fromEntries(Object.entries({ kat, kr, kab, kdr }).filter(([, v]) => v !== undefined));
@@ -19311,7 +19509,7 @@ const matchMemo = new Map();   // month -> { sig, map }: who in the roster is wh
 function rowsByPid(k) {
   const D = monthData(k); if (!D) return new Map();
   if (!D.final) watchAttEdits(k);
-  const sig = `${state.histVer}|${state.finVer}|${state.ver}|${state.roster.length}|${state.qualityVer}|${state.attEditsVer}|${state.rulesVer}|${Object.keys(state.kpiFiles).length}|${(state.kpiFiles[k] || {}).at || ''}`, hit = matchMemo.get(k);
+  const sig = `${state.histVer}|${state.finVer}|${state.ver}|${state.roster.length}|${state.qualityVer}|${state.attEditsVer}|${state.rulesVer}|${state.kxVer}|${Object.keys(state.kpiFiles).length}|${(state.kpiFiles[k] || {}).at || ''}`, hit = matchMemo.get(k);
   if (hit && hit.sig === sig) return hit.map;
   const rows = D.rows, byId = new Map(), byName = new Map(), used = new Set(), out = new Map(), rest = [];
   rows.forEach(r => { if (r.id) byId.set(String(r.id), r); if (!byName.has(normName(r.n))) byName.set(normName(r.n), r); });
@@ -19325,7 +19523,14 @@ function rowsByPid(k) {
     for (const r of rows) { if (used.has(r)) continue; const s = Math.max(Core.nameScore(p.name, r.n), normSpace(p.sys) ? Core.nameScore(p.sys, r.n) : 0); if (s > bs) { second = bs; bs = s; best = r; } else if (s > second) second = s; }
     if (best && bs >= 0.86 && bs - second >= 0.08) { out.set(p._id, best); used.add(best); }
   }
-  if (!D.final) for (const [pid, r] of out) out.set(pid, liveRow(r, state.roster.find(x => x._id === pid), k, D.rec));
+  if (!D.final) {
+    const raw = new Map(out), P = pid => state.roster.find(x => x._id === pid);
+    for (const [pid, r] of raw) out.set(pid, liveRow(r, P(pid), k, D.rec));
+    // Team Performance: the supervisors' cards rank their team's average final %, so they are scored again once their team is
+    // (three rounds: a senior manager over SPVs over agents)
+    const lead = [...raw.keys()].filter(pid => { const r = out.get(pid); return r && r.kc && hasTeamKpi(cardOf(P(pid), k)); });
+    for (let i = 0; i < 3 && lead.length; i++) for (const pid of lead) out.set(pid, liveRow(raw.get(pid), P(pid), k, D.rec, teamPerf(pid, x => { const r = out.get(x); return r && r.kc ? r.fin : null; })));
+  }
   matchMemo.set(k, { sig, map: out }); return out;
 }
 /** every row of a draft month as it would be frozen today (rows nobody in the roster matches stay as saved) */
@@ -19882,7 +20087,7 @@ $('personBody').addEventListener('click', e => { if (e.target.closest('[data-adh
 
 // ================================================================ SHARED PIECES: supervisors, incentive rules, live scores,
 // attendance from Genesys, freshness, email drafts, the Outlook .msg reader
-Object.assign(state, { quality: {}, qualityVer: 0, attEditsBy: {}, attEditsVer: 0, fresh: {}, contacts: null, spvCard: null, cycles: {}, cycleDone: {}, sigs: new Map(), sigVer: 0 });
+Object.assign(state, { quality: {}, qualityVer: 0, kfig: {}, khand: {}, kxVer: 0, attEditsBy: {}, attEditsVer: 0, fresh: {}, contacts: null, spvCard: null, cycles: {}, cycleDone: {}, sigs: new Map(), sigVer: 0 });
 
 // ---------------------------------------------------------------- supervisors: each person's Supervisor is another person in the roster
 function supName(pid) { const p = state.roster.find(x => x._id === pid); return p ? gname(effP(p._id) || p) || p.name : ''; }
@@ -19908,17 +20113,25 @@ const BASES0 = { Virgin: 1000, Friendi: 500, 'Friendi Pay': 500 };
 function basesNow(k) { const C = curCards(k); return { ...BASES0, ...((C && C.bases) || {}) }; }
 /** a person's base for a month: their own base for the months of the rules (cards.people), their own base in the roster, the brand's */
 function monthBase(p, k) { const C = curCards(k), x = p && C && C.people ? C.people[p._id] : null, b = x && Number(x.base); return b > 0 ? { base: b, x } : null; }
+/** the base a person's scorecard pays on (the SPVs' and managers' cards: one number, or one per brand), or null for the brand's */
+function cardPay(p, r, k) {
+  const c = p ? cardOf(p, k) : r ? cardFor(r.team, k) : null, pay = c && c.pay; if (pay == null) return null;
+  const v = typeof pay === 'object' ? Number(pay[normBrand((p && p.brand) || (r && r.brand))]) : Number(pay);
+  return v > 0 ? { base: v, card: c } : null;
+}
 function baseOf(p, r, k) {
   const mb = monthBase(p, k); if (mb) return mb.base;
   const own = p && Number(p.base); if (own > 0) return own;
+  const cp = cardPay(p, r, k); if (cp) return cp.base;
   const b = normBrand((p && p.brand) || (r && r.brand)), B = basesNow(k);
   return B[b] != null ? B[b] : (curCards(k) && curCards(k).base) || 1000;
 }
-/** where the base comes from, in words: { kind: 'month' | 'own' | 'brand' | 'default', text } */
+/** where the base comes from, in words: { kind: 'month' | 'own' | 'card' | 'brand' | 'default', text } */
 function baseWhy(p, r, k) {
   const mb = monthBase(p, k), R = rulesFor(k === undefined ? rulesK() : k), set = R.from ? `the rules from ${ymLabel(R.from)}` : 'the first rules';
   if (mb) return { kind: 'month', text: `this person's own base in ${set}${mb.x.src ? ` (${mb.x.src})` : ''}` };
   if (p && Number(p.base) > 0) return { kind: 'own', text: 'this person\'s own base in the roster' };
+  const cp = cardPay(p, r, k); if (cp) return { kind: 'card', text: `the base of the ${cp.card.title} scorecard` };
   const b = normBrand((p && p.brand) || (r && r.brand)), B = basesNow(k);
   return B[b] != null ? { kind: 'brand', text: `the ${b} base` } : { kind: 'default', text: 'the default base' };
 }
@@ -19988,12 +20201,42 @@ function fileValues(card, k, p, r) {
   }
   return out;
 }
+// ---------------------------------------------------------------- the month's figures and the values typed by hand
+// kfig/<month>: { kpiId: { Virgin, Friendi, 'Friendi Pay', all } } — one number per brand for the KPIs that rank a figure of the
+// whole floor (Service Level, Floor QoS, AHT of the brand…), typed once a month. khand/<month>: { pid: { kpiId: value | 'NA' } } —
+// a value typed for one person (Staff Satisfaction, Digital projects, Team Performance…), which wins over every other source.
+const FIG_COLS = ['Virgin', 'Friendi', 'Friendi Pay', 'all'];
+/** the figure a KPI of a card takes for a person: their brand's (scope 'brand'), else all brands (typed, or the brands' average) */
+function figValue(kk, card, k, p, r) {
+  const F = state.kfig[k], f = F && F[kk.id]; if (!f) return null;
+  const num = v => (v === Kpi.NA || (typeof v === 'number' && Number.isFinite(v)) ? v : null);
+  if (card && card.scope === 'brand') { const v = num(f[normBrand((p && p.brand) || (r && r.brand))]); if (v != null) return v; }
+  if (num(f.all) != null) return f.all;
+  const L = FIG_COLS.slice(0, 3).map(b => f[b]).filter(v => typeof v === 'number' && Number.isFinite(v));
+  return L.length ? L.reduce((a, v) => a + v, 0) / L.length : null;
+}
+/** the values that win over a KPI's own source for one person: typed by hand, then the month's figure (for KPIs that take one) */
+function kpiOver(card, k, p, r) {
+  const H = p && state.khand[k] ? state.khand[k][p._id] : null, over = {}, from = {};
+  for (const kk of card.kpis) {
+    const h = H ? H[kk.id] : null;
+    if (h === Kpi.NA || (typeof h === 'number' && Number.isFinite(h))) { over[kk.id] = h; from[kk.id] = 'hand'; continue; }
+    if (kk.fig) { const f = figValue(kk, card, k, p, r); if (f != null) { over[kk.id] = f; from[kk.id] = 'fig'; } }
+  }
+  return { over, from };
+}
+/** Team Performance: the average final % of the people someone supervises (the roster's Supervisor column) who have one */
+function teamPerf(pid, finOf) {
+  const L = state.roster.filter(x => x.spv === pid && x._id !== pid).map(x => finOf(x._id)).filter(v => typeof v === 'number' && Number.isFinite(v));
+  return L.length ? L.reduce((a, v) => a + v, 0) / L.length : null;
+}
+const hasTeamKpi = card => !!(card && card.kpis.some(kk => kk.src === 'team'));
 /** a saved month's row scored again with today's inputs (quality numbers, KPI file, the supervisor's attendance corrections, bases)
     and the month's rules. r.kat = days attended (r.ka on rows saved before the absence rules); the days are counted again only when
     the month's rules count other codes than the row was counted with */
-function scoreLive(r, p, k) {
-  const card = cardFor((p && p.team) || r.team, k); if (!card) return null;
-  const cfg = countFor(k), vals = { adh: r.adh ?? null, adhUnder: r.adhUnder ?? null, aht: r.aht ?? null, tardy: r.tardy ?? null, file: fileValues(card, k, p, r) };
+function scoreLive(r, p, k, team) {
+  const card = p ? cardOf(p, k) || cardFor(r.team, k) : cardFor(r.team, k); if (!card) return null;
+  const cfg = countFor(k), vals = { adh: r.adh ?? null, adhUnder: r.adhUnder ?? null, aht: r.aht ?? null, tardy: r.tardy ?? null, team: team ?? null, file: fileValues(card, k, p, r), ...kpiOver(card, k, p, r) };
   // kat = days attended (ka on rows saved before the counting rules), kab = absences as the rules count them (when a long late
   // day counts as one), kr = runs of absent days. Kpi.score takes the absence penalty off, so it is never taken twice.
   let att = r.ks != null ? { sched: r.ks, attended: r.kat ?? r.ka, absent: r.kab ?? r.absent, runs: r.kr } : null, again = false;
@@ -20602,7 +20845,7 @@ document.addEventListener('change', e => {
     it. Call QA is Quality Observations (CT: the Final Score). DRC-CSAT is not a column: it is one score for everyone (the box above). */
 const Q_TPL = { main: [['callqa', 'Call QA'], ['emp', 'Ticket QA / Empowerment Utilization'], ['fcr', 'Call Reason & FCR Accuracy'], ['final', 'Final Score (Average of Call QA, Ticket QA & CR)']], ct: [['qa', 'Evaluation score'], ['final', 'Final Score']] };
 const qVal = (x, f) => { const e = x.eval || {}, kp = x.kpi || {}; return f === 'callqa' ? e.callqa ?? null : f === 'final' ? e.final ?? null : f === 'emp' ? kp.emp ?? e.ticketqa ?? null : f === 'fcr' ? kp.fcr ?? e.cr ?? null : f === 'qobs' ? kp.qobs ?? qObsOf(e) : f === 'qa' ? kp.qa ?? e.ev ?? null : kp[f] ?? null; };
-const qTplOf = (p, k) => { const c = cardFor(p.team, k), ids = new Set(((c && c.kpis) || []).map(x => x.id)); return ids.has('qa') && !ids.has('emp') ? 'ct' : 'main'; };
+const qTplOf = (p, k) => { const c = cardOf(p, k), ids = new Set(((c && c.kpis) || []).map(x => x.id)); return ids.has('qa') && !ids.has('emp') ? 'ct' : 'main'; };
 const qPctTxt = v => (v == null ? '–' : `${+(v * 100).toFixed(2)}%`);
 function qTablesHtml(people, k, can, fixed, map) {
   const extra = qualityKpis().filter(x => !['qobs', 'emp', 'fcr', 'qa', 'csat'].includes(x.id));
@@ -25660,7 +25903,7 @@ function fuStats(spvPid, k) {
 function mtdProj(pid, k) {
   const H = state.history[k]; if (!H || !H.daily || monthLocked(k)) return null;
   const p = state.roster.find(x => x._id === pid), r = p ? rowOf(pid, k) : null; if (!r) return null;
-  const card = cardFor(p.team, k); if (!card) return null;
+  const card = cardOf(p, k); if (!card) return null;
   const days = (H.days || []).slice().sort(), asOf = days[days.length - 1] || '', last = asOf ? +asOf.slice(8) : 0, ND = Core.daysIn(+k.slice(0, 4), +k.slice(5));
   const scale = last ? Math.max(1, ND / last) : 1;
   const file = fileValues(card, k, p, r), pr = rowOf(pid, prevKey(k)), borrowed = [];
@@ -25670,7 +25913,7 @@ function mtdProj(pid, k) {
     if (v == null) { const z = (pr.kpi || []).find(x => normName(x[0]) === normName(kk.name)); v = z ? kpiNum(z[3], kk) : null; }
     if (v != null) { file[kk.id] = v; borrowed.push(kk.name); }
   }
-  const vals = { adh: r.adh ?? null, adhUnder: r.adhUnder != null ? Math.round(r.adhUnder * scale) : null, aht: r.aht ?? null, tardy: r.tardy != null ? Math.round(r.tardy * scale) : null, file };
+  const vals = { adh: r.adh ?? null, adhUnder: r.adhUnder != null ? Math.round(r.adhUnder * scale) : null, aht: r.aht ?? null, tardy: r.tardy != null ? Math.round(r.tardy * scale) : null, file, ...kpiOver(card, k, p, r) };
   // the days attended (not those counted after an absence penalty, which Kpi.score takes off again), absences scaled like the rest
   const att = r.ks != null && r.ks > 0 ? { sched: Math.round(r.ks * scale), attended: Math.round((r.kat ?? r.ka ?? 0) * scale), absent: Math.round((r.absent || 0) * scale), runs: Math.round((r.kr || 0) * scale) } : null;
   const res = Kpi.score(card, vals, att, baseOf(p, r, k), countFor(k)), el = eligibility(res, qRow(k, pid), null, k, p);
@@ -25980,7 +26223,7 @@ function rcRun(k) {
     const p = state.roster.find(q => q._id === pid), r = map.get(pid) || null;
     if (!r) { onlyOld.push({ name: x.name, id: x.id, file: x.files[0], why: `in the roster, but not in the tool's ${ymLabel(k)}` }); continue; }
     const team = normSpace((p && p.team) || r.team || ''), nm = p ? gname(effP(pid) || p) || p.name : x.name;
-    const t = { fin: r.fin ?? null, earned: r.earned ?? null, ks: r.ks ?? null, ka: r.kat ?? r.ka ?? null, absent: +r.absent || 0, runs: r.kr ?? null, base: r.base ?? baseOf(p, r, k), card: !!cardFor(team, k), team, scored, missing: (r.kpi || []).filter(z => z[4] == null).map(z => z[0]) };
+    const t = { fin: r.fin ?? null, earned: r.earned ?? null, ks: r.ks ?? null, ka: r.kat ?? r.ka ?? null, absent: +r.absent || 0, runs: r.kr ?? null, base: r.base ?? baseOf(p, r, k), card: !!(p ? cardOf(p, k) : cardFor(team, k)), team, scored, missing: (r.kpi || []).filter(z => z[4] == null).map(z => z[0]) };
     const toolV = { fin: t.fin, earned: t.earned, adh: r.adh ?? null, aht: r.aht ?? null, absent: r.absent ?? null, tardy: r.tardy == null ? null : Math.round(r.tardy), ka: t.ka, ks: t.ks };
     const cells = Recon.cellsOf(x.o, toolV, RC_MEAS.filter(m => x.o[m] != null), dp), st = Recon.statusOf(cells);
     const ex = st === 'same' || st === 'none' ? { causes: [], ref: null } : Recon.explain(x.o, t, { cfg, dp }), cE = cells.find(c => c.m === 'earned');
@@ -26616,6 +26859,7 @@ const DEPT = [
     'At month end, <b>WFM team › Import</b>: drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
+    'On <b>Review › KPI results</b>, under the table: <b>Month figures</b> takes the floor\'s numbers once a month, one per brand (Service Level, Floor QoS / Empowerment, AHT, Resources Adherence, Utilization, Digital and Complaints resolution time) for the SPVs\', specialists\' and managers\' cards; <b>Typed by hand</b> takes a value for one person that is in no file (Staff Satisfaction, Digital projects, CST compliance…), or NA when a KPI does not apply. The scores follow at once.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
     '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it); the incentive data workbook is made too. People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
     '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs. The incentive email comes from the build; its workbook is attached without the ID column too.',
@@ -26633,6 +26877,7 @@ const DEPT = [
     'The <b>Dashboard</b> and <b>WFM team › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
   ['senior', 'Senior manager', [
     '<b>Supervisors</b>: set the one-to-ones deadline and the month close days, and keep the <b>incentive rules</b>: the scorecards, the bases, who is eligible and how the days and KPIs are counted. Percent KPIs and the Final % are rounded to a whole % before they count (94.99% → 95%); the days % is never rounded.',
+    'Every department has a scorecard (CC, SM, CT, QA, WF, TS, DE, the SPVs), and the managers and some leads a card of their own (CT-SPV, CT-CCM, CT-SGM, OP-DIG, QA-MGR, WF-MGR, DE-MGR), which the WFM team gives on the person\'s page (Edit › Scorecard) or with a Scorecard column in the roster file. A card can have its own base per brand (the SPVs: 1600 SR Virgin, 1000 SR FRiENDi). Team Performance is the average final % of the people they supervise.',
     '<b>Results</b>: decide on eligibility where the rules say otherwise, adjust a result where needed (every change is logged), and <b>Finalize</b> the month.',
     '<b>Results › Reconcile with the old Excel</b>: drop the old final result (and the incentive or deduction workbook). The tool lines up every person and says why each number differs: an own base, an absence rule, a typing error in the old file. Each has a fix.',
     'Send the four emails from Supervisors: one-to-ones are ready, results for review to the VP, and the final result form.',

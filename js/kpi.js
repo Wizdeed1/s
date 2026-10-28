@@ -3,11 +3,31 @@
 const Kpi = ((C) => {
 const { normSpace, normName } = C;
 // src: where the value comes from. adh = monthly adherence (Genesys), adhUnder = days under the adherence target,
-// aht = AHT seconds (Genesys), tardy = tardy minutes (attendance), file = a column in the KPI file.
-// unit: pct (0-1), sec, min, days. dir: high = higher is better (bands are minimums), low = lower is better (bands are maximums).
+// aht = AHT seconds (Genesys), tardy = tardy minutes (attendance), file = a column in the KPI file, team = the average final % of
+// the people the person supervises (Team Performance).
+// unit: pct (0-1), sec, min, days, num. dir: high = higher is better (bands are minimums), low = lower is better (bands are maximums).
 // bands: [rank5, rank4, rank3, rank2] thresholds; null = that rank is not used ("NIL"/"n/a"). Anything outside rank 2 (or 3) = 1.
-const K = (id, name, src, unit, dir, weight, bands, aliases = []) => ({ id, name, src, unit, dir, weight, bands, aliases });
-const PCT4 = [0.95, 0.90, 0.85, 0.80];
+// fig: the KPI takes the month's figure (one number per brand, typed once a month) when there is one. A card's scope says which
+// figure: 'all' (all brands; the average of the brands when no all-brands figure is typed) or 'brand' (the person's brand).
+// A card's pay: its own incentive base, one number or one per brand (the SPVs' and the managers' cards); none = the brand's base.
+const K = (id, name, src, unit, dir, weight, bands, aliases = [], more) => ({ id, name, src, unit, dir, weight, bands, aliases, ...(more || {}) });
+const PCT4 = [0.95, 0.90, 0.85, 0.80], QOW = [0.98, 0.95, 0.90, null], AHT4 = [150, 160, 170, 180], SL4 = [0.85, 0.80, 0.75, 0.70];
+const FIG = { fig: true };
+// the leads' base: 1600 SR for Virgin, 1000 SR for FRiENDi (the managers with no base in the file take the brand's until one is set)
+const LEAD = { Virgin: 1600, Friendi: 1000, 'Friendi Pay': 1000 };
+// the KPIs many cards share (as the September 2026 incentive file has them)
+const csat = w => K('csat', 'DRC-CSAT', 'file', 'pct', 'high', w, [0.85, 0.80, 0.60, null], ['drc csat', 'csat', 'drccsat']);
+const qow = (w, b = QOW) => K('qow', 'Quality of Work', 'file', 'pct', 'high', w, b, ['quality', 'quality of work']);
+const adhd = w => K('adhd', 'Adherence (days under 95%)', 'adhUnder', 'days', 'low', w, [2, 4, 6, null], []);
+const fqos = w => K('fqos', 'Floor Quality of Service / Empowerment', 'file', 'pct', 'high', w, PCT4, ['floor quality of service', 'floor quality of service empowerment', 'floor quality', 'empowerment'], FIG);
+const ahtF = w => K('aht', 'AHT', 'aht', 'sec', 'low', w, AHT4, ['average handling time', 'average handling time aht'], FIG);
+const sl = w => K('sl', 'Service Level', 'file', 'pct', 'high', w, SL4, ['service level', 'service level %', 'sla'], FIG);
+const radh = w => K('radh', 'Resources Adherence', 'file', 'pct', 'high', w, PCT4, ['resources adherence', 'resource adherence', 'resources adherance'], FIG);
+const tperf = w => K('tperf', 'Team Performance', 'team', 'pct', 'high', w, SL4, ['team performance']);
+const cresp = w => K('cresp', 'Complaints Resolution Time', 'file', 'pct', 'high', w, [0.85, 0.80, 0.70, 0.60], ['complaints resolution time', 'complaint resolution time', 'complaints resoluion time'], FIG);
+const ssat = w => K('ssat', 'Staff Satisfaction (HR)', 'file', 'pct', 'high', w, [0.74, 0.70, 0.65, null], ['staff satisfaction hr', 'staff satisfaction', 'staff satisfaction -hr']);
+const ssmc = w => K('ssmc', 'Staff Satisfaction (MC)', 'file', 'pct', 'high', w, [0.80, 0.75, 0.70, null], ['staff satisfaction mc', 'staff satisfaction-mc']);
+const util = (w, more) => K('util', 'Utilization', 'file', 'pct', 'high', w, PCT4, ['utilisation'], more);
 const DEFAULTS = {
   base: 1000,
   teams: {
@@ -35,22 +55,48 @@ const DEFAULTS = {
       K('util', 'Utilization', 'file', 'pct', 'high', 0.20, PCT4, ['utilisation']),
       K('adhd', 'Adherence (days under 95%)', 'adhUnder', 'days', 'low', 0.10, [2, 4, 6, null], []),
     ] },
-    QA: { title: 'Member Care Quality Specialist', kpis: [
+    // the specialists rank their own brand's figures (Virgin's Floor QoS and AHT for a Virgin specialist)
+    QA: { title: 'Member Care Quality Specialist', scope: 'brand', kpis: [
       K('csat', 'DRC-CSAT', 'file', 'pct', 'high', 0.25, [0.85, 0.80, 0.60, null], ['drc csat', 'csat']),
-      K('fqos', 'Floor Quality of Service / Empowerment', 'file', 'pct', 'high', 0.25, PCT4, ['floor quality of service', 'floor quality', 'empowerment']),
-      K('aht', 'AHT', 'aht', 'sec', 'low', 0.10, [150, 160, 170, 180], ['average handling time']),
+      K('fqos', 'Floor Quality of Service / Empowerment', 'file', 'pct', 'high', 0.25, PCT4, ['floor quality of service', 'floor quality', 'empowerment'], FIG),
+      K('aht', 'AHT', 'aht', 'sec', 'low', 0.10, [150, 160, 170, 180], ['average handling time'], FIG),
       K('qow', 'Quality of Work', 'file', 'pct', 'high', 0.20, [0.98, 0.95, 0.90, null], ['quality', 'quality of work']),
       K('dev', 'Agent Development', 'file', 'pct', 'high', 0.20, PCT4, ['agent development', 'development']),
     ] },
     WF: { title: 'Member Care Support WF Specialist', kpis: [
-      K('sl', 'Service Level', 'file', 'pct', 'high', 0.30, [0.85, 0.80, 0.75, 0.70], ['service level']),
-      K('radh', 'Resources Adherence', 'file', 'pct', 'high', 0.25, PCT4, ['resources adherence', 'resource adherence', 'resources adherance']),
+      K('sl', 'Service Level', 'file', 'pct', 'high', 0.30, [0.85, 0.80, 0.75, 0.70], ['service level'], FIG),
+      K('radh', 'Resources Adherence', 'file', 'pct', 'high', 0.25, PCT4, ['resources adherence', 'resource adherence', 'resources adherance'], FIG),
       K('qow', 'Quality of Work', 'file', 'pct', 'high', 0.40, PCT4, ['quality', 'quality of work']),   // the WF card ranks 95% as 5
       K('adhd', 'Adherence (days under 95%)', 'adhUnder', 'days', 'low', 0.05, [2, 4, 6, null], []),
     ] },
+    TS: { title: 'Tele Sales Champion', pay: 1000, kpis: [
+      K('qobs', 'Quality Observations', 'file', 'pct', 'high', 0.25, PCT4, ['quality', 'quality observation', 'quality observations']),
+      K('cfb', 'Customer Feedback / Wrap-up Code', 'file', 'pct', 'high', 0.20, PCT4, ['customer feedback wrap up code', 'customer feedback', 'wrap up code']),
+      util(0.20),
+      K('crate', 'Contact Rate', 'file', 'num', 'high', 0.25, [100, 90, 80, 70], ['contact rate']),
+      adhd(0.10),
+    ] },
+    DE: { title: 'Member Care Digital Experience Champion', pay: 1600, kpis: [csat(0.25), fqos(0.20), ahtF(0.15), qow(0.30), adhd(0.10)] },
+    OP: { title: 'Member Care SPV / Leaders', pay: LEAD, kpis: [tperf(0.25), sl(0.30), ahtF(0.10), qow(0.25), ssmc(0.10)] },
+    // the cards of one role (a person takes one on their page, or with the roster's Scorecard column)
+    'OP-DIG': { title: 'Member Care Digital Manager', pay: LEAD, kpis: [tperf(0.25), util(0.20, FIG),
+      K('dres', 'Digital Team Resolution Time', 'file', 'sec', 'low', 0.20, [1800, 2099, 2399, 2699], ['digital team resolution time', 'digtal team resolution time'], FIG), qow(0.25), ssmc(0.10)] },
+    'CT-SPV': { title: 'Complaint SPV', pay: LEAD, kpis: [csat(0.25), tperf(0.20), cresp(0.20), qow(0.25), ssmc(0.10)] },
+    'CT-CCM': { title: 'Member Care Complaint and Control Manager', pay: 1000, kpis: [csat(0.25), K('cstc', 'CST Compliance', 'file', 'pct', 'high', 0.15, PCT4, ['cst compliance']), cresp(0.20),
+      K('csts', 'CST SLA', 'file', 'pct', 'high', 0.20, PCT4, ['cst sla']), qow(0.20)] },
+    'CT-SGM': { title: 'Member Care Complaint Management & Service Governance Senior Manager', kpis: [csat(0.25), tperf(0.20), cresp(0.20), qow(0.25), ssat(0.10)] },
+    'QA-MGR': { title: 'Member Care Quality Manager', kpis: [csat(0.25), fqos(0.30), ahtF(0.10), qow(0.25), ssat(0.10)] },
+    'WF-MGR': { title: 'Member Care Support WF Manager', kpis: [sl(0.30), radh(0.25), qow(0.35), ssat(0.10)] },
+    'DE-MGR': { title: 'Member Care Digital Experience Manager', kpis: [csat(0.25), fqos(0.20), ssat(0.10), sl(0.10),
+      K('dproj', 'Digital Projects Achievements', 'file', 'pct', 'high', 0.35, PCT4, ['digital projects achievements', 'digital projects'])] },
   },
 };
-const SRC = { adh: 'Adherence from Genesys', adhUnder: 'Days under the adherence target (Genesys)', aht: 'AHT from Genesys (seconds)', tardy: 'Tardy minutes from the attendance', file: 'KPI file column' };
+/** the cards of one role, not of a whole team (their keys are not departments) */
+const isRoleCard = key => /-/.test(String(key || ''));
+const SRC = { adh: 'Adherence from Genesys', adhUnder: 'Days under the adherence target (Genesys)', aht: 'AHT from Genesys (seconds)', tardy: 'Tardy minutes from the attendance', file: 'KPI file column',
+  team: 'Team Performance: the average final % of the people they supervise' };
+/** a KPI that is not applicable this month ("NA" in the KPI file, or typed by hand) */
+const NA = 'NA';
 const clone = o => JSON.parse(JSON.stringify(o));
 
 /** rank 1-5 for one value; null when there is no value. edge 'out': a value exactly on a band edge does not reach it */
@@ -82,9 +128,11 @@ const CODES = [...DAY_CODES, ...MORE_CODES].map(d => d.code);
 const dayCode = code => DAY_CODES.find(d => d.code === code) || MORE_CODES.find(d => d.code === code) || DC(code, code, code, same(code));
 // the defaults count as the tool always did, except that percent KPIs and the final % are rounded to a whole % (94.99% → 95%), as the
 // old incentive files did. The days % is never rounded: the old files pay with the exact days. cv: 2 marks a section saved since then.
+// secDp: seconds KPIs (AHT) are ranked on whole seconds, as the incentive file shows them (150.29 s ranks as 150, 159.97 s as 160).
+// na: a KPI marked NA for a person ranks 5, as the September 2026 file has it ('scale': it is left out and the others are scaled).
 const CV = 2;
 const COUNT0 = { sched: DAY_CODES.map(d => d.code), lateOver: 0, absentExtra: 0, absentPer: 'day', absentFlat: 0, countedMin: 0, eligDays: 'attended', missing: 'scale', edge: 'in',
-  rankDp: 2, valDp: 0, pctOf: 'rank5', pctTable: [], pctDp: 2, daysPct: 'ratio', money: 'round', attitude: 'attitude|abuse|hr action', cv: CV };
+  rankDp: 2, valDp: 0, secDp: 0, na: 'rank5', pctOf: 'rank5', pctTable: [], pctDp: 2, daysPct: 'ratio', money: 'round', attitude: 'attitude|abuse|hr action', cv: CV };
 const NORMED = new WeakSet();   // sections already made whole (they are never changed: an edit makes a new one)
 /** a saved 'count' section made whole and safe: anything missing or out of range takes the default */
 function normCount(c) {
@@ -100,7 +148,7 @@ function normCount(c) {
   try { new RegExp(attitude, 'i'); } catch (e) { attitude = D.attitude; }
   const n = { sched, lateOver: num(o.lateOver, 0, 1440, 0), absentExtra: num(o.absentExtra, 0, 31, 0), absentPer: one(o.absentPer, ['day', 'run'], 'day'), absentFlat: num(o.absentFlat, 0, 31, 0),
     countedMin: num(o.countedMin, 0, 31, 0), eligDays: one(o.eligDays, ['attended', 'counted'], 'attended'), missing: one(o.missing, ['scale', 'rank1', 'none'], 'scale'), edge: one(o.edge, ['in', 'out'], 'in'),
-    rankDp: num(o.rankDp, -1, 4, 2), valDp: num(o.valDp, -1, 4, 0), pctOf: one(o.pctOf, ['rank5', 'table'], 'rank5'), pctTable, pctDp: num(o.pctDp, -1, 6, 2),
+    rankDp: num(o.rankDp, -1, 4, 2), valDp: num(o.valDp, -1, 4, 0), secDp: num(o.secDp, -1, 3, 0), na: one(o.na, ['rank5', 'scale'], 'rank5'), pctOf: one(o.pctOf, ['rank5', 'table'], 'rank5'), pctTable, pctDp: num(o.pctDp, -1, 6, 2),
     daysPct: one(o.daysPct, ['ratio', 'full'], 'ratio'), money: one(o.money, ['round', 'floor', 'ceil'], 'round'), attitude, cv: CV };
   NORMED.add(n); return n;
 }
@@ -157,12 +205,22 @@ function bandOf(k, r, edge) {
   const used = b.filter(t => t != null && t !== ''), t = used[used.length - 1];
   return t == null ? 'no bands' : `${lo ? (out ? '≥' : '>') : (out ? '≤' : '<')} ${bandVal(k, t)}`;
 }
-/** turn a raw file value into the KPI's unit: percentages may come as 0.89, 89, "89%" or a 1-5 score (CSAT) */
+/** seconds from a time typed as h:mm:ss or mm:ss ('2:32' is 152), or null */
+function clockSec(t) { const m = /^(\d+):([0-5]?\d)(?::([0-5]?\d(?:\.\d+)?))?$/.exec(t); if (!m) return null; return m[3] == null ? +m[1] * 60 + +m[2] : +m[1] * 3600 + +m[2] * 60 + +m[3]; }
+/** turn a raw file value into the KPI's unit: percentages may come as 0.89, 89, "89%" or a 1-5 score (CSAT); seconds as 152, '2:32' or
+    an Excel time (a fraction of a day). "NA" or "N/A" marks a KPI that is not applicable this month (NA); any other text is no value */
 function normValue(k, raw) {
   if (raw == null || raw === '') return null;
+  if (raw === NA) return NA;
   let s = raw, pctSign = false;
-  if (typeof s === 'string') { s = normSpace(s); pctSign = /%$/.test(s); s = s.replace(/[%,\s]/g, ''); if (!s || !Number.isFinite(+s)) return null; s = +s; }
+  if (raw instanceof Date && k.unit === 'sec') return Number.isFinite(raw.getTime()) ? raw.getUTCHours() * 3600 + raw.getUTCMinutes() * 60 + raw.getUTCSeconds() : null;
+  if (typeof s === 'string') {
+    s = normSpace(s); if (/^n\s*[./]?\s*a\.?$/i.test(s)) return NA;
+    if (k.unit === 'sec' && s.includes(':')) return clockSec(s);
+    pctSign = /%$/.test(s); s = s.replace(/[%,\s]/g, ''); if (!s || !Number.isFinite(+s)) return null; s = +s;
+  }
   if (typeof s !== 'number' || !Number.isFinite(s)) return null;
+  if (k.unit === 'sec' && s > 0 && s < 1) return Math.round(s * 86400 * 1000) / 1000;   // an Excel time: 0:02:32 is 0.00176 of a day
   if (k.unit === 'pct') {
     if (pctSign) return s / 100;
     if (k.id === 'csat' && s > 1 && s <= 5) return s / 5;      // a 1-5 satisfaction score
@@ -173,6 +231,7 @@ function normValue(k, raw) {
 }
 const fmtVal = (k, v) => {
   if (v == null) return '–';
+  if (v === NA) return 'N/A';
   if (k.unit === 'pct') { const p = Math.round(v * 10000) / 100; return p.toFixed(Number.isInteger(p) ? 0 : 2) + '%'; }   // 0.57 reads 57%, not 57.00%
   if (k.unit === 'sec') return String(Math.round(v * 10) / 10);
   return String(Math.round(v * 100) / 100);
@@ -188,25 +247,31 @@ const target = k => (k.bands[0] == null ? '' : (k.dir === 'low' ? '≤ ' : '≥ 
 const roundTo = (x, dp) => { const f = Math.pow(10, dp); return Math.round(x * f) / f; };
 /** rounded half up as Excel shows it, on the 15 digits it keeps: 28.5% is 29%, though 0.285 × 100 is 28.499999999999996 */
 const roundXl = (x, dp) => { const f = Math.pow(10, dp); return Math.round(+(x * f).toPrecision(15)) / f; };
-/** the value a KPI was ranked with: rounded when the rules round percent KPIs */
-const rankedVal = x => (x.vr !== undefined ? x.vr : x.v);
+/** the value a KPI was ranked with: rounded when the rules round percent KPIs (or seconds), NA when it was not applicable */
+const rankedVal = x => (x.na ? NA : x.vr !== undefined ? x.vr : x.v);
 /**
- * score one person. vals: {adh, adhUnder, aht, tardy, file: {kpiId: value}} ; att: {sched, attended (or actual), absent, runs} ;
+ * score one person. vals: {adh, adhUnder, aht, tardy, team, file: {kpiId: value}, over: {kpiId: value}, from: {kpiId: 'hand' | 'fig'}}:
+ * over = values that win over the KPI's own source (typed by hand, or the month's figure), from = where each of those came from;
+ * att: {sched, attended (or actual), absent, runs} ;
  * cfg: the month's 'count' rules (the defaults when left out). actual = the days counted (attended less any absence penalty),
  * worked out here only, so a penalty is never taken twice. how = every step, for "How this was counted".
  */
 function score(card, vals, att, base, cfg) {
-  const c = normCount(cfg);
+  const c = normCount(cfg), over = vals.over || {}, from = vals.from || {};
   const rows = card.kpis.map(k => {
-    const v = k.src === 'file' ? (vals.file ? vals.file[k.id] ?? null : null) : (vals[k.src] ?? null);
-    const vr = c.valDp >= 0 && k.unit === 'pct' && v != null && Number.isFinite(v) ? roundXl(v * 100, c.valDp) / 100 : v;
-    return vr === v ? { k, v, r: rank(k, v, c.edge), w: +k.weight || 0 } : { k, v, vr, r: rank(k, vr, c.edge), w: +k.weight || 0 };
+    const s = over[k.id] != null ? from[k.id] || 'hand' : null, w = +k.weight || 0;
+    const v = s ? over[k.id] : k.src === 'file' ? (vals.file ? vals.file[k.id] ?? null : null) : (vals[k.src] ?? null);
+    if (v === NA) return { k, v: null, na: true, r: c.na === 'rank5' ? 5 : null, w, ...(s ? { s } : {}) };   // not applicable: ranks 5, or is left out
+    const vr = v == null || !Number.isFinite(v) ? v : c.valDp >= 0 && k.unit === 'pct' ? roundXl(v * 100, c.valDp) / 100 : c.secDp >= 0 && k.unit === 'sec' ? roundXl(v, c.secDp) : v;
+    return { k, v, ...(vr === v ? {} : { vr }), r: rank(k, vr, c.edge), w, ...(s ? { s } : {}) };
   });
-  const have = rows.filter(x => x.r != null), wSum = rows.reduce((a, x) => a + x.w, 0), wHave = have.reduce((a, x) => a + x.w, 0);
-  const missing = rows.filter(x => x.r == null).map(x => x.k.name);
+  // a KPI left out as not applicable weighs nothing: the others make the final rank, whatever is done with missing ones
+  const used = rows.filter(x => !(x.na && x.r == null)), have = used.filter(x => x.r != null), wAll = rows.reduce((a, x) => a + x.w, 0);
+  const wSum = used.reduce((a, x) => a + x.w, 0), wHave = have.reduce((a, x) => a + x.w, 0);
+  const missing = used.filter(x => x.r == null).map(x => x.k.name);
   // missing KPIs: the final rank uses the KPIs that have a value, scaled to their weights (or ranks them 1, or waits for them)
   const fr = c.missing === 'none' && missing.length ? null
-    : c.missing === 'rank1' && missing.length ? (have.length && wSum > 0 ? rows.reduce((a, x) => a + (x.r ?? 1) * x.w, 0) / wSum : null)
+    : c.missing === 'rank1' && missing.length ? (have.length && wSum > 0 ? used.reduce((a, x) => a + (x.r ?? 1) * x.w, 0) / wSum : null)
     : wHave > 0 ? have.reduce((a, x) => a + x.r * x.w, 0) / wHave : null;
   const finalRank = fr == null ? null : c.rankDp >= 0 ? roundTo(fr, c.rankDp) : fr;
   let finalPct = finalRank == null ? null : finalRank / 5, tRow = null;
@@ -222,10 +287,12 @@ function score(card, vals, att, base, cfg) {
   const earned = daysPct == null || finalPct == null ? null : M ? M(B * daysPct * finalPct) : Math.round(B * daysPct * finalPct + 1e-9);
   // every step in short keys (kept on the month's rows as kx, without the KPIs, which the rows carry already)
   const how = { rr: fr, ws: wHave, wt: wSum, mm: c.missing, rd: c.rankDp, fr: finalRank, po: c.pctOf, tr: tRow ? { min: tRow.min, pct: tRow.pct } : null, pd: c.pctDp, fp: finalPct, vd: c.valDp, ed: c.edge,
+    ...(c.secDp !== COUNT0.secDp ? { sd: c.secDp } : {}), ...(rows.some(x => x.na) ? { na: c.na } : {}),
     s: sched, a: attended, ab: absent, ru: runs, ex: pen.extra, pen: pen.extra ? { k: c.absentExtra, per: c.absentPer, flat: c.absentFlat, min: c.countedMin } : null, c: actual,
     df: c.daysPct, dp: daysPct, b: B, mo: c.money, t: tgt, e: earned,
-    kpis: rows.map(x => ({ id: x.k.id, name: x.k.name, v: x.v, ...(x.vr !== undefined ? { vr: x.vr } : {}), band: bandOf(x.k, x.r, c.edge), r: x.r, w: x.w })) };
-  return { rows, finalRank, finalPct, sched, actual, daysPct, target: tgt, earned, missing, complete: !missing.length, weightsOk: Math.abs(wSum - 1) < 0.001,
+    kpis: rows.map(x => ({ id: x.k.id, name: x.k.name, v: x.v, ...(x.vr !== undefined ? { vr: x.vr } : {}), ...(x.na ? { na: 1 } : {}), ...(x.s ? { s: x.s } : {}),
+      band: x.na ? (x.r ? 'N/A counts as 5' : 'N/A, left out') : bandOf(x.k, x.r, c.edge), r: x.r, w: x.w })) };
+  return { rows, finalRank, finalPct, sched, actual, daysPct, target: tgt, earned, missing, complete: !missing.length, weightsOk: Math.abs(wAll - 1) < 0.001,
     attended, absent, runs, extra: pen.extra, how };
 }
 
@@ -273,7 +340,7 @@ function validate(cards) {
   }
   return issues;
 }
-return { DEFAULTS: () => clone(DEFAULTS), SRC, rank, score, normValue, fmtVal, rankedVal, bandText, target, readFile, fileValue, key, validate,
+return { DEFAULTS: () => clone(DEFAULTS), SRC, NA, isRoleCard, clockSec, rank, score, normValue, fmtVal, rankedVal, bandText, target, readFile, fileValue, key, validate,
   COUNT0: () => clone(COUNT0), normCount, fromSaved, countDiff, countDays, penalty, dayRulesKey, DAY_CODES, CODES, dayCode, bandOf, bandVal };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Kpi;

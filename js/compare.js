@@ -95,7 +95,7 @@ function rcRun(k) {
     const p = state.roster.find(q => q._id === pid), r = map.get(pid) || null;
     if (!r) { onlyOld.push({ name: x.name, id: x.id, file: x.files[0], why: `in the roster, but not in the tool's ${ymLabel(k)}` }); continue; }
     const team = normSpace((p && p.team) || r.team || ''), nm = p ? gname(effP(pid) || p) || p.name : x.name;
-    const t = { fin: r.fin ?? null, earned: r.earned ?? null, ks: r.ks ?? null, ka: r.kat ?? r.ka ?? null, absent: +r.absent || 0, runs: r.kr ?? null, base: r.base ?? baseOf(p, r, k), card: !!cardFor(team, k), team, scored, missing: (r.kpi || []).filter(z => z[4] == null).map(z => z[0]) };
+    const t = { fin: r.fin ?? null, earned: r.earned ?? null, ks: r.ks ?? null, ka: r.kat ?? r.ka ?? null, absent: +r.absent || 0, runs: r.kr ?? null, base: r.base ?? baseOf(p, r, k), card: !!(p ? cardOf(p, k) : cardFor(team, k)), team, scored, missing: (r.kpi || []).filter(z => z[4] == null).map(z => z[0]) };
     const toolV = { fin: t.fin, earned: t.earned, adh: r.adh ?? null, aht: r.aht ?? null, absent: r.absent ?? null, tardy: r.tardy == null ? null : Math.round(r.tardy), ka: t.ka, ks: t.ks };
     const cells = Recon.cellsOf(x.o, toolV, RC_MEAS.filter(m => x.o[m] != null), dp), st = Recon.statusOf(cells);
     const ex = st === 'same' || st === 'none' ? { causes: [], ref: null } : Recon.explain(x.o, t, { cfg, dp }), cE = cells.find(c => c.m === 'earned');

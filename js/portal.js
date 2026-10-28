@@ -81,6 +81,9 @@ function watchShared(db) {
   live('fresh', sn => { const f = {}; sn.docs.forEach(d => { f[d.id] = d.data(); }); state.fresh = f; renderFresh(); });
   live('cycle', sn => { const c = {}; sn.docs.forEach(d => { c[d.id] = d.data(); }); state.cycles = c; });
   live('kpi', sn => { sn.docs.forEach(d => { const x = d.data(); if (x && Array.isArray(x.rows)) state.kpiFiles[d.id] = x; }); });
+  // the month's figures and the values typed by hand (Review › KPI results): every month is scored again with them
+  const kx = (c, f) => live(c, sn => { const o = {}; sn.docs.forEach(d => { const x = d.data(); if (x && typeof x === 'object' && /^\d{4}-\d{2}$/.test(d.id)) o[d.id] = x; }); state[f] = o; state.kxVer++; if (state.ctx) state.kpi = computeKpi(); });
+  kx('kfig', 'kfig'); kx('khand', 'khand');
   live('spvdone', sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); const before = state.spvDone; state.spvDone = o; state.spvDoneVer++; notifyDone(before, o); });
   live('cyclelog', sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); state.cycleLog = o; });
   live('rules', rulesLoaded);
@@ -162,8 +165,8 @@ const kvOf = res => Object.fromEntries(res.rows.filter(z => z.v != null).map(z =
 /** every step of a score but the KPIs (the rows carry those), kept on the rows as kx for "How this was counted" */
 function howLite(res) {
   if (!res || !res.how) return null;
-  const { kpis, ...h } = res.how, vr = {}; kpis.forEach(x => { if (x.vr !== undefined) vr[x.id] = x.vr; });
-  return Object.keys(vr).length ? { ...h, vr } : h;
+  const { kpis, ...h } = res.how, vr = {}, vs = {}; kpis.forEach(x => { if (x.vr !== undefined) vr[x.id] = x.vr; if (x.s) vs[x.id] = x.s; });
+  return { ...h, ...(Object.keys(vr).length ? { vr } : {}), ...(Object.keys(vs).length ? { vs } : {}) };
 }
 /** the days a scored row keeps for the incentive: attended (kat), runs of absence (kr), absences as the rules count them (kab, only
     when they differ from the plain count) and the day rules (kdr, only when they are not the defaults) */
@@ -194,7 +197,7 @@ function monthData(k) {
 }
 /** a draft month built by the tool is scored again with today's inputs: the quality team's numbers, the supervisors' attendance
     corrections, the incentive bases and the eligibility rules. Months from older incentive files keep their own numbers. */
-function liveRow(r, p, k, rec) {
+function liveRow(r, p, k, rec, team) {
   const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5));
   const E = attEditsOf(k), ed = E && p ? E.get(p._id) : null;
   const F = state.finals[k], adj = F && F.adj ? F.adj[rowKey(r)] : null;
@@ -204,7 +207,7 @@ function liveRow(r, p, k, rec) {
     x = { ...z, ks: adj.ks, ka: adj.ka, kat: adj.ka, ...(dk === KDR0 ? {} : { kdr: dk }) };
   }
   if (!(rec && (rec.tool || rec.auto || rec.page || rec.daily))) return withAdj(x, adj);
-  const s = scoreLive(x, p, k); if (!s) return withAdj(x, adj);
+  const s = scoreLive(x, p, k, team); if (!s) return withAdj(x, adj);
   const res = s.res, el = eligibility(res, p ? qRow(k, p._id) : null, adj, k, p);
   // ka = the days counted (after any absence penalty), kat = the days attended: kept apart so a penalty is never taken twice
   const { kat, kr, kab, kdr, ...y } = x, kept = s.again || res.sched != null ? countKept(res, x, k) : Object.fromEntries(Object.entries({ kat, kr, kab, kdr }).filter(([, v]) => v !== undefined));
@@ -222,7 +225,7 @@ const matchMemo = new Map();   // month -> { sig, map }: who in the roster is wh
 function rowsByPid(k) {
   const D = monthData(k); if (!D) return new Map();
   if (!D.final) watchAttEdits(k);
-  const sig = `${state.histVer}|${state.finVer}|${state.ver}|${state.roster.length}|${state.qualityVer}|${state.attEditsVer}|${state.rulesVer}|${Object.keys(state.kpiFiles).length}|${(state.kpiFiles[k] || {}).at || ''}`, hit = matchMemo.get(k);
+  const sig = `${state.histVer}|${state.finVer}|${state.ver}|${state.roster.length}|${state.qualityVer}|${state.attEditsVer}|${state.rulesVer}|${state.kxVer}|${Object.keys(state.kpiFiles).length}|${(state.kpiFiles[k] || {}).at || ''}`, hit = matchMemo.get(k);
   if (hit && hit.sig === sig) return hit.map;
   const rows = D.rows, byId = new Map(), byName = new Map(), used = new Set(), out = new Map(), rest = [];
   rows.forEach(r => { if (r.id) byId.set(String(r.id), r); if (!byName.has(normName(r.n))) byName.set(normName(r.n), r); });
@@ -236,7 +239,14 @@ function rowsByPid(k) {
     for (const r of rows) { if (used.has(r)) continue; const s = Math.max(Core.nameScore(p.name, r.n), normSpace(p.sys) ? Core.nameScore(p.sys, r.n) : 0); if (s > bs) { second = bs; bs = s; best = r; } else if (s > second) second = s; }
     if (best && bs >= 0.86 && bs - second >= 0.08) { out.set(p._id, best); used.add(best); }
   }
-  if (!D.final) for (const [pid, r] of out) out.set(pid, liveRow(r, state.roster.find(x => x._id === pid), k, D.rec));
+  if (!D.final) {
+    const raw = new Map(out), P = pid => state.roster.find(x => x._id === pid);
+    for (const [pid, r] of raw) out.set(pid, liveRow(r, P(pid), k, D.rec));
+    // Team Performance: the supervisors' cards rank their team's average final %, so they are scored again once their team is
+    // (three rounds: a senior manager over SPVs over agents)
+    const lead = [...raw.keys()].filter(pid => { const r = out.get(pid); return r && r.kc && hasTeamKpi(cardOf(P(pid), k)); });
+    for (let i = 0; i < 3 && lead.length; i++) for (const pid of lead) out.set(pid, liveRow(raw.get(pid), P(pid), k, D.rec, teamPerf(pid, x => { const r = out.get(x); return r && r.kc ? r.fin : null; })));
+  }
   matchMemo.set(k, { sig, map: out }); return out;
 }
 /** every row of a draft month as it would be frozen today (rows nobody in the roster matches stay as saved) */

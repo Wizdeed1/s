@@ -1080,7 +1080,7 @@ async function save(filename, blob) { const c = await saveRaw(filename, blob); t
 // ---------------------------------------------------------------- roster import / export
 function rosterCsv() {
   const cell = v => { let s = String(v ?? ''); if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };   // text that starts like a formula stays text in Excel
-  const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base', 'Joining date'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || '', p.joined || ''])];
+  const rows = [['Name', 'National ID', 'Brand', 'Team', 'System name', 'Status', 'Supervisor', 'Email', 'Incentive base', 'Joining date', 'Scorecard'], ...rosterRows().map(p => [p.name, p.nid, p.brand, p.team, p.sys, p.status || 'Active', supName(p.spv) || '', p.email || '', p.base || '', p.joined || '', p.card || ''])];
   return '﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 async function importRosterFile(file, o = {}) {
@@ -1105,13 +1105,13 @@ function prepareMerge(rows, src) {
   const seen = new Set();
   for (const x of rows) {
     const name = normSpace(x.name); if (!name) continue;
-    const inc = { name, nid: x.id || '', brand: x.team || '', team: x.dep || '', sys: normSpace(x.sys), status: x.status || '', email: x.email || '', base: x.base || null, spvName: x.spvName || '', joined: x.joined || '' };
+    const inc = { name, nid: x.id || '', brand: x.team || '', team: x.dep || '', sys: normSpace(x.sys), status: x.status || '', email: x.email || '', base: x.base || null, spvName: x.spvName || '', joined: x.joined || '', card: x.card || '' };
     const cur = (inc.nid && byId.get(inc.nid)) || byName.get(normName(name)) || (inc.sys && byName.get(normName(inc.sys)));
     if (cur && seen.has(cur._id)) continue;
-    if (!cur) { const { spvName, ...rest } = inc; plan.adds.push({ ...rest, ...(rest.joined ? {} : { joined: undefined }), brand: inc.brand || 'Virgin', team: inc.team || 'CC', status: inc.status || 'Active', ...(inc.base ? {} : { base: undefined }) }); if (spvName) (plan.sup = plan.sup || []).push([name, spvName]); continue; }
+    if (!cur) { const { spvName, ...rest } = inc; plan.adds.push({ ...rest, ...(rest.joined ? {} : { joined: undefined }), ...(rest.card ? {} : { card: undefined }), brand: inc.brand || 'Virgin', team: inc.team || 'CC', status: inc.status || 'Active', ...(inc.base ? {} : { base: undefined }) }); if (spvName) (plan.sup = plan.sup || []).push([name, spvName]); continue; }
     seen.add(cur._id);
     const patch = {};
-    for (const f of ['name', 'nid', 'brand', 'team', 'sys', 'status', 'email', 'joined']) if (inc[f] && normSpace(cur[f]) !== inc[f] && !(f === 'nid' && Core.cleanId(cur.nid) === inc.nid)) patch[f] = inc[f];
+    for (const f of ['name', 'nid', 'brand', 'team', 'sys', 'status', 'email', 'joined', 'card']) if (inc[f] && normSpace(cur[f]) !== inc[f] && !(f === 'nid' && Core.cleanId(cur.nid) === inc.nid)) patch[f] = inc[f];
     if (inc.base && +cur.base !== inc.base) patch.base = inc.base;
     if (inc.spvName && normName(supName(cur.spv)) !== normName(inc.spvName)) (plan.sup = plan.sup || []).push([cur.name, inc.spvName]);
     if (Object.keys(patch).length) plan.updates.push({ id: cur._id, name: cur.name, patch }); else if (!(inc.spvName && normName(supName(cur.spv)) !== normName(inc.spvName))) plan.same++;
@@ -1122,7 +1122,7 @@ function prepareMerge(rows, src) {
   $('confirmBody').innerHTML = `<p style="margin:0">From <b>${esc(src)}</b>: ${plural(rows.length, 'person', 'people')}.</p>
     <div class="minis"><div><b>${plan.adds.length}</b><span>new</span></div><div><b>${plan.updates.length}</b><span>updated</span></div><div><b>${plan.same}</b><span>unchanged</span></div><div><b>${rosterRows().length}</b><span>on the roster now</span></div></div>
     ${plan.adds.length ? `<section class="sec"><h3>New</h3><ul class="ilist">${lim(plan.adds, a => `<li><span class="nm" dir="auto">${esc(a.name)}</span><span class="sg">${esc(a.brand)} · ${esc(a.team)}</span></li>`)}</ul></section>` : ''}
-    ${plan.updates.length ? `<section class="sec"><h3>Updated</h3><ul class="ilist">${lim(plan.updates, u => `<li><span class="nm" dir="auto">${esc(u.name)}</span><span class="sg">${esc(Object.entries(u.patch).map(([k, v]) => `${{ nid: 'ID', sys: 'system name', joined: 'joined' }[k] || k}: ${k === 'joined' ? Forms.fmtDate(v) : v}`).join(', '))}</span></li>`)}</ul></section>` : ''}
+    ${plan.updates.length ? `<section class="sec"><h3>Updated</h3><ul class="ilist">${lim(plan.updates, u => `<li><span class="nm" dir="auto">${esc(u.name)}</span><span class="sg">${esc(Object.entries(u.patch).map(([k, v]) => `${{ nid: 'ID', sys: 'system name', joined: 'joined', card: 'scorecard' }[k] || k}: ${k === 'joined' ? Forms.fmtDate(v) : v}`).join(', '))}</span></li>`)}</ul></section>` : ''}
     <p class="hint">People on the roster who are not in the file stay as they are. Empty cells in the file do not clear anything. Tip: use Export roster first to keep a backup.</p>`;
   $('confirmOk').disabled = !total; $('confirmOk').textContent = total ? `Import ${plural(total, 'change')}` : 'Nothing to import';
   openDrawer('dConfirm');
@@ -1719,6 +1719,14 @@ async function exportHistory() {
 
 // ---------------------------------------------------------------- KPI scorecards: results per agent, the KPI file, exports, editor
 const cardFor = (team, k) => ((curCards(k).teams || {})[normSpace(team)] || null);   // the card in force for a month (the month looked at, when none is given)
+/** the key of the card a person is scored with in a month: the scorecard set on their page (p.card: a card's key or name, for the
+    roles with a card of their own: SPVs, managers), else their team's ('' when there is none) */
+function cardKeyOf(p, k) {
+  const T = curCards(k).teams || {}, c = normSpace(p && p.card);
+  if (c) { if (T[c]) return c; const n = normName(c), hit = Object.keys(T).find(x => normName(x) === n || normName(T[x].title) === n); if (hit) return hit; }
+  const t = normSpace(p && p.team); return T[t] ? t : '';
+}
+const cardOf = (p, k) => { const key = cardKeyOf(p, k); return key ? curCards(k).teams[key] : null; };
 const kpiFileNow = () => state.kpiFiles[monthKey()] || null;
 const pct1 = x => (x == null ? '–' : `${+(x * 100).toFixed(1)}%`);
 function kpiFileRowFor(p) {
@@ -1729,16 +1737,19 @@ function kpiFileRowFor(p) {
 function computeKpi() {
   const out = new Map(); if (!state.model) return out;
   const md = incModel(), attByPid = md ? new Map(md.att.map(r => [r.pid, r])) : new Map(), target = state.settings.target, k0 = monthKey();
-  for (const m of state.model) {
-    if (!m.shown) continue; const card = cardFor(m.p.team, k0); if (!card) continue;
-    const a = attOf(m.p._id), cnt = a ? Att.counts(a.days, a.tardyFile) : null, fr = kpiFileRowFor(m.p), file = fileValues(card, monthKey(), m.p, null);
-    const vals = { adh: m.avg, adhUnder: m.adh ? m.adh.filter(v => v != null && v < target).length : null, aht: m.aht, tardy: cnt ? cnt.tardyMin : null, file };
+  const one = (m, card, team) => {
+    const a = attOf(m.p._id), cnt = a ? Att.counts(a.days, a.tardyFile) : null, fr = kpiFileRowFor(m.p), file = fileValues(card, k0, m.p, null);
+    const vals = { adh: m.avg, adhUnder: m.adh ? m.adh.filter(v => v != null && v < target).length : null, aht: m.aht, tardy: cnt ? cnt.tardyMin : null, team: team ?? null, file, ...kpiOver(card, k0, m.p, null) };
     const ar = attByPid.get(m.p._id);   // the days as the month's rules count them (attended: the penalty for absence is taken in Kpi.score)
     const res = Kpi.score(card, vals, ar && ar.has ? { sched: ar.sched, attended: ar.attended, absent: ar.absent, runs: ar.runs } : null, baseOf(m.p, null, k0), countFor(k0));
     res.elig = eligibility(res, qRow(k0, m.p._id), null, k0, m.p);
     if (!res.elig.ok && res.earned != null) { res.earnedCalc = res.earned; res.earned = 0; }
-    out.set(m.p._id, { m, card, fileRow: fr, res });
-  }
+    out.set(m.p._id, { m, card, ck: cardKeyOf(m.p, k0), fileRow: fr, res });
+  };
+  for (const m of state.model) { if (!m.shown) continue; const card = cardOf(m.p, k0); if (card) one(m, card); }
+  // Team Performance: the supervisors' cards rank their team's average final %, so they are scored again once their team is
+  const lead = [...out.values()].filter(K => hasTeamKpi(K.card));
+  for (let i = 0; i < 3 && lead.length; i++) for (const K of lead) one(K.m, K.card, teamPerf(K.m.p._id, pid => { const X = out.get(pid); return X ? X.res.finalPct : null; }));
   return out;
 }
 const kpiSum = r => ({ finalRank: r.finalRank == null ? '–' : r.finalRank.toFixed(2), finalPct: pct1(r.finalPct), sched: r.sched, actual: r.actual, daysPct: pct1(r.daysPct), target: srHidden() ? '–' : r.target, earned: srHidden() ? '–' : r.earned, missing: r.missing.join(', ') });
@@ -1750,7 +1761,7 @@ function kpiCardHtml(pid) {
   const K = state.kpi.get(pid);
   if (!K) {
     if (!state.ctx) return '';
-    return `<section class="sec"><h3>KPI results</h3><p class="subtle">${cardFor(p.team, monthKey()) ? 'Not in the reports this month.' : `No scorecard for ${esc(p.team || 'this team')} yet. Add it in Settings › Scorecards.`}</p></section>`;
+    return `<section class="sec"><h3>KPI results</h3><p class="subtle">${cardOf(p, monthKey()) ? 'Not in the reports this month.' : `No scorecard for ${esc(p.team || 'this team')} yet. Add it in Settings › Scorecards.`}</p></section>`;
   }
   const r = K.res, S = kpiSum(r);
   return `<section class="sec"><h3>KPI results · ${esc(K.card.title)}</h3>
@@ -1765,9 +1776,9 @@ function kpiNotes(add) {
   const v = Kpi.validate(curCards(monthKey()));
   v.forEach(t => add({ id: 'kpi:v:' + t, sev: 'warn', group: 'Scorecards', title: t, body: 'Fix it in Settings › Scorecards.' }));
   if (!state.model) return;
-  const shown = state.model.filter(m => m.shown), noCard = [...new Set(shown.filter(m => !cardFor(m.p.team, monthKey()) && !['MG', 'OP'].includes(m.p.team)).map(m => m.p.team || '–'))];
+  const shown = state.model.filter(m => m.shown), noCard = [...new Set(shown.filter(m => !cardOf(m.p, monthKey()) && !['MG', 'OP'].includes(m.p.team)).map(m => m.p.team || '–'))];
   if (noCard.length) add({ id: 'kpi:nocard', sev: 'info', group: 'Scorecards', title: `No scorecard yet for ${noCard.join(', ')}`, body: 'Their KPI results are left out until a scorecard is added in Settings › Scorecards.' });
-  const mm = rulesFor(monthKey()).elig.minMonths, noJoin = mm > 0 ? shown.filter(m => cardFor(m.p.team, monthKey()) && !m.p.joined) : [];
+  const mm = rulesFor(monthKey()).elig.minMonths, noJoin = mm > 0 ? shown.filter(m => cardOf(m.p, monthKey()) && !m.p.joined) : [];
   if (noJoin.length) add({ id: 'kpi:nojoin', sev: 'info', group: 'Scorecards', title: `No joining date for ${plural(noJoin.length, 'person', 'people')}`, body: `The incentive starts after ${mm} months in the job, counted from the joining date on the roster. Without one the rule is not checked: ${noJoin.slice(0, 6).map(m => m.exp).join(', ')}${noJoin.length > 6 ? ` and ${noJoin.length - 6} more` : ''}. Add it on each person's page (Edit), or import the roster with a "Joining date" column.` });
   const miss = new Map();
   for (const K of state.kpi.values()) for (const x of K.res.rows) if (x.r == null) { if (!miss.has(x.k.name)) miss.set(x.k.name, []); miss.get(x.k.name).push(K.m.exp); }
@@ -1803,14 +1814,15 @@ function renderKpiTab() {
   $('bKpi').textContent = all.length;
   if (!state.ctx) { el.innerHTML = emptyCard('No data yet', 'Drop the exports and the attendance files on Import, then the KPI file. Every agent with a scorecard gets a KPI result here.'); $('kpiTools').hidden = true; return; }
   $('kpiTools').hidden = false;
-  const teams = [...new Set(all.map(K => normSpace(K.m.p.team)))].sort((a, b) => (DEP_ORDER.indexOf(a) + 1 || 99) - (DEP_ORDER.indexOf(b) + 1 || 99));
-  if (state.kpiTeam && !teams.includes(state.kpiTeam)) state.kpiTeam = '';
-  $('kTeam').innerHTML = `<option value="">All teams</option>${teams.map(t => `<option value="${esc(t)}"${t === state.kpiTeam ? ' selected' : ''}>${esc(t)} – ${esc((cardFor(t, monthKey()) || { title: '' }).title)}</option>`).join('')}`;
+  // one choice per scorecard (a team's, or a role's such as the SPVs'), so the KPI columns always fit the people shown
+  const cks = [...new Set(all.map(K => K.ck))].sort(cardOrder), CT = curCards(monthKey()).teams || {};
+  if (state.kpiTeam && !cks.includes(state.kpiTeam)) state.kpiTeam = '';
+  $('kTeam').innerHTML = `<option value="">All scorecards</option>${cks.map(t => `<option value="${esc(t)}"${t === state.kpiTeam ? ' selected' : ''}>${esc(t)} – ${esc((CT[t] || { title: '' }).title)}</option>`).join('')}`;
   const q = normName(state.kpiQ || '');
-  let L = all.filter(K => (!state.kpiTeam || normSpace(K.m.p.team) === state.kpiTeam) && (!q || normName(`${K.m.exp} ${K.m.p.name} ${K.m.p.nid}`).includes(q)));
+  let L = all.filter(K => (!state.kpiTeam || K.ck === state.kpiTeam) && (!q || normName(`${K.m.exp} ${K.m.p.name} ${K.m.p.nid}`).includes(q)));
   const dir = state.kpiSort || 'desc';
   L.sort((a, b) => (dir === 'name' ? a.m.exp.localeCompare(b.m.exp) : (a.res.finalRank == null) - (b.res.finalRank == null) || (dir === 'asc' ? 1 : -1) * ((a.res.finalRank ?? 0) - (b.res.finalRank ?? 0)) || a.m.exp.localeCompare(b.m.exp)));
-  const card = state.kpiTeam ? cardFor(state.kpiTeam, monthKey()) : null;
+  const card = state.kpiTeam ? CT[state.kpiTeam] || null : null;
   const tot = L.reduce((t, K) => t + (K.res.earned || 0), 0), full = L.filter(K => K.res.complete).length;
   const sr = !srHidden();   // the WFM analysts do not see the incentive amounts
   $('kpiCount').textContent = `${plural(L.length, 'agent')} · ${full} with every KPI${sr ? ` · earned ${tot.toLocaleString('en-US')} SR in total` : ''}${kpiFileNow() ? '' : ' · no KPI file yet'}`;
@@ -1821,12 +1833,80 @@ function renderKpiTab() {
       ${card ? r.rows.map(x => `<td class="r num">${esc(Kpi.fmtVal(x.k, Kpi.rankedVal(x)))} ${rankChip(x.r)}</td>`).join('') : ''}
       <td class="r num">${r.finalRank == null ? '–' : r.finalRank.toFixed(2)}</td><td class="r num"><b>${pct1(r.finalPct)}</b></td><td class="r num">${pct1(r.daysPct)}</td>${sr ? `<td class="r num">${r.target ?? '–'}</td><td class="r num"><b>${r.earned ?? '–'}</b></td>` : ''}${card ? '' : `<td class="subtle">${esc(r.missing.join(', '))}</td>`}</tr>`; }).join('');
   el.innerHTML = `<div class="tablewrap histgrid kpigrid"><table><thead>${head}</thead><tbody>${body || '<tr><td colspan="10" class="empty">Nobody matches.</td></tr>'}</tbody></table></div>
-    ${card ? `<p class="hint">${card.kpis.map(k => `<b>${esc(k.name)}</b> (${esc(Kpi.SRC[k.src] || k.src)}): ${esc(Kpi.bandText(k))}`).join('<br>')}</p>` : ''}`;
+    ${card ? `<p class="hint">${card.kpis.map(k => `<b>${esc(k.name)}</b> (${esc(k.fig ? "the month's figure, else " : '')}${esc(Kpi.SRC[k.src] || k.src)}): ${esc(Kpi.bandText(k))}`).join('<br>')}</p>` : ''}`;
+  renderKpiExtra();
 }
+// ---- the month's figures and the values typed by hand (Review › KPI results)
+const canKx = () => hasRole('admin', 'user', 'wfm', 'senior');
+/** the KPIs of the cards in force that take a month figure, once each, with the cards that use them */
+function figKpis(k) {
+  const m = new Map();
+  for (const [key, c] of Object.entries(curCards(k).teams || {})) for (const kk of c.kpis) if (kk.fig) { const x = m.get(kk.id) || { k: kk, cards: [] }; x.cards.push(key); m.set(kk.id, x); }
+  return [...m.values()];
+}
+/** a stored value as it is typed: 88.5% for a percent, seconds, NA */
+const kxIn = (kk, v) => (v == null ? '' : v === Kpi.NA ? 'NA' : kk.unit === 'pct' ? `${+(v * 100).toFixed(2)}%` : String(+(+v).toFixed(3)));
+function kxSaved(col, k, what, undo) {
+  const body = (col === 'kfig' ? state.kfig : state.khand)[k] || {};
+  if (state.db) queueWrite(`${col}/${k}`, () => (Object.keys(body).length ? state.db.doc(`${col}/${k}`).set(JSON.parse(JSON.stringify(body))) : state.db.doc(`${col}/${k}`).delete()));
+  state.kxVer++; if (state.ctx) state.kpi = computeKpi(); renderKpiTab(); if (state.ws !== 'build') renderWs();
+  if (what) toast(what, undo ? { label: 'Undo', fn: undo } : undefined);
+}
+function renderKpiExtra() {
+  const el = $('kpiExtra'); if (!el) return;
+  if (!state.ctx) { el.innerHTML = ''; return; }
+  const k = monthKey(), can = canKx(), F = state.kfig[k] || {}, H = state.khand[k] || {}, L = figKpis(k), CT = curCards(k).teams || {};
+  const cols = [['Virgin', 'Virgin'], ['Friendi', 'FRiENDi'], ['Friendi Pay', 'FRiENDi Pay'], ['all', 'All brands']];
+  const figs = L.length ? `<div class="tablewrap formtab"><table><thead><tr><th>KPI</th>${cols.map(([, l]) => `<th class="r">${esc(l)}</th>`).join('')}<th>Used by</th></tr></thead><tbody>${L.map(({ k: kk, cards }) => `<tr><td>${esc(kk.name)}<br><small class="subtle">${esc(kk.unit === 'pct' ? '%' : kk.unit === 'sec' ? 'seconds or m:ss' : kk.unit)}</small></td>${cols.map(([c, l]) => `<td><input class="cell r" data-kfig="${esc(kk.id)}|${esc(c)}" value="${esc(kxIn(kk, F[kk.id] ? F[kk.id][c] : null))}" placeholder="–" inputmode="decimal" aria-label="${esc(kk.name)}, ${esc(l)}"${can ? '' : ' disabled'}></td>`).join('')}<td><small>${esc(cards.join(', '))}</small></td></tr>`).join('')}</tbody></table></div>` : '<p class="subtle">No scorecard takes a month figure.</p>';
+  // typed by hand: one value for one person, for any KPI of their card
+  const people = [...state.kpi.values()].sort((a, b) => cardOrder(a.ck, b.ck) || a.m.exp.localeCompare(b.m.exp));
+  if (!people.some(K => K.m.p._id === state.khPid)) state.khPid = people[0] ? people[0].m.p._id : '';
+  const cur = state.kpi.get(state.khPid), list = [];
+  for (const [pid, o] of Object.entries(H)) { const K = state.kpi.get(pid), p = K ? K.m.p : state.roster.find(x => x._id === pid), card = K ? K.card : p ? cardOf(p, k) : null; for (const [id, v] of Object.entries(o || {})) { const kk = card && card.kpis.find(q => q.id === id); list.push({ pid, id, name: K ? K.m.exp : p ? gname(effP(pid) || p) || p.name : '(not in the roster)', kpi: kk ? kk.name : id, val: kk ? Kpi.fmtVal(kk, v) : String(v) }); } }
+  list.sort((a, b) => a.name.localeCompare(b.name) || a.kpi.localeCompare(b.kpi));
+  const hand = `${can && people.length ? `<div class="toolbar kxadd"><select class="cell" data-khp aria-label="Person">${people.map(K => `<option value="${esc(K.m.p._id)}"${K.m.p._id === state.khPid ? ' selected' : ''}>${esc(K.m.exp)} · ${esc(K.ck)}</option>`).join('')}</select>
+      <select class="cell" data-khk aria-label="KPI">${cur ? cur.card.kpis.map(kk => `<option value="${esc(kk.id)}">${esc(kk.name)}</option>`).join('') : ''}</select>
+      <input class="cell" data-khv placeholder="91% or NA" aria-label="Value" spellcheck="false"><button class="btn sm" data-khadd>Add</button></div>` : ''}
+    ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Name</th><th>KPI</th><th class="r">Value</th>${can ? '<th></th>' : ''}</tr></thead><tbody>${list.map(x => `<tr><td dir="auto">${esc(x.name)}</td><td>${esc(x.kpi)}</td><td class="r num">${esc(x.val)}</td>${can ? `<td><button class="rowbtn danger" data-khdel="${esc(x.pid)}|${esc(x.id)}" aria-label="Remove ${esc(x.kpi)} of ${esc(x.name)}">Remove</button></td>` : ''}</tr>`).join('')}</tbody></table></div>` : '<p class="subtle">Nothing typed by hand this month.</p>'}`;
+  el.innerHTML = `<section class="card kxcard"><div class="cardhead"><div><h2>Month figures · ${esc(ymLabel(k))}</h2><p class="cap">One number per brand for the KPIs that rank a figure of the whole floor (Service Level, Floor QoS, AHT…). A card of the person's brand takes their brand's; the others take All brands, or the brands' average when it is empty. Type % values as 88.5%, seconds as 152 or 2:32.</p></div></div>${figs}</section>
+    <section class="card kxcard"><div class="cardhead"><div><h2>Typed by hand · ${esc(ymLabel(k))}</h2><p class="cap">A value for one person that is in no file: Staff Satisfaction, Digital projects, CST compliance, a Team Performance given by the senior manager… It wins over every other source. NA = does not apply this month (${esc(countFor(k).na === 'scale' ? 'left out' : 'counts as ranking 5')}).</p></div></div>${hand}</section>`;
+}
+$('kpiExtra').addEventListener('change', e => {
+  const el = e.target, k = monthKey();
+  if (el.matches('[data-khp]')) { state.khPid = el.value; renderKpiExtra(); return; }
+  if (!el.dataset.kfig || !canKx()) return;
+  const [id, col] = el.dataset.kfig.split('|'), hit = figKpis(k).find(x => x.k.id === id); if (!hit) return;
+  const raw = normSpace(el.value), v = raw === '' ? null : Kpi.normValue(hit.k, raw);
+  if (raw !== '' && v == null) { toast(`Type ${hit.k.unit === 'pct' ? 'a % such as 88.5%' : hit.k.unit === 'sec' ? 'seconds such as 152, or 2:32' : 'a number'}, or NA.`); renderKpiExtra(); return; }
+  const F = state.kfig[k] = { ...(state.kfig[k] || {}) }, old = F[id] ? { ...F[id] } : null, row = { ...(F[id] || {}) };
+  if (v == null) delete row[col]; else row[col] = v;
+  if (Object.keys(row).length) F[id] = row; else delete F[id];
+  const lab = col === 'all' ? 'all brands' : col;
+  kxSaved('kfig', k, `${hit.k.name}, ${lab}: ${v == null ? 'cleared' : Kpi.fmtVal(hit.k, v)}`, () => { const G = state.kfig[k] = { ...(state.kfig[k] || {}) }; if (old) G[id] = old; else delete G[id]; kxSaved('kfig', k); });
+});
+$('kpiExtra').addEventListener('click', e => {
+  if (!canKx()) return;
+  const k = monthKey(), add = e.target.closest('[data-khadd]'), del = e.target.closest('[data-khdel]');
+  if (add) {
+    const box = add.closest('.kxadd'), pid = box.querySelector('[data-khp]').value, id = box.querySelector('[data-khk]').value, K = state.kpi.get(pid), kk = K && K.card.kpis.find(q => q.id === id); if (!kk) return;
+    const raw = normSpace(box.querySelector('[data-khv]').value), v = Kpi.normValue(kk, raw);
+    if (v == null) { toast(`Type ${kk.unit === 'pct' ? 'a % such as 91%' : kk.unit === 'sec' ? 'seconds such as 152, or 2:32' : 'a number'}, or NA.`); box.querySelector('[data-khv]').focus(); return; }
+    const H = state.khand[k] = { ...(state.khand[k] || {}) }, old = H[pid] ? { ...H[pid] } : null; H[pid] = { ...(H[pid] || {}), [id]: v };
+    kxSaved('khand', k, `${K.m.exp}: ${kk.name} ${Kpi.fmtVal(kk, v)}`, () => { const G = state.khand[k] = { ...(state.khand[k] || {}) }; if (old) G[pid] = old; else delete G[pid]; kxSaved('khand', k); });
+    return;
+  }
+  if (del) {
+    const [pid, id] = del.dataset.khdel.split('|'), H = state.khand[k] = { ...(state.khand[k] || {}) }, old = H[pid] ? { ...H[pid] } : null; if (!old) return;
+    const o = { ...old }; delete o[id]; if (Object.keys(o).length) H[pid] = o; else delete H[pid];
+    kxSaved('khand', k, 'Removed the value typed by hand', () => { const G = state.khand[k] = { ...(state.khand[k] || {}) }; G[pid] = old; kxSaved('khand', k); });
+  }
+});
 // ---- exports
 const kpiPeriod = () => `${MONTH_LONG[state.m - 1]} ${state.y}`;
 function kpiList(pids) { return pids.map(id => state.kpi.get(id)).filter(Boolean); }
-function visibleKpi() { const q = normName(state.kpiQ || ''); return [...state.kpi.values()].filter(K => (!state.kpiTeam || normSpace(K.m.p.team) === state.kpiTeam) && (!q || normName(`${K.m.exp} ${K.m.p.name} ${K.m.p.nid}`).includes(q))); }
+function visibleKpi() { const q = normName(state.kpiQ || ''); return [...state.kpi.values()].filter(K => (!state.kpiTeam || K.ck === state.kpiTeam) && (!q || normName(`${K.m.exp} ${K.m.p.name} ${K.m.p.nid}`).includes(q))); }
+/** scorecards in the order of the departments, each team's role cards after it (CT, CT-SPV, CT-CCM…) */
+const cardOrder = (a, b) => { const d = x => (DEP_ORDER.indexOf(String(x).split('-')[0]) + 1 || 99); return d(a) - d(b) || (Kpi.isRoleCard(a) - Kpi.isRoleCard(b)) || String(a).localeCompare(String(b)); };
 async function kpiPdf(list, name) {
   if (!list.length) { toast('Nobody to export.'); return; }
   try {
@@ -1856,14 +1936,14 @@ async function kpiExcel(list, name, single) {
     put('Incentive Target', srHidden() ? null : r.target, val, labY); put('Earned SR', srHidden() ? null : r.earned, val); put('Comment', r.missing.length ? 'Missing: ' + r.missing.join(', ') : '', val);
     W.logoAt(4, 1, 52, 8, 4); sheets.push(W);
   } else {
-    const byTeam = new Map(); list.forEach(K => { const t = normSpace(K.m.p.team); if (!byTeam.has(t)) byTeam.set(t, []); byTeam.get(t).push(K); });
-    for (const [t, L] of [...byTeam].sort((a, b) => (DEP_ORDER.indexOf(a[0]) + 1 || 99) - (DEP_ORDER.indexOf(b[0]) + 1 || 99))) {
-      const card = cardFor(t, monthKey()) || L[0].card, W = new Sh(`${t} KPI`.slice(0, 31)); W.tab = 'FF1F3864'; W.set(1, 1, `KPI results - ${kpiPeriod()} - ${t} (${card.title})`, ttl);
+    const byTeam = new Map(); list.forEach(K => { const t = K.ck || normSpace(K.m.p.team); if (!byTeam.has(t)) byTeam.set(t, []); byTeam.get(t).push(K); });
+    for (const [t, L] of [...byTeam].sort((a, b) => cardOrder(a[0], b[0]))) {
+      const card = L[0].card, W = new Sh(`${t} KPI`.slice(0, 31)); W.tab = 'FF1F3864'; W.set(1, 1, `KPI results - ${kpiPeriod()} - ${t} (${card.title})`, ttl);
       const H = ['ID', 'Name', 'Team', 'Dep', ...card.kpis.flatMap(k => [k.name, 'Ranking']), 'Final ranking', 'Final %', 'Scheduled day', 'Actual days', 'Actual Days %', 'Incentive Target', 'Earned SR', 'Comment'];
       H.forEach((h, j) => { W.set(3, j + 1, h, hd); W.width(j + 1, j === 1 ? 30 : j === 0 ? 13 : 11); }); W.heights[3] = 32;
       L.sort((a, b) => a.m.exp.localeCompare(b.m.exp)).forEach((K, i) => {
         const r = K.res, R = i + 4; let c = 1;
-        W.set(R, c++, Core.cleanId(K.m.p.nid) || 'NA', txt); W.set(R, c++, K.m.exp, txt); W.set(R, c++, normSpace(K.m.p.brand), num); W.set(R, c++, t, num);
+        W.set(R, c++, Core.cleanId(K.m.p.nid) || 'NA', txt); W.set(R, c++, K.m.exp, txt); W.set(R, c++, normSpace(K.m.p.brand), num); W.set(R, c++, normSpace(K.m.p.team) || t, num);
         for (const x of r.rows) { W.set(R, c++, cellV(x.k, Kpi.rankedVal(x)), x.k.unit === 'pct' ? npc : num); W.set(R, c++, x.r, num); }
         W.set(R, c++, r.finalRank, num); W.set(R, c++, r.finalPct, npc); W.set(R, c++, r.sched, num); W.set(R, c++, r.actual, num); W.set(R, c++, r.daysPct, npc); W.set(R, c++, srHidden() ? null : r.target, num); W.set(R, c++, srHidden() ? null : r.earned, num);
         W.set(R, c++, r.missing.length ? 'Missing: ' + r.missing.join(', ') : '', txt);
@@ -1874,7 +1954,7 @@ async function kpiExcel(list, name, single) {
   const SC = new Sh('Scorecards'); SC.width(1, 10); SC.width(2, 34); SC.width(3, 10); SC.width(4, 12); SC.width(5, 60); SC.width(6, 34);
   SC.set(1, 1, `KPI scorecards - ${kpiPeriod()}`, ttl);
   ['Team', 'KPI', 'Weight', 'Target', 'Ranking bands', 'Source'].forEach((h, j) => SC.set(3, j + 1, h, hd));
-  let sr = 4; const used = new Set(list.map(K => normSpace(K.m.p.team)));
+  let sr = 4; const used = new Set(list.map(K => K.ck || normSpace(K.m.p.team)));
   const CK = curCards(monthKey());
   for (const [t, c] of Object.entries(CK.teams)) { if (!used.has(t)) continue; for (const k of c.kpis) { SC.set(sr, 1, t, num); SC.set(sr, 2, k.name, txt); SC.set(sr, 3, k.weight, npc); SC.set(sr, 4, Kpi.target(k), num); SC.set(sr, 5, Kpi.bandText(k), txt); SC.set(sr, 6, Kpi.SRC[k.src] || k.src, txt); sr++; } }
   SC.set(sr + 1, 2, `Incentive: the base (${Object.entries({ ...BASES0, ...(CK.bases || {}) }).map(([b, v]) => `${b} ${v}`).join(', ')} SR) × actual days % = target; × final % = earned (rounded).`, txt);
@@ -1898,12 +1978,12 @@ async function kpiTemplate() {
   const ttlT = S.get({ font: { sz: 16, b: true, color: 'FF000000' } });
   const shown = (state.model || []).filter(m => m.shown);
   for (const [t, c] of Object.entries(curCards(monthKey()).teams)) {
-    const fk = c.kpis.filter(k => k.src === 'file'); if (!fk.length) continue;
-    const L = shown.filter(m => normSpace(m.p.team) === t), W = new Sh(`${t}`); W.tab = 'FF1F3864';
+    const fk = c.kpis.filter(k => k.src === 'file'), L = shown.filter(m => cardKeyOf(m.p, monthKey()) === t); if (!fk.length || (Kpi.isRoleCard(t) && !L.length)) continue;   // a role's card only when someone has it
+    const W = new Sh(`${t}`); W.tab = 'FF1F3864';
     W.set(1, 1, `KPI input - ${t} - ${MON[state.m - 1]} ${state.y}`, ttlT);
     const H = ['ID', 'Name', 'Brand', 'Team', ...fk.map(k => k.name)];
     H.forEach((h, j) => { W.set(3, j + 1, h, hd); W.width(j + 1, j === 1 ? 32 : j < 4 ? 12 : 18); }); W.heights[3] = 30;
-    L.forEach((m, i) => { const R = i + 4; W.set(R, 1, Core.cleanId(m.p.nid) || '', tx); W.set(R, 2, m.exp, tx); W.set(R, 3, normSpace(m.p.brand), tx); W.set(R, 4, t, tx); fk.forEach((k, j) => W.set(R, 5 + j, null, inp)); });
+    L.forEach((m, i) => { const R = i + 4; W.set(R, 1, Core.cleanId(m.p.nid) || '', tx); W.set(R, 2, m.exp, tx); W.set(R, 3, normSpace(m.p.brand), tx); W.set(R, 4, normSpace(m.p.team) || t, tx); fk.forEach((k, j) => W.set(R, 5 + j, null, inp)); });
     for (let R = L.length + 4; R <= L.length + 13; R++) fk.forEach((k, j) => W.set(R, 5 + j, null, inp));
     W.freeze = [4, 3]; W.titleLogo(); sheets.push(W);
   }
@@ -1913,35 +1993,50 @@ async function kpiTemplate() {
   await save(`KPI input - ${MON[state.m - 1]} ${state.y}.xlsx`, new Blob([await Writer2.pack(sheets, S, {}, { logo: await xlLogo() })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
 }
 // ---- scorecard editor
-// saved scorecards from before the WF card fix: Quality of Work 95% ranks 5 on the WF card
+// saved scorecards from before the WF card fix: Quality of Work 95% ranks 5 on the WF card. Saved before every department had a card
+// (the September 2026 incentive file): the new cards are added (TS, DE, the SPVs and the managers' cards), and the QA and WF cards
+// take the month's figures for the KPIs that rank a figure of the whole floor (the QA specialists their own brand's)
 function migrateCards(teams) {
-  const q = teams && teams.WF && (teams.WF.kpis || []).find(k => k.id === 'qow');
+  if (!teams || typeof teams !== 'object') return;
+  const q = teams.WF && (teams.WF.kpis || []).find(k => k.id === 'qow');
   if (q && JSON.stringify(q.bands) === JSON.stringify([0.98, 0.95, 0.9, null])) q.bands = [0.95, 0.90, 0.85, 0.80];
+  const D = Kpi.DEFAULTS().teams;
+  for (const [t, ids] of [['QA', ['fqos', 'aht']], ['WF', ['sl', 'radh']]]) {
+    const c = teams[t]; if (!c || !Array.isArray(c.kpis)) continue;
+    for (const k of c.kpis) if (ids.includes(k.id) && k.fig === undefined) k.fig = true;
+    if (t === 'QA' && c.scope === undefined) c.scope = 'brand';
+  }
+  for (const t of Object.keys(D)) if (!teams[t]) teams[t] = D[t];
 }
 function persistCards() { if (!state.db) return; const body = JSON.parse(JSON.stringify(state.cards)); queueWrite('config/scorecards', () => state.db.doc('config/scorecards').set(body)); }
 function renderScore() {
   const can = canRules(), C = ruleCards(), teams = Object.keys(C.teams), t = teams.includes(state.scoreTeam) ? state.scoreTeam : teams[0]; state.scoreTeam = t;
-  const card = C.teams[t], issues = Kpi.validate({ teams: { [t]: card } }), wsum = card.kpis.reduce((a, k) => a + (+k.weight || 0), 0);
+  const card = C.teams[t], issues = Kpi.validate({ teams: { [t]: card } }), wsum = card.kpis.reduce((a, k) => a + (+k.weight || 0), 0), pay = card.pay;
+  const payOf = b => (pay == null ? '' : typeof pay === 'object' ? (Number(pay[b]) > 0 ? pay[b] : '') : Number(pay) > 0 ? pay : '');
   const free = DEP_ORDER.filter(x => !teams.includes(x)), B = { ...BASES0, ...(C.bases || {}) };
   const bandIn = (k, i) => { const v = k.bands[i]; const shown = v == null || v === '' ? '' : k.unit === 'pct' ? +(v * 100).toFixed(3) : v; return `<input class="cell bandin" data-sb="${i}" value="${esc(shown)}" placeholder="–" inputmode="decimal" aria-label="Rank ${5 - i} ${k.dir === 'low' ? 'up to' : 'from'}">`; };
   $('scoreBody').innerHTML = `${rulesBarHtml()}
-    <div class="field"><span class="lbl">Team</span><div class="seg wrap" id="scTeams">${teams.map(x => `<button data-f="${esc(x)}" aria-pressed="${x === t}">${esc(x)}</button>`).join('')}</div>
+    <div class="field"><span class="lbl">Scorecard</span><div class="seg wrap" id="scTeams">${teams.slice().sort(cardOrder).map(x => `<button data-f="${esc(x)}" aria-pressed="${x === t}" title="${esc(C.teams[x].title)}">${esc(x)}</button>`).join('')}</div>
+      <small>A team's card scores everyone in the team. A role's card (CT-SPV, QA-MGR…) scores the people given it on their page or with the roster's Scorecard column.</small>
       ${free.length && can ? `<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><select class="cell" id="scAddTeam" aria-label="Team to add">${free.map(x => `<option value="${x}">${x} – ${esc(DEP_NAMES[x] || '')}</option>`).join('')}</select><button class="btn sm" id="scAdd">Add a scorecard</button></div>` : ''}</div>
     <fieldset class="formlock rulesfs"${can ? '' : ' disabled'}>
-    <div class="field"><span class="lbl">Incentive base (SR)</span><div class="basegrid">${BRANDS.map(b => `<label><span>${esc(b)}</span><input type="number" min="0" step="1" data-base="${esc(b)}" value="${B[b]}" aria-label="Incentive base for ${esc(b)}"></label>`).join('')}</div><small>Incentive target = base × actual days %. Earned = target × final %. A person's own base in the roster (for team leads and specialists) wins.</small></div>
+    <div class="field"><span class="lbl">Incentive base (SR)</span><div class="basegrid">${BRANDS.map(b => `<label><span>${esc(b)}</span><input type="number" min="0" step="1" data-base="${esc(b)}" value="${B[b]}" aria-label="Incentive base for ${esc(b)}"></label>`).join('')}</div><small>Incentive target = base × actual days %. Earned = target × final %. A person's own base in the roster wins, then the scorecard's base below.</small></div>
     ${eligEditHtml()}
     ${countEditHtml()}
     <div class="field"><label for="scTitle">Scorecard name</label><input id="scTitle" value="${esc(card.title)}"></div>
+    <div class="field"><span class="lbl">Base for this scorecard (SR)</span><div class="basegrid">${BRANDS.map(b => `<label><span>${esc(b)}</span><input type="number" min="0" step="1" data-cpay="${esc(b)}" value="${esc(payOf(b))}" placeholder="${esc(B[b])}" aria-label="${esc(t)} base for ${esc(b)}"></label>`).join('')}</div><small>Empty = the brand's base above. The SPVs' card pays 1600 SR for Virgin and 1000 SR for FRiENDi, as in the September 2026 incentive file.</small></div>
+    <div class="field"><span class="lbl">Month figures</span><div class="seg sm wrap" role="group" aria-label="Which month figure this card ranks"><button type="button" data-cscope="all" aria-pressed="${card.scope !== 'brand'}">All brands</button><button type="button" data-cscope="brand" aria-pressed="${card.scope === 'brand'}">The person's brand</button></div><small>For the KPIs entered as a month figure (Service Level, Floor QoS, AHT…), typed once a month on Review › KPI results. All brands = the all-brands figure, or the brands' average.</small></div>
     <div class="tablewrap formtab sctab"><table><thead><tr><th>KPI</th><th>From</th><th>Entered by</th><th class="r">Weight %</th><th>Better</th><th class="r">5</th><th class="r">4</th><th class="r">3</th><th class="r">2</th><th></th></tr></thead><tbody>
     ${card.kpis.map((k, i) => `<tr data-ki="${i}"><td><input class="cell" data-sf="name" value="${esc(k.name)}" aria-label="KPI name"></td>
-      <td><select class="cell" data-sf="src" aria-label="Source">${Object.entries(Kpi.SRC).map(([v, l]) => `<option value="${v}"${k.src === v ? ' selected' : ''} title="${esc(l)}">${esc({ adh: 'Adherence %', adhUnder: 'Days under target', aht: 'AHT (sec)', tardy: 'Tardy (min)', file: 'KPI file' }[v])}</option>`).join('')}</select></td>
-      <td>${k.src === 'file' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="quality"${ownerOf(k) === 'quality' ? ' selected' : ''}>Quality team</option><option value="file"${ownerOf(k) === 'file' ? ' selected' : ''}>KPI file</option></select>` : '<span class="subtle">Genesys</span>'}</td>
+      <td><select class="cell" data-sf="src" aria-label="Source">${Object.entries(Kpi.SRC).map(([v, l]) => `<option value="${v}"${k.src === v ? ' selected' : ''} title="${esc(l)}">${esc({ adh: 'Adherence %', adhUnder: 'Days under target', aht: 'AHT (sec)', tardy: 'Tardy (min)', file: 'KPI file', team: 'Team performance' }[v])}</option>`).join('')}</select></td>
+      <td>${k.src === 'file' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="quality"${!k.fig && ownerOf(k) === 'quality' ? ' selected' : ''}>Quality team</option><option value="file"${!k.fig && ownerOf(k) === 'file' ? ' selected' : ''}>KPI file</option><option value="fig"${k.fig ? ' selected' : ''}>Month figure</option></select>`
+        : k.src === 'team' ? '<span class="subtle">Their team</span>' : k.src === 'aht' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="genesys"${k.fig ? '' : ' selected'}>Genesys</option><option value="fig"${k.fig ? ' selected' : ''}>Month figure</option></select>` : '<span class="subtle">Genesys</span>'}</td>
       <td><input class="cell r" data-sf="weight" value="${+(k.weight * 100).toFixed(2)}" inputmode="decimal" aria-label="Weight %"></td>
       <td><select class="cell" data-sf="dir" aria-label="Better"><option value="high"${k.dir === 'high' ? ' selected' : ''}>Higher</option><option value="low"${k.dir === 'low' ? ' selected' : ''}>Lower</option></select></td>
       ${[0, 1, 2, 3].map(j => `<td>${bandIn(k, j)}</td>`).join('')}
       <td>${can ? `<button class="rowbtn danger" data-sdel="${i}" aria-label="Remove ${esc(k.name)}">Remove</button>` : ''}</td></tr>`).join('')}
     </tbody></table></div>
-    <p class="hint">Bands: the lowest value for each ranking when higher is better, or the highest value when lower is better. Percent KPIs are typed as %. Leave a ranking empty when it is not used (for example "NIL"). Below the last band is ranking 1.</p>
+    <p class="hint">Bands: the lowest value for each ranking when higher is better, or the highest value when lower is better. Percent KPIs are typed as %. Leave a ranking empty when it is not used (for example "NIL"). Below the last band is ranking 1. A month figure is typed once a month on Review › KPI results; until it is, the KPI's own source counts. A value typed there for one person wins over every source.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${can ? '<button class="btn sm" id="scKpiAdd">Add a KPI</button>' : ''}<span class="pill ${Math.abs(wsum - 1) < 0.001 ? 'good' : 'bad'}">Weights ${+(wsum * 100).toFixed(1)}%</span>${issues.map(x => `<span class="pill bad">${esc(x.replace(/^[A-Z]+: /, ''))}</span>`).join('')}</div>
     ${can ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm ghost" id="scReset">Reset ${esc(t)} to kpi.xlsx</button>${Kpi.DEFAULTS().teams[t] ? '' : `<button class="btn sm ghost" id="scRemove">Remove the ${esc(t)} scorecard</button>`}</div>` : ''}</fieldset>`;
 }
@@ -2963,16 +3058,23 @@ function profileHtml(p) {
       <span>${normSpace(p.sys) && normName(p.sys) !== normName(p.name) ? `Roster name: <span dir="auto">${esc(p.name)}</span> · ` : ''}${esc(DEP_NAMES[p.team] || p.team || '')}</span></div>
       <button class="sw" role="switch" aria-checked="${on}" data-psw aria-label="Status"><i></i>${on ? 'Active' : 'Inactive'}</button></div>
     <div class="pfacts"><div><span>National ID</span><b class="num">${id ? esc(id) : '<span class="warnline">Missing</span>'}</b>${filled ? '<small>from the IDs file</small>' : ''}</div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b><small>${esc(DEP_NAMES[p.team] || '')}</small></div><div><span>Genesys name</span><b dir="auto">${esc(gname(p) || '–')}</b><small dir="auto">${normSpace(p.sys) ? 'system name' : 'same as the roster'}${akaOf(p).length ? ` · also written ${esc(akaOf(p).join(', '))}` : ''}</small></div></div>
-    <details class="pedit"${state.peditOpen ? ' open' : ''}><summary>Edit name, ID, brand, team and joining date</summary><div class="pfields">
+    <details class="pedit"${state.peditOpen ? ' open' : ''}><summary>Edit name, ID, brand, team, scorecard and joining date</summary><div class="pfields">
       ${fld('name', 'Name', p.name, 'dir="auto" placeholder="Full name"')}${fld('nid', 'National ID', p.nid, 'inputmode="numeric" placeholder="10 digits or NA"')}
-      ${sel('brand', 'Brand', BRANDS, p.brand)}${sel('team', 'Team', DEP_ORDER, p.team, DEP_NAMES)}
+      ${sel('brand', 'Brand', BRANDS, p.brand)}${sel('team', 'Team', DEP_ORDER, p.team, DEP_NAMES)}${scorecardSel(p)}
       ${fld('sys', 'System name (Genesys)', p.sys, 'dir="auto" list="sysNames" autocomplete="off" placeholder="Same as the name"')}
       ${fld('spvName', 'Supervisor', supName(p.spv), 'list="supNames" dir="auto" placeholder="–"')}${fld('email', 'Work email', p.email || '', 'type="email" placeholder="name@company.com" spellcheck="false"')}
       ${fld('joined', 'Joining date', p.joined || '', `type="date" min="1990-01-01" max="2100-12-31" title="${(n => (n > 0 ? `The incentive starts the month after ${n} months in the job` : 'The rules do not count time in the job'))(rulesFor(monthKey()).elig.minMonths)}"`)}
-      ${fld('base', 'Incentive base (SR)', p.base || '', `inputmode="numeric" placeholder="${basesNow()[normBrand(p.brand)] ?? 1000} (the brand's)"`)}
+      ${fld('base', 'Incentive base (SR)', p.base || '', `inputmode="numeric" placeholder="${(cp => (cp ? `${cp.base} (the scorecard's)` : `${basesNow()[normBrand(p.brand)] ?? 1000} (the brand's)`))(cardPay(p, null, monthKey()))}"`)}
       <div class="pfoot"><span class="hint">Saved as you leave each field. The Genesys name is what the exports are matched on.</span><button class="btn sm ghost danger" data-premove>Remove from the roster</button></div></div></details></section>`;
 }
 
+/** the person's scorecard: their team's, or a role's own (an SPV, a manager), for the month looked at */
+function scorecardSel(p) {
+  const T = curCards(monthKey()).teams || {}, ck = normSpace(p.card) ? cardKeyOf(p, monthKey()) : '', lost = normSpace(p.card) && !(ck && ck !== normSpace(p.team)) && !T[normSpace(p.card)] ? normSpace(p.card) : '';
+  const own = `<option value="">${esc(T[normSpace(p.team)] ? `The team's: ${T[normSpace(p.team)].title}` : 'The team\'s (none yet)')}</option>`;
+  const L = Object.keys(T).filter(x => x !== normSpace(p.team)).sort(cardOrder).map(x => `<option value="${esc(x)}"${x === ck ? ' selected' : ''}>${esc(x)} – ${esc(T[x].title)}</option>`).join('');
+  return `<label class="pf"><span>Scorecard</span><select data-pf="card" title="The KPIs, weights and base the incentive is counted with. SPVs and managers have a card of their own.">${own}${L}${lost ? `<option value="${esc(lost)}" selected>${esc(lost)} (not in the rules)</option>` : ''}</select></label>`;
+}
 // ---- history for one agent: chart, table, export
 const PH = ['adh', 'fin', 'earned', 'aht', 'ded', 'conf', 'absent', 'tardy', 'adhUnder', 'worked', 'wfExc', 'wfAbs', 'wfLate', 'wfShort', 'occ', 'ans', 'hnd', 'pAht', 'hold', 'acw', 'xferR', 'heldR'];
 const PH_SHORT = { adh: 'Adherence', fin: 'Final %', earned: 'Earned', aht: 'AHT', ded: 'Deduction', conf: 'Conformance', absent: 'Absent', tardy: 'Tardy', adhUnder: 'Days under', worked: 'Worked', wfExc: 'Exceptions', wfAbs: 'No sign-on', wfLate: 'Late', wfShort: 'Short of shift', occ: 'Occupancy', ans: 'Answered', hnd: 'Handled', pAht: 'Avg handle', hold: 'Hold', acw: 'ACW', xferR: 'Transfers', heldR: 'Hold rate' };
@@ -3873,6 +3975,7 @@ $('scoreBody').addEventListener('click', e => {
   if (countClick(e)) return;   // How it is counted (rules.js)
   if (!canRules()) return;
   const C = ruleCards(), card = C.teams[state.scoreTeam], T = state.scoreTeam;
+  const sc = e.target.closest('[data-cscope]'); if (sc) { const v = sc.dataset.cscope; if ((card.scope || 'all') === v) return; if (v === 'brand') card.scope = 'brand'; else delete card.scope; scoreChanged(`${T}: month figures ${v === 'brand' ? 'of the person\'s brand' : 'of all brands'}`); return; }
   if (e.target.closest('#scAdd')) { const t = $('scAddTeam').value; C.teams[t] = { title: `${DEP_NAMES[t] || t} scorecard`, kpis: JSON.parse(JSON.stringify(C.teams.CC ? C.teams.CC.kpis : [])) }; state.scoreTeam = t; scoreChanged(`Added a ${t} scorecard, copied from CC`); toast(`Added a ${t} scorecard, copied from CC. Change the KPIs to match.`); return; }
   if (e.target.closest('#scKpiAdd')) { card.kpis.push({ id: 'k' + Date.now().toString(36), name: 'New KPI', src: 'file', unit: 'pct', dir: 'high', weight: 0, bands: [0.95, 0.9, 0.85, 0.8], aliases: [] }); scoreChanged(`${T}: added a KPI`); return; }
   const d = e.target.closest('[data-sdel]'); if (d) { const i = +d.dataset.sdel, old = card.kpis[i]; card.kpis.splice(i, 1); scoreChanged(`${T}: removed ${old.name}`); toast(`Removed ${old.name}`, { label: 'Undo', fn: () => { card.kpis.splice(i, 0, old); scoreChanged(`${T}: put ${old.name} back`); } }); return; }
@@ -3893,15 +3996,26 @@ $('scoreBody').addEventListener('change', e => {
     tgt.elig = { ...ELIG0, ...(tgt.elig || {}), [f]: v };
     scoreChanged(f === 'minFinal' ? `Lowest final % for the incentive: ${pct1(old)} → ${pct1(v)}` : f === 'minMonths' ? `Months in the job before the incentive: ${old} → ${v}` : `Fewest days attended for the incentive: ${old} → ${v}`); return;
   }
+  if (el.dataset.cpay) {
+    const b = el.dataset.cpay, raw = normSpace(el.value), v = raw === '' ? null : parseFloat(raw); if (v != null && !(Number.isFinite(v) && v > 0)) { renderScore(); return; }
+    const old = card.pay, o = old == null ? {} : typeof old === 'object' ? { ...old } : Object.fromEntries(BRANDS.map(x => [x, old])), was = o[b];
+    if (v == null) delete o[b]; else o[b] = v;
+    if (Object.keys(o).length) card.pay = o; else delete card.pay;
+    const what = `${T}: base for ${b} ${was ? `${was} SR` : 'the brand\'s'} → ${v ? `${v} SR` : 'the brand\'s'}`; scoreChanged(what);
+    toast(what, { label: 'Undo', fn: () => { if (old === undefined) delete card.pay; else card.pay = old; scoreChanged(`${T}: base for ${b} back`); } }); return;
+  }
   if (el.id === 'scTitle') { const old = card.title; card.title = normSpace(el.value) || card.title; scoreChanged(`${T}: scorecard name "${old}" → "${card.title}"`); return; }
   const tr = el.closest('tr[data-ki]'); if (!tr) return; const k = card.kpis[+tr.dataset.ki];
   const f = el.dataset.sf, bt = (kk, v) => (v == null || v === '' ? 'not used' : kk.unit === 'pct' ? `${+(v * 100).toFixed(2)}%` : String(v));
   let what = '';
   if (f === 'name') { const old = k.name; k.name = normSpace(el.value) || k.name; if (k.src === 'file') k.aliases = [...new Set([...(k.aliases || [])])]; what = `renamed ${old} to ${k.name}`; }
-  if (f === 'src') { k.src = el.value; k.unit = { adh: 'pct', adhUnder: 'days', aht: 'sec', tardy: 'min' }[k.src] || 'pct'; k.dir = k.src === 'adh' || k.src === 'file' ? 'high' : 'low'; what = `${k.name} now comes from ${Kpi.SRC[k.src] || k.src}`; }
+  if (f === 'src') { k.src = el.value; k.unit = { adh: 'pct', adhUnder: 'days', aht: 'sec', tardy: 'min' }[k.src] || 'pct'; k.dir = ['adh', 'file', 'team'].includes(k.src) ? 'high' : 'low'; if (!['file', 'aht'].includes(k.src)) delete k.fig; what = `${k.name} now comes from ${Kpi.SRC[k.src] || k.src}`; }
   if (f === 'weight') { const v = parseFloat(el.value); if (!Number.isFinite(v)) { renderScore(); return; } const old = k.weight; k.weight = v / 100; what = `${k.name} weight ${+(old * 100).toFixed(2)}% → ${+v.toFixed(2)}%`; }
   if (f === 'dir') { k.dir = el.value; what = `${k.name}: ${k.dir === 'low' ? 'lower' : 'higher'} is better`; }
-  if (f === 'owner') { k.owner = el.value; what = `${k.name} is entered by ${k.owner === 'quality' ? 'the quality team' : 'the KPI file'}`; }
+  if (f === 'owner') {
+    if (el.value === 'fig') { k.fig = true; what = `${k.name} is the month's figure`; }
+    else { delete k.fig; if (el.value !== 'genesys') k.owner = el.value; what = `${k.name} is entered by ${el.value === 'genesys' ? 'Genesys' : k.owner === 'quality' ? 'the quality team' : 'the KPI file'}`; }
+  }
   if (el.dataset.sb != null) { const i = +el.dataset.sb, v = parseFloat(String(el.value).replace('%', '')), old = k.bands[i]; k.bands[i] = el.value.trim() === '' || !Number.isFinite(v) ? null : k.unit === 'pct' ? v / 100 : v; what = `${k.name} ranking ${5 - i}: ${bt(k, old)} → ${bt(k, k.bands[i])}`; }
   scoreChanged(`${T}: ${what}`);
 });
@@ -3976,6 +4090,7 @@ $('personBody').addEventListener('change', e => {
   const prev = p[f] ?? '';
   updatePerson(p._id, { [f]: v });
   if (f === 'sys') afterSysEdit(p, prev, v);
+  else if (f === 'card') { const c = cardOf({ ...p, card: v }, monthKey()); toast(`Scored with ${c ? c.title : 'no scorecard'}${v ? '' : ' (the team\'s)'}.`, { label: 'Undo', fn: () => updatePerson(p._id, { card: prev }) }); }
   else if (f === 'name') toast(`Saved. Name: ${v || '(empty)'}`, { label: 'Undo', fn: () => updatePerson(p._id, { [f]: prev }) });
 });
 $('personBody').addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('pedit')) state.peditOpen = e.target.open; }, true);

@@ -1,6 +1,6 @@
 // ================================================================ SHARED PIECES: supervisors, incentive rules, live scores,
 // attendance from Genesys, freshness, email drafts, the Outlook .msg reader
-Object.assign(state, { quality: {}, qualityVer: 0, attEditsBy: {}, attEditsVer: 0, fresh: {}, contacts: null, spvCard: null, cycles: {}, cycleDone: {}, sigs: new Map(), sigVer: 0 });
+Object.assign(state, { quality: {}, qualityVer: 0, kfig: {}, khand: {}, kxVer: 0, attEditsBy: {}, attEditsVer: 0, fresh: {}, contacts: null, spvCard: null, cycles: {}, cycleDone: {}, sigs: new Map(), sigVer: 0 });
 
 // ---------------------------------------------------------------- supervisors: each person's Supervisor is another person in the roster
 function supName(pid) { const p = state.roster.find(x => x._id === pid); return p ? gname(effP(p._id) || p) || p.name : ''; }
@@ -26,17 +26,25 @@ const BASES0 = { Virgin: 1000, Friendi: 500, 'Friendi Pay': 500 };
 function basesNow(k) { const C = curCards(k); return { ...BASES0, ...((C && C.bases) || {}) }; }
 /** a person's base for a month: their own base for the months of the rules (cards.people), their own base in the roster, the brand's */
 function monthBase(p, k) { const C = curCards(k), x = p && C && C.people ? C.people[p._id] : null, b = x && Number(x.base); return b > 0 ? { base: b, x } : null; }
+/** the base a person's scorecard pays on (the SPVs' and managers' cards: one number, or one per brand), or null for the brand's */
+function cardPay(p, r, k) {
+  const c = p ? cardOf(p, k) : r ? cardFor(r.team, k) : null, pay = c && c.pay; if (pay == null) return null;
+  const v = typeof pay === 'object' ? Number(pay[normBrand((p && p.brand) || (r && r.brand))]) : Number(pay);
+  return v > 0 ? { base: v, card: c } : null;
+}
 function baseOf(p, r, k) {
   const mb = monthBase(p, k); if (mb) return mb.base;
   const own = p && Number(p.base); if (own > 0) return own;
+  const cp = cardPay(p, r, k); if (cp) return cp.base;
   const b = normBrand((p && p.brand) || (r && r.brand)), B = basesNow(k);
   return B[b] != null ? B[b] : (curCards(k) && curCards(k).base) || 1000;
 }
-/** where the base comes from, in words: { kind: 'month' | 'own' | 'brand' | 'default', text } */
+/** where the base comes from, in words: { kind: 'month' | 'own' | 'card' | 'brand' | 'default', text } */
 function baseWhy(p, r, k) {
   const mb = monthBase(p, k), R = rulesFor(k === undefined ? rulesK() : k), set = R.from ? `the rules from ${ymLabel(R.from)}` : 'the first rules';
   if (mb) return { kind: 'month', text: `this person's own base in ${set}${mb.x.src ? ` (${mb.x.src})` : ''}` };
   if (p && Number(p.base) > 0) return { kind: 'own', text: 'this person\'s own base in the roster' };
+  const cp = cardPay(p, r, k); if (cp) return { kind: 'card', text: `the base of the ${cp.card.title} scorecard` };
   const b = normBrand((p && p.brand) || (r && r.brand)), B = basesNow(k);
   return B[b] != null ? { kind: 'brand', text: `the ${b} base` } : { kind: 'default', text: 'the default base' };
 }
@@ -106,12 +114,42 @@ function fileValues(card, k, p, r) {
   }
   return out;
 }
+// ---------------------------------------------------------------- the month's figures and the values typed by hand
+// kfig/<month>: { kpiId: { Virgin, Friendi, 'Friendi Pay', all } } — one number per brand for the KPIs that rank a figure of the
+// whole floor (Service Level, Floor QoS, AHT of the brand…), typed once a month. khand/<month>: { pid: { kpiId: value | 'NA' } } —
+// a value typed for one person (Staff Satisfaction, Digital projects, Team Performance…), which wins over every other source.
+const FIG_COLS = ['Virgin', 'Friendi', 'Friendi Pay', 'all'];
+/** the figure a KPI of a card takes for a person: their brand's (scope 'brand'), else all brands (typed, or the brands' average) */
+function figValue(kk, card, k, p, r) {
+  const F = state.kfig[k], f = F && F[kk.id]; if (!f) return null;
+  const num = v => (v === Kpi.NA || (typeof v === 'number' && Number.isFinite(v)) ? v : null);
+  if (card && card.scope === 'brand') { const v = num(f[normBrand((p && p.brand) || (r && r.brand))]); if (v != null) return v; }
+  if (num(f.all) != null) return f.all;
+  const L = FIG_COLS.slice(0, 3).map(b => f[b]).filter(v => typeof v === 'number' && Number.isFinite(v));
+  return L.length ? L.reduce((a, v) => a + v, 0) / L.length : null;
+}
+/** the values that win over a KPI's own source for one person: typed by hand, then the month's figure (for KPIs that take one) */
+function kpiOver(card, k, p, r) {
+  const H = p && state.khand[k] ? state.khand[k][p._id] : null, over = {}, from = {};
+  for (const kk of card.kpis) {
+    const h = H ? H[kk.id] : null;
+    if (h === Kpi.NA || (typeof h === 'number' && Number.isFinite(h))) { over[kk.id] = h; from[kk.id] = 'hand'; continue; }
+    if (kk.fig) { const f = figValue(kk, card, k, p, r); if (f != null) { over[kk.id] = f; from[kk.id] = 'fig'; } }
+  }
+  return { over, from };
+}
+/** Team Performance: the average final % of the people someone supervises (the roster's Supervisor column) who have one */
+function teamPerf(pid, finOf) {
+  const L = state.roster.filter(x => x.spv === pid && x._id !== pid).map(x => finOf(x._id)).filter(v => typeof v === 'number' && Number.isFinite(v));
+  return L.length ? L.reduce((a, v) => a + v, 0) / L.length : null;
+}
+const hasTeamKpi = card => !!(card && card.kpis.some(kk => kk.src === 'team'));
 /** a saved month's row scored again with today's inputs (quality numbers, KPI file, the supervisor's attendance corrections, bases)
     and the month's rules. r.kat = days attended (r.ka on rows saved before the absence rules); the days are counted again only when
     the month's rules count other codes than the row was counted with */
-function scoreLive(r, p, k) {
-  const card = cardFor((p && p.team) || r.team, k); if (!card) return null;
-  const cfg = countFor(k), vals = { adh: r.adh ?? null, adhUnder: r.adhUnder ?? null, aht: r.aht ?? null, tardy: r.tardy ?? null, file: fileValues(card, k, p, r) };
+function scoreLive(r, p, k, team) {
+  const card = p ? cardOf(p, k) || cardFor(r.team, k) : cardFor(r.team, k); if (!card) return null;
+  const cfg = countFor(k), vals = { adh: r.adh ?? null, adhUnder: r.adhUnder ?? null, aht: r.aht ?? null, tardy: r.tardy ?? null, team: team ?? null, file: fileValues(card, k, p, r), ...kpiOver(card, k, p, r) };
   // kat = days attended (ka on rows saved before the counting rules), kab = absences as the rules count them (when a long late
   // day counts as one), kr = runs of absent days. Kpi.score takes the absence penalty off, so it is never taken twice.
   let att = r.ks != null ? { sched: r.ks, attended: r.kat ?? r.ka, absent: r.kab ?? r.absent, runs: r.kr } : null, again = false;

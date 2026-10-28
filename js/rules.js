@@ -139,7 +139,7 @@ Object.assign(state, { cntOpen: false });
 const CNT_MISSING = { scale: 'left out; the other KPIs count as 100%', rank1: 'counts as ranking 1', none: 'no final % until every KPI has a value' };
 const CNT_EDGE = { in: 'gets that ranking', out: 'gets the ranking below' }, CNT_MONEY = { round: 'rounded', floor: 'rounded down', ceil: 'rounded up' };
 const CNT_LBL = { sched: 'Scheduled days', lateOver: 'Late days', pen: 'Absence penalty', eligDays: 'Fewest days for the incentive', missing: 'A KPI with no value', edge: 'A value exactly on a band',
-  valDp: 'Percent KPIs before ranking', rankDp: 'Final ranking', pct: 'Final %', pctDp: 'Final % rounding', daysPct: 'Days %', money: 'Whole SR', attitude: 'Critical errors that stop the incentive' };
+  valDp: 'Percent KPIs before ranking', secDp: 'Seconds KPIs before ranking', na: 'A KPI marked N/A', rankDp: 'Final ranking', pct: 'Final %', pctDp: 'Final % rounding', daysPct: 'Days %', money: 'Whole SR', attitude: 'Critical errors that stop the incentive' };
 const cntGroup = f => (['absentExtra', 'absentPer', 'absentFlat', 'countedMin'].includes(f) ? 'pen' : ['pctOf', 'pctTable'].includes(f) ? 'pct' : f);
 const pctDpText = dp => (dp < 0 ? 'not rounded' : dp === 2 ? 'rounded to a whole %' : dp > 2 ? `rounded to ${plural(dp - 2, 'decimal')}` : `rounded to steps of ${Math.pow(10, 2 - dp)}%`);
 /** the absence penalty in words ('4 more days off per absent day, never below 1 counted day') */
@@ -160,6 +160,8 @@ function cntText(g, c) {
   if (g === 'missing') return CNT_MISSING[c.missing];
   if (g === 'edge') return CNT_EDGE[c.edge];
   if (g === 'valDp') return c.valDp < 0 ? 'not rounded' : c.valDp === 0 ? 'rounded to a whole %' : `rounded to ${plural(c.valDp, 'decimal')}`;
+  if (g === 'secDp') return c.secDp < 0 ? 'not rounded' : c.secDp === 0 ? 'rounded to whole seconds' : `rounded to ${plural(c.secDp, 'decimal')}`;
+  if (g === 'na') return c.na === 'scale' ? 'left out; the other KPIs count as 100%' : 'counts as ranking 5';
   if (g === 'rankDp') return c.rankDp < 0 ? 'not rounded' : `rounded to ${plural(c.rankDp, 'decimal')}`;
   if (g === 'pct') return c.pctOf === 'table' && c.pctTable.length ? `from the table (${c.pctTable.map(x => `${x.min} or more: ${pct1(x.pct)}`).join(', ')})` : 'ranking ÷ 5';
   if (g === 'pctDp') return pctDpText(c.pctDp);
@@ -192,6 +194,8 @@ function countEditHtml() {
     ${row('A KPI with no value', cntSeg('missing', c.missing, [['scale', 'is left out'], ['rank1', 'counts as ranking 1'], ['none', 'no final % yet']], 'A KPI with no value'), esc(cntText('missing', c)[0].toUpperCase() + cntText('missing', c).slice(1)) + '.')}
     ${row('A value exactly on a band', cntSeg('edge', c.edge, [['in', 'gets that ranking'], ['out', 'gets the ranking below']], 'A value exactly on a band'))}
     ${row('Percent KPIs before ranking', cntSel('valDp', c.valDp, [[0, 'whole % (94.99% → 95%)'], [1, '1 decimal'], [2, '2 decimals'], [-1, 'not rounded']], 'Percent KPIs before ranking'), 'Rounded as Excel shows them, half up: 94.5% → 95%, 94.49% → 94%. The ranking and the band use the rounded value.')}
+    ${row('Seconds KPIs before ranking', cntSel('secDp', c.secDp, [[0, 'whole seconds (159.97 → 160)'], [1, '1 decimal'], [-1, 'not rounded']], 'Seconds KPIs before ranking'), 'AHT and other KPIs in seconds, as the incentive file shows them: 150.29 s ranks as 150, 159.97 s as 160.')}
+    ${row('A KPI marked N/A', cntSeg('na', c.na, [['rank5', 'counts as ranking 5'], ['scale', 'is left out']], 'A KPI marked N/A'), 'NA or N/A in the KPI file, or typed by hand, for a KPI that does not apply to someone that month. The September 2026 file ranks it 5.')}
     ${row('Final ranking', cntSel('rankDp', c.rankDp, [[2, '2 decimals'], [1, '1 decimal'], [0, 'whole number'], [3, '3 decimals'], [-1, 'not rounded']], 'Final ranking decimals'))}
     ${row('Final %', cntSeg('pctOf', c.pctOf, [['rank5', 'ranking ÷ 5'], ['table', 'from a table']], 'Final %') + table)}
     ${row('Final % rounding', cntSel('pctDp', c.pctDp, [[2, 'whole %'], [3, '1 decimal'], [4, '2 decimals'], [-1, 'not rounded']], 'Final % rounding'), 'For example 95.6% (when a KPI is left out) counts as 96%.')}
@@ -232,7 +236,7 @@ function countChange(el) {
   if (f === 'sched') { const s = new Set(c.sched); if (el.checked) s.add(el.dataset.code); else s.delete(el.dataset.code); countSet({ sched: [...s] }); return; }
   if (['lateOver', 'absentExtra', 'absentFlat', 'countedMin'].includes(f)) { const v = el.value.trim() === '' ? 0 : Number(el.value); if (!(Number.isFinite(v) && v >= 0)) { renderScore(); return; } countSet({ [f]: Math.round(v) }); return; }
   if (f === 'absentPer') { countSet({ absentPer: el.value }); return; }
-  if (['valDp', 'rankDp', 'pctDp'].includes(f)) { countSet({ [f]: Number(el.value) }); return; }
+  if (['valDp', 'secDp', 'rankDp', 'pctDp'].includes(f)) { countSet({ [f]: Number(el.value) }); return; }
   if (f === 'attitude') { const v = normSpace(el.value).replace(/\s*\|\s*/g, '|').replace(/^\||\|$/g, ''); try { new RegExp(v, 'i'); } catch (e) { toast('That is not a list of words separated by |.'); renderScore(); return; } countSet({ attitude: v }); return; }
   if (f === 'tmin' || f === 'tpct') {
     const i = +el.dataset.i, v = Number(el.value), t = c.pctTable.map(x => ({ ...x })); if (!t[i] || !(Number.isFinite(v) && v >= 0)) { renderScore(); return; }
@@ -297,6 +301,8 @@ function peopleBasesClick(e) {
 }
 
 // ---------------------------------------------------------------- how this was counted: one person's month, step by step
+/** where a KPI's value came from, when not from its own source */
+const HOW_FROM = { hand: '(typed by hand)', fig: "(the month's figure)", team: '(their team\'s average final %)' };
 /** a Build-month KPI result (state.kpi) as a month row, for the explanation */
 function kpiRowOfK(K) {
   const res = K.res;
@@ -330,10 +336,10 @@ function howHtml(r, k, o = {}) {
     const rows = T.map(([name, w, , val, rk, band], i) => {
       // a KPI rounded before it was ranked reads 'what it was → what it counted as' (x.vr and r.kv are kept by KPI id)
       const kk = kOf(name, i), vr = x && x.vr && kk ? x.vr[kk.id] : undefined, raw = vr != null && r.kv ? r.kv[kk.id] : undefined;
-      const pts = rk != null ? f2(rk * w / 100) : mm === 'rank1' ? f2(w / 100) : '–';
-      return `<tr><td>${esc(name)}</td><td class="r num">${vr != null ? `${esc(raw != null ? Kpi.fmtVal(kk, raw) : val)} <small>→ ${esc(Kpi.fmtVal(kk, vr))}</small>` : esc(val)}</td><td>${rk == null ? '<span class="subtle">no value</span>' : esc(band || '–')}</td><td class="r">${rankChip(rk)}</td><td class="r num">${esc(w)}%</td><td class="r num">${pts}</td></tr>`; }).join('');
+      const pts = rk != null ? f2(rk * w / 100) : mm === 'rank1' && val !== 'N/A' ? f2(w / 100) : '–', from = (kk && x && x.vs && HOW_FROM[x.vs[kk.id]]) || (kk && kk.src === 'team' ? HOW_FROM.team : '');
+      return `<tr><td>${esc(name)}${from ? ` <small class="subtle">${esc(from)}</small>` : ''}</td><td class="r num">${vr != null ? `${esc(raw != null ? Kpi.fmtVal(kk, raw) : val)} <small>→ ${esc(Kpi.fmtVal(kk, vr))}</small>` : esc(val)}</td><td>${rk == null ? `<span class="subtle">${val === 'N/A' ? 'N/A, left out' : 'no value'}</span>` : esc(band || '–')}</td><td class="r">${rankChip(rk)}</td><td class="r num">${esc(w)}%</td><td class="r num">${pts}</td></tr>`; }).join('');
     step('Each KPI', `<div class="tablewrap howtab"><table><thead><tr><th>KPI</th><th class="r">Result</th><th>Band reached</th><th class="r">Ranking</th><th class="r">Weight</th><th class="r">Points</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <p>Points = ranking × weight.${x && x.vd >= 0 ? ` Percent KPIs are rounded to ${x.vd ? plural(x.vd, 'decimal') : 'a whole %'} before they are ranked.` : ''}${x && x.ed === 'out' ? ' A value exactly on a band gets the ranking below.' : ''}</p>
+      <p>Points = ranking × weight.${x && x.vd >= 0 ? ` Percent KPIs are rounded to ${x.vd ? plural(x.vd, 'decimal') : 'a whole %'} before they are ranked.` : ''}${x && x.vr && T.some((t, i) => { const q = kOf(t[0], i); return q && q.unit === 'sec' && x.vr[q.id] !== undefined; }) ? ` Seconds are rounded to ${x.sd ? plural(x.sd, 'decimal') : 'whole seconds'} before they are ranked.` : ''}${x && x.na ? ` A KPI marked N/A ${x.na === 'scale' ? 'is left out' : 'counts as ranking 5'}.` : ''}${x && x.ed === 'out' ? ' A value exactly on a band gets the ranking below.' : ''}</p>
       ${miss.length ? `<p class="hownote">${esc(andList(miss))} had no value: ${mm === 'rank1' ? `${miss.length > 1 ? 'they count' : 'it counts'} as ranking 1.` : mm === 'none' ? 'no final % until every KPI has one.' : `${miss.length > 1 ? 'they are' : 'it is'} left out, and the other weights (${esc(pct1(x ? x.ws : T.filter(t => t[4] != null).reduce((a, t) => a + t[1] / 100, 0)))}) count as 100%.`}</p>` : ''}`);
   }
   // 2. final ranking and final %

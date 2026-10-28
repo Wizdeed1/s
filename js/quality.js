@@ -257,7 +257,7 @@ document.addEventListener('change', e => {
     it. Call QA is Quality Observations (CT: the Final Score). DRC-CSAT is not a column: it is one score for everyone (the box above). */
 const Q_TPL = { main: [['callqa', 'Call QA'], ['emp', 'Ticket QA / Empowerment Utilization'], ['fcr', 'Call Reason & FCR Accuracy'], ['final', 'Final Score (Average of Call QA, Ticket QA & CR)']], ct: [['qa', 'Evaluation score'], ['final', 'Final Score']] };
 const qVal = (x, f) => { const e = x.eval || {}, kp = x.kpi || {}; return f === 'callqa' ? e.callqa ?? null : f === 'final' ? e.final ?? null : f === 'emp' ? kp.emp ?? e.ticketqa ?? null : f === 'fcr' ? kp.fcr ?? e.cr ?? null : f === 'qobs' ? kp.qobs ?? qObsOf(e) : f === 'qa' ? kp.qa ?? e.ev ?? null : kp[f] ?? null; };
-const qTplOf = (p, k) => { const c = cardFor(p.team, k), ids = new Set(((c && c.kpis) || []).map(x => x.id)); return ids.has('qa') && !ids.has('emp') ? 'ct' : 'main'; };
+const qTplOf = (p, k) => { const c = cardOf(p, k), ids = new Set(((c && c.kpis) || []).map(x => x.id)); return ids.has('qa') && !ids.has('emp') ? 'ct' : 'main'; };
 const qPctTxt = v => (v == null ? '–' : `${+(v * 100).toFixed(2)}%`);
 function qTablesHtml(people, k, can, fixed, map) {
   const extra = qualityKpis().filter(x => !['qobs', 'emp', 'fcr', 'qa', 'csat'].includes(x.id));

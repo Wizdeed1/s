@@ -22,7 +22,7 @@ const ok = (name, fn) => tests.push([name, fn]);
 const rng = seed => () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
 
 // ---------------------------------------------------------------- 1a. Kpi.score: 'not rounded' gives v33's numbers, the defaults v33's on whole %
-const V33 = { valDp: -1, pctDp: -1 };   // what v33 did: no rounding of percent KPIs or of the Final %
+const V33 = { valDp: -1, pctDp: -1, secDp: -1 };   // what v33 did: no rounding of percent KPIs, of seconds or of the Final %
 const pick = (r, a) => a[Math.floor(r() * a.length)];
 const SCORE_KEYS = ['finalRank', 'finalPct', 'sched', 'actual', 'daysPct', 'target', 'earned', 'missing', 'complete', 'weightsOk'];
 const core = res => ({ ...Object.fromEntries(SCORE_KEYS.map(k => [k, res[k]])), rows: res.rows.map(x => [x.k.id, x.v, x.r, x.w]) });
@@ -55,12 +55,12 @@ ok('Kpi.score with percent KPIs and the Final % not rounded gives v33\'s numbers
     for (const k of card.kpis) { const v = randomValue(r, k); assert.equal(Kpi.rank(k, v), Old.Kpi.rank(k, v)); assert.equal(Kpi.rank(k, v, 'in'), Old.Kpi.rank(k, v)); }
   }
 });
-ok('Kpi.score with the default rules is v33 on percent KPIs rounded to a whole % (half up, as Excel shows them), with the Final % rounded to a whole % and the days % exact (10,000 random people)', () => {
+ok('Kpi.score with the default rules is v33 on percent KPIs rounded to a whole % (half up, as Excel shows them) and seconds to whole seconds, with the Final % rounded to a whole % and the days % exact (10,000 random people)', () => {
   const r = rng(20261021), cards = Object.values(Kpi.DEFAULTS().teams), xl = (x, dp) => { const f = 10 ** dp; return Math.round(+(x * f).toPrecision(15)) / f; };
   for (let i = 0; i < 10000; i++) {
     const card = pick(r, cards), vals = { file: {} }, whole = { file: {} };
     for (const k of card.kpis) {
-      const v = randomValue(r, k), w = k.unit === 'pct' && v != null ? xl(v * 100, 0) / 100 : v;
+      const v = randomValue(r, k), w = k.unit === 'pct' && v != null ? xl(v * 100, 0) / 100 : k.unit === 'sec' && v != null ? xl(v, 0) : v;
       if (k.src === 'file') { vals.file[k.id] = v; whole.file[k.id] = w; } else { vals[k.src] = v; whole[k.src] = w; }
     }
     const sched = pick(r, [0, null, ...Array.from({ length: 31 }, (_, j) => j + 1)]);
@@ -236,6 +236,42 @@ ok('rules saved before the rounding defaults follow them; rules saved since keep
 ok('a percent reads as it is: 57%, not 57.00%', () => {
   const k = { unit: 'pct' };
   assert.deepEqual([0.57, 0.94962, 0.95, 0.9, 0.123456, 1, null].map(v => Kpi.fmtVal(k, v)), ['57%', '94.96%', '95%', '90%', '12.35%', '100%', '–']);
+});
+// ---------------------------------------------------------------- 3. every department's card (the September 2026 incentive file), synthetic values
+ok('every department has a card: the weights add up to 100%, the bands are in order, the role cards are told apart', () => {
+  const D = Kpi.DEFAULTS().teams;
+  for (const t of ['CC', 'SM', 'CT', 'QA', 'WF', 'TS', 'DE', 'OP', 'OP-DIG', 'CT-SPV', 'CT-CCM', 'CT-SGM', 'QA-MGR', 'WF-MGR', 'DE-MGR']) assert.ok(D[t], t);
+  assert.deepEqual(Kpi.validate({ teams: D }), []);
+  assert.deepEqual(Object.keys(D).filter(Kpi.isRoleCard), ['OP-DIG', 'CT-SPV', 'CT-CCM', 'CT-SGM', 'QA-MGR', 'WF-MGR', 'DE-MGR']);
+  assert.deepEqual(D.OP.pay, { Virgin: 1600, Friendi: 1000, 'Friendi Pay': 1000 }); assert.equal(D.TS.pay, 1000); assert.equal(D.QA.scope, 'brand');
+  assert.deepEqual(D.OP.kpis.map(k => [k.id, k.src, k.weight, !!k.fig]), [['tperf', 'team', 0.25, false], ['sl', 'file', 0.3, true], ['aht', 'aht', 0.1, true], ['qow', 'file', 0.25, false], ['ssmc', 'file', 0.1, false]]);
+});
+ok('an SPV at 87% / 88% / 152.5 s / 99% / 82% is 98% and 1568 SR on 1600; a Tele Sales champion with NA', () => {
+  const D = Kpi.DEFAULTS().teams;
+  const op = Kpi.score(D.OP, { team: 0.87, aht: null, file: {}, over: { sl: 0.88, aht: 152.5, qow: 0.99, ssmc: 0.82 }, from: { sl: 'fig', aht: 'fig' } }, { sched: 22, attended: 22 }, 1600);
+  assert.deepEqual(op.rows.map(x => x.r), [5, 5, 4, 5, 5]); assert.equal(op.finalPct, 0.98); assert.equal(op.earned, 1568);
+  assert.deepEqual(op.how.kpis.map(x => x.s || ''), ['', 'fig', 'fig', 'hand', 'hand']);
+  const ts = Kpi.score(D.TS, { adhUnder: 1, file: { qobs: 0.93, cfb: Kpi.NA, util: 0.5, crate: Kpi.NA } }, { sched: 22, attended: 20 }, 1000);
+  assert.deepEqual(ts.rows.map(x => x.r), [4, 5, 1, 5, 5]); assert.equal(ts.finalPct, 0.79); assert.equal(ts.earned, 718);   // 1000 × 20/22 × 79%
+  assert.deepEqual(ts.missing, []);
+  const scaled = Kpi.score(D.TS, { adhUnder: 1, file: { qobs: 0.93, cfb: Kpi.NA, util: 0.5, crate: Kpi.NA } }, null, 1000, { na: 'scale' });
+  assert.deepEqual(scaled.rows.map(x => x.r), [4, null, 1, null, 5]); assert.equal(scaled.finalRank, 3.09); assert.deepEqual(scaled.missing, []);   // (4×.25 + 1×.2 + 5×.1) ÷ .55 = 3.09
+  assert.equal(Kpi.fmtVal(D.TS.kpis[1], Kpi.rankedVal(ts.rows[1])), 'N/A');
+  assert.equal(Kpi.score(D.TS, { adhUnder: 0, file: { qobs: 0.96, cfb: 0.99, util: 1, crate: 98 } }, null, 1000).rows[3].r, 4, 'Contact Rate is a plain number: 98 ranks 4');
+});
+ok('seconds are ranked on whole seconds by default (150.29 s ranks 5, 159.97 s ranks 3 on the CC card), and read from m:ss or an Excel time', () => {
+  const D = Kpi.DEFAULTS().teams, aht = D.CC.kpis.find(k => k.id === 'aht'), r = (v, c) => Kpi.score({ kpis: [{ ...aht, weight: 1 }] }, { aht: v }, null, 1000, c).rows[0].r;
+  assert.deepEqual([r(150.289), r(159.966), r(150.289, { secDp: -1 }), r(159.966, { secDp: -1 })], [5, 3, 4, 4]);
+  assert.deepEqual(['2:32', '0:02:32', '152', 152 / 86400, 'n/a', 'N/A', 'NA', 'AL', '#N/A'].map(v => Kpi.normValue(aht, v)), [152, 152, 152, 152, 'NA', 'NA', 'NA', null, null]);
+  assert.equal(Kpi.normValue({ id: 'x', unit: 'pct' }, 'N/A'), 'NA');
+});
+ok('a value typed by hand or the month\'s figure wins over the KPI\'s own source; anything but a number or NA is no value', () => {
+  const card = { kpis: [{ id: 'a', name: 'A', src: 'file', unit: 'pct', dir: 'high', weight: 0.5, bands: [0.95, 0.9, 0.85, 0.8] }, { id: 'b', name: 'B', src: 'adh', unit: 'pct', dir: 'high', weight: 0.5, bands: [0.95, 0.9, 0.85, 0.8] }] };
+  const x = Kpi.score(card, { adh: 0.5, file: { a: 0.5 }, over: { a: 0.97, b: 0.91 }, from: { a: 'fig' } }, null, 1000);
+  assert.deepEqual(x.rows.map(z => [z.v, z.r, z.s]), [[0.97, 5, 'fig'], [0.91, 4, 'hand']]);
+  assert.deepEqual(Kpi.score(card, { adh: 0.5, file: { a: 0.5 }, over: { a: null } }, null, 1000).rows.map(z => z.r), [1, 1]);
+  const c = Kpi.normCount({ secDp: 9, na: 'nope' }); assert.equal(c.secDp, 3); assert.equal(c.na, 'rank5');
+  assert.deepEqual(Kpi.countDiff({ secDp: -1, na: 'scale' }), { secDp: -1, na: 'scale' });
 });
 ok('the incentive workbook follows the rules: extra code columns, and Actual days less the absence penalty', async () => {
   const ctx = synthCtx(5), cfg = { sched: [...Kpi.COUNT0().sched, 'Exam', 'Paternity'], absentExtra: 4, countedMin: 1 };

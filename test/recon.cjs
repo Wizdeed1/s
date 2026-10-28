@@ -40,7 +40,7 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   ok(chips.some(c => /Monthly_Deduction_2026-08/.test(c) && /holds Sep 2026/.test(c)), 'the deduction workbook named 2026-08 holds Sep 2026');
   const groups = async () => p.$$eval('#reconCard details.rgroup[data-rcg]', L => Object.fromEntries(L.map(d => [d.dataset.rcg, d.querySelector('table tbody').rows.length])));
   let G = await groups();
-  ok(G.base >= 6, `own bases: ${G.base} people`);
+  ok(G.base === 3, `own bases: ${G.base} people (1580, 1545, 1648; the SPVs' 1600 is the base of their scorecard)`);
   ok(G.absence === 2, `days taken off for absences: ${G.absence} people`);
   const fits = await p.$$eval('#reconCard .rfits label', L => L.map(l => l.textContent.trim()));
   ok(fits.length >= 1, `absence rules that fit: ${fits.join(' / ')}`);
@@ -53,7 +53,7 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   // the own bases into the rules of the month, logged; the base group goes away
   await p.click('#reconCard [data-rcfix="bases|base"]'); await p.waitForTimeout(400);
   const saved = await p.evaluate(() => { const M = window.__mc, R = M.rulesFor ? M.rulesFor('2026-08') : null, C = R ? R.cards : M.state.cards; return { n: Object.keys((C && C.people) || {}).length, log: ((R && R.v ? R.v.log : M.state.cards.log) || []).map(x => x.what).slice(-1)[0] || '' }; });
-  ok(saved.n >= 6, `bases saved in the rules: ${saved.n} · "${saved.log.slice(0, 90)}…"`);
+  ok(saved.n === 3, `bases saved in the rules: ${saved.n} · "${saved.log.slice(0, 90)}…"`);
   G = await groups();
   ok(!G.base, `no own-base group after the fix (${JSON.stringify(G)})`);
 

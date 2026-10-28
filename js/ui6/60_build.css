@@ -360,3 +360,8 @@ b.bad, .astats b.bad { color: var(--bad); }
 .upn small { color: var(--muted); font-size: 12px; }
 .upa { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .upa select.cell { min-height: 28px; font-size: 12.5px; }
+/* Review › KPI results: the month's figures and the values typed by hand */
+.kxcard .formtab input.cell { width: 100%; min-width: 84px; }
+.kxadd { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.kxadd select.cell { flex: 0 1 260px; min-width: 0; }
+.kxadd input.cell { flex: 0 0 130px; width: 130px; }

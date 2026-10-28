@@ -370,9 +370,12 @@ function roleHeads(r) {
   $('resEyebrow').textContent = who; $('cycEyebrow').textContent = who; $('qEyebrow').textContent = r === 'quality' ? 'Quality team' : who;
   $('resLead').textContent = r === 'senior' ? 'Every department, supervisor and agent for the month. Finalize the month when the results are agreed; after that only you can change them.'
     : 'Every department, supervisor and agent for the month, to read. The senior manager finalizes the month when the results are agreed.';
-  $('cycLead').textContent = r === 'senior' ? 'Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month\'s four emails.'
-    : 'The senior manager\'s page, which you can stand in for: the one-to-one deadline, which supervisors have finished their team, their scorecards, and the month\'s four emails.';
+  $('cycLead').textContent = cycLeadText(r);
 }
+/** the Supervisors page's line under its title: the month close, or (its other tab) the incentive email */
+const cycLeadText = (r, mail) => (mail ? 'The month\'s incentive data to the champions: for review with its deadline, then final with what changed since the review. The incentive file the WFM analysts built is attached by itself.'
+  : r === 'senior' ? 'Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month\'s emails: the incentive data to the champions (Incentive email) and the four of the month close.'
+    : 'The senior manager\'s page, which you can stand in for: the one-to-one deadline, which supervisors have finished their team, their scorecards, and the month\'s emails, the incentive email to the champions included.');
 let hashTaken = false;
 function applyRole() {
   const r = roleNow(), L = wsOfNow();
@@ -410,7 +413,7 @@ function showWsView(v) {
 function setWs(ws, quiet) {
   const L = wsOfNow(); if (!L.includes(ws)) return;
   const changed = state.ws !== ws; state.ws = ws; if (ws === 'wfm') state.wfmAt = 'wfm'; syncWsSeg(); hidePop(); putHash(ws);
-  if (ws !== 'wfm') mountMail(false);
+  if (ws !== 'wfm' && ws !== 'cycle') mountMail(false);
   if (ws === 'build') { for (const w of WS_VIEWS) $('v-' + w).hidden = true; const s = STEPS.includes(state.step) ? state.step : 'import'; state.step = '__'; setStep(s); return; }
   showWsView(ws); renderWs();
   if (changed && !quiet) { animIn($('v-' + ws)); window.scrollTo({ top: 0 }); }

@@ -33,7 +33,7 @@ const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');
   await p.screenshot({ path: path.join(out, `build-done-${theme}.png`) });
   await p.click('#wfmTabs [data-wt="emails"]'); await p.waitForTimeout(400);
   const ms = await p.$('[data-mailsub="month"]'); if (ms) { await ms.click(); await p.waitForTimeout(500); }
-  console.log('email:', await p.evaluate(() => [document.querySelector('#mSrc [aria-pressed="true"]').dataset.f, !document.getElementById('mKind').hidden, document.getElementById('v-email').closest('#v-wfm') ? 'on the WFM team page' : 'elsewhere'].join(', ')));
+  console.log('email:', await p.evaluate(() => [document.querySelector('#mSrc [aria-pressed="true"]').dataset.f, window.__mc.state.mailKind, document.getElementById('v-email').closest('#v-wfm') ? 'on the WFM team page' : 'elsewhere'].join(', ')));
   await p.screenshot({ path: path.join(out, `build-email-${theme}.png`) });
   console.log(errs.length ? errs.join('\n') : 'no errors');
   await b.close();

@@ -3334,7 +3334,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
         </li>
         <li>To change a deduction by hand, type over its Diff cell in the <b>Deduction</b> sheet. Typed values turn yellow.</li>
         <li>Changing a Status in the workbook's <b>Roster</b> sheet updates every table after Excel recalculates.</li>
-        <li>Go to <b>Email</b> for the deduction and incentive emails. If you changed the report in Excel, save it and drop it there so the email uses your changes.</li>
+        <li>Go to <b>Email</b> for the deduction and absences emails. If you changed the report in Excel, save it and drop it there so the email uses your changes. Build the incentive file too: the senior manager sends it to the champions (Supervisors › Incentive email).</li>
       </ol>
     </div>
     <div class="next"><button class="btn ghost" data-go="review"><svg width="16" height="16" aria-hidden="true"><use href="#i-chevl"/></svg>Back to Review</button><span class="spacer"></span><button class="btn primary" data-go="email">Continue to Email<svg width="16" height="16" aria-hidden="true"><use href="#i-chevr"/></svg></button></div>
@@ -3345,10 +3345,9 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     <div class="viewhead">
       <div>
         <h2 class="vt" id="h-email">Emails</h2>
-        <p id="emailLead">The deduction and incentive emails, for review and final, ready for Outlook.</p>
+        <p id="emailLead">The month's email, for review and final, ready for Outlook.</p>
       </div>
       <div class="mailtabs">
-        <div class="seg" id="mKind" role="group" aria-label="Which email"><button data-f="ded" aria-pressed="true">Deduction</button><button data-f="inc" aria-pressed="false">Incentive</button></div>
         <div class="seg" id="mSrc" role="group" aria-label="Where the numbers come from" hidden><button data-f="shared" aria-pressed="true">Shared month</button><button data-f="build" aria-pressed="false">This build</button></div>
         <div class="seg" id="mStage" role="group" aria-label="Review or final"><button data-f="review" aria-pressed="true">For review</button><button data-f="final" aria-pressed="false">Final</button></div>
       </div>
@@ -3422,8 +3421,9 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     <div id="wfmMail"></div>
   </section>
   <section class="view ws" id="v-cycle" aria-labelledby="h-cycle" hidden>
-    <div class="viewhead"><div><div class="eyebrow" id="cycEyebrow">Senior manager</div><h1 id="h-cycle">Supervisors</h1><p id="cycLead">Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month's four emails.</p></div><div class="wsbar" id="cycleBar"></div></div>
+    <div class="viewhead"><div><div class="eyebrow" id="cycEyebrow">Senior manager</div><h1 id="h-cycle">Supervisors</h1><p id="cycLead">Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month's emails.</p></div><div class="wsbar" id="cycleBar"></div></div>
     <div id="cycleBody"></div>
+    <div id="cycMail" hidden></div>
   </section>
   <section class="view ws" id="v-quality" aria-labelledby="h-quality" hidden>
     <div class="viewhead"><div><div class="eyebrow" id="qEyebrow">Quality team</div><h1 id="h-quality">Quality results</h1><p>Drop the month's Final EVAL, check that every name matched, and correct any quality KPI by hand. The scorecards everywhere use these numbers straight away, until the senior manager finalizes the month.</p></div><div class="wsbar" id="qualityBar"></div></div>
@@ -3541,7 +3541,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
       <li><b>Admin</b> does everything below and manages the accounts. There is always at least one admin.</li>
       <li><b>WFM analyst</b> builds the month (imports, roster, settings, workbooks) and the daily emails: in <b>WFM team › Report builder</b> they drop the day's exports, send MC Leaders and the WFM Daily Review, and the four brand emails go to the WFM manager. The rest of the WFM page and the teams are read-only for them, and they do not see the incentive amounts. The month is saved to the shared data as they work.</li>
       <li><b>WFM manager</b> sends the four brand emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay) from <b>WFM team › Daily emails</b>, adds the interactions export, sends the deduction and absence emails, fixes the accepted objections on adherence and AHT, and sees the analytics, results and every team.</li>
-      <li><b>Senior manager</b> sees every department, supervisor and agent (the WFM page read-only, without its emails; on the Team page who has a one-to-one arranged and who not yet); sets the supervisors' scorecards, the one-to-one deadline and the month-close due days; changes the incentive rules (with an admin); decides the objections sent to him; sends the one-to-ones-ready, deadline, review and final emails; finalizes each month. After that only he can change the results. He sees every change made by hand.</li>
+      <li><b>Senior manager</b> sees every department, supervisor and agent (the WFM page read-only, without its emails; on the Team page who has a one-to-one arranged and who not yet); sets the supervisors' scorecards, the one-to-one deadline and the month-close due days; changes the incentive rules (with an admin); decides the objections sent to him; sends the incentive data email to the champions (for review, then final, with the incentive file the WFM analysts build) and the one-to-ones-ready, deadline, review and final emails; finalizes each month. After that only he can change the results. He sees every change made by hand.</li>
       <li><b>Supervisor</b> (linked to their name in the roster) sees their own team, arranges the one-to-ones (following up last month's actions), reads what each agent wrote and sends the final back (accepted or rejected, with a comment), corrects the team's attendance, answers the agents' objections, approves the agents of the team, and tells the senior manager when the team is done. When you make someone a supervisor here, link them to their name (the operations team is listed) and tick the agents they lead.</li>
       <li><b>Quality team</b> drops the Final EVAL (the template with national IDs links every row by itself), corrects the quality KPIs until the month is final, and fixes the accepted objections on quality.</li>
       <li><b>Agent</b> (linked to their name) sees only their own results, attendance and forms, fills in their part of the one-to-one and sends it to the supervisor, signs it after the supervisor's final, raises objections, and sees this month so far (in English or Arabic).</li>
@@ -3622,8 +3622,8 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
         <li>Check <b>Preview</b>, then press <b>Build Excel</b>.</li>
         <li>Performance (optional): export the <b>Agent Performance Summary</b> a second time with every column (Answered, Handle, Avg Handle, Avg Talk, Avg Hold, Avg ACW, Held, Transferred, Outbound) and drop it on Import. <b>Preview</b> then shows each employee's performance with team totals and a sortable table (green at least 15% better than the team, red at least 15% worse), and each person's page compares them with their team. Times are weighted the way Genesys works them out. Exports of past months go to the history, so the person's chart can show answered, handle time, hold, ACW and transfer rate by month. An export with only voice also gives the AHT.</li>
         <li>Workforce and exceptions: with the Schedule and Agent Status Timeline in, every scheduled day of the month is judged with the same rules as the Daily WFM &amp; Performance Review (late after 0 min, no sign-on after 180 min, short of shift from 15 min, adherence 95%, AHT ceiling 2:30, high hold 45 s, at least 5 calls; leave days left out) and added up per employee: shifts, worked, no sign-on, late sign-ons and minutes, short of shift, break changes, time signed on, occupancy, conformance and exceptions. <b>Preview</b> shows the totals by team, the priority follow-up list with reasons and a sortable table; each person's page lists their days one by one. Late first call, calls under 10 s, longest calls and dropped calls need the daily Interactions export, so they stay in the daily email.</li>
-        <li>Build the incentive data workbook too. Both files are filled in, including attendance and tardy minutes.</li>
-        <li>On <b>WFM team › Emails › Monthly emails</b>, pick Deduction or Incentive, then For review, and where the numbers come from: <b>Shared month</b> (with the supervisors' attendance corrections) or <b>This build</b> (the incentive always comes from the build). Use <b>Copy for Outlook</b> and paste into a new email, or <b>Download .eml</b> and open it in Outlook. The data sent for review is remembered. The WFM manager sends the deduction and absences emails from the same place, from the shared month. The deduction email's attachment (<b>Save attachment</b>) is one workbook with the Attendance Report and the Monthly Deduction; the emails' workbooks carry no National IDs.</li>
+        <li>Build the incentive data workbook too (<b>Export › Build incentive file</b>). Both files are filled in, including attendance and tardy minutes. The incentive file is kept with the shared data for the senior manager, who sends the incentive email to the champions from <b>Supervisors › Incentive email</b> (for review, then final); build it again after corrections and the senior manager's page takes the newer one.</li>
+        <li>On <b>WFM team › Emails › Deduction and absences</b>, pick For review and where the numbers come from: <b>Shared month</b> (with the supervisors' attendance corrections) or <b>This build</b>. Use <b>Copy for Outlook</b> and paste into a new email, or <b>Download .eml</b> and open it in Outlook. The data sent for review is remembered. The WFM manager sends the same emails from the same place, from the shared month. The attachment (<b>Save attachment</b>) is one workbook with the Attendance Report and the Monthly Deduction; the emails' workbooks carry no National IDs.</li>
         <li>Everything you drop on Import is kept (<b>Import › Saved uploads</b>), so signing out loses nothing: the month is back in Build when you sign in again. Pick a month there to load it, move a file to another month, replace or delete it.</li>
         <li>On vacation? The WFM manager ticks your name on the WFM team page (Vacation cover) and has your tabs until you are back; when the manager is away, you tick theirs.</li>
         <li>After the review deadline, drop any corrected files, open <b>Final</b>, and send. The final email lists what changed since the review.</li>
@@ -3663,7 +3663,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
       <h3>Roles and pages</h3>
       <ul>
         <li><b>Supervisor › Team</b>: their own agents (the roster's Supervisor column), the team's average of every KPI (their own KPIs as a supervisor), their supervisor scorecard, a one-to-one board, the month's attendance (counted from Genesys for CC and SM, from the supervisor's attendance template for TS, MG, CT, QA, DE and WF; only the supervisor can correct a day), the agents waiting for their approval, and <b>Finish my team</b>, which tells the senior manager in the tool and makes an email draft to him. It stays grey until every agent's one-to-one is done. The one-to-one: arrange it; an agent with an account fills in their part on their own page (what was discussed, the root cause, their comments, actions, the next review date) and sends it; the supervisor reads it, accepts or rejects it with a final comment and sends the final back; only then does the agent sign. For an agent without an account the supervisor fills in the form when they meet. Supervisors do not see the incentive amounts.</li>
-        <li><b>Senior manager › Supervisors</b>: the one-to-one deadline, which supervisors have finished (a notification and a count on the page button when one does), the supervisors' scorecards and their items (team averages, one-to-ones by the deadline, the quality team's leader items, or items he types), and the month's four emails: one-to-ones ready (to the supervisors), the deadline reminder (to those not finished), the results for review (“Hi All”: the ID, name, final % and earned SR of everyone on the incentive list who earned it, with the same table as an Excel file) and the final result form (his own form: everyone on the incentive list with their final % and earned SR, the month's total and the table the VP, HR Director, Finance Director and CEO sign, as an email and as the same Excel form). The <b>incentive list</b> on the same page says who is on those two, in order, with the names as the tool has them; add or remove people there. The emails carry no logo or name: Outlook adds your signature. <b>Results</b>: every agent; he decides who is eligible against the rules and finalizes the month.</li>
+        <li><b>Senior manager › Supervisors › Incentive email</b>: the incentive data email to the champions, for review (with the review deadline) and then final (with what changed since the review). The attachment is the incentive file the WFM analysts built (WFM team › Export › Build incentive file), kept with the shared data and shown here by itself, without the National IDs; an edited file can be dropped there instead. Copy for Outlook or Download .eml, as on the WFM team's Emails. <b>Month close</b> (the page's other tab): the one-to-one deadline, which supervisors have finished (a notification and a count on the page button when one does), the supervisors' scorecards and their items (team averages, one-to-ones by the deadline, the quality team's leader items, or items he types), and the month's four emails: one-to-ones ready (to the supervisors), the deadline reminder (to those not finished), the results for review (“Hi All”: the ID, name, final % and earned SR of everyone on the incentive list who earned it, with the same table as an Excel file) and the final result form (his own form: everyone on the incentive list with their final % and earned SR, the month's total and the table the VP, HR Director, Finance Director and CEO sign, as an email and as the same Excel form). The <b>incentive list</b> on the same page says who is on those two, in order, with the names as the tool has them; add or remove people there. The emails carry no logo or name: Outlook adds your signature. <b>Results</b>: every agent; he decides who is eligible against the rules and finalizes the month.</li>
         <li><b>WFM</b>: Analytics by team, brand and month; Agents with every measure and the best and worst quarter marked; Daily with the stored days; <b>Report builder</b> (the WFM analysts: the day's exports, MC Leaders, the WFM Daily Review); <b>Daily emails</b> (the WFM manager: the four brand emails to send); Interactions from the interactions export; Emails with the deduction and absences emails (the WFM manager). The senior manager and the analysts read the rest of the page.</li>
         <li><b>Team page</b> for the senior manager, the WFM team and the admin: every team; the agents ranked lowest first (adherence, final %, exceptions, absence or tardiness), with a name search and the supervisor under each name.</li>
         <li><b>Quality team › Quality</b>: drop the Final EVAL; Call QA fills Quality Observations (CT: the Final Score), critical errors are kept (an attitude error stops the incentive), the Leaders sheet scores the team leads. Any quality KPI can be corrected by hand until the month is final; each change is logged.</li>
@@ -10142,7 +10142,7 @@ const KINDS = {
   kpiFile: { label: 'the KPI file', short: 'KPI file', group: 'kpi', monthly: true, route: 'kpi', routes: ['kpi'] },
   evalBook: { label: 'the quality team\'s Final EVAL', short: 'Final EVAL', group: 'eval', monthly: true, route: 'quality', routes: ['quality'] },
   finalResult: { label: 'the old final result of a month', short: 'old Excel file', group: 'old', old: true, monthly: true, route: 'compare', routes: ['compare'] },
-  incentiveData: { label: 'the incentive data workbook (MC_all_team_incentive_data)', short: 'incentive data workbook', group: 'old', old: true, monthly: true, route: 'history', routes: ['history', 'compare', 'email'] },
+  incentiveData: { label: 'the incentive data workbook (MC_all_team_incentive_data)', short: 'incentive data workbook', group: 'old', old: true, monthly: true, route: 'history', routes: ['history', 'compare', 'incmail'] },
   oldDeductionBook: { label: 'the old Monthly Deduction workbook', short: 'old Excel file', group: 'old', old: true, monthly: true, route: 'compare', routes: ['compare', 'attendance'] },
   toolReport: { label: 'a monthly report made by this tool', short: 'monthly report', group: 'report', monthly: true, route: 'email', routes: ['email', 'compare'] },
   adhGrid: { label: 'an old adherence sheet (Adherence -In Detail)', short: 'old Excel file', group: 'old', old: true, monthly: true, route: 'compare', routes: ['compare'] },
@@ -15956,7 +15956,7 @@ function renderIncExport() {
   $('buildInc').disabled = !md || state.incBuilding;
   $('buildInc').innerHTML = state.incBuilding ? '<span class="spin" aria-hidden="true"></span>Building…' : '<svg width="18" height="18" aria-hidden="true"><use href="#i-down"/></svg>Build incentive file';
   $('histAdd').disabled = !md; $('histAdd').textContent = md && state.history[ymKey(state.y, state.m)] ? `Update ${MON[state.m - 1]} ${state.y} in the history` : `Add ${MON[state.m - 1]} ${state.y} to the history`;
-  $('incNote').textContent = !md ? 'Drop the exports and the attendance files first.' : state.incBuilt && state.incBuilt.ver === state.ver ? `Saved ${state.incBuilt.fn} at ${state.incBuilt.at}.` : 'Same four tabs as the file sent to the champions. The Email step attaches it for you.';
+  $('incNote').textContent = !md ? 'Drop the exports and the attendance files first.' : state.incBuilt && state.incBuilt.ver === state.ver ? `Saved ${state.incBuilt.fn} at ${state.incBuilt.at}${state.incBuilt.locked === 'ok' ? ': the senior manager has it on Supervisors › Incentive email' : ''}.` : 'Same four tabs as the file sent to the champions. Build it for the senior manager: it is kept with the shared data and the senior manager sends it (Supervisors › Incentive email).';
   $('incSheets').innerHTML = [['Attendance Report', 'Everyone in the reports: day codes, Tardy, leave counts, Scheduled and Actual days', md ? md.att.length : null],
     ['Adherence -In Detail', 'Daily adherence, NA under the cut-off, Avr.', md ? md.det.length : null],
     ['Adherence', `Monthly average per person${state.settings.incFullAdhTeams.length ? `; ${state.settings.incFullAdhTeams.join(', ')} at 100%` : ''}`, md ? md.adh.length : null],
@@ -16685,7 +16685,7 @@ function dedDiff(a, b) {   // deduction snapshot vs now -> changed totals and ch
 }
 
 // ---------------------------------------------------------------- review snapshots (for the final emails)
-const snapId = kind => `${kind}-${kind === 'ded' && state.mailSrc === 'shared' ? (wsMonthNow() || monthKey()) : monthKey()}`;
+const snapId = kind => `${kind}-${kind === 'inc' ? (({ y, m }) => ymKey(y, m))(incMonth()) : state.mailSrc === 'shared' ? (wsMonthNow() || monthKey()) : monthKey()}`;
 async function loadSnaps() {
   if (!state.db) return;
   try { const s = await state.db.collection('snaps').get(); state.snaps = Object.fromEntries(s.docs.map(d => [d.id, d.data()])); if (state.step === 'email') renderEmail(); } catch (e) { /* none */ }
@@ -16771,15 +16771,20 @@ function subjectFor(kind, stage) {
   if (kind === 'ded') return stage === 'final' ? `MC Monthly Deduction | ${M} ${y} Final.` : `MC Monthly Deduction | ${M} ${y} For Review.`;
   return stage === 'final' ? `${M} ${y} incentive Data – Final` : `${M} ${y} incentive Data for review`;
 }
-function incMonth() { const w = state.incWb; return w && w.rows.y ? { y: w.rows.y, m: w.rows.m } : { y: state.y, m: state.m }; }
+/** the incentive email's month: its workbook's, else the month chosen on the senior manager's page (state.incK), else Build's */
+function incMonth() { const w = state.incWb; return w && w.rows.y ? { y: w.rows.y, m: w.rows.m } : state.incK ? { y: +state.incK.slice(0, 4), m: +state.incK.slice(5) } : { y: state.y, m: state.m }; }
+/** the incentive email's data: the incentive file (the one the WFM team saved for the month, or one dropped on the page), else the
+    month being built in this browser when it is the same month (an admin who builds) */
 function incData() {
   if (state.incWb) return { ...state.incWb.rows, y: incMonth().y, m: incMonth().m, src: 'file' };
+  if (state.incK && state.incK !== monthKey()) return null;
   const md = incModel(); return md ? { ...incRowsFromModel(md), src: 'page' } : null;
 }
 function incMailModel(stage) {
   const d = incData(), warns = [], { y, m } = incMonth();
-  if (!d) warns.push('Nothing to send yet. Drop the exports and the attendance files on Import, or drop the incentive workbook here.');
+  if (!d) warns.push(state.incK ? `Nothing to send yet: the WFM analysts have not built the incentive file for ${MONTH_LONG[m - 1]} ${y} (WFM team › Export › Build incentive file). It shows here by itself once they have; or drop the file here.` : 'Nothing to send yet. Drop the exports and the attendance files on Import, or drop the incentive workbook here.');
   else {
+    if (state.incK && state.incWb && state.incWb.rows.y && ymKey(state.incWb.rows.y, state.incWb.rows.m) !== state.incK) warns.push(`The workbook is for ${MONTH_LONG[m - 1]} ${y}; the email is for that month.`);
     if (!d.att.length) warns.push('The Attendance Report is empty. Drop the supervisors\' attendance files on Import.');
     if (d.src === 'page' && state.attRes && state.attRes.clashes.some(c => c.chosen === undefined)) warns.push(`${plural(state.attRes.clashes.filter(c => c.chosen === undefined).length, 'attendance decision')} still open. Open the notifications to choose.`);
   }
@@ -17064,7 +17069,7 @@ const mailShared = () => state.mailSrc === 'shared';
 function mailMonth() { if (mailShared()) { const k = wsMonthNow() || monthKey(); return { y: +k.slice(0, 4), m: +k.slice(5) }; } const r = state.wb && state.wb.report; return r ? { y: r.y, m: r.m } : { y: state.y, m: state.m }; }
 function mailDeadlineIso() {
   if (state.mailDeadline) return state.mailDeadline;
-  const { y, m } = mailMonth(); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
+  const { y, m } = state.mailKind === 'inc' ? incMonth() : mailMonth(); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
   return `${ny}-${String(nm).padStart(2, '0')}-10`;
 }
 const mailCfg = () => (state.mailKind === 'inc' ? state.incMail : state.mail);
@@ -17120,14 +17125,19 @@ async function readDropped(file) {
   if (!inc.error) return { kind: 'inc', name: file.name, size: file.size, bytes: new Uint8Array(buf), rows: inc };
   toast(inc.error && /Monthly Deduction/.test(inc.error) ? `${inc.error} Compare it on Results › Reconcile with the old Excel.` : 'This is neither the monthly report nor the incentive data workbook.', { label: 'What is it?', fn: () => recogFiles([file], 'email') }); return null;
 }
+/** a workbook dropped for the other email: the incentive file is the senior manager's to send, the monthly report the WFM team's */
+function wrongMailFile(kind) {
+  if (kind === state.mailKind) return false;
+  toast(kind === 'inc' ? 'This is the incentive data workbook: the senior manager sends it to the champions, on Supervisors › Incentive email.' : 'This is the monthly report: its deduction email is on WFM team › Emails › Deduction and absences.');
+  return true;
+}
 async function loadWorkbook(file) {
   if (!file) return;
   state.wbBusy = true; renderEmail();
   try {
-    const w = await readDropped(file); if (!w) return;
+    const w = await readDropped(file); if (!w || wrongMailFile(w.kind)) return;
     if (w.kind === 'ded') state.wb = { name: w.name, size: w.size, bytes: w.bytes, report: w.report, at: new Date() };
     else state.incWb = { name: w.name, size: w.size, bytes: w.bytes, rows: w.rows };
-    if (w.kind !== state.mailKind) { state.mailKind = w.kind; setSeg($('mKind'), w.kind); }
     state.mailSubjects = {}; state.mailDone = {};
     toast(`Read ${file.name} (${w.kind === 'inc' ? 'incentive data' : 'monthly report'})`);
   } catch (e) { toast(`Could not read ${file.name}. Save it as .xlsx in Excel and try again.`); }
@@ -17136,10 +17146,9 @@ async function loadWorkbook(file) {
 async function loadRevFile(file) {
   if (!file) return;
   try {
-    const w = await readDropped(file); if (!w) return;
+    const w = await readDropped(file); if (!w || wrongMailFile(w.kind)) return;
     const data = w.kind === 'inc' ? w.rows : { ded: w.report.ded.map(x => ({ id: x.id, name: x.name, total: x.total })), abs: w.report.att.filter(a => a.shown && a.days.length).map(a => ({ id: a.id, name: a.name, days: a.days })) };
     state.revWb[w.kind] = { name: w.name, data };
-    if (w.kind !== state.mailKind) { state.mailKind = w.kind; setSeg($('mKind'), w.kind); }
     toast(`Comparing with ${file.name}`); renderEmail();
   } catch (e) { toast(`Could not read ${file.name}.`); }
 }
@@ -17408,25 +17417,25 @@ function snapNow(kind) {
 function markSent(how) {
   state.mailDone[doneKey()] = { how: how || 'Copied', at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) }; renderSteps();
   if (state.mailStage === 'review') snapNow(state.mailKind);
-  if (state.mailStage === 'final' && state.mailKind === 'inc') saveMonthToHistory('final incentive email').then(k => { if (k) setTimeout(() => toast(`${ymLabel(k)} added to the history`), 3600); });
+  if (state.mailStage === 'final' && state.mailKind === 'inc' && !state.incWb && state.ctx) saveMonthToHistory('final incentive email').then(k => { if (k) setTimeout(() => toast(`${ymLabel(k)} added to the history`), 3600); });
+  if (state.mailKind === 'inc' && state.incK) { const im = incMonth(); incMailSent(ymKey(im.y, im.m), state.mailStage, how); }   // Supervisors › Emails says it was prepared
   if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(ymKey(mm.y, mm.m), 'deduction'); }   // the month-close step
 }
 function renderEmail() {
   if (mailShared() && state.mailKind !== 'ded') state.mailKind = 'ded';
-  const eSig = `${state.mailKind}|${state.mailStage}|${state.mailSrc || ''}|${state.mailSrc ? wsMonthNow() : monthKey()}`;   // another email: editing the old preview stops
+  const eSig = `${state.mailKind}|${state.mailStage}|${state.mailSrc || ''}|${state.mailKind === 'inc' ? state.incK || monthKey() : state.mailSrc ? wsMonthNow() : monthKey()}`;   // another email: editing the old preview stops
   if (state.mailEditOn && state.mailEditSig !== eSig) { state.mailEditOn = false; state.mailEditDirty = false; $('mEdit').checked = false; $('mEditNote').hidden = true; }
   state.mailEditSig = eSig;
   const cm = curMail(), md = cm.md, inc = cm.inc, fin = cm.stage === 'final', cfg = mailCfg();
-  setSeg($('mKind'), state.mailKind); setSeg($('mStage'), state.mailStage); setSeg($('mSrc'), mailShared() ? 'shared' : 'build');
-  $('mKind').hidden = !isBuilder(); $('mSrc').hidden = !isBuilder() || state.mailKind === 'inc'; $('wbDrop').hidden = mailShared();
+  setSeg($('mStage'), state.mailStage); setSeg($('mSrc'), mailShared() ? 'shared' : 'build');
+  $('mSrc').hidden = !isBuilder() || state.mailKind === 'inc'; $('wbDrop').hidden = mailShared();
   $('h-email').textContent = `${inc ? 'Incentive' : 'Deduction'} email – ${fin ? 'final' : 'for review'}`;
-  $('emailLead').textContent = inc ? (fin ? 'The final incentive data, sent after the review, with the changes since the review.' : 'Mohammed\'s "incentive Data for review" email, with the incentive workbook attached.')
+  $('emailLead').textContent = inc ? (fin ? 'The final incentive data to the champions, sent after the review, with the changes since the review.' : 'The "incentive Data for review" email to the champions, with the incentive file the WFM analysts built attached (without National IDs).')
     : (fin ? 'The final deduction and absenteeism, sent after the review, with the changes since the review.' : 'The "MC Monthly Deduction | For Review" email with the conformance deduction and the absences.');
   // data card
   const r = state.wb && state.wb.report, w = state.incWb;
   $('srcState').innerHTML = mailShared() ? `<div class="row"><span class="pill good">Shared month</span><b>${esc(MONTH_LONG[md.m - 1])} ${md.y}</b></div><div class="hint">From the shared history, with the supervisors' attendance corrections. ${plural(md.dedAll, 'person', 'people')} in the deduction scope.</div>` : state.wbBusy ? '<div class="row"><span class="spin" aria-hidden="true"></span>Reading the workbook…</div>'
-    : inc ? (w ? `<div class="row"><span class="pill good">Workbook</span><b style="overflow-wrap:anywhere">${esc(w.name)}</b></div><div class="hint">${w.rows.y ? `${MONTH_LONG[w.rows.m - 1]} ${w.rows.y} · ` : ''}${plural(w.rows.att.length, 'person', 'people')} in the Attendance Report · ${w.rows.adh.length} in Adherence · ${w.rows.aht.length} in AHT</div><div><button class="linkbtn" data-wbclear="inc">Use the data from this page instead</button></div>`
-      : `<div class="row"><span class="pill info">This page</span>Exports and attendance files</div><div class="hint">The workbook is made from them when you send. Drop an edited incentive workbook to use it instead.</div>`)
+    : inc ? incSrcHtml(w)
     : (r ? `<div class="row"><span class="pill good">Workbook</span><b style="overflow-wrap:anywhere">${esc(state.wb.name)}</b></div><div class="hint">${MONTH_LONG[r.m - 1]} ${r.y} · ${plural(r.ded.length, 'person', 'people')} in Deduction · Attendance filled for ${plural(r.filled, 'person', 'people')}</div><div><button class="linkbtn" data-wbclear="ded">Use the numbers from this page instead</button></div>`
       : `<div class="row"><span class="pill info">This page</span>Deduction from the exports${state.attRes ? ', absences from the attendance files' : ''}</div><div class="hint">Drop the saved monthly report to use your changes in Excel.</div>`);
   $('wbDropT').textContent = inc ? 'Drop an incentive workbook' : 'Drop the monthly report';
@@ -18218,6 +18227,7 @@ document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   if (drop.contains(e.target) || $('wbDrop').contains(e.target)) return; e.preventDefault(); const f = [...(e.dataTransfer?.files || [])]; if (!f.length) return;
   if (state.ws === 'wfm' && state.wfmTab === 'emails' && state.mailSub === 'month' && !mailShared() && !$('v-email').hidden) { loadWorkbook(f[0]); return; }   // the month's emails from this build: an edited workbook
+  if (state.ws === 'cycle' && state.cycTab === 'mail' && !$('v-email').hidden) { loadWorkbook(f[0]); return; }   // the senior manager's incentive email: an edited incentive file
   if (state.ws !== 'build') { wsDrop(f); return; }
   if (state.step === 'email') { loadWorkbook(f[0]); return; }
   if (state.step !== 'import') setStep('import'); addFiles(f);
@@ -18388,7 +18398,6 @@ $('v-email').addEventListener('click', e => {
   if (e.target.closest('[data-revclear]')) { delete state.revWb[state.mailKind]; renderEmail(); }
 });
 $('revPicker').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; loadRevFile(f); });
-$('mKind').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailKind = f; lastMailHtml = ''; if ($('v-email').classList.contains('inws')) renderWs(); else { renderEmail(); renderSteps(); } });
 $('mSrc').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailPick = f; lastMailHtml = ''; renderWs(); const b = $('mSrc').querySelector(`[data-f="${f}"]`); if (b) b.focus(); });
 $('mStage').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailStage = f; lastMailHtml = ''; renderEmail(); renderSteps(); });
 let mailRaf = 0; const mailRender = () => { cancelAnimationFrame(mailRaf); mailRaf = requestAnimationFrame(renderEmail); };
@@ -19654,9 +19663,12 @@ function roleHeads(r) {
   $('resEyebrow').textContent = who; $('cycEyebrow').textContent = who; $('qEyebrow').textContent = r === 'quality' ? 'Quality team' : who;
   $('resLead').textContent = r === 'senior' ? 'Every department, supervisor and agent for the month. Finalize the month when the results are agreed; after that only you can change them.'
     : 'Every department, supervisor and agent for the month, to read. The senior manager finalizes the month when the results are agreed.';
-  $('cycLead').textContent = r === 'senior' ? 'Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month\'s four emails.'
-    : 'The senior manager\'s page, which you can stand in for: the one-to-one deadline, which supervisors have finished their team, their scorecards, and the month\'s four emails.';
+  $('cycLead').textContent = cycLeadText(r);
 }
+/** the Supervisors page's line under its title: the month close, or (its other tab) the incentive email */
+const cycLeadText = (r, mail) => (mail ? 'The month\'s incentive data to the champions: for review with its deadline, then final with what changed since the review. The incentive file the WFM analysts built is attached by itself.'
+  : r === 'senior' ? 'Set the one-to-one deadline, see which supervisors have finished their team, score the supervisors, and make the month\'s emails: the incentive data to the champions (Incentive email) and the four of the month close.'
+    : 'The senior manager\'s page, which you can stand in for: the one-to-one deadline, which supervisors have finished their team, their scorecards, and the month\'s emails, the incentive email to the champions included.');
 let hashTaken = false;
 function applyRole() {
   const r = roleNow(), L = wsOfNow();
@@ -19694,7 +19706,7 @@ function showWsView(v) {
 function setWs(ws, quiet) {
   const L = wsOfNow(); if (!L.includes(ws)) return;
   const changed = state.ws !== ws; state.ws = ws; if (ws === 'wfm') state.wfmAt = 'wfm'; syncWsSeg(); hidePop(); putHash(ws);
-  if (ws !== 'wfm') mountMail(false);
+  if (ws !== 'wfm' && ws !== 'cycle') mountMail(false);
   if (ws === 'build') { for (const w of WS_VIEWS) $('v-' + w).hidden = true; const s = STEPS.includes(state.step) ? state.step : 'import'; state.step = '__'; setStep(s); return; }
   showWsView(ws); renderWs();
   if (changed && !quiet) { animIn($('v-' + ws)); window.scrollTo({ top: 0 }); }
@@ -21684,11 +21696,19 @@ function cycleRows(k) {
   });
 }
 
-// ---------------------------------------------------------------- the page
+// ---------------------------------------------------------------- the page: the month close, or the incentive email (two tabs)
 function renderCycle() {
-  const k = wsMonthNow(), C = cycleOf(k), can = canCycle();
+  const k = wsMonthNow(), C = cycleOf(k), can = canCycle(), mail = can && state.cycTab === 'mail';
   if (state.cycleSeenPrev == null) state.cycleSeenPrev = seenAt();
-  $('cycleBar').innerHTML = `${monthSelHtml(k, 'data-wsmonth')}${k ? `<label class="wsfield"><span>One-to-ones due</span><input type="date" class="cell" data-deadline value="${esc(C.deadline || '')}" ${can ? '' : 'disabled'} aria-label="Deadline for the one-to-ones"></label>` : ''}
+  const tabs = can ? `<div class="seg cyctabs" role="group" aria-label="Part of the page"><button data-cyctab="close" aria-pressed="${!mail}">Month close</button><button data-cyctab="mail" aria-pressed="${mail}">Incentive email</button></div>` : '';
+  $('cycMail').hidden = !mail || !k; $('cycleBody').hidden = mail && !!k; $('cycLead').textContent = cycLeadText(roleNow(), mail);
+  if (mail) {
+    $('cycleBar').innerHTML = `${tabs}${monthSelHtml(k, 'data-wsmonth')}`;
+    if (!k) { mountMail(false); $('cycleBody').innerHTML = emptyCard('No months yet', 'The incentive email is for a month the WFM team has built.'); return; }
+    mountMail('cyc'); renderEmail(); return;
+  }
+  mountMail(false);
+  $('cycleBar').innerHTML = `${tabs}${monthSelHtml(k, 'data-wsmonth')}${k ? `<label class="wsfield"><span>One-to-ones due</span><input type="date" class="cell" data-deadline value="${esc(C.deadline || '')}" ${can ? '' : 'disabled'} aria-label="Deadline for the one-to-ones"></label>` : ''}
     <div class="wsacts">${can && k ? '<button class="btn sm" data-cyc="publish" title="Copy each agent\'s latest numbers and forms to their own page">Update the agents\' pages</button>' : ''}<button class="btn sm" data-rulesopen title="KPIs, weights, bands, bases and who earns the incentive, in force from a month">Incentive rules</button><button class="btn sm" data-x="cycle"${k ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Supervisors Excel</button></div>`;
   const body = $('cycleBody');
   if (!k && stillReading()) { body.innerHTML = emptyCard('Reading the shared data…', 'The months appear here in a moment.'); return; }
@@ -21713,8 +21733,10 @@ function renderCycle() {
     </tbody></table></div></div>`;
   // the four emails
   const sent = C.sent || {}, sentTxt = x => (sent[x] ? `Prepared ${esc(fmtWhen(sent[x].at))}${sent[x].by ? ' by ' + esc(sent[x].by) : ''}` : 'Not prepared yet');
+  const incSent = x => (sent[x] ? `${esc(sent[x].how || 'Prepared')} ${esc(fmtWhen(sent[x].at))}${sent[x].by ? ' by ' + esc(sent[x].by) : ''}` : 'not prepared yet');
   const mailCard = `<div class="card"><div class="cardhead"><div><h2>Emails for ${esc(ymLabel(k))}</h2><p class="cap">Each one downloads as an Outlook draft (.eml): open it, check it and press Send. Addresses come from the roster's Email column and the contacts below.</p></div></div>
     <div class="mailgrid4">
+      <div class="m4"><b>Incentive data</b><span>To the champions: the incentive file the WFM analysts built (attendance, adherence and AHT, without National IDs) for review with its deadline, then the final after the review with what changed.</span><small>For review: ${incSent('incReview')} · Final: ${incSent('incFinal')}</small><button class="btn sm" data-cyctab="mail"${can ? '' : ' disabled'}>Open the email</button></div>
       <div class="m4"><b>One-to-ones are ready</b><span>To every supervisor, with the deadline and each team's numbers.</span><small>${sentTxt('ready')}</small><button class="btn sm primary" data-mail4="ready"${can ? '' : ' disabled'}>Make the email</button></div>
       <div class="m4"><b>Deadline reminder</b><span>To the ${plural(notYet.length, 'supervisor')} not finished yet.</span><small>${sentTxt('warn')}</small><button class="btn sm" data-mail4="warn"${can && notYet.length ? '' : ' disabled'}>Make the email</button></div>
       <div class="m4"><b>Results for review</b><span>To ${esc(splitAddr(contactsNow().vp).map(x => x.replace(/\s*<.*$/, '')).join(', ') || 'the VP')}: “Hi All”, with the ID, name, final % and earned SR of everyone on the incentive list who earned it, and the same table as an Excel file.</span><small>${sentTxt('review')}</small><button class="btn sm" data-mail4="review"${can ? '' : ' disabled'}>Make the email</button></div>
@@ -21730,6 +21752,65 @@ function renderCycle() {
   body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${editor}${contacts}${safeHtml(calDaysHtml)}`;
   if (canCycle() && unseenDone().length && state.ws === 'cycle') { lsSet(seenKey(), new Date().toISOString()); cycleBadge(); }
   reveal(body);
+}
+
+// ---------------------------------------------------------------- the incentive email: the senior manager's, to the champions
+// The incentive data email (for review, then final after the review) is sent from Supervisors › Incentive email with the incentive
+// file the WFM analysts build (WFM team › Export › Build incentive file). Each build is kept with the shared data (Saved workbooks),
+// so the month's newest file shows here by itself and is attached without the National IDs; a file dropped here is used instead.
+// The email itself is the one the WFM team page had (#v-email), moved into this page.
+Object.assign(state, { cycTab: 'close', incK: '' });
+const INCS = { k: '', list: null, busy: false, err: '' };   // the incentive files the WFM team saved for the month on the page
+/** the month's saved incentive files, the newest first; the newest is used unless a file was dropped for the email */
+async function incSavedLoad(k) {
+  if (!k) return;
+  INCS.busy = true; INCS.err = '';
+  try {
+    const L = (await upListNow('rep')).filter(m => m && m.kind === 'incentive' && m.k === k).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+    if (INCS.k !== k) return;   // the page moved on to another month meanwhile
+    INCS.list = L;
+    const m = L[0], w = state.incWb;
+    if (m && (!w || w.saved) && !(w && w.saved.id === m.id)) {
+      const bytes = await upBytes(m.id, 'rep'); if (!bytes) throw new Error(`${m.name} could not be read`);
+      const rows = readIncentive(await parse(m.name, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), true));
+      if (rows.error) throw new Error(rows.error);
+      if (INCS.k !== k) return;
+      state.incWb = { name: m.name, size: m.size || bytes.length, bytes, rows, saved: { id: m.id, k, at: m.at, by: m.by } };
+      state.mailSubjects = {}; state.mailDeadline = null;
+    } else if (!m && w && w.saved) state.incWb = null;
+  } catch (e) { INCS.err = errText(e); }
+  finally { INCS.busy = false; }
+  if (state.ws === 'cycle' && state.cycTab === 'mail') { lastMailHtml = ''; renderEmail(); }
+}
+/** the email moved into this page: the incentive email of the page's month (a new month: its saved file is read; the tab opened
+    again: a newer file is looked for) */
+function incMailSync(opened) {
+  const k = wsMonthNow();
+  state.mailKind = 'inc'; state.mailSrc = ''; state.incK = k;
+  if (INCS.k !== k) { INCS.k = k; INCS.list = null; INCS.err = ''; delete state.revWb.inc; if (state.incWb) { state.incWb = null; state.mailSubjects = {}; state.mailDeadline = null; } incSavedLoad(k); }
+  else if (opened && !INCS.busy) incSavedLoad(k);
+}
+/** the Data card of the incentive email: the file the WFM team saved, a dropped one, or none yet */
+function incSrcHtml(w) {
+  const cnt = x => `${x.rows.y ? `${MONTH_LONG[x.rows.m - 1]} ${x.rows.y} · ` : ''}${plural(x.rows.att.length, 'person', 'people')} in the Attendance Report · ${x.rows.adh.length} in Adherence · ${x.rows.aht.length} in AHT`;
+  const saved = INCS.k && INCS.k === state.incK && INCS.list && INCS.list[0], page = !!state.ctx && (!state.incK || state.incK === monthKey());
+  if (w && w.saved) return `<div class="row"><span class="pill good">Saved by the WFM team</span><b style="overflow-wrap:anywhere">${esc(w.name)}</b></div><div class="hint">${esc(cnt(w))}. Built by ${esc(w.saved.by || 'the WFM team')}, ${esc(fmtWhen(w.saved.at))}. Drop an edited file to use it instead.</div><div><button class="linkbtn" data-increcheck>Look for a newer file</button></div>`;
+  if (w) return `<div class="row"><span class="pill good">Workbook</span><b style="overflow-wrap:anywhere">${esc(w.name)}</b></div><div class="hint">${esc(cnt(w))}</div><div>${saved ? `<button class="linkbtn" data-incsaved>Use the file the WFM team saved instead</button>` : page ? '<button class="linkbtn" data-wbclear="inc">Use the data from this page instead</button>' : ''}</div>`;
+  if (state.incK && INCS.busy) return '<div class="row"><span class="spin" aria-hidden="true"></span>Looking for the incentive file the WFM team saved…</div>';
+  if (state.incK && !page) return `<div class="row"><span class="pill warn">No incentive file yet</span></div><div class="hint">${INCS.err ? `The saved file could not be read (${esc(INCS.err)}). ` : ''}The WFM analysts make it for ${esc(ymLabel(state.incK))} on WFM team › Export (Build incentive file). It is kept with the shared data and shows here by itself; or drop the file here.</div><div><button class="linkbtn" data-increcheck>Look again</button></div>`;
+  return '<div class="row"><span class="pill info">This page</span>Exports and attendance files</div><div class="hint">The workbook is made from them when you send. Drop an edited incentive workbook to use it instead.</div>';
+}
+/** the incentive email was copied or downloaded: the month's emails on the Supervisors page say so, with who and when */
+function incMailSent(k, stage, how) {
+  if (!canCycle() || !k) return;
+  const kind = stage === 'final' ? 'incFinal' : 'incReview';
+  cycleUpdate(k, c => { c.sent = { ...(c.sent || {}), [kind]: { at: new Date().toISOString(), by: whoNow(), how: how || 'Copied' } }; }, `${how || 'Copied'} the incentive data email (${stage === 'final' ? 'final' : 'for review'})`);
+}
+/** Supervisors › Incentive email, from anywhere (a tile, the search, a dropped incentive file) */
+function openIncMail(stage) {
+  if (!canCycle()) { toast('The senior manager sends the incentive email.'); return; }
+  if (stage) state.mailStage = stage;
+  state.cycTab = 'mail'; if (state.ws !== 'cycle') setWs('cycle'); else renderWs();
 }
 
 // ---------------------------------------------------------------- the supervisor scorecard editor
@@ -21973,11 +22054,22 @@ $('cycleBar').addEventListener('change', e => {
   if (t.matches('[data-deadline]')) { const k = wsMonthNow(), v = t.value; cycleUpdate(k, c => { c.deadline = v; }, v ? `Set the one-to-one deadline to ${Forms.fmtDate(v)}` : 'Removed the deadline'); }
 });
 $('cycleBar').addEventListener('click', async e => {
+  const tb = e.target.closest('[data-cyctab]'); if (tb) { cycTabGo(tb.dataset.cyctab); return; }
   const b = e.target.closest('[data-cyc="publish"]');
   if (b) { const k = wsMonthNow(); b.disabled = true; const n = await publishMonthToAgents(k).catch(() => 0); b.disabled = false; toast(n ? `${plural(n, 'agent')} now see their latest ${ymLabel(k)} numbers and forms.` : 'No agent has an account yet.'); if (n) logCycle(k, `Updated ${plural(n, 'agent')}'s own pages`); }
 });
+/** the Supervisors page's tabs: the month close, or the incentive email */
+function cycTabGo(t) {
+  if (state.cycTab === t) return; state.cycTab = t; renderWs(); window.scrollTo({ top: 0 });
+  const b = $('cycleBar').querySelector(`[data-cyctab="${t}"]`); if (b) b.focus();
+}
+$('cycMail').addEventListener('click', e => {
+  if (e.target.closest('[data-increcheck]')) { incSavedLoad(state.incK); renderEmail(); return; }
+  if (e.target.closest('[data-incsaved]')) { state.incWb = null; state.mailSubjects = {}; state.mailDeadline = null; incSavedLoad(state.incK); renderEmail(); }
+});
 $('cycleBody').addEventListener('click', e => {
   const t = e.target;
+  const ct = t.closest('[data-cyctab]'); if (ct) { cycTabGo(ct.dataset.cyctab); return; }
   const m4 = t.closest('[data-mail4]'); if (m4) { mail4(m4.dataset.mail4); return; }
   if (t.closest('[data-cyc="seen"]')) { lsSet(seenKey(), new Date().toISOString()); state.cycleSeenPrev = seenAt(); renderWs(); return; }
   const tm = t.closest('[data-cyc="team"]'); if (tm) { state.wsSpv = tm.dataset.spv; setWs('team'); return; }
@@ -23821,7 +23913,7 @@ interPicker.addEventListener('change', async () => { const f = interPicker.files
 
 // ================================================================ WFM TEAM: one page for the WFM analysts and the WFM manager
 // Its tabs, in three groups. This month: Import, Review and Export (the month's build, for the WFM analysts) and Emails (the
-// four daily brand emails, and the month's deduction, absences and incentive emails). Every day: Daily (the daily data) and
+// four daily brand emails, and the month's deduction and absences emails; the incentive email is the senior manager's). Every day: Daily (the daily data) and
 // Report builder (the analysts make the daily emails). Insight: Analytics (departments and months), Agents (every measure per
 // agent) and Interactions (the interactions export). Each role sees its own tabs; the senior manager reads.
 Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core', wfmAt: '' });
@@ -23870,7 +23962,7 @@ const WFM_LEAD = {
   agents: 'Every measure for every agent in the month, with the best and the worst quarter marked, to see who needs what.',
   daily: 'Every day\'s numbers, kept for everyone: the brands day by day and each agent\'s day.',
   builder: 'Drop the day\'s exports: MC Leaders and the WFM Daily Review are made here, and the four brand emails go straight to the WFM manager.',
-  emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction, absences and incentive emails. Edit them here and send them from Outlook; the tool never sends anything itself.',
+  emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction and absences emails. Edit them here and send them from Outlook; the tool never sends anything itself. The incentive email is the senior manager\'s (Supervisors › Incentive email), with the incentive file you build on Export.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
   data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
@@ -23893,24 +23985,27 @@ function renderWfmWs() {
 }
 /** the two kinds of email on the Emails page */
 function mailSubHtml(unsent) {
-  return `<div class="seg mailsub" role="group" aria-label="Which emails"><button data-mailsub="daily" aria-pressed="${state.mailSub === 'daily'}">Daily brand emails${unsent ? ` <span class="cnt warn">${unsent}</span>` : ''}</button><button data-mailsub="month" aria-pressed="${state.mailSub === 'month'}">${isBuilder() ? 'Monthly emails' : 'Deduction and absences'}</button></div>`;
+  return `<div class="seg mailsub" role="group" aria-label="Which emails"><button data-mailsub="daily" aria-pressed="${state.mailSub === 'daily'}">Daily brand emails${unsent ? ` <span class="cnt warn">${unsent}</span>` : ''}</button><button data-mailsub="month" aria-pressed="${state.mailSub === 'month'}">Deduction and absences</button></div>`;
 }
 $('wfmBar').addEventListener('click', e => { const b = e.target.closest('[data-mailsub]'); if (!b) return; state.mailSub = b.dataset.mailsub; renderWs(); const n = $('wfmBar').querySelector(`[data-mailsub="${state.mailSub}"]`); if (n) n.focus(); });
 
 // ---------------------------------------------------------------- Emails: the deduction and absences emails, from the shared month
 const mailHome = document.createComment('v-email');
 $('v-email').before(mailHome);
-/** the month's emails live on the WFM team page, under Emails › Monthly emails */
-function mountMail(wfm) {
-  const v = $('v-email');
-  if (wfm) { if (v.parentNode !== $('wfmMail')) $('wfmMail').appendChild(v); mailSrcSync(); v.hidden = false; v.classList.add('inws'); }
-  else if (v.parentNode === $('wfmMail')) { mailHome.after(v); state.mailSrc = ''; v.classList.remove('inws'); v.hidden = true; }
+/** the month's email lives on a page: the deduction and absences email on the WFM team page (Emails › Deduction and absences), the
+    incentive email on the senior manager's Supervisors page (Incentive email). One email view, moved to the page that shows it */
+const MAIL_HOSTS = { wfm: 'wfmMail', cyc: 'cycMail' };
+function mountMail(where) {
+  const v = $('v-email'), host = where ? $(MAIL_HOSTS[where]) : null;
+  if (host) { const moved = v.parentNode !== host; if (moved) { host.appendChild(v); lastMailHtml = ''; } if (where === 'wfm') mailSrcSync(); else incMailSync(moved); v.hidden = false; v.classList.add('inws'); return; }
+  if (Object.values(MAIL_HOSTS).some(id => v.parentNode === $(id))) { mailHome.after(v); state.mailSrc = ''; v.classList.remove('inws'); v.hidden = true; }
 }
-/** where the month's emails take their numbers: the shared month, with the supervisors' corrections (everyone), or the month
-    being built or a dropped workbook (the WFM analysts: the incentive email always, the deduction email when they choose it) */
+/** where the deduction email takes its numbers: the shared month, with the supervisors' corrections (everyone), or the month being
+    built or a dropped workbook (the WFM analysts, when they choose it) */
 function mailSrcSync() {
-  if (!isBuilder()) { state.mailSrc = 'shared'; state.mailKind = 'ded'; return; }
-  const pick = state.mailKind === 'inc' ? 'build' : state.mailPick || (state.ctx || state.wb || !wsMonthNow() ? 'build' : 'shared');
+  state.mailKind = 'ded'; state.incK = '';
+  if (!isBuilder()) { state.mailSrc = 'shared'; return; }
+  const pick = state.mailPick || (state.ctx || state.wb || !wsMonthNow() ? 'build' : 'shared');
   state.mailSrc = pick === 'shared' ? 'shared' : '';
 }
 function renderMailWs() {
@@ -23919,7 +24014,7 @@ function renderMailWs() {
   mailSrcSync();
   $('wfmBar').innerHTML = `${mailSubHtml(unsent)}${mailShared() ? monthSelHtml(k, 'data-wsmonth') : ''}<div class="wsacts"></div>`;
   if (mailShared() && !k) { mountMail(false); $('wfmBody').hidden = false; $('wfmBody').innerHTML = emptyCard('No months yet', 'The emails use the month saved in the shared history.'); return; }
-  mountMail(true); lastMailHtml = ''; renderEmail();
+  mountMail('wfm'); lastMailHtml = ''; renderEmail();
 }
 
 // ---------------------------------------------------------------- Agents: every measure, every agent
@@ -24763,7 +24858,7 @@ function findPages(role) {
     add('kpitab', 'KPI results of the month', 'kpi results|kpi tab', 'WFM team', () => setStep('kpi'));
     add('histtab', 'History of past months', 'history|past months|previous months', 'WFM team', () => setStep('history'));
     add('export', 'Build the Excel workbook', 'export|excel|workbook|build excel|download', 'WFM team', () => setStep('export'));
-    add('email', 'Deduction and incentive emails', 'email|emails|incentive email|mail', 'WFM team', () => setStep('email'));
+    add('email', 'Deduction and absences emails', 'email|emails|deduction email|absences email|mail', 'WFM team', () => setStep('email'));
     add('settings', 'Settings', 'settings|month|target|options', 'WFM team', () => setStep('settings'));
     add('scorecards', 'KPI scorecards', 'scorecards|scorecard|weights|bands|incentive base|kpi settings', 'Settings', () => { renderScore(); openDrawer('dScore'); });
   }
@@ -24771,6 +24866,7 @@ function findPages(role) {
   if (W.includes('results')) add('results', 'Results', 'results|final results|finalize|finalise|eligibility page', 'Results', go('results'));
   if (W.includes('cycle')) {
     add('cycle', 'Supervisors', 'supervisors page|cycle|progress|supervisors progress|spv scorecards|supervisor scorecards', 'Supervisors', go('cycle'));
+    if (canCycle()) add('incmail', 'Incentive email to the champions (for review, final)', 'incentive email|incentive data|incentive data email|incentive file|champions email|send the incentive|mohammed email|incentive for review|incentive final', 'Supervisors', () => openIncMail());
     add('mail4', 'The four emails (one-to-ones ready, review, deadline warning, final result form)', 'four emails|one to ones ready|ready email|review email|results for review|deadline warning|final email|final form|final result form|signature|signatures|rasha|vp|ceo', 'Supervisors', go('cycle'));
     if (canCycle()) add('calendar', 'Month close: the day each step is due', 'month close|calendar|close calendar|closing|deadlines|due days|timeline|late steps', 'Supervisors', () => todayGo('cal'));
     add('objsenior', 'Objections and the dispute rate per team', 'objections|objection|disputes|dispute rate|complaints|escalated', 'Supervisors', () => { setWs('cycle'); scrollTo_('#cycleBody .objcard'); });
@@ -26861,8 +26957,9 @@ const DEPT = [
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     'On <b>Review › KPI results</b>, under the table: <b>Month figures</b> takes the floor\'s numbers once a month, one per brand (Service Level, Floor QoS / Empowerment, AHT, Resources Adherence, Utilization, Digital and Complaints resolution time) for the SPVs\', specialists\' and managers\' cards; <b>Typed by hand</b> takes a value for one person that is in no file (Staff Satisfaction, Digital projects, CST compliance…), or NA when a KPI does not apply. The scores follow at once.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
-    '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it); the incentive data workbook is made too. People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
-    '<b>Emails › Monthly emails</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs. The incentive email comes from the build; its workbook is attached without the ID column too.',
+    '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it). People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
+    '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one.',
+    '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs.',
     '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
@@ -26880,7 +26977,8 @@ const DEPT = [
     'Every department has a scorecard (CC, SM, CT, QA, WF, TS, DE, the SPVs), and the managers and some leads a card of their own (CT-SPV, CT-CCM, CT-SGM, OP-DIG, QA-MGR, WF-MGR, DE-MGR), which the WFM team gives on the person\'s page (Edit › Scorecard) or with a Scorecard column in the roster file. A card can have its own base per brand (the SPVs: 1600 SR Virgin, 1000 SR FRiENDi). Team Performance is the average final % of the people they supervise.',
     '<b>Results</b>: decide on eligibility where the rules say otherwise, adjust a result where needed (every change is logged), and <b>Finalize</b> the month.',
     '<b>Results › Reconcile with the old Excel</b>: drop the old final result (and the incentive or deduction workbook). The tool lines up every person and says why each number differs: an own base, an absence rule, a typing error in the old file. Each has a fix.',
-    'Send the four emails from Supervisors: one-to-ones are ready, results for review to the VP, and the final result form.',
+    '<b>Supervisors › Incentive email</b>: the incentive data email to the champions, for review and then final (it lists what changed since the review). The incentive file the WFM analysts built is attached by itself, without National IDs; drop an edited one to use it instead. <b>Copy for Outlook</b> or <b>Download .eml</b>.',
+    'Send the four emails from <b>Supervisors › Month close</b>: one-to-ones are ready, the deadline reminder, results for review to the VP, and the final result form.',
     'The <b>bell</b> lists what is late or due soon.']],
   ['spv', 'Supervisor', [
     '<b>Team</b> shows your own agents with their numbers for the month; the header\'s month picker changes the month.',
@@ -28062,7 +28160,7 @@ function dashData() {
 const DASH_ACTS = {
   wfm: [['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Interactions', 'Add this week\'s export', 'wfm:inter', 'i-chart'], ['Every team', 'Agents ranked, one-to-ones', 'ws:team', 'i-team']],
   user: [['Import this month\'s files', 'Exports, attendance, IDs, KPI file', 'step:import', 'i-up'], ['Review the checks', 'Names, attendance, decisions', 'step:checks', 'i-check'], ['Report builder', 'MC Leaders and the WFM Daily Review', 'wfm:builder', 'i-file'], ['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Daily data', 'Every stored day', 'wfm:daily', 'i-day']],
-  senior: [['Supervisors and month close', 'Deadline, scorecards, the four emails', 'ws:cycle', 'i-clock'], ['Results', 'Eligibility, finalize the month', 'ws:results', 'i-check'], ['Every team', 'Where each one-to-one stands', 'ws:team', 'i-team'], ['Analytics', 'Every department and month', 'wfm:analytics', 'i-chart']],
+  senior: [['Supervisors and month close', 'Deadline, scorecards, the month\'s emails', 'ws:cycle', 'i-clock'], ['Results', 'Eligibility, finalize the month', 'ws:results', 'i-check'], ['Every team', 'Where each one-to-one stands', 'ws:team', 'i-team'], ['Analytics', 'Every department and month', 'wfm:analytics', 'i-chart']],
   admin: [['Build the month', 'Import, review, export, email', 'step:import', 'i-up'], ['Manage accounts', 'Roles, access, resets', 'accounts', 'i-user'], ['Supervisors', 'The senior manager\'s page', 'ws:cycle', 'i-clock'], ['Results', 'Every agent for the month', 'ws:results', 'i-check']],
 };
 function greetWord() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
@@ -28160,6 +28258,7 @@ const RC_ROUTE = {
   history: { l: k => `the history${k ? ` of ${ymLabel(k)}` : ''} (replaces what is there)`, can: () => isBuilder() },
   compare: { l: k => `Results › Reconcile with the old Excel${k ? ` (${ymLabel(k)})` : ''}`, can: () => wsOfNow().includes('results'), who: 'the senior manager, the WFM manager or an admin compares it there' },
   email: { l: () => 'WFM team › Emails (the workbook to send)', can: () => isBuilder() },
+  incmail: { l: () => 'Supervisors › Incentive email (the file to send to the champions)', can: () => canCycle(), who: 'the senior manager sends it' },
   quality: { l: k => `Quality: the Final EVAL${k ? ` of ${ymLabel(k)}` : ''}`, can: () => canQuality() },
   kpi: { l: () => `the KPI file of ${ymLabel(monthKey())}`, can: () => isBuilder() },
   roster: { l: () => 'the roster (you see every change first)', can: () => isBuilder() },
@@ -28291,6 +28390,7 @@ async function recogUse(i, route) {
     if (route === 'history') { await addHistoryFiles([f]); return; }
     if (route === 'compare') { await cmpFiles([f], k || ''); return; }
     if (route === 'email') { if (state.ws !== 'build') setWs('build'); setStep('email'); await loadWorkbook(f); return; }
+    if (route === 'incmail') { openIncMail(); await loadWorkbook(f); return; }
     if (route === 'quality') { const ok = await tryEvalFile({ name: f.name, file: f }, null, k || undefined); if (!ok) toast(`${f.name} could not be read as the Final EVAL.`); else if (wsOfNow().includes('quality') && state.ws !== 'quality') setWs('quality'); return; }
     if (route === 'kpi') { const notes = []; if (await tryKpiFile({ name: f.name, file: f }, notes)) { refresh(); toast(`KPI file for ${ymLabel(monthKey())}: ${notes[0].kpi}`); } else toast(`${f.name} could not be read as the KPI file.`); return; }
     if (route === 'roster') { await importRosterFile(f, { recog: x.kind }); return; }

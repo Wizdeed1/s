@@ -115,7 +115,7 @@ ok('the incentive data workbook: four tabs, a trailing space, NA and #N/A IDs, t
   const bytes = await xlsx([{ name: 'Attendance Report ', rows: INC_AR }, { name: 'Adherence -In Detail', rows: INC_DT }, { name: 'Adherence', rows: INC_AD }, { name: 'AHT', rows: INC_AH }]);
   const { rec: v } = await run('MC_all_team_incentive _data -2026-08.xlsx', bytes);
   assert.equal(v.kind, 'incentiveData'); assert.equal(v.level, 'sure');
-  assert.deepEqual(v.routes, ['history', 'compare', 'email']);
+  assert.deepEqual(v.routes, ['history', 'compare', 'incmail']);   // the incentive email is the senior manager's (Supervisors › Incentive email)
   assert.deepEqual([v.month.y, v.month.m], [2026, 8]); assert.ok(v.month.from.includes('dates') && v.month.from.includes('title') && v.month.from.includes('file name'));
   assert.equal(v.conflicts.length, 0);
   assert.equal(v.people.sheet, 'Attendance Report '); assert.equal(v.people.n, 30); assert.equal(v.people.withId, 28);

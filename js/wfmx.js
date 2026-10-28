@@ -1,6 +1,6 @@
 // ================================================================ WFM TEAM: one page for the WFM analysts and the WFM manager
 // Its tabs, in three groups. This month: Import, Review and Export (the month's build, for the WFM analysts) and Emails (the
-// four daily brand emails, and the month's deduction, absences and incentive emails). Every day: Daily (the daily data) and
+// four daily brand emails, and the month's deduction and absences emails; the incentive email is the senior manager's). Every day: Daily (the daily data) and
 // Report builder (the analysts make the daily emails). Insight: Analytics (departments and months), Agents (every measure per
 // agent) and Interactions (the interactions export). Each role sees its own tabs; the senior manager reads.
 Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core', wfmAt: '' });
@@ -49,7 +49,7 @@ const WFM_LEAD = {
   agents: 'Every measure for every agent in the month, with the best and the worst quarter marked, to see who needs what.',
   daily: 'Every day\'s numbers, kept for everyone: the brands day by day and each agent\'s day.',
   builder: 'Drop the day\'s exports: MC Leaders and the WFM Daily Review are made here, and the four brand emails go straight to the WFM manager.',
-  emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction, absences and incentive emails. Edit them here and send them from Outlook; the tool never sends anything itself.',
+  emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction and absences emails. Edit them here and send them from Outlook; the tool never sends anything itself. The incentive email is the senior manager\'s (Supervisors › Incentive email), with the incentive file you build on Export.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
   data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
@@ -72,24 +72,27 @@ function renderWfmWs() {
 }
 /** the two kinds of email on the Emails page */
 function mailSubHtml(unsent) {
-  return `<div class="seg mailsub" role="group" aria-label="Which emails"><button data-mailsub="daily" aria-pressed="${state.mailSub === 'daily'}">Daily brand emails${unsent ? ` <span class="cnt warn">${unsent}</span>` : ''}</button><button data-mailsub="month" aria-pressed="${state.mailSub === 'month'}">${isBuilder() ? 'Monthly emails' : 'Deduction and absences'}</button></div>`;
+  return `<div class="seg mailsub" role="group" aria-label="Which emails"><button data-mailsub="daily" aria-pressed="${state.mailSub === 'daily'}">Daily brand emails${unsent ? ` <span class="cnt warn">${unsent}</span>` : ''}</button><button data-mailsub="month" aria-pressed="${state.mailSub === 'month'}">Deduction and absences</button></div>`;
 }
 $('wfmBar').addEventListener('click', e => { const b = e.target.closest('[data-mailsub]'); if (!b) return; state.mailSub = b.dataset.mailsub; renderWs(); const n = $('wfmBar').querySelector(`[data-mailsub="${state.mailSub}"]`); if (n) n.focus(); });
 
 // ---------------------------------------------------------------- Emails: the deduction and absences emails, from the shared month
 const mailHome = document.createComment('v-email');
 $('v-email').before(mailHome);
-/** the month's emails live on the WFM team page, under Emails › Monthly emails */
-function mountMail(wfm) {
-  const v = $('v-email');
-  if (wfm) { if (v.parentNode !== $('wfmMail')) $('wfmMail').appendChild(v); mailSrcSync(); v.hidden = false; v.classList.add('inws'); }
-  else if (v.parentNode === $('wfmMail')) { mailHome.after(v); state.mailSrc = ''; v.classList.remove('inws'); v.hidden = true; }
+/** the month's email lives on a page: the deduction and absences email on the WFM team page (Emails › Deduction and absences), the
+    incentive email on the senior manager's Supervisors page (Incentive email). One email view, moved to the page that shows it */
+const MAIL_HOSTS = { wfm: 'wfmMail', cyc: 'cycMail' };
+function mountMail(where) {
+  const v = $('v-email'), host = where ? $(MAIL_HOSTS[where]) : null;
+  if (host) { const moved = v.parentNode !== host; if (moved) { host.appendChild(v); lastMailHtml = ''; } if (where === 'wfm') mailSrcSync(); else incMailSync(moved); v.hidden = false; v.classList.add('inws'); return; }
+  if (Object.values(MAIL_HOSTS).some(id => v.parentNode === $(id))) { mailHome.after(v); state.mailSrc = ''; v.classList.remove('inws'); v.hidden = true; }
 }
-/** where the month's emails take their numbers: the shared month, with the supervisors' corrections (everyone), or the month
-    being built or a dropped workbook (the WFM analysts: the incentive email always, the deduction email when they choose it) */
+/** where the deduction email takes its numbers: the shared month, with the supervisors' corrections (everyone), or the month being
+    built or a dropped workbook (the WFM analysts, when they choose it) */
 function mailSrcSync() {
-  if (!isBuilder()) { state.mailSrc = 'shared'; state.mailKind = 'ded'; return; }
-  const pick = state.mailKind === 'inc' ? 'build' : state.mailPick || (state.ctx || state.wb || !wsMonthNow() ? 'build' : 'shared');
+  state.mailKind = 'ded'; state.incK = '';
+  if (!isBuilder()) { state.mailSrc = 'shared'; return; }
+  const pick = state.mailPick || (state.ctx || state.wb || !wsMonthNow() ? 'build' : 'shared');
   state.mailSrc = pick === 'shared' ? 'shared' : '';
 }
 function renderMailWs() {
@@ -98,7 +101,7 @@ function renderMailWs() {
   mailSrcSync();
   $('wfmBar').innerHTML = `${mailSubHtml(unsent)}${mailShared() ? monthSelHtml(k, 'data-wsmonth') : ''}<div class="wsacts"></div>`;
   if (mailShared() && !k) { mountMail(false); $('wfmBody').hidden = false; $('wfmBody').innerHTML = emptyCard('No months yet', 'The emails use the month saved in the shared history.'); return; }
-  mountMail(true); lastMailHtml = ''; renderEmail();
+  mountMail('wfm'); lastMailHtml = ''; renderEmail();
 }
 
 // ---------------------------------------------------------------- Agents: every measure, every agent

@@ -181,7 +181,7 @@ function findPages(role) {
     add('kpitab', 'KPI results of the month', 'kpi results|kpi tab', 'WFM team', () => setStep('kpi'));
     add('histtab', 'History of past months', 'history|past months|previous months', 'WFM team', () => setStep('history'));
     add('export', 'Build the Excel workbook', 'export|excel|workbook|build excel|download', 'WFM team', () => setStep('export'));
-    add('email', 'Deduction and incentive emails', 'email|emails|incentive email|mail', 'WFM team', () => setStep('email'));
+    add('email', 'Deduction and absences emails', 'email|emails|deduction email|absences email|mail', 'WFM team', () => setStep('email'));
     add('settings', 'Settings', 'settings|month|target|options', 'WFM team', () => setStep('settings'));
     add('scorecards', 'KPI scorecards', 'scorecards|scorecard|weights|bands|incentive base|kpi settings', 'Settings', () => { renderScore(); openDrawer('dScore'); });
   }
@@ -189,6 +189,7 @@ function findPages(role) {
   if (W.includes('results')) add('results', 'Results', 'results|final results|finalize|finalise|eligibility page', 'Results', go('results'));
   if (W.includes('cycle')) {
     add('cycle', 'Supervisors', 'supervisors page|cycle|progress|supervisors progress|spv scorecards|supervisor scorecards', 'Supervisors', go('cycle'));
+    if (canCycle()) add('incmail', 'Incentive email to the champions (for review, final)', 'incentive email|incentive data|incentive data email|incentive file|champions email|send the incentive|mohammed email|incentive for review|incentive final', 'Supervisors', () => openIncMail());
     add('mail4', 'The four emails (one-to-ones ready, review, deadline warning, final result form)', 'four emails|one to ones ready|ready email|review email|results for review|deadline warning|final email|final form|final result form|signature|signatures|rasha|vp|ceo', 'Supervisors', go('cycle'));
     if (canCycle()) add('calendar', 'Month close: the day each step is due', 'month close|calendar|close calendar|closing|deadlines|due days|timeline|late steps', 'Supervisors', () => todayGo('cal'));
     add('objsenior', 'Objections and the dispute rate per team', 'objections|objection|disputes|dispute rate|complaints|escalated', 'Supervisors', () => { setWs('cycle'); scrollTo_('#cycleBody .objcard'); });

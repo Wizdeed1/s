@@ -16,6 +16,7 @@ const RC_ROUTE = {
   history: { l: k => `the history${k ? ` of ${ymLabel(k)}` : ''} (replaces what is there)`, can: () => isBuilder() },
   compare: { l: k => `Results › Reconcile with the old Excel${k ? ` (${ymLabel(k)})` : ''}`, can: () => wsOfNow().includes('results'), who: 'the senior manager, the WFM manager or an admin compares it there' },
   email: { l: () => 'WFM team › Emails (the workbook to send)', can: () => isBuilder() },
+  incmail: { l: () => 'Supervisors › Incentive email (the file to send to the champions)', can: () => canCycle(), who: 'the senior manager sends it' },
   quality: { l: k => `Quality: the Final EVAL${k ? ` of ${ymLabel(k)}` : ''}`, can: () => canQuality() },
   kpi: { l: () => `the KPI file of ${ymLabel(monthKey())}`, can: () => isBuilder() },
   roster: { l: () => 'the roster (you see every change first)', can: () => isBuilder() },
@@ -147,6 +148,7 @@ async function recogUse(i, route) {
     if (route === 'history') { await addHistoryFiles([f]); return; }
     if (route === 'compare') { await cmpFiles([f], k || ''); return; }
     if (route === 'email') { if (state.ws !== 'build') setWs('build'); setStep('email'); await loadWorkbook(f); return; }
+    if (route === 'incmail') { openIncMail(); await loadWorkbook(f); return; }
     if (route === 'quality') { const ok = await tryEvalFile({ name: f.name, file: f }, null, k || undefined); if (!ok) toast(`${f.name} could not be read as the Final EVAL.`); else if (wsOfNow().includes('quality') && state.ws !== 'quality') setWs('quality'); return; }
     if (route === 'kpi') { const notes = []; if (await tryKpiFile({ name: f.name, file: f }, notes)) { refresh(); toast(`KPI file for ${ymLabel(monthKey())}: ${notes[0].kpi}`); } else toast(`${f.name} could not be read as the KPI file.`); return; }
     if (route === 'roster') { await importRosterFile(f, { recog: x.kind }); return; }

@@ -47,11 +47,19 @@ function cycleRows(k) {
   });
 }
 
-// ---------------------------------------------------------------- the page
+// ---------------------------------------------------------------- the page: the month close, or the incentive email (two tabs)
 function renderCycle() {
-  const k = wsMonthNow(), C = cycleOf(k), can = canCycle();
+  const k = wsMonthNow(), C = cycleOf(k), can = canCycle(), mail = can && state.cycTab === 'mail';
   if (state.cycleSeenPrev == null) state.cycleSeenPrev = seenAt();
-  $('cycleBar').innerHTML = `${monthSelHtml(k, 'data-wsmonth')}${k ? `<label class="wsfield"><span>One-to-ones due</span><input type="date" class="cell" data-deadline value="${esc(C.deadline || '')}" ${can ? '' : 'disabled'} aria-label="Deadline for the one-to-ones"></label>` : ''}
+  const tabs = can ? `<div class="seg cyctabs" role="group" aria-label="Part of the page"><button data-cyctab="close" aria-pressed="${!mail}">Month close</button><button data-cyctab="mail" aria-pressed="${mail}">Incentive email</button></div>` : '';
+  $('cycMail').hidden = !mail || !k; $('cycleBody').hidden = mail && !!k; $('cycLead').textContent = cycLeadText(roleNow(), mail);
+  if (mail) {
+    $('cycleBar').innerHTML = `${tabs}${monthSelHtml(k, 'data-wsmonth')}`;
+    if (!k) { mountMail(false); $('cycleBody').innerHTML = emptyCard('No months yet', 'The incentive email is for a month the WFM team has built.'); return; }
+    mountMail('cyc'); renderEmail(); return;
+  }
+  mountMail(false);
+  $('cycleBar').innerHTML = `${tabs}${monthSelHtml(k, 'data-wsmonth')}${k ? `<label class="wsfield"><span>One-to-ones due</span><input type="date" class="cell" data-deadline value="${esc(C.deadline || '')}" ${can ? '' : 'disabled'} aria-label="Deadline for the one-to-ones"></label>` : ''}
     <div class="wsacts">${can && k ? '<button class="btn sm" data-cyc="publish" title="Copy each agent\'s latest numbers and forms to their own page">Update the agents\' pages</button>' : ''}<button class="btn sm" data-rulesopen title="KPIs, weights, bands, bases and who earns the incentive, in force from a month">Incentive rules</button><button class="btn sm" data-x="cycle"${k ? '' : ' disabled'}><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Supervisors Excel</button></div>`;
   const body = $('cycleBody');
   if (!k && stillReading()) { body.innerHTML = emptyCard('Reading the shared data…', 'The months appear here in a moment.'); return; }
@@ -76,8 +84,10 @@ function renderCycle() {
     </tbody></table></div></div>`;
   // the four emails
   const sent = C.sent || {}, sentTxt = x => (sent[x] ? `Prepared ${esc(fmtWhen(sent[x].at))}${sent[x].by ? ' by ' + esc(sent[x].by) : ''}` : 'Not prepared yet');
+  const incSent = x => (sent[x] ? `${esc(sent[x].how || 'Prepared')} ${esc(fmtWhen(sent[x].at))}${sent[x].by ? ' by ' + esc(sent[x].by) : ''}` : 'not prepared yet');
   const mailCard = `<div class="card"><div class="cardhead"><div><h2>Emails for ${esc(ymLabel(k))}</h2><p class="cap">Each one downloads as an Outlook draft (.eml): open it, check it and press Send. Addresses come from the roster's Email column and the contacts below.</p></div></div>
     <div class="mailgrid4">
+      <div class="m4"><b>Incentive data</b><span>To the champions: the incentive file the WFM analysts built (attendance, adherence and AHT, without National IDs) for review with its deadline, then the final after the review with what changed.</span><small>For review: ${incSent('incReview')} · Final: ${incSent('incFinal')}</small><button class="btn sm" data-cyctab="mail"${can ? '' : ' disabled'}>Open the email</button></div>
       <div class="m4"><b>One-to-ones are ready</b><span>To every supervisor, with the deadline and each team's numbers.</span><small>${sentTxt('ready')}</small><button class="btn sm primary" data-mail4="ready"${can ? '' : ' disabled'}>Make the email</button></div>
       <div class="m4"><b>Deadline reminder</b><span>To the ${plural(notYet.length, 'supervisor')} not finished yet.</span><small>${sentTxt('warn')}</small><button class="btn sm" data-mail4="warn"${can && notYet.length ? '' : ' disabled'}>Make the email</button></div>
       <div class="m4"><b>Results for review</b><span>To ${esc(splitAddr(contactsNow().vp).map(x => x.replace(/\s*<.*$/, '')).join(', ') || 'the VP')}: “Hi All”, with the ID, name, final % and earned SR of everyone on the incentive list who earned it, and the same table as an Excel file.</span><small>${sentTxt('review')}</small><button class="btn sm" data-mail4="review"${can ? '' : ' disabled'}>Make the email</button></div>
@@ -93,6 +103,65 @@ function renderCycle() {
   body.innerHTML = `${statusBanner(k)}${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}${mailCard}${can ? safeHtml(incListHtml, k) : ''}${prog}${editor}${contacts}${safeHtml(calDaysHtml)}`;
   if (canCycle() && unseenDone().length && state.ws === 'cycle') { lsSet(seenKey(), new Date().toISOString()); cycleBadge(); }
   reveal(body);
+}
+
+// ---------------------------------------------------------------- the incentive email: the senior manager's, to the champions
+// The incentive data email (for review, then final after the review) is sent from Supervisors › Incentive email with the incentive
+// file the WFM analysts build (WFM team › Export › Build incentive file). Each build is kept with the shared data (Saved workbooks),
+// so the month's newest file shows here by itself and is attached without the National IDs; a file dropped here is used instead.
+// The email itself is the one the WFM team page had (#v-email), moved into this page.
+Object.assign(state, { cycTab: 'close', incK: '' });
+const INCS = { k: '', list: null, busy: false, err: '' };   // the incentive files the WFM team saved for the month on the page
+/** the month's saved incentive files, the newest first; the newest is used unless a file was dropped for the email */
+async function incSavedLoad(k) {
+  if (!k) return;
+  INCS.busy = true; INCS.err = '';
+  try {
+    const L = (await upListNow('rep')).filter(m => m && m.kind === 'incentive' && m.k === k).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+    if (INCS.k !== k) return;   // the page moved on to another month meanwhile
+    INCS.list = L;
+    const m = L[0], w = state.incWb;
+    if (m && (!w || w.saved) && !(w && w.saved.id === m.id)) {
+      const bytes = await upBytes(m.id, 'rep'); if (!bytes) throw new Error(`${m.name} could not be read`);
+      const rows = readIncentive(await parse(m.name, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), true));
+      if (rows.error) throw new Error(rows.error);
+      if (INCS.k !== k) return;
+      state.incWb = { name: m.name, size: m.size || bytes.length, bytes, rows, saved: { id: m.id, k, at: m.at, by: m.by } };
+      state.mailSubjects = {}; state.mailDeadline = null;
+    } else if (!m && w && w.saved) state.incWb = null;
+  } catch (e) { INCS.err = errText(e); }
+  finally { INCS.busy = false; }
+  if (state.ws === 'cycle' && state.cycTab === 'mail') { lastMailHtml = ''; renderEmail(); }
+}
+/** the email moved into this page: the incentive email of the page's month (a new month: its saved file is read; the tab opened
+    again: a newer file is looked for) */
+function incMailSync(opened) {
+  const k = wsMonthNow();
+  state.mailKind = 'inc'; state.mailSrc = ''; state.incK = k;
+  if (INCS.k !== k) { INCS.k = k; INCS.list = null; INCS.err = ''; delete state.revWb.inc; if (state.incWb) { state.incWb = null; state.mailSubjects = {}; state.mailDeadline = null; } incSavedLoad(k); }
+  else if (opened && !INCS.busy) incSavedLoad(k);
+}
+/** the Data card of the incentive email: the file the WFM team saved, a dropped one, or none yet */
+function incSrcHtml(w) {
+  const cnt = x => `${x.rows.y ? `${MONTH_LONG[x.rows.m - 1]} ${x.rows.y} · ` : ''}${plural(x.rows.att.length, 'person', 'people')} in the Attendance Report · ${x.rows.adh.length} in Adherence · ${x.rows.aht.length} in AHT`;
+  const saved = INCS.k && INCS.k === state.incK && INCS.list && INCS.list[0], page = !!state.ctx && (!state.incK || state.incK === monthKey());
+  if (w && w.saved) return `<div class="row"><span class="pill good">Saved by the WFM team</span><b style="overflow-wrap:anywhere">${esc(w.name)}</b></div><div class="hint">${esc(cnt(w))}. Built by ${esc(w.saved.by || 'the WFM team')}, ${esc(fmtWhen(w.saved.at))}. Drop an edited file to use it instead.</div><div><button class="linkbtn" data-increcheck>Look for a newer file</button></div>`;
+  if (w) return `<div class="row"><span class="pill good">Workbook</span><b style="overflow-wrap:anywhere">${esc(w.name)}</b></div><div class="hint">${esc(cnt(w))}</div><div>${saved ? `<button class="linkbtn" data-incsaved>Use the file the WFM team saved instead</button>` : page ? '<button class="linkbtn" data-wbclear="inc">Use the data from this page instead</button>' : ''}</div>`;
+  if (state.incK && INCS.busy) return '<div class="row"><span class="spin" aria-hidden="true"></span>Looking for the incentive file the WFM team saved…</div>';
+  if (state.incK && !page) return `<div class="row"><span class="pill warn">No incentive file yet</span></div><div class="hint">${INCS.err ? `The saved file could not be read (${esc(INCS.err)}). ` : ''}The WFM analysts make it for ${esc(ymLabel(state.incK))} on WFM team › Export (Build incentive file). It is kept with the shared data and shows here by itself; or drop the file here.</div><div><button class="linkbtn" data-increcheck>Look again</button></div>`;
+  return '<div class="row"><span class="pill info">This page</span>Exports and attendance files</div><div class="hint">The workbook is made from them when you send. Drop an edited incentive workbook to use it instead.</div>';
+}
+/** the incentive email was copied or downloaded: the month's emails on the Supervisors page say so, with who and when */
+function incMailSent(k, stage, how) {
+  if (!canCycle() || !k) return;
+  const kind = stage === 'final' ? 'incFinal' : 'incReview';
+  cycleUpdate(k, c => { c.sent = { ...(c.sent || {}), [kind]: { at: new Date().toISOString(), by: whoNow(), how: how || 'Copied' } }; }, `${how || 'Copied'} the incentive data email (${stage === 'final' ? 'final' : 'for review'})`);
+}
+/** Supervisors › Incentive email, from anywhere (a tile, the search, a dropped incentive file) */
+function openIncMail(stage) {
+  if (!canCycle()) { toast('The senior manager sends the incentive email.'); return; }
+  if (stage) state.mailStage = stage;
+  state.cycTab = 'mail'; if (state.ws !== 'cycle') setWs('cycle'); else renderWs();
 }
 
 // ---------------------------------------------------------------- the supervisor scorecard editor
@@ -336,11 +405,22 @@ $('cycleBar').addEventListener('change', e => {
   if (t.matches('[data-deadline]')) { const k = wsMonthNow(), v = t.value; cycleUpdate(k, c => { c.deadline = v; }, v ? `Set the one-to-one deadline to ${Forms.fmtDate(v)}` : 'Removed the deadline'); }
 });
 $('cycleBar').addEventListener('click', async e => {
+  const tb = e.target.closest('[data-cyctab]'); if (tb) { cycTabGo(tb.dataset.cyctab); return; }
   const b = e.target.closest('[data-cyc="publish"]');
   if (b) { const k = wsMonthNow(); b.disabled = true; const n = await publishMonthToAgents(k).catch(() => 0); b.disabled = false; toast(n ? `${plural(n, 'agent')} now see their latest ${ymLabel(k)} numbers and forms.` : 'No agent has an account yet.'); if (n) logCycle(k, `Updated ${plural(n, 'agent')}'s own pages`); }
 });
+/** the Supervisors page's tabs: the month close, or the incentive email */
+function cycTabGo(t) {
+  if (state.cycTab === t) return; state.cycTab = t; renderWs(); window.scrollTo({ top: 0 });
+  const b = $('cycleBar').querySelector(`[data-cyctab="${t}"]`); if (b) b.focus();
+}
+$('cycMail').addEventListener('click', e => {
+  if (e.target.closest('[data-increcheck]')) { incSavedLoad(state.incK); renderEmail(); return; }
+  if (e.target.closest('[data-incsaved]')) { state.incWb = null; state.mailSubjects = {}; state.mailDeadline = null; incSavedLoad(state.incK); renderEmail(); }
+});
 $('cycleBody').addEventListener('click', e => {
   const t = e.target;
+  const ct = t.closest('[data-cyctab]'); if (ct) { cycTabGo(ct.dataset.cyctab); return; }
   const m4 = t.closest('[data-mail4]'); if (m4) { mail4(m4.dataset.mail4); return; }
   if (t.closest('[data-cyc="seen"]')) { lsSet(seenKey(), new Date().toISOString()); state.cycleSeenPrev = seenAt(); renderWs(); return; }
   const tm = t.closest('[data-cyc="team"]'); if (tm) { state.wsSpv = tm.dataset.spv; setWs('team'); return; }

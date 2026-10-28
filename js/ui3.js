@@ -1405,7 +1405,7 @@ function renderIncExport() {
   $('buildInc').disabled = !md || state.incBuilding;
   $('buildInc').innerHTML = state.incBuilding ? '<span class="spin" aria-hidden="true"></span>Building…' : '<svg width="18" height="18" aria-hidden="true"><use href="#i-down"/></svg>Build incentive file';
   $('histAdd').disabled = !md; $('histAdd').textContent = md && state.history[ymKey(state.y, state.m)] ? `Update ${MON[state.m - 1]} ${state.y} in the history` : `Add ${MON[state.m - 1]} ${state.y} to the history`;
-  $('incNote').textContent = !md ? 'Drop the exports and the attendance files first.' : state.incBuilt && state.incBuilt.ver === state.ver ? `Saved ${state.incBuilt.fn} at ${state.incBuilt.at}.` : 'Same four tabs as the file sent to the champions. The Email step attaches it for you.';
+  $('incNote').textContent = !md ? 'Drop the exports and the attendance files first.' : state.incBuilt && state.incBuilt.ver === state.ver ? `Saved ${state.incBuilt.fn} at ${state.incBuilt.at}${state.incBuilt.locked === 'ok' ? ': the senior manager has it on Supervisors › Incentive email' : ''}.` : 'Same four tabs as the file sent to the champions. Build it for the senior manager: it is kept with the shared data and the senior manager sends it (Supervisors › Incentive email).';
   $('incSheets').innerHTML = [['Attendance Report', 'Everyone in the reports: day codes, Tardy, leave counts, Scheduled and Actual days', md ? md.att.length : null],
     ['Adherence -In Detail', 'Daily adherence, NA under the cut-off, Avr.', md ? md.det.length : null],
     ['Adherence', `Monthly average per person${state.settings.incFullAdhTeams.length ? `; ${state.settings.incFullAdhTeams.join(', ')} at 100%` : ''}`, md ? md.adh.length : null],
@@ -2134,7 +2134,7 @@ function dedDiff(a, b) {   // deduction snapshot vs now -> changed totals and ch
 }
 
 // ---------------------------------------------------------------- review snapshots (for the final emails)
-const snapId = kind => `${kind}-${kind === 'ded' && state.mailSrc === 'shared' ? (wsMonthNow() || monthKey()) : monthKey()}`;
+const snapId = kind => `${kind}-${kind === 'inc' ? (({ y, m }) => ymKey(y, m))(incMonth()) : state.mailSrc === 'shared' ? (wsMonthNow() || monthKey()) : monthKey()}`;
 async function loadSnaps() {
   if (!state.db) return;
   try { const s = await state.db.collection('snaps').get(); state.snaps = Object.fromEntries(s.docs.map(d => [d.id, d.data()])); if (state.step === 'email') renderEmail(); } catch (e) { /* none */ }
@@ -2220,15 +2220,20 @@ function subjectFor(kind, stage) {
   if (kind === 'ded') return stage === 'final' ? `MC Monthly Deduction | ${M} ${y} Final.` : `MC Monthly Deduction | ${M} ${y} For Review.`;
   return stage === 'final' ? `${M} ${y} incentive Data – Final` : `${M} ${y} incentive Data for review`;
 }
-function incMonth() { const w = state.incWb; return w && w.rows.y ? { y: w.rows.y, m: w.rows.m } : { y: state.y, m: state.m }; }
+/** the incentive email's month: its workbook's, else the month chosen on the senior manager's page (state.incK), else Build's */
+function incMonth() { const w = state.incWb; return w && w.rows.y ? { y: w.rows.y, m: w.rows.m } : state.incK ? { y: +state.incK.slice(0, 4), m: +state.incK.slice(5) } : { y: state.y, m: state.m }; }
+/** the incentive email's data: the incentive file (the one the WFM team saved for the month, or one dropped on the page), else the
+    month being built in this browser when it is the same month (an admin who builds) */
 function incData() {
   if (state.incWb) return { ...state.incWb.rows, y: incMonth().y, m: incMonth().m, src: 'file' };
+  if (state.incK && state.incK !== monthKey()) return null;
   const md = incModel(); return md ? { ...incRowsFromModel(md), src: 'page' } : null;
 }
 function incMailModel(stage) {
   const d = incData(), warns = [], { y, m } = incMonth();
-  if (!d) warns.push('Nothing to send yet. Drop the exports and the attendance files on Import, or drop the incentive workbook here.');
+  if (!d) warns.push(state.incK ? `Nothing to send yet: the WFM analysts have not built the incentive file for ${MONTH_LONG[m - 1]} ${y} (WFM team › Export › Build incentive file). It shows here by itself once they have; or drop the file here.` : 'Nothing to send yet. Drop the exports and the attendance files on Import, or drop the incentive workbook here.');
   else {
+    if (state.incK && state.incWb && state.incWb.rows.y && ymKey(state.incWb.rows.y, state.incWb.rows.m) !== state.incK) warns.push(`The workbook is for ${MONTH_LONG[m - 1]} ${y}; the email is for that month.`);
     if (!d.att.length) warns.push('The Attendance Report is empty. Drop the supervisors\' attendance files on Import.');
     if (d.src === 'page' && state.attRes && state.attRes.clashes.some(c => c.chosen === undefined)) warns.push(`${plural(state.attRes.clashes.filter(c => c.chosen === undefined).length, 'attendance decision')} still open. Open the notifications to choose.`);
   }
@@ -2513,7 +2518,7 @@ const mailShared = () => state.mailSrc === 'shared';
 function mailMonth() { if (mailShared()) { const k = wsMonthNow() || monthKey(); return { y: +k.slice(0, 4), m: +k.slice(5) }; } const r = state.wb && state.wb.report; return r ? { y: r.y, m: r.m } : { y: state.y, m: state.m }; }
 function mailDeadlineIso() {
   if (state.mailDeadline) return state.mailDeadline;
-  const { y, m } = mailMonth(); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
+  const { y, m } = state.mailKind === 'inc' ? incMonth() : mailMonth(); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
   return `${ny}-${String(nm).padStart(2, '0')}-10`;
 }
 const mailCfg = () => (state.mailKind === 'inc' ? state.incMail : state.mail);
@@ -2569,14 +2574,19 @@ async function readDropped(file) {
   if (!inc.error) return { kind: 'inc', name: file.name, size: file.size, bytes: new Uint8Array(buf), rows: inc };
   toast(inc.error && /Monthly Deduction/.test(inc.error) ? `${inc.error} Compare it on Results › Reconcile with the old Excel.` : 'This is neither the monthly report nor the incentive data workbook.', { label: 'What is it?', fn: () => recogFiles([file], 'email') }); return null;
 }
+/** a workbook dropped for the other email: the incentive file is the senior manager's to send, the monthly report the WFM team's */
+function wrongMailFile(kind) {
+  if (kind === state.mailKind) return false;
+  toast(kind === 'inc' ? 'This is the incentive data workbook: the senior manager sends it to the champions, on Supervisors › Incentive email.' : 'This is the monthly report: its deduction email is on WFM team › Emails › Deduction and absences.');
+  return true;
+}
 async function loadWorkbook(file) {
   if (!file) return;
   state.wbBusy = true; renderEmail();
   try {
-    const w = await readDropped(file); if (!w) return;
+    const w = await readDropped(file); if (!w || wrongMailFile(w.kind)) return;
     if (w.kind === 'ded') state.wb = { name: w.name, size: w.size, bytes: w.bytes, report: w.report, at: new Date() };
     else state.incWb = { name: w.name, size: w.size, bytes: w.bytes, rows: w.rows };
-    if (w.kind !== state.mailKind) { state.mailKind = w.kind; setSeg($('mKind'), w.kind); }
     state.mailSubjects = {}; state.mailDone = {};
     toast(`Read ${file.name} (${w.kind === 'inc' ? 'incentive data' : 'monthly report'})`);
   } catch (e) { toast(`Could not read ${file.name}. Save it as .xlsx in Excel and try again.`); }
@@ -2585,10 +2595,9 @@ async function loadWorkbook(file) {
 async function loadRevFile(file) {
   if (!file) return;
   try {
-    const w = await readDropped(file); if (!w) return;
+    const w = await readDropped(file); if (!w || wrongMailFile(w.kind)) return;
     const data = w.kind === 'inc' ? w.rows : { ded: w.report.ded.map(x => ({ id: x.id, name: x.name, total: x.total })), abs: w.report.att.filter(a => a.shown && a.days.length).map(a => ({ id: a.id, name: a.name, days: a.days })) };
     state.revWb[w.kind] = { name: w.name, data };
-    if (w.kind !== state.mailKind) { state.mailKind = w.kind; setSeg($('mKind'), w.kind); }
     toast(`Comparing with ${file.name}`); renderEmail();
   } catch (e) { toast(`Could not read ${file.name}.`); }
 }
@@ -2857,25 +2866,25 @@ function snapNow(kind) {
 function markSent(how) {
   state.mailDone[doneKey()] = { how: how || 'Copied', at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) }; renderSteps();
   if (state.mailStage === 'review') snapNow(state.mailKind);
-  if (state.mailStage === 'final' && state.mailKind === 'inc') saveMonthToHistory('final incentive email').then(k => { if (k) setTimeout(() => toast(`${ymLabel(k)} added to the history`), 3600); });
+  if (state.mailStage === 'final' && state.mailKind === 'inc' && !state.incWb && state.ctx) saveMonthToHistory('final incentive email').then(k => { if (k) setTimeout(() => toast(`${ymLabel(k)} added to the history`), 3600); });
+  if (state.mailKind === 'inc' && state.incK) { const im = incMonth(); incMailSent(ymKey(im.y, im.m), state.mailStage, how); }   // Supervisors › Emails says it was prepared
   if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(ymKey(mm.y, mm.m), 'deduction'); }   // the month-close step
 }
 function renderEmail() {
   if (mailShared() && state.mailKind !== 'ded') state.mailKind = 'ded';
-  const eSig = `${state.mailKind}|${state.mailStage}|${state.mailSrc || ''}|${state.mailSrc ? wsMonthNow() : monthKey()}`;   // another email: editing the old preview stops
+  const eSig = `${state.mailKind}|${state.mailStage}|${state.mailSrc || ''}|${state.mailKind === 'inc' ? state.incK || monthKey() : state.mailSrc ? wsMonthNow() : monthKey()}`;   // another email: editing the old preview stops
   if (state.mailEditOn && state.mailEditSig !== eSig) { state.mailEditOn = false; state.mailEditDirty = false; $('mEdit').checked = false; $('mEditNote').hidden = true; }
   state.mailEditSig = eSig;
   const cm = curMail(), md = cm.md, inc = cm.inc, fin = cm.stage === 'final', cfg = mailCfg();
-  setSeg($('mKind'), state.mailKind); setSeg($('mStage'), state.mailStage); setSeg($('mSrc'), mailShared() ? 'shared' : 'build');
-  $('mKind').hidden = !isBuilder(); $('mSrc').hidden = !isBuilder() || state.mailKind === 'inc'; $('wbDrop').hidden = mailShared();
+  setSeg($('mStage'), state.mailStage); setSeg($('mSrc'), mailShared() ? 'shared' : 'build');
+  $('mSrc').hidden = !isBuilder() || state.mailKind === 'inc'; $('wbDrop').hidden = mailShared();
   $('h-email').textContent = `${inc ? 'Incentive' : 'Deduction'} email – ${fin ? 'final' : 'for review'}`;
-  $('emailLead').textContent = inc ? (fin ? 'The final incentive data, sent after the review, with the changes since the review.' : 'Mohammed\'s "incentive Data for review" email, with the incentive workbook attached.')
+  $('emailLead').textContent = inc ? (fin ? 'The final incentive data to the champions, sent after the review, with the changes since the review.' : 'The "incentive Data for review" email to the champions, with the incentive file the WFM analysts built attached (without National IDs).')
     : (fin ? 'The final deduction and absenteeism, sent after the review, with the changes since the review.' : 'The "MC Monthly Deduction | For Review" email with the conformance deduction and the absences.');
   // data card
   const r = state.wb && state.wb.report, w = state.incWb;
   $('srcState').innerHTML = mailShared() ? `<div class="row"><span class="pill good">Shared month</span><b>${esc(MONTH_LONG[md.m - 1])} ${md.y}</b></div><div class="hint">From the shared history, with the supervisors' attendance corrections. ${plural(md.dedAll, 'person', 'people')} in the deduction scope.</div>` : state.wbBusy ? '<div class="row"><span class="spin" aria-hidden="true"></span>Reading the workbook…</div>'
-    : inc ? (w ? `<div class="row"><span class="pill good">Workbook</span><b style="overflow-wrap:anywhere">${esc(w.name)}</b></div><div class="hint">${w.rows.y ? `${MONTH_LONG[w.rows.m - 1]} ${w.rows.y} · ` : ''}${plural(w.rows.att.length, 'person', 'people')} in the Attendance Report · ${w.rows.adh.length} in Adherence · ${w.rows.aht.length} in AHT</div><div><button class="linkbtn" data-wbclear="inc">Use the data from this page instead</button></div>`
-      : `<div class="row"><span class="pill info">This page</span>Exports and attendance files</div><div class="hint">The workbook is made from them when you send. Drop an edited incentive workbook to use it instead.</div>`)
+    : inc ? incSrcHtml(w)
     : (r ? `<div class="row"><span class="pill good">Workbook</span><b style="overflow-wrap:anywhere">${esc(state.wb.name)}</b></div><div class="hint">${MONTH_LONG[r.m - 1]} ${r.y} · ${plural(r.ded.length, 'person', 'people')} in Deduction · Attendance filled for ${plural(r.filled, 'person', 'people')}</div><div><button class="linkbtn" data-wbclear="ded">Use the numbers from this page instead</button></div>`
       : `<div class="row"><span class="pill info">This page</span>Deduction from the exports${state.attRes ? ', absences from the attendance files' : ''}</div><div class="hint">Drop the saved monthly report to use your changes in Excel.</div>`);
   $('wbDropT').textContent = inc ? 'Drop an incentive workbook' : 'Drop the monthly report';
@@ -3667,6 +3676,7 @@ document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   if (drop.contains(e.target) || $('wbDrop').contains(e.target)) return; e.preventDefault(); const f = [...(e.dataTransfer?.files || [])]; if (!f.length) return;
   if (state.ws === 'wfm' && state.wfmTab === 'emails' && state.mailSub === 'month' && !mailShared() && !$('v-email').hidden) { loadWorkbook(f[0]); return; }   // the month's emails from this build: an edited workbook
+  if (state.ws === 'cycle' && state.cycTab === 'mail' && !$('v-email').hidden) { loadWorkbook(f[0]); return; }   // the senior manager's incentive email: an edited incentive file
   if (state.ws !== 'build') { wsDrop(f); return; }
   if (state.step === 'email') { loadWorkbook(f[0]); return; }
   if (state.step !== 'import') setStep('import'); addFiles(f);
@@ -3837,7 +3847,6 @@ $('v-email').addEventListener('click', e => {
   if (e.target.closest('[data-revclear]')) { delete state.revWb[state.mailKind]; renderEmail(); }
 });
 $('revPicker').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; loadRevFile(f); });
-$('mKind').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailKind = f; lastMailHtml = ''; if ($('v-email').classList.contains('inws')) renderWs(); else { renderEmail(); renderSteps(); } });
 $('mSrc').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailPick = f; lastMailHtml = ''; renderWs(); const b = $('mSrc').querySelector(`[data-f="${f}"]`); if (b) b.focus(); });
 $('mStage').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailStage = f; lastMailHtml = ''; renderEmail(); renderSteps(); });
 let mailRaf = 0; const mailRender = () => { cancelAnimationFrame(mailRaf); mailRaf = requestAnimationFrame(renderEmail); };

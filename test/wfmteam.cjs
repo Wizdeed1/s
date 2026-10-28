@@ -37,12 +37,11 @@ const PEOPLE = [{ id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user
   ok(n.cur === 'analytics', `the sidebar brings back the tab last used (${n.cur})`);
   await p.click('#wfmTabs [data-wt="review"]'); await p.waitForTimeout(250); n = await nav(p);
   ok(n.ws === 'build' && n.cur === 'review' && await p.isVisible('#v-review'), 'Review: the build\'s review, as a tab');
-  // the old Email step is the Emails tab: the month's emails with Deduction or Incentive, from the shared month or this build
+  // the old Email step is the Emails tab: the month's deduction and absences email, from the shared month or this build (the
+  // incentive email is the senior manager's: Supervisors › Incentive email, test/incmail.cjs)
   await p.evaluate(() => window.__mc.setStep('email')); await p.waitForTimeout(300); n = await nav(p);
-  const em = await p.evaluate(() => ({ inws: !!document.getElementById('v-email').closest('#v-wfm'), kind: !document.getElementById('mKind').hidden, src: !document.getElementById('mSrc').hidden, sub: (document.querySelector('[data-mailsub][aria-pressed="true"]') || {}).textContent }));
-  ok(n.ws === 'wfm' && n.cur === 'emails' && em.inws && em.kind && em.src, `the email step opens WFM team › Emails › ${em.sub}, with Deduction/Incentive and the source choice`);
-  await p.click('#mKind [data-f="inc"]'); await p.waitForTimeout(250);
-  ok(await p.evaluate(() => window.__mc.state.mailSrc === '' && document.getElementById('mSrc').hidden), 'Incentive comes from the build (the source choice steps aside)');
+  const em = await p.evaluate(() => ({ inws: !!document.getElementById('v-email').closest('#v-wfm'), kind: window.__mc.state.mailKind, sw: !!document.getElementById('mKind'), src: !document.getElementById('mSrc').hidden, sub: (document.querySelector('[data-mailsub][aria-pressed="true"]') || {}).textContent }));
+  ok(n.ws === 'wfm' && n.cur === 'emails' && em.inws && em.kind === 'ded' && !em.sw && em.src, `the email step opens WFM team › Emails › ${em.sub}: the deduction email with the source choice, no Incentive`);
   await p.screenshot({ path: path.join(out, 'analyst-emails.png') });
   // the analyst covers the manager: the manager's pages too
   await p.click('#wfmTabs [data-wt="analytics"]'); await p.waitForTimeout(200);

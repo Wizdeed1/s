@@ -20,7 +20,7 @@ const KINDS = {
   kpiFile: { label: 'the KPI file', short: 'KPI file', group: 'kpi', monthly: true, route: 'kpi', routes: ['kpi'] },
   evalBook: { label: 'the quality team\'s Final EVAL', short: 'Final EVAL', group: 'eval', monthly: true, route: 'quality', routes: ['quality'] },
   finalResult: { label: 'the old final result of a month', short: 'old Excel file', group: 'old', old: true, monthly: true, route: 'compare', routes: ['compare'] },
-  incentiveData: { label: 'the incentive data workbook (MC_all_team_incentive_data)', short: 'incentive data workbook', group: 'old', old: true, monthly: true, route: 'history', routes: ['history', 'compare', 'email'] },
+  incentiveData: { label: 'the incentive data workbook (MC_all_team_incentive_data)', short: 'incentive data workbook', group: 'old', old: true, monthly: true, route: 'history', routes: ['history', 'compare', 'incmail'] },
   oldDeductionBook: { label: 'the old Monthly Deduction workbook', short: 'old Excel file', group: 'old', old: true, monthly: true, route: 'compare', routes: ['compare', 'attendance'] },
   toolReport: { label: 'a monthly report made by this tool', short: 'monthly report', group: 'report', monthly: true, route: 'email', routes: ['email', 'compare'] },
   adhGrid: { label: 'an old adherence sheet (Adherence -In Detail)', short: 'old Excel file', group: 'old', old: true, monthly: true, route: 'compare', routes: ['compare'] },

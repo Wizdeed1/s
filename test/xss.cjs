@@ -65,7 +65,7 @@ const SCAN = () => {
     const wss = await p.$$eval('nav#sidebar [data-ws]', bs => bs.filter(x => x.offsetParent).map(x => x.dataset.ws));
     for (const ws of wss) {
       await p.click(`nav#sidebar [data-ws="${ws}"]`); await p.waitForTimeout(500); await scan(ws);
-      const tabs = await p.$$eval('main [role="tab"], main [data-wt]', ts => ts.filter(x => x.offsetParent && !x.disabled).map((x, i) => { x.setAttribute('data-xss-tab', i); return i; }));
+      const tabs = await p.$$eval('main [role="tab"], main [data-wt], main #cycleBar [data-cyctab]', ts => ts.filter(x => x.offsetParent && !x.disabled).map((x, i) => { x.setAttribute('data-xss-tab', i); return i; }));
       for (const i of tabs) { const t = await p.$(`[data-xss-tab="${i}"]`); if (!t || !(await t.isVisible())) continue; await t.click().catch(() => {}); await p.waitForTimeout(350); await scan(`${ws} › tab ${i}`); }
     }
     if (role !== 'agent' && role !== 'quality') {   // the person panel and Search

@@ -77,11 +77,19 @@ ok('the complaint figures: the workbook\'s block or the email\'s table, pasted; 
   assert.deepEqual([pipes.brands.virgin.complaints, pipes.brands.virgin.onTime, pipes.brands.virgin.open, pipes.brands.virgin.drivers[0].pct], [1204, 0.98, 77, 0.21]);
 });
 
-ok('Postpaid\'s tickets from the Tickets Report: as the daily Postpaid email counts them, only the week', () => {
+ok('Postpaid\'s tickets from the Tickets Report: as the WFM team filters it, each Sub Category on its own, only the week', () => {
   const T = W.postpaidTickets(E, E.ticketRows(F.ticketsReportRows()), week);
-  // Billing, End service and Migration of Virgin; Final Prepaid Deactivation out; Final Postpaid Deactivation and Post-To-Pre merged; the 17th and the 25th not in the week
-  assert.equal(T.total, 20 + 14 + 7 + 5 + 6 + 3 + 2);
-  assert.deepEqual(T.list.map(x => [x.name, x.count]), [['Monthly Billing/Dispute', 34], ['Final Switch Postpaid Deactivation', 12], ['From Switch postpaid plans to Pre', 6], ['Not receiving the details of billing', 3], ['Activation After Payment', 2]]);
+  // Billing, End service and Migration, not FRiENDi's; Final Prepaid Deactivation out; the 17th and the 25th not in the week; of the week's 107 tickets of every kind
+  assert.deepEqual([T.total, T.of], [20 + 14 + 7 + 5 + 6 + 3 + 2, 20 + 14 + 7 + 5 + 6 + 3 + 2 + 8 + 30 + 12]);
+  assert.deepEqual(T.list.map(x => [x.name, x.count]), [['Monthly Billing/Dispute', 34], ['Final Switch Postpaid Deactivation', 7], ['Post-To-Pre', 6], ['Final Postpaid Deactivation', 5], ['Not receiving the details of billing', 3]]);
+  assert.deepEqual(T.tied, []);
+  // a tie for the 5th: the first in the export is listed, the others named
+  const tie = W.postpaidTickets(E, E.ticketRows(F.ticketsReportRows()).filter(r => r[E.TCOL.sub] !== 'Not receiving the details of billing'), week);
+  assert.deepEqual([tie.list[4].name, tie.tied], ['Activation After Payment', []]);
+  const more = E.ticketRows(F.ticketsReportRows()).concat([[0, '', '', '19/10/2026 10:00', 'Virgin Complaint', 'Billing', 'Payment Issue', 'Closed'], [0, '', '', '19/10/2026 10:00', 'Virgin Complaint', 'Billing', 'Payment Issue', 'Closed'], [0, '', '', '19/10/2026 10:00', 'Virgin Complaint', 'Billing', 'Payment Issue', 'Closed']]);
+  assert.deepEqual(W.postpaidTickets(E, more, week).tied, ['Payment Issue']);
+  // the daily Postpaid email still merges them
+  assert.equal(E.tally(E.sliceTickets(E.ticketRows(F.ticketsReportRows()), 'postpaid', week.days), E.TCOL.sub)[1].count, 12);
 });
 
 ok('a dropped sheet is recognised by its title row (as the Report builder) or by its column names; anything else is not read', () => {

@@ -348,7 +348,8 @@
     return String(v || '').trim();
   }
 
-  function sliceTickets(rows, brand, dateStr) {
+  // opts.merge false: each sub category as the export has it (the weekly deck lists them apart)
+  function sliceTickets(rows, brand, dateStr, opts) {
     const ppCats = POSTPAID_TICKETS.categories.map(norm), ppOut = POSTPAID_TICKETS.exclude.map(norm);
     return rows.filter(r => {
       if (dateStr && !inDates(rowDate(r[TCOL.date]), dateStr)) return false;
@@ -361,7 +362,7 @@
       }
       return false;
     }).map(r => {
-      if (brand !== 'postpaid') return r;
+      if (brand !== 'postpaid' || (opts && opts.merge === false)) return r;
       const c = r.slice(); c[TCOL.sub] = mergedSub(r[TCOL.sub]); return c;
     });
   }

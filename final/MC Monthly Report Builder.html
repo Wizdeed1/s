@@ -4480,7 +4480,8 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     return String(v || '').trim();
   }
 
-  function sliceTickets(rows, brand, dateStr) {
+  // opts.merge false: each sub category as the export has it (the weekly deck lists them apart)
+  function sliceTickets(rows, brand, dateStr, opts) {
     const ppCats = POSTPAID_TICKETS.categories.map(norm), ppOut = POSTPAID_TICKETS.exclude.map(norm);
     return rows.filter(r => {
       if (dateStr && !inDates(rowDate(r[TCOL.date]), dateStr)) return false;
@@ -4493,7 +4494,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
       }
       return false;
     }).map(r => {
-      if (brand !== 'postpaid') return r;
+      if (brand !== 'postpaid' || (opts && opts.merge === false)) return r;
       const c = r.slice(); c[TCOL.sub] = mergedSub(r[TCOL.sub]); return c;
     });
   }
@@ -13385,7 +13386,7 @@ if (typeof module !== 'undefined') module.exports = Recon;
      week's calls of Virgin Mobile (its Postpaid calls too), FRiENDi Mobile and FRiENDi Pay; Postpaid's month to date (the 1st of the
      Saturday's month to the Saturday), every Virgin call of a Postpaid service, as the deck the WFM team sends counts them;
    - the complaints (logged, resolved on time, still open, the top 5 drivers): the figures someone sends, pasted and checked;
-   - Postpaid's top 5 tickets: the week's ESKA Tickets Report, as the daily Postpaid email counts them, or typed;
+   - Postpaid's top 5 tickets: the week's ESKA Tickets Report, picked as the WFM team filters it, or typed;
    - the outages: a running list (an earlier deck's Outages table can be read into it).
    Out of it: the Member Care Performance Review deck, made from its own design (wk/deck-template.pptx, built into the page), and
    the WFM team's KPI workbook with the week written into its cells. Pure: no page and no storage (js/weekly.js is the tab). */
@@ -13524,11 +13525,16 @@ function recognise(E, rows, after) {
   }
   return { kind: null, rows: [], map: null };
 }
-/** the ESKA Tickets Report's rows (Engine.ticketRows) -> Postpaid's tickets of the week, as the daily Postpaid email counts them
-    (Engine.sliceTickets: Virgin's Billing, End service and Migration tickets, like sub categories merged): all of them, the top 5 */
+/** the ESKA Tickets Report's rows (Engine.ticketRows) -> Postpaid's tickets of the week, picked as the WFM team filters the export
+    and as the daily Postpaid email picks them (Engine.sliceTickets: Category Billing, End service or Migration; not a FRiENDi type;
+    not Final Prepaid Deactivation nor The number not removed from CITC / SEMATI), each Sub Category as it is (the workbook lists
+    Final Postpaid Deactivation and Final Switch Postpaid Deactivation apart): all of them, the top 5 (a tie in the export's order),
+    those as many as the 5th left out, and how many tickets of every kind the export has in the week */
 function postpaidTickets(E, rows, w) {
-  const tk = E.sliceTickets(rows || [], 'postpaid', w.days);
-  return { total: tk.length, list: E.tally(tk, E.TCOL.sub).slice(0, 5).map(x => ({ name: x.label, count: x.count })), days: Array.from(new Set(tk.map(r => E.rowDate(r[E.TCOL.date])).filter(Boolean))).sort() };
+  rows = rows || [];
+  const tk = E.sliceTickets(rows, 'postpaid', w.days, { merge: false }), all = E.tally(tk, E.TCOL.sub), fifth = all[4];
+  return { total: tk.length, of: rows.filter(r => w.days.includes(E.rowDate(r[E.TCOL.date]))).length, list: all.slice(0, 5).map(x => ({ name: x.label, count: x.count })),
+    tied: fifth ? all.slice(5).filter(x => x.count === fifth.count).map(x => x.label) : [], days: Array.from(new Set(tk.map(r => E.rowDate(r[E.TCOL.date])).filter(Boolean))).sort() };
 }
 
 // ---------------------------------------------------------------- the complaint figures, pasted from the email (or the workbook) and checked
@@ -24027,7 +24033,7 @@ function renderWeeklyWs() {
       <div class="wkdrv">${[0, 1, 2, 3, 4].map(i => `<input class="cell" data-wkc="${b}.d${i}.name" aria-label="${esc(Weekly.NAME[b])} complaint driver ${i + 1}" placeholder="Driver ${i + 1}" dir="auto" value="${esc((d[i] && d[i].name) || '')}"><input class="cell num" data-wkc="${b}.d${i}.pct" aria-label="${esc(Weekly.NAME[b])} driver ${i + 1} %" placeholder="%" inputmode="decimal" value="${d[i] && d[i].pct !== null && d[i].pct !== undefined ? esc(String(Math.round(d[i].pct * 10000) / 100) + '%') : ''}">`).join('')}</div></fieldset>`; }).join('')}</div>`;
 
   const T = D.tickets || {}, tl = T.list || [], tf = D.ticketsFrom;
-  const tickets = `${tf ? `<p class="wkfrom"><svg class="tick" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg><span><b dir="auto">${esc(tf.names.join(', '))}</b> · ${plural(T.total || 0, 'Postpaid ticket')} in the week · read ${esc(fmtWhen(tf.at))}${tf.by ? ' by ' + esc(tf.by) : ''}. A changed figure below is kept.</span></p>` : ''}<div class="wktk">${[0, 1, 2, 3, 4].map(i => `<input class="cell" data-wkt="${i}.name" aria-label="Ticket type ${i + 1}" placeholder="Ticket type ${i + 1}" dir="auto" value="${esc((tl[i] && tl[i].name) || '')}"><input class="cell num" data-wkt="${i}.count" aria-label="Tickets of type ${i + 1}" placeholder="Tickets" inputmode="numeric" value="${tl[i] && tl[i].count !== null && tl[i].count !== undefined ? esc(String(tl[i].count)) : ''}"><small class="num">${wkP(T.total > 0 && tl[i] && tl[i].count ? tl[i].count / T.total : null)}</small>`).join('')}</div>
+  const tickets = `${tf ? `<p class="wkfrom"><svg class="tick" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg><span><b dir="auto">${esc(tf.names.join(', '))}</b> · ${plural(T.total || 0, 'Postpaid ticket')} in the week${tf.of ? ` (of the export's ${esc(tf.of.toLocaleString('en-US'))})` : ''} · read ${esc(fmtWhen(tf.at))}${tf.by ? ' by ' + esc(tf.by) : ''}. A changed figure below is kept.</span></p>` : ''}<div class="wktk">${[0, 1, 2, 3, 4].map(i => `<input class="cell" data-wkt="${i}.name" aria-label="Ticket type ${i + 1}" placeholder="Ticket type ${i + 1}" dir="auto" value="${esc((tl[i] && tl[i].name) || '')}"><input class="cell num" data-wkt="${i}.count" aria-label="Tickets of type ${i + 1}" placeholder="Tickets" inputmode="numeric" value="${tl[i] && tl[i].count !== null && tl[i].count !== undefined ? esc(String(tl[i].count)) : ''}"><small class="num">${wkP(T.total > 0 && tl[i] && tl[i].count ? tl[i].count / T.total : null)}</small>`).join('')}</div>
     <label class="field wktot"><span class="lbl">All Postpaid tickets (the % is out of these)</span><input class="cell num" data-wkt="total" inputmode="numeric" value="${T.total ? esc(String(T.total)) : ''}"></label>
     <div class="acts"><button class="btn sm" data-wkdrop-tk><svg width="14" height="14" aria-hidden="true"><use href="#i-up"/></svg>Count them from the ESKA tickets export…</button></div>${tf ? '' : '<p class="hint">The tickets export is not the Call Center History: it is ESKA\'s tickets report, with a Category and a Sub Category for each ticket.</p>'}`;
 
@@ -24049,7 +24055,7 @@ function renderWeeklyWs() {
     ${wkStep(1, 'Calls', 'From the Brands\' history: the numbers the daily brand emails keep, day by day and month by month.', calls)}
     ${wkStep(2, 'Top call reasons', 'Counted as the daily emails count them, without the reasons left out below: the week\'s calls of each brand (Virgin Mobile\'s with its Postpaid calls), and Postpaid\'s calls from the 1st of the month, as the deck has them.', reasons)}
     ${wkStep(3, 'Complaints', 'As they are sent to you: paste, then check each figure. Virgin Mobile and FRiENDi Mobile have three; FRiENDi Pay has complaints and open tickets (its third box is last month\'s service level).', comp, 'wkspan')}
-    ${wkStep(4, 'Virgin Postpaid tickets', 'The top 5 ticket types of the week and all the Postpaid tickets: counted from the ESKA Tickets Report as the daily Postpaid email counts them (Billing, End service and Migration), or typed.', tickets)}
+    ${wkStep(4, 'Virgin Postpaid tickets', 'The top 5 ticket types of the week and all the Postpaid tickets, picked from the ESKA Tickets Report as you filter it (Category Billing, End service or Migration; not FRiENDi\'s types; not Final Prepaid Deactivation or The number not removed from CITC / SEMATI), each Sub Category on its own; or typed.', tickets)}
     ${wkStep(5, 'Outages', 'One list that runs on: add the week\'s outages; the slide shows this month and the two before.', outages)}
     ${wkStep(6, bad ? `Check and send · ${plural(bad, 'thing')} to fix` : warn ? `Check and send · ${plural(warn, 'thing')} to look at` : 'Check and send', 'The deck is made from the Member Care Performance Review design with the numbers above. The KPI workbook: choose this month\'s BeyondOne_MC_KPIs and a filled copy downloads.', send, 'wkspan')}
   </div><input type="file" id="wkFile" accept=".xls,.xlsx,.pptx" multiple hidden><input type="file" id="wkBookFile" accept=".xlsx" hidden>`;
@@ -24092,8 +24098,11 @@ async function wkFiles(list) {
   const D = wkDoc(), now = new Date().toISOString();
   if (tnames.length) {
     const T = Weekly.postpaidTickets(E, trows, w), all = Array.from(new Set(trows.map(r => E.rowDate(r[E.TCOL.date])).filter(Boolean))).sort();
-    if (!T.total) notes.push({ name: tnames.join(', '), text: `tickets (${trows.length}, ${span(all)}), but no Postpaid ticket (Virgin's Billing, End service or Migration) in ${Weekly.weekLabel(w)}`, bad: true });
-    else { D.tickets = { total: T.total, list: T.list }; D.ticketsFrom = { names: tnames, at: now, by: whoNow() }; notes.push({ name: tnames.join(', '), text: `tickets: ${plural(T.total, 'Postpaid ticket')} in the week, the top 5 in step 4` }); }
+    if (!T.total) notes.push({ name: tnames.join(', '), text: `tickets (${trows.length}, ${span(all)}), but no Postpaid ticket (Category Billing, End service or Migration) in ${Weekly.weekLabel(w)}`, bad: true });
+    else {
+      D.tickets = { total: T.total, list: T.list }; D.ticketsFrom = { names: tnames, of: T.of, at: now, by: whoNow() };
+      notes.push({ name: tnames.join(', '), text: `tickets: ${plural(T.total, 'Postpaid ticket')} in the week, of the ${T.of.toLocaleString('en-US')} tickets of every brand the export has for it (Category Billing, End service or Migration; not FRiENDi's; not Final Prepaid Deactivation or CITC / SEMATI), the top 5 in step 4` + (T.tied.length ? `. ${T.tied.join(', ')} ${T.tied.length === 1 ? 'has' : 'have'} as many as the 5th: the first in the export is listed, change it in step 4 if you like` : '') });
+    }
   }
   if (names.length) {
     const counted = Weekly.countReasons(E, rows, w), inWeek = Weekly.BRANDS.reduce((s2, [b]) => s2 + (b === 'postpaid' ? 0 : counted[b].base), 0), P = counted.postpaid;

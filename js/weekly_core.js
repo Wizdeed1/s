@@ -5,7 +5,7 @@
      week's calls of Virgin Mobile (its Postpaid calls too), FRiENDi Mobile and FRiENDi Pay; Postpaid's month to date (the 1st of the
      Saturday's month to the Saturday), every Virgin call of a Postpaid service, as the deck the WFM team sends counts them;
    - the complaints (logged, resolved on time, still open, the top 5 drivers): the figures someone sends, pasted and checked;
-   - Postpaid's top 5 tickets: the week's ESKA Tickets Report, as the daily Postpaid email counts them, or typed;
+   - Postpaid's top 5 tickets: the week's ESKA Tickets Report, picked as the WFM team filters it, or typed;
    - the outages: a running list (an earlier deck's Outages table can be read into it).
    Out of it: the Member Care Performance Review deck, made from its own design (wk/deck-template.pptx, built into the page), and
    the WFM team's KPI workbook with the week written into its cells. Pure: no page and no storage (js/weekly.js is the tab). */
@@ -144,11 +144,16 @@ function recognise(E, rows, after) {
   }
   return { kind: null, rows: [], map: null };
 }
-/** the ESKA Tickets Report's rows (Engine.ticketRows) -> Postpaid's tickets of the week, as the daily Postpaid email counts them
-    (Engine.sliceTickets: Virgin's Billing, End service and Migration tickets, like sub categories merged): all of them, the top 5 */
+/** the ESKA Tickets Report's rows (Engine.ticketRows) -> Postpaid's tickets of the week, picked as the WFM team filters the export
+    and as the daily Postpaid email picks them (Engine.sliceTickets: Category Billing, End service or Migration; not a FRiENDi type;
+    not Final Prepaid Deactivation nor The number not removed from CITC / SEMATI), each Sub Category as it is (the workbook lists
+    Final Postpaid Deactivation and Final Switch Postpaid Deactivation apart): all of them, the top 5 (a tie in the export's order),
+    those as many as the 5th left out, and how many tickets of every kind the export has in the week */
 function postpaidTickets(E, rows, w) {
-  const tk = E.sliceTickets(rows || [], 'postpaid', w.days);
-  return { total: tk.length, list: E.tally(tk, E.TCOL.sub).slice(0, 5).map(x => ({ name: x.label, count: x.count })), days: Array.from(new Set(tk.map(r => E.rowDate(r[E.TCOL.date])).filter(Boolean))).sort() };
+  rows = rows || [];
+  const tk = E.sliceTickets(rows, 'postpaid', w.days, { merge: false }), all = E.tally(tk, E.TCOL.sub), fifth = all[4];
+  return { total: tk.length, of: rows.filter(r => w.days.includes(E.rowDate(r[E.TCOL.date]))).length, list: all.slice(0, 5).map(x => ({ name: x.label, count: x.count })),
+    tied: fifth ? all.slice(5).filter(x => x.count === fifth.count).map(x => x.label) : [], days: Array.from(new Set(tk.map(r => E.rowDate(r[E.TCOL.date])).filter(Boolean))).sort() };
 }
 
 // ---------------------------------------------------------------- the complaint figures, pasted from the email (or the workbook) and checked

@@ -145,13 +145,13 @@ function recognise(E, rows, after) {
   return { kind: null, rows: [], map: null };
 }
 /** the ESKA Tickets Report's rows (Engine.ticketRows) -> Postpaid's tickets of the week, picked as the WFM team filters the export
-    and as the daily Postpaid email picks them (Engine.sliceTickets: Category Billing, End service or Migration; not a FRiENDi type;
-    not Final Prepaid Deactivation nor The number not removed from CITC / SEMATI), each Sub Category as it is (the workbook lists
-    Final Postpaid Deactivation and Final Switch Postpaid Deactivation apart): all of them, the top 5 (a tie in the export's order),
-    those as many as the 5th left out, and how many tickets of every kind the export has in the week */
+    and counted as the daily Postpaid email counts them (Engine.sliceTickets: Category Billing, End service or Migration; not a
+    FRiENDi type; not Final Prepaid Deactivation nor The number not removed from CITC / SEMATI; Final Postpaid Deactivation counted
+    with Final Switch Postpaid Deactivation, and the other like sub categories merged): all of them, the top 5 (a tie in the export's
+    order), those as many as the 5th left out, and how many tickets of every kind the export has in the week */
 function postpaidTickets(E, rows, w) {
   rows = rows || [];
-  const tk = E.sliceTickets(rows, 'postpaid', w.days, { merge: false }), all = E.tally(tk, E.TCOL.sub), fifth = all[4];
+  const tk = E.sliceTickets(rows, 'postpaid', w.days), all = E.tally(tk, E.TCOL.sub), fifth = all[4];
   return { total: tk.length, of: rows.filter(r => w.days.includes(E.rowDate(r[E.TCOL.date]))).length, list: all.slice(0, 5).map(x => ({ name: x.label, count: x.count })),
     tied: fifth ? all.slice(5).filter(x => x.count === fifth.count).map(x => x.label) : [], days: Array.from(new Set(tk.map(r => E.rowDate(r[E.TCOL.date])).filter(Boolean))).sort() };
 }

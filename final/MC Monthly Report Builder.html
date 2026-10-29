@@ -4480,8 +4480,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     return String(v || '').trim();
   }
 
-  // opts.merge false: each sub category as the export has it (the weekly deck lists them apart)
-  function sliceTickets(rows, brand, dateStr, opts) {
+  function sliceTickets(rows, brand, dateStr) {
     const ppCats = POSTPAID_TICKETS.categories.map(norm), ppOut = POSTPAID_TICKETS.exclude.map(norm);
     return rows.filter(r => {
       if (dateStr && !inDates(rowDate(r[TCOL.date]), dateStr)) return false;
@@ -4494,7 +4493,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
       }
       return false;
     }).map(r => {
-      if (brand !== 'postpaid' || (opts && opts.merge === false)) return r;
+      if (brand !== 'postpaid') return r;
       const c = r.slice(); c[TCOL.sub] = mergedSub(r[TCOL.sub]); return c;
     });
   }
@@ -13526,13 +13525,13 @@ function recognise(E, rows, after) {
   return { kind: null, rows: [], map: null };
 }
 /** the ESKA Tickets Report's rows (Engine.ticketRows) -> Postpaid's tickets of the week, picked as the WFM team filters the export
-    and as the daily Postpaid email picks them (Engine.sliceTickets: Category Billing, End service or Migration; not a FRiENDi type;
-    not Final Prepaid Deactivation nor The number not removed from CITC / SEMATI), each Sub Category as it is (the workbook lists
-    Final Postpaid Deactivation and Final Switch Postpaid Deactivation apart): all of them, the top 5 (a tie in the export's order),
-    those as many as the 5th left out, and how many tickets of every kind the export has in the week */
+    and counted as the daily Postpaid email counts them (Engine.sliceTickets: Category Billing, End service or Migration; not a
+    FRiENDi type; not Final Prepaid Deactivation nor The number not removed from CITC / SEMATI; Final Postpaid Deactivation counted
+    with Final Switch Postpaid Deactivation, and the other like sub categories merged): all of them, the top 5 (a tie in the export's
+    order), those as many as the 5th left out, and how many tickets of every kind the export has in the week */
 function postpaidTickets(E, rows, w) {
   rows = rows || [];
-  const tk = E.sliceTickets(rows, 'postpaid', w.days, { merge: false }), all = E.tally(tk, E.TCOL.sub), fifth = all[4];
+  const tk = E.sliceTickets(rows, 'postpaid', w.days), all = E.tally(tk, E.TCOL.sub), fifth = all[4];
   return { total: tk.length, of: rows.filter(r => w.days.includes(E.rowDate(r[E.TCOL.date]))).length, list: all.slice(0, 5).map(x => ({ name: x.label, count: x.count })),
     tied: fifth ? all.slice(5).filter(x => x.count === fifth.count).map(x => x.label) : [], days: Array.from(new Set(tk.map(r => E.rowDate(r[E.TCOL.date])).filter(Boolean))).sort() };
 }
@@ -24055,7 +24054,7 @@ function renderWeeklyWs() {
     ${wkStep(1, 'Calls', 'From the Brands\' history: the numbers the daily brand emails keep, day by day and month by month.', calls)}
     ${wkStep(2, 'Top call reasons', 'Counted as the daily emails count them, without the reasons left out below: the week\'s calls of each brand (Virgin Mobile\'s with its Postpaid calls), and Postpaid\'s calls from the 1st of the month, as the deck has them.', reasons)}
     ${wkStep(3, 'Complaints', 'As they are sent to you: paste, then check each figure. Virgin Mobile and FRiENDi Mobile have three; FRiENDi Pay has complaints and open tickets (its third box is last month\'s service level).', comp, 'wkspan')}
-    ${wkStep(4, 'Virgin Postpaid tickets', 'The top 5 ticket types of the week and all the Postpaid tickets, picked from the ESKA Tickets Report as you filter it (Category Billing, End service or Migration; not FRiENDi\'s types; not Final Prepaid Deactivation or The number not removed from CITC / SEMATI), each Sub Category on its own; or typed.', tickets)}
+    ${wkStep(4, 'Virgin Postpaid tickets', 'The top 5 ticket types of the week and all the Postpaid tickets, picked from the ESKA Tickets Report as you filter it (Category Billing, End service or Migration; not FRiENDi\'s types; not Final Prepaid Deactivation or The number not removed from CITC / SEMATI), like types merged as on the daily Postpaid email (Final Postpaid Deactivation counts with Final Switch Postpaid Deactivation); or typed.', tickets)}
     ${wkStep(5, 'Outages', 'One list that runs on: add the week\'s outages; the slide shows this month and the two before.', outages)}
     ${wkStep(6, bad ? `Check and send · ${plural(bad, 'thing')} to fix` : warn ? `Check and send · ${plural(warn, 'thing')} to look at` : 'Check and send', 'The deck is made from the Member Care Performance Review design with the numbers above. The KPI workbook: choose this month\'s BeyondOne_MC_KPIs and a filled copy downloads.', send, 'wkspan')}
   </div><input type="file" id="wkFile" accept=".xls,.xlsx,.pptx" multiple hidden><input type="file" id="wkBookFile" accept=".xlsx" hidden>`;

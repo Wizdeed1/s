@@ -27,8 +27,8 @@ const PEOPLE = [{ id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user
   await p.click('#wsSeg [data-ws="wfm"]'); await p.waitForTimeout(250);
   let n = await nav(p);
   ok(!n.side.includes('build') && n.side.includes('wfm'), `analyst: no Build entry in the sidebar (${n.side})`);
-  ok(n.tabs === 'import,review,export,emails,daily,builder,analytics,agents,inter,data' && n.cur === 'import' && n.ws === 'build' && n.head, `analyst: the WFM team page opens on Import, ten tabs in four groups, Data last (${n.tabs})`);
-  ok(await p.evaluate(() => document.querySelectorAll('#wfmTabs .wfmgrp').length) === 4, 'the tabs come in four groups: this month, every day, insight, keep');
+  ok(n.tabs === 'import,review,export,emails,daily,builder,weekly,analytics,agents,inter,data' && n.cur === 'import' && n.ws === 'build' && n.head, `analyst: the WFM team page opens on Import, eleven tabs in five groups, Data last (${n.tabs})`);
+  ok(await p.evaluate(() => document.querySelectorAll('#wfmTabs .wfmgrp').length) === 5, 'the tabs come in five groups: this month, every day, every week, insight, keep');
   ok(await p.evaluate(() => !document.getElementById('buildActs').hidden && !!document.querySelector('#buildActs #buildTop') && document.getElementById('buildBar').hidden), 'Build Excel and the month sit in the header; the old step bar is gone');
   await p.screenshot({ path: path.join(out, 'analyst-import.png') });
   await p.click('#wfmTabs [data-wt="analytics"]'); await p.waitForTimeout(250); n = await nav(p);
@@ -62,20 +62,20 @@ const PEOPLE = [{ id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user
   // the WFM manager: their own tabs; with an analyst on vacation, the analysts' too
   ({ p, ctx } = await open(PEOPLE[1]));
   await p.click('#wsSeg [data-ws="wfm"]'); await p.waitForTimeout(250); n = await nav(p);
-  ok(n.tabs === 'emails,daily,analytics,agents,inter,data' && n.ws === 'wfm', `manager: Emails, Daily, Analytics, Agents, Interactions, Data (${n.tabs})`);
+  ok(n.tabs === 'emails,daily,weekly,analytics,agents,inter,data' && n.ws === 'wfm', `manager: Emails, Daily, Weekly, Analytics, Agents, Interactions, Data (${n.tabs})`);
   ok(await p.evaluate(() => document.getElementById('setBtn').hidden), 'manager: no Settings of the build');
   await p.check('#coverNote [data-cover="u1"]'); await p.waitForTimeout(300); n = await nav(p);
-  ok(n.tabs === 'import,review,export,emails,daily,builder,analytics,agents,inter,data' && /covering for the WFM analyst/.test(n.eye), `an analyst on vacation: the manager has their tabs too (${n.tabs})`);
+  ok(n.tabs === 'import,review,export,emails,daily,builder,weekly,analytics,agents,inter,data' && /covering for the WFM analyst/.test(n.eye), `an analyst on vacation: the manager has their tabs too (${n.tabs})`);
   ok(await p.evaluate(() => !document.getElementById('setBtn').hidden), 'and the build\'s Settings');
   await p.screenshot({ path: path.join(out, 'manager-cover.png') });
   await p.click('#wfmTabs [data-wt="import"]'); await p.waitForTimeout(250);
   ok(await p.isVisible('#v-import'), 'the manager can import the month while covering');
   await p.uncheck('#coverNote [data-cover="u1"]'); await p.waitForTimeout(300); n = await nav(p);
-  ok(n.ws === 'wfm' && n.tabs === 'emails,daily,analytics,agents,inter,data', `untick on Import: back to the manager's own WFM team page (${n.ws})`);
+  ok(n.ws === 'wfm' && n.tabs === 'emails,daily,weekly,analytics,agents,inter,data', `untick on Import: back to the manager's own WFM team page (${n.ws})`);
   // a tick left for an account that is gone gives nobody anything, and can be cleared
   await p.evaluate(() => { const S = window.__mc.state; S.cover = { away: { ux: { role: 'user', name: 'Gone P.', at: '2026-10-01T00:00:00Z' } }, log: [] }; window.__mc.renderWs(); });
   await p.waitForTimeout(300); n = await nav(p);
-  ok(n.tabs === 'emails,daily,analytics,agents,inter,data' && /no longer/.test(await p.textContent('#coverNote')), 'a tick for an account that is gone gives no tabs, and shows to be cleared');
+  ok(n.tabs === 'emails,daily,weekly,analytics,agents,inter,data' && /no longer/.test(await p.textContent('#coverNote')), 'a tick for an account that is gone gives no tabs, and shows to be cleared');
   await p.click('#coverNote [data-cover="ux"]'); await p.waitForTimeout(300);
   ok(await p.evaluate(() => !window.__mc.state.cover.away.ux), 'unticked: cleared');
   await ctx.close();

@@ -144,6 +144,43 @@ Some risks stay open by design, and the skill lists each one with what would clo
 | Report Builder page | **Import history** also takes the stand-alone **Member Care Report Builder** page itself (its `.html`): the history built into it (`window.HISTORY_SEED`) is read like a history file, shown first and then added. So is a page dropped on Recognise files. The Report builder's History card now has the same Brands' history box: its old **Import backup** replaced the shared history with whatever JSON it was given, without reading it first. A web page with no history in it is refused. Days the stand-alone page added after it was made live in that browser: there, **Export history** gives the file to import. |
 | Daily brand emails arriving | A report day's four emails that arrive while the page is open now show by themselves. Since the two email pages became one, they waited on a grey placeholder until something was clicked. |
 
+## October 2026, the Weekly Commercial Presentation
+
+**WFM team › Weekly** (a group of its own, *Every week*) makes the Member Care Performance Review that goes to the weekly commercial
+meeting, for the WFM analysts, the WFM manager and admins (`js/weekly.js`, the tab; `js/weekly_core.js`, the week, the deck and the
+workbook, pure). The week is **Sunday to Saturday** and the deck is dated the Sunday after (18–24 Oct 2026: 25 Oct 2026); the tab opens
+on the last whole week, with arrows to the weeks before and after.
+
+| Step | Where it comes from |
+|---|---|
+| 1 Calls | The **Brands' history** the daily brand emails keep: each brand's days from the 1st to the Saturday (the daily chart), the month to date as the average day (the service level box), this year's closed months (the monthly chart; a month the history has only days for is their average, as on the daily emails), and last month's service level (FRiENDi Pay's third box, its label following the month: *Service level — Sep '26*). A day missing in the history is named, with the way to it (Report builder). |
+| 2 Top call reasons | The week's **ESKA Call Center History** export (.xls, or saved as .xlsx), all brands in one file or one file a brand, chosen or dropped on the tab. Counted as the daily emails count them (`Engine.sliceHistory`, `Engine.topReasons`): the brand's calls of the 7 days, the top 5 Sub Services, each as a % of all of them; the reasons left out (queues, Waiting Customer's Reply, New Complaint, Open Ticket… the daily emails' list) still count in the total, FRiENDi Pay lists Follow Up. The list is in the tab (*Reasons left out of the top 5*) and can be changed; only each reason's count is kept (no customer's row), so a changed list counts again without the export. |
+| 3 Complaints | The figures as they are sent: pasted (the email's table or the workbook's block, by tab, two spaces or `|`), read per brand (complaints logged, resolved on time, still open, the top 5 drivers with their %) and shown in a form to check and correct before they are used. |
+| 4 Virgin Postpaid tickets | The top 5 ticket types and all the Postpaid tickets, typed (the % is out of the total). |
+| 5 Outages | One running list (date, outage, brand, description); the slide shows the Saturday's month and the two before, with the count and the number of brands. |
+| 6 Check and send | What to fix or look at (a day missing, no export, a figure missing, drivers over 100%, the week not over yet…), then: **Download the deck (.pptx)**, **Fill the KPI workbook…** and **Email with the deck (.eml)** (to Rasha Mugaddam, cc Essam AlZahrani by default, both editable and kept; the tool sends nothing). |
+
+**The deck** is made from the design of the deck the WFM team sends (`wk/deck-template.pptx`, built into the page by `js/make_wk.py`):
+the seven slides as they are, with the week's numbers, tables (a row per item, the frame as tall as its rows), dates and chart
+points written in (`Weekly.deck`). The template carries no week's numbers, reasons, outages or dates, and no chart is linked to a
+workbook on anyone's computer: `python3 -I tools/weekly/make_template.py <a sent deck.pptx>` makes it again from a newer design (the
+shape names it fills are listed there and in `weekly_core.js`). Rebuilt from the 25 Oct 2026 workbook, it gives the deck that was
+sent that day (VM 90%, FRiENDi 88%, FRiENDi Pay 88%, Postpaid 96%, 15 outages), slide for slide.
+
+**The KPI workbook** (BeyondOne_MC_KPIs) is filled at its own cells and comes back as a copy named for the deck's day (`Weekly.fillWorkbook`):
+Weekly Data (each brand's days of the month, last month's days emptied; the MTD rows; the closed months it lists; the three Top Call
+Reasons tables with their totals, found from their % formulas; the three complaint blocks) and Postpaid Data (its days, its Top 5
+Call Reasons, its Top 5 TKT). Formulas, styles, charts and the other sheets are kept, and Excel counts everything again on opening.
+A closed month the workbook has no row for is named, not written somewhere else (add the row in Excel for its own monthly charts).
+
+Shared records: `weekly/w_<Sunday>` (the week: the counts, the complaint figures, the tickets), `weekly/outages`, `weekly/settings`
+(the reasons left out, To and Cc); they are in **Export all data** like every other record.
+
+Tests: `node test/weekly_unit.cjs` (in `npm test`: the week, the calls, the reasons against the engine, the pasted figures, the
+outages, the checks, the deck read back, the workbook read back, the template's emptiness) and `node test/weekly.cjs out/mc.html outDir`
+(the tab in the browser as the WFM analyst, the manager and the senior manager, with the downloads read back and text that looks like
+HTML kept as text), on synthetic data only (`test/weekly_fixture.cjs`).
+
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.
 
@@ -155,6 +192,8 @@ python3 combine.py > ../out/combined_main.js && node --check ../out/combined_mai
 bash assemble_standalone.sh "../final/MC Monthly Report Builder.html"                   # the common-folder file
 bash assemble3.sh ../out/mc-report-builder.html                                         # the online page
 ```
+
+Both pages carry the Weekly Commercial Presentation's design (`wk/deck-template.pptx`) through `js/make_wk.py`.
 
 Or from the top folder: `npm run build` (the same three steps into `out/mc.html`) and `npm test` (checks that need only Node;
 GitHub Actions runs both on every push, see `.github/workflows/node.js.yml`).

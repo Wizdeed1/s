@@ -1,17 +1,17 @@
 // ================================================================ WFM TEAM: one page for the WFM analysts and the WFM manager
 // Its tabs, in three groups. This month: Import, Review and Export (the month's build, for the WFM analysts) and Emails (the
 // four daily brand emails, and the month's deduction, absences and incentive emails). Every day: Daily (the daily data) and
-// Report builder (the analysts make the daily emails). Insight: Analytics (departments and months), Agents (every measure per
+// Report builder (the analysts make the daily emails). Every week: Weekly (the Weekly Commercial Presentation, js/weekly.js). Insight: Analytics (departments and months), Agents (every measure per
 // agent) and Interactions (the interactions export). Each role sees its own tabs; the senior manager reads.
 Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core', wfmAt: '' });
-const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
+const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['weekly', 'Weekly'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
 const WFM_STEPS = ['import', 'review', 'export'];   // the month's build, shown on the WFM team page
-const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Insight', ['analytics', 'agents', 'inter']], ['Keep', ['data']]];
+const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Every week', ['weekly']], ['Insight', ['analytics', 'agents', 'inter']], ['Keep', ['data']]];
 /** every email the WFM team sends, in one place shared by the WFM manager and the WFM analysts: the four daily brand emails and
     the month's deduction and absences emails. Both can edit them and send them (the tool copies them or opens them in Outlook). */
 const canWfmMail = () => hasRole('admin', 'wfm', 'user');
 Object.assign(state, { mailSub: '' });
-function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'data' ? canBackup() : true)); }
+function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'data' ? canBackup() : t === 'weekly' ? canWeekly() : true)); }
 /** the tab now on screen: a step of the month's build, or a WFM tab */
 const wfmTabNow = () => (state.ws === 'build' ? (WFM_STEPS.includes(state.step) ? state.step : 'import') : state.wfmTab);
 /** the WFM team page's header: the title, the tabs of the role (with what each needs), and the actions of the tab */
@@ -48,6 +48,7 @@ const WFM_LEAD = {
   analytics: 'Every department and month from the shared history: trends, comparisons, distributions and where the data comes from.',
   agents: 'Every measure for every agent in the month, with the best and the worst quarter marked, to see who needs what.',
   daily: 'Every day\'s numbers, kept for everyone: the brands day by day and each agent\'s day.',
+  weekly: 'The Weekly Commercial Presentation: the week\'s calls from the history, the top call reasons from the ESKA export, the complaint figures pasted in, and the deck, the KPI workbook and the email made from them.',
   builder: 'Drop the day\'s exports: MC Leaders and the WFM Daily Review are made here, and the four brand emails go straight to the WFM manager.',
   emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction, absences and incentive emails. Edit them here and send them from Outlook; the tool never sends anything itself.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
@@ -66,7 +67,7 @@ function renderWfmWs() {
   const builder = t === 'builder', em = t === 'emails', dm = em && state.mailSub === 'daily', mm = em && !dm;
   $('wfmRb').hidden = !builder; $('wfmDm').hidden = !dm; $('wfmBody').hidden = builder || dm || mm;
   if (!mm) mountMail(false);
-  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
+  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'data') renderBackupWs(); else if (t === 'weekly') renderWeeklyWs(); else if (mm) renderMailWs();
   else if (builder) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; rbShow(); }
   else if (dm) { $('wfmBar').innerHTML = mailSubHtml(unsent) + '<div class="wsacts"></div>'; dmShow(); }
 }
@@ -202,9 +203,10 @@ $('wfmBody').addEventListener('click', e => {
 /** files dropped on a workspace page (not Build): the page that wants them takes them (the Report builder tab every daily export,
     Results the old Excel, Quality the Final EVAL); anything else is recognised and the Recognise files panel says where it goes */
 async function wsDrop(files) {
-  const L = [...files], rb = [], old = [], what = [];
+  const L = [...files], rb = [], old = [], what = [], wk = [];
   for (const f of L) {
     if (state.ws === 'wfm' && state.wfmTab === 'builder' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name)) { rb.push(f); continue; }   // on its own tab every export goes to Report builder
+    if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(xls|xlsx)$/i.test(f.name)) { wk.push(f); continue; }   // Weekly: the ESKA call history export, or the KPI workbook
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     const v = await recogOne(f), K = Recog.KINDS[v.kind] || Recog.KINDS.unknown;
     if (v.kind === 'inter' && canInter()) { importInteractions(f); continue; }
@@ -213,6 +215,7 @@ async function wsDrop(files) {
     if (state.ws === 'quality' && v.kind === 'evalBook' && canQuality()) { const ok = await tryEvalFile({ name: f.name, file: f }, null, qMonthNow()); if (ok) continue; }
     what.push({ file: f, v });
   }
+  if (wk.length) wkFiles(wk);
   if (rb.length) { if (state.wfmTab !== 'builder') { state.wfmTab = 'builder'; renderWs(); } rbAddFiles(rb); }
   if (old.length) cmpFiles(old);   // the old Excel files of a month together, on Results › Reconcile
   if (what.length) recogOpen(what, 'drop');

@@ -38,17 +38,22 @@ ok('the calls: the daily chart is the month to the Saturday, MTD its average day
   assert.equal(across.brands.virgin.daily[0].date, '2026-09-27'); assert.equal(across.brands.virgin.mtd.days, 3);
 });
 
-ok('the top call reasons: as the daily emails count them (rows left out still count in the total), FRiENDi Pay keeps Follow Up, Virgin Mobile without Postpaid, only the week', () => {
-  const rows = E.historyRows(F.eskaRows()), C = W.countReasons(E, rows, week), R = W.reasonsFrom(C, E.DEFAULT_SUPPRESSED), pp = new Set(E.sliceHistory(rows, 'postpaid', week.days));
-  for (const b of ['virgin', 'friendi', 'fpay', 'postpaid']) {
-    const slice = E.sliceHistory(rows, b, week.days).filter(r => b !== 'virgin' || !pp.has(r)), ref = E.topReasons(slice, b === 'fpay' ? E.DEFAULT_SUPPRESSED.filter(s => s !== 'Follow Up') : E.DEFAULT_SUPPRESSED, 5);
+ok('the top call reasons: as the daily emails count them (rows left out still count in the total), FRiENDi Pay keeps Follow Up, Virgin Mobile with its Postpaid calls; the week, and Postpaid\'s month to date', () => {
+  const rows = E.historyRows(F.eskaRows()), C = W.countReasons(E, rows, week), R = W.reasonsFrom(C, W.defaultSkip(E));
+  for (const b of ['virgin', 'friendi', 'fpay']) {
+    const ref = E.topReasons(E.sliceHistory(rows, b, week.days), W.defaultSkip(E).filter(s => b !== 'fpay' || s !== 'Follow Up'), 5);
     assert.equal(R[b].base, ref.base, b); assert.deepEqual(R[b].list.map(x => [x.reason, x.count]), ref.list.map(x => [x.reason, x.count]), b);
   }
-  assert.equal(R.virgin.base, 40 + 30 + 90 + 60 + 35 + 20 + 20 + 15 + 10);   // the 17th is not in the week; queues and New Complaint count in the total; Postpaid's 45 calls are its own
-  assert.deepEqual(R.virgin.list.map(x => x.reason), ['Plan Renewal', 'Data Bundle Info', 'Number Port', 'Roaming Help', 'Balance Check']);
+  assert.equal(R.virgin.base, 40 + 30 + 90 + 60 + 35 + 20 + 20 + 15 + 10 + 25 + 12 + 8);   // before the 18th is not in the week; queues and New Complaint count in the total; so do its Postpaid calls, as on the deck
+  assert.deepEqual(R.virgin.list.map(x => x.reason), ['Plan Renewal', 'Data Bundle Info', 'Bill Copy', 'Number Port', 'Roaming Help']);
   assert.equal(R.fpay.list[0].reason, 'Follow Up'); assert.equal(R.fpay.list[0].count, 30);   // the 25th (99 rows) is the next week
   assert.ok(!R.friendi.list.some(x => /queues|Waiting/.test(x.reason)));
-  assert.deepEqual(R.postpaid.list.map(x => [x.reason, x.count]), [['Bill Copy', 33], ['Bill Explanation', 12]]);
+  // Postpaid: 1–24 Oct, every Postpaid service of Virgin (Post-Paid Customer too); TKT Created counts in the total but is not listed
+  assert.deepEqual([R.postpaid.base, R.postpaid.from, R.postpaid.to, R.postpaid.first], [20 + 15 + 30 + 25 + 12 + 8, '2026-10-01', '2026-10-24', '2026-09-30']);
+  assert.deepEqual(R.postpaid.list.map(x => [x.reason, x.count]), [['Bill Copy', 33], ['Bill Explanation', 32], ['Final Deactivation', 15]]);
+  assert.deepEqual(W.reasonsFrom(C, E.DEFAULT_SUPPRESSED).postpaid.list.map(x => x.reason), ['Bill Copy', 'Bill Explanation', 'TKT Created', 'Final Deactivation']);
+  // a week across two months: Postpaid's month to date is the Saturday's month
+  const across = W.countReasons(E, rows, W.weekOf('2026-10-01')).postpaid; assert.deepEqual([across.from, across.to, across.base], ['2026-10-01', '2026-10-03', 20]);
   // a changed list counts again from the counts kept (no export needed): Plan Renewal left out
   assert.equal(W.reasonsFrom(C, E.DEFAULT_SUPPRESSED.concat(['plan renewal'])).virgin.list[0].reason, 'Data Bundle Info');
   // nothing of a customer is kept: only reasons and counts
@@ -88,6 +93,12 @@ ok('a dropped sheet is recognised by its title row (as the Report builder) or by
   assert.equal(rt.kind, 'tickets'); assert.deepEqual(W.postpaidTickets(E, rt.rows, w), W.postpaidTickets(E, E.ticketRows(t), w));
   assert.equal(rh.kind, 'history'); assert.deepEqual(W.countReasons(E, rh.rows, w), W.countReasons(E, E.historyRows(h), w));
   assert.equal(W.recognise(E, [['Name', 'Value'], ['a', 1]]).kind, null);
+  // a long export runs on into the next sheets with no title and no heading row: they go on from the sheet before
+  const chain = sheets => { let prev = null, all = []; for (const s of sheets) { const r = W.recognise(E, s, prev); prev = r.kind ? r : null; if (r.kind === 'history') all = all.concat(r.rows); } return all; };
+  assert.deepEqual(W.countReasons(E, chain([h.slice(0, 300), h.slice(300, 700), h.slice(700)]), w), W.countReasons(E, E.historyRows(h), w));
+  assert.deepEqual(W.countReasons(E, chain([hplain.slice(0, 300), hplain.slice(300)]), w), W.countReasons(E, E.historyRows(h), w));
+  assert.equal(W.recognise(E, h.slice(300)).kind, null);   // on its own, it is not taken for anything
+  assert.equal(W.recognise(E, [['Name', 'Value'], ['a', 1]], W.recognise(E, h)).kind, null);   // nor a sheet of something else after it
 });
 
 ok('an earlier deck\'s outages: read from its Outages table, the year from the deck\'s date; those in the list already are not added twice', async () => {
@@ -119,7 +130,12 @@ ok('the checks: missing days, no reasons, missing complaint figures, drivers ove
   const reasons = W.reasonsOf(E, E.historyRows(F.eskaRows()), week);
   C = W.checks(W.model({ H: F.history(), w: week, today: '2026-10-29', reasons, complaints, tickets: F.TICKETS, outages: F.OUTAGES })).map(c => c.sev + ': ' + c.text);
   assert.deepEqual(C.filter(c => c.startsWith('bad')), ['bad: Virgin Mobile: the complaint drivers add up to 121%, more than 100%.']);
-  assert.ok(C.some(c => /Virgin Postpaid: only 2 call reasons/.test(c)));
+  assert.ok(C.some(c => /Virgin Postpaid: only 3 call reasons/.test(c)));
+  // Postpaid's month to date needs the export from the 1st; counts kept by the earlier version (the week only) are asked for again
+  const late = W.reasonsOf(E, E.historyRows(F.eskaRows()).filter(r => E.rowDate(r[E.COL.date]) >= '2026-10-18'), week);
+  assert.ok(W.checks(W.model({ H: F.history(), w: week, reasons: late })).some(c => c.sev === 'bad' && /Virgin Postpaid: the call reasons are month to date \(1-Oct to 24-Oct\), but the export starts on 18-Oct/.test(c.text)));
+  const old = Object.assign({}, reasons, { postpaid: { base: 45, list: [{ reason: 'Bill Copy', count: 33 }], days: week.days } });
+  assert.ok(W.checks(W.model({ H: F.history(), w: week, reasons: old })).some(c => c.sev === 'bad' && /counted for the week only/.test(c.text)));
 });
 
 ok('the deck: the template\'s 7 slides, each brand\'s numbers, tables and charts, the dates; no link to a workbook on anyone\'s computer', async () => {
@@ -174,8 +190,8 @@ ok('the KPI workbook: the week written at its cells, last month\'s days gone, fo
   assert.deepEqual([v(WD, 'L46'), v(WD, 'O46'), v(WD, 'L55'), v(WD, 'O54')], [reasons.friendi.list[0].reason, reasons.friendi.base, 'Follow Up', reasons.fpay.base]);
   assert.deepEqual([v(WD, 'Q84'), v(WD, 'Q85'), v(WD, 'Q86'), v(WD, 'P89'), v(WD, 'Q89')], [812, 0.97, 133, 'Signal drops', 0.14]);
   assert.deepEqual([v(WD, 'Q110'), v(WD, 'Q111'), v(WD, 'P115')], [57, 12, 'Transfer failed']);
-  assert.deepEqual([v(PD, 'H23'), v(PD, 'I23'), v(PD, 'L23'), v(PD, 'M22')], ['Bill Copy', 33, 33, reasons.postpaid.base]);
-  assert.equal(v(PD, 'H25') ?? null, null);   // only two Postpaid reasons this week: the rest emptied
+  assert.deepEqual([v(PD, 'H23'), v(PD, 'I23'), v(PD, 'L23'), v(PD, 'M22'), v(PD, 'H25')], ['Bill Copy', 33, 33, reasons.postpaid.base, 'Final Deactivation']);
+  assert.equal(v(PD, 'H26') ?? null, null);   // only three Postpaid reasons this month: the rest emptied
   assert.deepEqual([v(PD, 'P23'), v(PD, 'Q23'), v(PD, 'T23'), v(PD, 'U22')], ['Bill dispute', 40, 40, 90]);
   const x1 = await z.text('xl/worksheets/sheet1.xml'), x2 = await z.text('xl/worksheets/sheet2.xml');
   assert.ok(x1.includes('<f>M37/O$36</f>') && x1.includes('<f>AVERAGE(B2:B32)</f>') && x2.includes('<f>L23/M$22</f>'));

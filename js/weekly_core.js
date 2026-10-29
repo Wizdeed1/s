@@ -1,8 +1,9 @@
 /* The Weekly Commercial Presentation (WFM team › Weekly). The week is Sunday to Saturday and the deck is dated the Sunday after.
    Everything on it comes from the tool's own data or from what the WFM team types in:
    - the calls (presented, handled, service level), day by day and month by month: the Brands' history the daily emails keep;
-   - the top call reasons: the week's ESKA call history export, counted as the daily emails count them (the same rows left out;
-     Virgin Mobile without Postpaid's calls, which have their own slide);
+   - the top call reasons: the ESKA call history export, counted as the daily emails count them (the same rows left out): the
+     week's calls of Virgin Mobile (its Postpaid calls too), FRiENDi Mobile and FRiENDi Pay; Postpaid's month to date (the 1st of the
+     Saturday's month to the Saturday), every Virgin call of a Postpaid service, as the deck the WFM team sends counts them;
    - the complaints (logged, resolved on time, still open, the top 5 drivers): the figures someone sends, pasted and checked;
    - Postpaid's top 5 tickets: the week's ESKA Tickets Report, as the daily Postpaid email counts them, or typed;
    - the outages: a running list (an earlier deck's Outages table can be read into it).
@@ -84,17 +85,25 @@ function monthlyRows(H, b, w) {
   return thisYear.length ? thisYear : closed.slice(-8);
 }
 
-// ---------------------------------------------------------------- the top call reasons: the ESKA call history rows of the week
+// ---------------------------------------------------------------- the top call reasons: the ESKA call history rows
 const KEEP = { fpay: ['Follow Up'] };   // FRiENDi Pay lists Follow Up, as its daily email does
-/** E: the report builder's engine (Engine), rows: its historyRows -> per brand, every Sub Service and its rows in the week, the rows
-    in all and the days they cover (Virgin Mobile without Postpaid's calls). Only these counts are kept (no customer's row), so a changed list of rows left out counts again. */
+/** the rows left out of the top 5 unless the WFM team says otherwise: the daily emails' list, and TKT Created (a ticket was opened,
+    not why the member called), which the deck leaves out of Postpaid's */
+const defaultSkip = E => (E ? E.DEFAULT_SUPPRESSED : []).concat(['TKT Created']);
+/** Postpaid's calls on the deck: Virgin's calls of every Postpaid service (Postpaid, Postpaid - الخطوط المفوترة, Post-Paid Customer…) */
+const isPostpaid = (E, r) => /^Virgin/i.test(String(r[E.COL.type] || '').trim()) && /\bpost\s*-?\s*paid\b/i.test(String(r[E.COL.service] || ''));
+/** the days counted: the week, or Postpaid's month to date (the 1st of the Saturday's month to the Saturday) */
+const reasonDays = (b, w) => (b === 'postpaid' ? range(monthStart(w.end), w.end) : w.days);
+/** E: the report builder's engine (Engine), rows: its historyRows -> per brand, every Sub Service and its rows in the days counted
+    (reasonDays), the rows in all, the days they cover and the export's first day. Only these counts are kept (no customer's row), so a
+    changed list of rows left out counts again. */
 function countReasons(E, rows, w) {
-  const out = {}, pp = new Set(E.sliceHistory(rows || [], 'postpaid', w.days));
+  rows = rows || [];
+  const out = {}, first = rows.reduce((m, r) => { const d = E.rowDate(r[E.COL.date]); return d && (!m || d < m) ? d : m; }, null);
   for (const [b] of BRANDS) {
-    // Virgin Mobile's reasons leave Postpaid's calls out (they have their own slide), as the deck the WFM team sends does
-    const slice = E.sliceHistory(rows || [], b, w.days).filter(r => b !== 'virgin' || !pp.has(r)), counts = new Map();
+    const ds = reasonDays(b, w), slice = b === 'postpaid' ? rows.filter(r => isPostpaid(E, r) && ds.includes(E.rowDate(r[E.COL.date]))) : E.sliceHistory(rows, b, ds), counts = new Map();
     slice.forEach(r => { const s = String(r[E.COL.sub] ?? '').trim(); if (s) counts.set(s, (counts.get(s) || 0) + 1); });
-    out[b] = { base: slice.length, counts: Array.from(counts, ([r, n]) => ({ r, n })), days: Array.from(new Set(slice.map(r => E.rowDate(r[E.COL.date])).filter(Boolean))).sort() };
+    out[b] = { base: slice.length, counts: Array.from(counts, ([r, n]) => ({ r, n })), days: Array.from(new Set(slice.map(r => E.rowDate(r[E.COL.date])).filter(Boolean))).sort(), from: ds[0], to: ds[ds.length - 1], first };
   }
   return out;
 }
@@ -103,29 +112,37 @@ function topOf(b, X, skip) {
   if (!X) return null;
   const keep = new Set((KEEP[b] || []).map(norm)), supp = new Set((skip || []).map(norm).filter(s => !keep.has(s)));
   const list = (X.counts || []).map((x, i) => ({ reason: x.r, count: x.n, i })).filter(x => !supp.has(norm(x.reason))).sort((x, y) => (y.count - x.count) || (x.i - y.i)).slice(0, 5).map(({ reason, count }) => ({ reason, count }));
-  return { base: X.base, list, days: X.days || [] };
+  return { base: X.base, list, days: X.days || [], from: X.from || null, to: X.to || null, first: X.first || null };
 }
 const reasonsFrom = (counted, skip) => (counted ? Object.fromEntries(BRANDS.map(([b]) => [b, topOf(b, counted[b], skip)])) : null);
-const reasonsOf = (E, rows, w, skip) => reasonsFrom(countReasons(E, rows, w), skip || E.DEFAULT_SUPPRESSED);
+const reasonsOf = (E, rows, w, skip) => reasonsFrom(countReasons(E, rows, w), skip || defaultSkip(E));
 
-/** one sheet of a dropped file -> { kind: 'history' | 'tickets' | null, rows } in the layout the engine reads (Engine.COL, Engine.TCOL):
-    by the ESKA export's title row (Call Center History, Tickets Report, as the Report builder reads them), else by its column names
-    (Sub Service and Service: the call history; Sub Category and Category: the tickets), wherever its heading row is */
-function recognise(E, rows) {
+/** one sheet of a dropped file -> { kind: 'history' | 'tickets' | null, rows, map } in the layout the engine reads (Engine.COL,
+    Engine.TCOL): by the ESKA export's title row (Call Center History, Tickets Report, as the Report builder reads them), else by its
+    column names (Sub Service and Service: the call history; Sub Category and Category: the tickets), wherever its heading row is.
+    after: what the sheet before it in the same file was taken as. A long export runs on into Sheet2, Sheet3… with no title and no
+    heading row: a sheet whose rows have the same columns (a date and a type where that sheet had them) goes on from it. */
+function recognise(E, rows, after) {
   rows = rows || [];
   const c = E.classify('', 'xls', { rows });
-  if (c.type === 'history') return { kind: 'history', rows: E.historyRows(rows) };
-  if (c.type === 'tickets') return { kind: 'tickets', rows: E.ticketRows(rows) };
+  if (c.type === 'history') return { kind: 'history', rows: E.historyRows(rows), map: null };
+  if (c.type === 'tickets') return { kind: 'tickets', rows: E.ticketRows(rows), map: null };
   const cell = v => (v instanceof Date ? isoOf(new Date(Date.UTC(v.getFullYear(), v.getMonth(), v.getDate()))) : v);
   const remap = (body, map) => body.map(r => { const o = []; for (const k of Object.keys(map)) if (map[k] >= 0) o[+k] = cell((r || [])[map[k]]); return o; }).filter(r => r.some(v => v !== undefined && v !== null && v !== ''));
   for (let h = 0; h < Math.min(10, rows.length); h++) {
     const H = (rows[h] || []).map(v => norm(v)), at = re => H.findIndex(x => re.test(x));
     const date = at(/^(date|created|creation date|created (on|at|date)|open(ed)? (on|date)|call date|date ?\/ ?time|start time)$/), type = at(/^((ticket|call) )?type$/);
     const sub = at(/^sub[\s-]*categor(y|ies)$/), cat = at(/^categor(y|ies)$/), subS = at(/^sub[\s-]*service$/), svc = at(/^service$/);
-    if (sub >= 0 && cat >= 0 && date >= 0) return { kind: 'tickets', rows: remap(rows.slice(h + 1), { [E.TCOL.date]: date, [E.TCOL.type]: type, [E.TCOL.category]: cat, [E.TCOL.sub]: sub }) };
-    if (subS >= 0 && svc >= 0 && date >= 0 && type >= 0) return { kind: 'history', rows: remap(rows.slice(h + 1), { [E.COL.date]: date, [E.COL.type]: type, [E.COL.service]: svc, [E.COL.sub]: subS }) };
+    if (sub >= 0 && cat >= 0 && date >= 0) { const map = { [E.TCOL.date]: date, [E.TCOL.type]: type, [E.TCOL.category]: cat, [E.TCOL.sub]: sub }; return { kind: 'tickets', rows: remap(rows.slice(h + 1), map), map }; }
+    if (subS >= 0 && svc >= 0 && date >= 0 && type >= 0) { const map = { [E.COL.date]: date, [E.COL.type]: type, [E.COL.service]: svc, [E.COL.sub]: subS }; return { kind: 'history', rows: remap(rows.slice(h + 1), map), map }; }
   }
-  return { kind: null, rows: [] };
+  if (after && after.kind) {   // the export going on from the sheet before
+    const K = after.kind === 'tickets' ? E.TCOL : E.COL, at = k => (after.map ? after.map[K[k]] : K[k]);
+    const body = rows.filter(r => r && r.some(v => v !== undefined && v !== null && v !== '')), look = body.slice(0, 20);
+    const key = at('type') >= 0 ? 'type' : 'category', fits = r => { const t = r[at(key)], d = cell(r[at('date')]); return typeof t === 'string' && t.trim() !== '' && !!E.rowDate(d); };
+    if (look.length && look.filter(fits).length >= Math.ceil(look.length * 0.8)) return { kind: after.kind, rows: after.map ? remap(body, after.map) : body.filter(r => r[K.type]), map: after.map || null };
+  }
+  return { kind: null, rows: [], map: null };
 }
 /** the ESKA Tickets Report's rows (Engine.ticketRows) -> Postpaid's tickets of the week, as the daily Postpaid email counts them
     (Engine.sliceTickets: Virgin's Billing, End service and Migration tickets, like sub categories merged): all of them, the top 5 */
@@ -240,8 +257,14 @@ function checks(M) {
     if (b !== 'postpaid' && !B.monthly.length) add('warn', `${name}: the history has no closed month for the monthly chart.`);
     const R = B.reasons;
     if (!R) { if (BRANDS.some(([x]) => M.brands[x].reasons)) add('bad', `${name}: no call reasons.`); }
-    else if (!R.base) add('bad', `${name}: the export has no rows of this brand in the week.`);
-    else { const gap = w.days.filter(d => !R.days.includes(d)).map(dayShort); if (gap.length) add('warn', `${name}: the export has no rows for ${gap.join(', ')}: the top reasons count ${7 - gap.length} of the 7 days.`); if (R.list.length < 5) add('warn', `${name}: only ${R.list.length} call reasons after the rows left out.`); }
+    else if (b === 'postpaid' && !R.from) add('bad', `${name}: its call reasons were counted for the week only (an earlier version of this tab). Drop the call history export again: they are month to date.`);
+    else if (b === 'postpaid' && R.first && R.first > R.from) add('bad', `${name}: the call reasons are month to date (${dayShort(R.from)} to ${dayShort(R.to)}), but the export starts on ${dayShort(R.first)}. Export the call history from ${dayLong(R.from)}.`);
+    else if (!R.base) add('bad', `${name}: the export has no rows of this brand in ${b === 'postpaid' ? 'the month' : 'the week'}.`);
+    else {
+      const ds = b === 'postpaid' ? range(R.from, R.to) : w.days, gap = ds.filter(d => !R.days.includes(d)).map(dayShort);
+      if (gap.length) add('warn', `${name}: the export has no rows for ${gap.join(', ')}: the top reasons count ${ds.length - gap.length} of the ${ds.length} days.`);
+      if (R.list.length < 5) add('warn', `${name}: only ${R.list.length} call reasons after the rows left out.`);
+    }
   }
   for (const b of COMPLAINT_BRANDS) {
     const name = NAME[b], X = M.brands[b].complaints;
@@ -513,6 +536,6 @@ function email(M, to, cc) {
 }
 
 return { BRANDS, NAME, COMPLAINT_BRANDS, weekOf, lastWeek, weekLabel, dayLong, monthLong, monthTick, monthCat, dayShort, addDays, isIso, serial, fromSerial, pct, readPct, readInt,
-  dailyRows, mtdOf, closedMonths, monthlyRows, countReasons, topOf, reasonsFrom, reasonsOf, recognise, postpaidTickets, parseComplaints, outagesOf, outagesFromDeck, newOutages, model, checks, deck, deckName, fillWorkbook, email, Sheet, _x: { paraText, boxText, tableRows, chartData, shapeAt } };
+  dailyRows, mtdOf, closedMonths, monthlyRows, defaultSkip, reasonDays, countReasons, topOf, reasonsFrom, reasonsOf, recognise, postpaidTickets, parseComplaints, outagesOf, outagesFromDeck, newOutages, model, checks, deck, deckName, fillWorkbook, email, Sheet, _x: { paraText, boxText, tableRows, chartData, shapeAt } };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Weekly;

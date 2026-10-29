@@ -1,7 +1,7 @@
 // ================================================================ WEEKLY: the Weekly Commercial Presentation (WFM team › Weekly)
 // For the WFM analysts, the WFM manager and admins. The week is Sunday to Saturday; the deck is dated the Sunday after. The calls
-// come from the Brands' history (the daily emails keep it), the top call reasons from the week's ESKA call history export (only its
-// counts are kept), the complaint figures are pasted from the email they come in, Postpaid's top 5 tickets are counted from the
+// come from the Brands' history (the daily emails keep it), the top call reasons from the ESKA call history export (the week's, and
+// Postpaid's month to date; only its counts are kept), the complaint figures are pasted from the email they come in, Postpaid's top 5 tickets are counted from the
 // ESKA Tickets Report (or typed), and the outages are a running list (it starts with the 25 Oct 2026 deck's; an earlier deck dropped
 // on the tab brings its own in). Out: the Member Care Performance Review deck (wk/deck-template.pptx filled by Weekly.deck), the KPI
 // workbook filled in (Weekly.fillWorkbook), and the email with the deck as an Outlook draft. Shared records: weekly/w_<Sunday>
@@ -12,7 +12,7 @@ const WK = { tpl: null, opening: null };
 const WK_BRANDS = () => Weekly.BRANDS;
 const wkWeek = () => Weekly.weekOf(state.wk.key || Weekly.lastWeek(todayIso()).key);
 const wkDoc = () => (state.wk.doc = state.wk.doc || {});
-const wkSkip = () => (state.wk.set && Array.isArray(state.wk.set.skip) ? state.wk.set.skip : (window.Engine ? window.Engine.DEFAULT_SUPPRESSED : []));
+const wkSkip = () => (state.wk.set && Array.isArray(state.wk.set.skip) ? state.wk.set.skip : Weekly.defaultSkip(window.Engine));
 const wkTo = () => (state.wk.set && typeof state.wk.set.to === 'string' ? state.wk.set.to : contactsNow().vp);
 const wkCc = () => (state.wk.set && typeof state.wk.set.cc === 'string' ? state.wk.set.cc : contactsNow().form);
 const WK_OUT_BRANDS = ['Virgin', 'FRiENDi', 'Fpay', 'Virgin,FRiENDi', 'Virgin,FRiENDi,Fpay'];
@@ -54,6 +54,10 @@ function wkOpen(key) {
     await rbBoot();
     if (state.wk.out === null) { const o = await wkGet('weekly/outages'); state.wk.out = o && Array.isArray(o.list) ? o.list : []; }
     if (state.wk.set === null) state.wk.set = (await wkGet('weekly/settings')) || {};
+    if (Array.isArray(state.wk.set.skip) && !state.wk.set.skipTkt) {   // once: a list saved before TKT Created was left out by default
+      const has = state.wk.set.skip.some(x => /^tkt created$/i.test(String(x).trim()));
+      state.wk.set = Object.assign({}, state.wk.set, { skip: has ? state.wk.set.skip : state.wk.set.skip.concat(['TKT Created']), skipTkt: true }); wkSaveSet();
+    }
     if (!state.wk.set.outStart) {   // once: the outages the last deck had, so the list starts where the slide was
       const add = Weekly.newOutages(state.wk.out, WK_OUTAGES_START.map(([date, issue, brands, desc]) => ({ date, issue, brands, desc })));
       state.wk.out = state.wk.out.concat(add.map((o, i) => Object.assign({ id: 'o0' + i, at: '', by: 'the deck of 25 Oct 2026' }, o)));
@@ -96,11 +100,11 @@ function renderWeeklyWs() {
   }).join('')}</tbody></table></div><p class="hint">Month to date: the average day of ${esc(Weekly.monthLong(w.end))} up to ${esc(Weekly.dayLong(w.end))}. A missing day comes in when that day's brand emails are made on <button class="linkbtn" data-wtgo="builder">Report builder</button>.</p>`;
 
   const R = M.brands, from = D.from;
-  const reasons = `${from ? `<p class="wkfrom"><svg class="tick" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg><span><b dir="auto">${esc(from.names.join(', '))}</b> · ${plural(from.rows, 'call')} in the week (the file covers ${esc(from.span || '–')}) · read ${esc(fmtWhen(from.at))}${from.by ? ' by ' + esc(from.by) : ''}</span></p>` : ''}
-    <div class="drop small rbdrop" data-wkdrop tabindex="0" role="button"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>${from ? 'Drop another export for this week' : 'Drop the week\'s ESKA exports'}</strong><span>The Call Center History of ${esc(Weekly.weekLabel(w))} (all the brands in one file, or one file a brand) for the call reasons, and the Tickets Report for Postpaid's tickets. Only how many each reason or ticket type had is kept.</span></div>
+  const reasons = `${from ? `<p class="wkfrom"><svg class="tick" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg><span><b dir="auto">${esc(from.names.join(', '))}</b> · ${from.week !== undefined ? plural(from.week, 'call') + ' in the week, ' : ''}the file covers ${esc(from.span || '–')} · read ${esc(fmtWhen(from.at))}${from.by ? ' by ' + esc(from.by) : ''}</span></p>` : ''}
+    <div class="drop small rbdrop" data-wkdrop tabindex="0" role="button"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>${from ? 'Drop another export for this week' : 'Drop the week\'s ESKA exports'}</strong><span>The Call Center History from ${esc(Weekly.dayLong(Weekly.reasonDays('postpaid', w)[0]))} to ${esc(Weekly.dayLong(w.end))} (all the brands in one file, or one file a brand; Postpaid's reasons are month to date) for the call reasons, and the Tickets Report for Postpaid's tickets. Only how many each reason or ticket type had is kept.</span></div>
     ${(state.wk.files || []).length ? `<ul class="wkfiles">${state.wk.files.map(n => `<li class="${n.bad ? 'bad' : ''}"><b dir="auto">${esc(n.name)}</b> <span>${esc(n.text)}</span></li>`).join('')}</ul>` : ''}
-    ${D.counted ? `<div class="wkbrands">${WK_BRANDS().map(([b, name]) => { const X = R[b].reasons; return `<div class="wkbr"><h3>${esc(name)} <small>${X ? plural(X.base, 'call') : '–'}</small></h3>${X && X.list.length ? `<ol class="wklist">${X.list.map(x => `<li><span dir="auto">${esc(x.reason)}</span><b class="num">${x.count.toLocaleString('en-US')}</b><small class="num">${wkP(X.base ? x.count / X.base : null)}</small></li>`).join('')}</ol>` : '<p class="subtle">No calls of this brand in the export.</p>'}</div>`; }).join('')}</div>` : ''}
-    <details class="wkdet" data-wkdet="skip"${state.wk.skipOpen ? ' open' : ''}><summary>Reasons left out of the top 5 <span class="pill">${wkSkip().length}</span></summary><p class="hint">They still count in each brand's total, as on the daily emails. One a line. FRiENDi Pay always lists Follow Up.</p><textarea class="cell" id="wkSkip" rows="8" spellcheck="false">${esc(wkSkip().join('\n'))}</textarea><div class="acts"><button class="btn sm ghost" data-wkskipdef>The daily emails' list</button><button class="btn sm" data-wkskipsave>Save the list</button></div></details>`;
+    ${D.counted ? `<div class="wkbrands">${WK_BRANDS().map(([b, name]) => { const X = R[b].reasons; return `<div class="wkbr"><h3>${esc(name)} <small>${X ? plural(X.base, 'call') + (b === 'postpaid' && X.from ? ' · ' + esc(Weekly.dayShort(X.from)) + ' to ' + esc(Weekly.dayShort(X.to)) : '') : '–'}</small></h3>${X && X.list.length ? `<ol class="wklist">${X.list.map(x => `<li><span dir="auto">${esc(x.reason)}</span><b class="num">${x.count.toLocaleString('en-US')}</b><small class="num">${wkP(X.base ? x.count / X.base : null)}</small></li>`).join('')}</ol>` : '<p class="subtle">No calls of this brand in the export.</p>'}</div>`; }).join('')}</div>` : ''}
+    <details class="wkdet" data-wkdet="skip"${state.wk.skipOpen ? ' open' : ''}><summary>Reasons left out of the top 5 <span class="pill">${wkSkip().length}</span></summary><p class="hint">They still count in each brand's total, as on the daily emails. One a line. FRiENDi Pay always lists Follow Up. TKT Created (a ticket was opened) is left out as the deck leaves it out of Postpaid's.</p><textarea class="cell" id="wkSkip" rows="8" spellcheck="false">${esc(wkSkip().join('\n'))}</textarea><div class="acts"><button class="btn sm ghost" data-wkskipdef>The usual list</button><button class="btn sm" data-wkskipsave>Save the list</button></div></details>`;
 
   const cf = (b, k, v, label, kind) => `<label class="field"><span class="lbl">${esc(label)}</span><input class="cell num" data-wkc="${b}.${k}" inputmode="decimal" value="${esc(v === null || v === undefined ? '' : kind === 'pct' ? String(Math.round(v * 10000) / 100) + '%' : String(v))}"></label>`;
   const comp = `<label class="field"><span class="lbl">Paste the figures as they came (the email's table, or the workbook's block)</span><textarea class="cell" id="wkPaste" rows="5" spellcheck="false" placeholder="Virgin&#9;%&#10;No. of Complaints&#9;1007&#10;Resolution Time of Closed TKT&#9;100%&#10;The Remaining Open TKT&#9;241&#10;Top 5 complaints&#9;Percentage&#10;SM is not working&#9;16%&#10;…">${esc(state.wk.paste)}</textarea></label>
@@ -129,7 +133,7 @@ function renderWeeklyWs() {
 
   body.innerHTML = `<div class="wkgrid">
     ${wkStep(1, 'Calls', 'From the Brands\' history: the numbers the daily brand emails keep, day by day and month by month.', calls)}
-    ${wkStep(2, 'Top call reasons', 'Counted as the daily emails count them: the week\'s calls of each brand, without the reasons left out below.', reasons)}
+    ${wkStep(2, 'Top call reasons', 'Counted as the daily emails count them, without the reasons left out below: the week\'s calls of each brand (Virgin Mobile\'s with its Postpaid calls), and Postpaid\'s calls from the 1st of the month, as the deck has them.', reasons)}
     ${wkStep(3, 'Complaints', 'As they are sent to you: paste, then check each figure. Virgin Mobile and FRiENDi Mobile have three; FRiENDi Pay has complaints and open tickets (its third box is last month\'s service level).', comp, 'wkspan')}
     ${wkStep(4, 'Virgin Postpaid tickets', 'The top 5 ticket types of the week and all the Postpaid tickets: counted from the ESKA Tickets Report as the daily Postpaid email counts them (Billing, End service and Migration), or typed.', tickets)}
     ${wkStep(5, 'Outages', 'One list that runs on: add the week\'s outages; the slide shows this month and the two before.', outages)}
@@ -158,11 +162,11 @@ async function wkFiles(list) {
       if (/\.xlsx$/i.test(f.name)) { sheets = await window.parseXlsx(buf); if (sheets.some(s => /^weekly data$/i.test(String(s.name).trim()))) { book = f; continue; } }
       else if (/\.xls$/i.test(f.name)) sheets = window.parseXls(buf);
       else { notes.push({ name: f.name, text: 'not an Excel file', bad: true }); continue; }
-      let h = 0, t = 0;
-      for (const sh of sheets || []) {
-        const r = Weekly.recognise(E, sh.rows || []);
-        if (r.kind === 'history') { rows = rows.concat(r.rows); h += r.rows.length; }
-        else if (r.kind === 'tickets') { trows = trows.concat(r.rows); t += r.rows.length; }
+      let h = 0, t = 0, prev = null;
+      for (const sh of sheets || []) {   // a long export goes on into Sheet2, Sheet3… without its title and heading rows
+        const r = Weekly.recognise(E, sh.rows || [], prev); prev = r.kind ? r : null;
+        if (r.kind === 'history') { for (const x of r.rows) rows.push(x); h += r.rows.length; }
+        else if (r.kind === 'tickets') { for (const x of r.rows) trows.push(x); t += r.rows.length; }
       }
       if (h) names.push(f.name);
       if (t) tnames.push(f.name);
@@ -178,16 +182,17 @@ async function wkFiles(list) {
     else { D.tickets = { total: T.total, list: T.list }; D.ticketsFrom = { names: tnames, at: now, by: whoNow() }; notes.push({ name: tnames.join(', '), text: `tickets: ${plural(T.total, 'Postpaid ticket')} in the week, the top 5 in step 4` }); }
   }
   if (names.length) {
-    const counted = Weekly.countReasons(E, rows, w), inWeek = Weekly.BRANDS.reduce((s2, [b]) => s2 + (b === 'postpaid' ? 0 : counted[b].base), 0);
+    const counted = Weekly.countReasons(E, rows, w), inWeek = Weekly.BRANDS.reduce((s2, [b]) => s2 + (b === 'postpaid' ? 0 : counted[b].base), 0), P = counted.postpaid;
     const ds = Array.from(new Set(rows.map(r => E.rowDate(r[E.COL.date])).filter(Boolean))).sort();
     if (!inWeek) notes.push({ name: names.join(', '), text: `the call history, but no call in ${Weekly.weekLabel(w)} (it covers ${span(ds)})`, bad: true });
     else {
       const prev = D.counted, merge = prev && D.from && Date.now() - Date.parse(D.from.at || 0) < 6 * 3600000 && !names.some(n => D.from.names.includes(n));
       if (merge) {   // one file a brand: the files dropped one after the other add up (a brand found again in a new file takes the new count)
         Weekly.BRANDS.forEach(([b]) => { if (counted[b].base) prev[b] = counted[b]; });
-        D.from = { names: D.from.names.concat(names), rows: D.from.rows + rows.length, span: D.from.span, at: now, by: whoNow() };
-      } else { D.counted = counted; D.from = { names, rows: rows.length, span: span(ds), at: now, by: whoNow() }; }
-      notes.push({ name: names.join(', '), text: `the call history: the call reasons of ${Weekly.weekLabel(w)} in step 2` + (tnames.length ? '' : '. It has no tickets: Postpaid\'s tickets come from the ESKA tickets export (with Sub Category)') });
+        D.from = { names: D.from.names.concat(names), rows: D.from.rows + rows.length, week: (D.from.week || 0) + inWeek, span: D.from.span, at: now, by: whoNow() };
+      } else { D.counted = counted; D.from = { names, rows: rows.length, week: inWeek, span: span(ds), at: now, by: whoNow() }; }
+      notes.push({ name: names.join(', '), text: `the call history (${plural(rows.length, 'call')}, ${span(ds)}): the call reasons of ${Weekly.weekLabel(w)}, and Postpaid's from ${Weekly.dayShort(P.from)}, in step 2` + (tnames.length ? '' : '. It has no tickets: Postpaid\'s tickets come from the ESKA tickets export (with Sub Category)') });
+      if (P.first && P.first > P.from) notes.push({ name: names.join(', '), text: `Postpaid's call reasons are month to date, but this export starts on ${Weekly.dayShort(P.first)}: export the call history from ${Weekly.dayLong(P.from)} for them`, bad: true });
     }
   }
   if (tnames.length || names.length) wkSaveDoc();
@@ -292,7 +297,7 @@ $('wfmBody').addEventListener('click', e => {
   if (t.closest('[data-wkread]')) { wkRead(); return; }
   if (t.closest('[data-wkoadd]')) { wkAddOutage(); return; }
   const d = t.closest('[data-wkodel]'); if (d) { wkDelOutage(d.dataset.wkodel); return; }
-  if (t.closest('[data-wkskipdef]')) { $('wkSkip').value = rbE().DEFAULT_SUPPRESSED.join('\n'); return; }
+  if (t.closest('[data-wkskipdef]')) { $('wkSkip').value = Weekly.defaultSkip(rbE()).join('\n'); return; }
   if (t.closest('[data-wkskipsave]')) { state.wk.set = Object.assign({}, state.wk.set, { skip: $('wkSkip').value.split('\n').map(normSpace).filter(Boolean) }); wkSaveSet(); renderWeeklyWs(); toast('Saved: the top 5 are counted again without these.'); return; }
   if (t.closest('[data-wtgo]')) { wfmGo(t.closest('[data-wtgo]').dataset.wtgo); }
 });

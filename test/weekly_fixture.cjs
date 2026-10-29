@@ -62,9 +62,12 @@ async function xlsx(sheets) {
   return Core.writeZip(files);
 }
 
-// ---------------------------------------------------------------- a Call Center History export (the ESKA report) of 17–25 Oct 2026
-/** [date, type, service, sub, n]: n rows each; the 17th and the 25th are outside the week of 18–24 Oct */
+// ---------------------------------------------------------------- a Call Center History export (the ESKA report) of 1–25 Oct 2026
+/** [date, type, service, sub, n]: n rows each; before the 18th and the 25th are outside the week of 18–24 Oct, but Postpaid's
+    reasons are month to date (1–24 Oct: the 30th of September is not in it) */
 const CALLS = [
+  ['2026-09-30', 'Virgin Inquiry', 'Postpaid', 'Bill Copy', 5], ['2026-10-02', 'Virgin Inquiry', 'Postpaid - الخطوط المفوترة', 'Bill Explanation', 20],
+  ['2026-10-10', 'Virgin Final Deactivation', 'Post-Paid Customer - عميل باقة مفوترة', 'Final Deactivation', 15], ['2026-10-17', 'Virgin Inquiry', 'Postpaid', 'TKT Created', 30],
   ['2026-10-17', 'Virgin Inquiry', 'Prepaid', 'Plan Renewal', 50],
   ['2026-10-18', 'Virgin Inquiry', 'Prepaid', 'Plan Renewal', 40], ['2026-10-19', 'Virgin Inquiry', 'Prepaid', 'Plan Renewal', 30],
   ['2026-10-18', 'Virgin Inquiry', 'Prepaid', 'Virgin queues', 90], ['2026-10-20', 'Virgin Complaint', 'Prepaid', 'New Complaint', 60],
@@ -82,15 +85,16 @@ const CALLS = [
   ['2026-10-25', 'FRiENDi Pay', 'Complaints', 'Follow Up', 99],
 ];
 function eskaRows() {
-  const out = [['Call Center History 17/10/2026 - 25/10/2026'], ['#', 'Agent', 'Language', 'Date', 'Type', 'Service', 'Sub Service', 'Status', 'Lang', 'Contact']];
+  const out = [['Call Center History 30/09/2026 - 25/10/2026'], ['#', 'Agent', 'Language', 'Date', 'Type', 'Service', 'Sub Service', 'Status', 'Lang', 'Contact']];
   let n = 0;
   for (const [d, t, s, sub, k] of CALLS) for (let i = 0; i < k; i++) out.push([++n, 'Agent ' + (n % 7), 'EN', `${d} ${String(8 + (i % 12)).padStart(2, '0')}:00`, t, s, sub, 'Closed', 'English', '05000000' + String(n).padStart(2, '0')]);
   return out;
 }
-async function eska() {
-  const rows = eskaRows(), cells = {};
-  rows.forEach((r, i) => r.forEach((v, j) => { cells[colL(j + 1) + (i + 1)] = v; }));
-  return xlsx([{ name: 'Sheet1', cells }]);
+/** as ESKA saves a long export: the rows run on into Sheet2 after `split` rows, with no title and no heading row there */
+async function eska({ split = 400 } = {}) {
+  const rows = eskaRows(), sheets = [];
+  for (let a = 0; a < rows.length; a += split) { const cells = {}; rows.slice(a, a + split).forEach((r, i) => r.forEach((v, j) => { cells[colL(j + 1) + (i + 1)] = v; })); sheets.push({ name: 'Sheet' + (sheets.length + 1), cells }); }
+  return xlsx(sheets);
 }
 
 // ---------------------------------------------------------------- a Tickets Report export (ESKA) of 17–25 Oct 2026

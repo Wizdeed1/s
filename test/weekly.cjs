@@ -44,6 +44,9 @@ const PEOPLE = [{ id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user
   const top = await p.$$eval('#wfmBody .wkbrands .wkbr', L => L.map(x => ({ h: x.querySelector('h3').textContent, first: (x.querySelector('.wklist li span') || {}).textContent || '' })));
   ok(top.length === 4 && top[0].first === 'Plan Renewal' && top[2].first === 'Follow Up' && /FRiENDi Mobile/.test(top[1].h), `the top reasons per brand (${top.map(t => t.first).join(', ')})`);
   ok(await p.evaluate(() => !JSON.stringify(window.__mc.state.wk.doc).includes('05000000')), 'only counts are kept from the export (no customer\'s number)');
+  const fnote = await p.textContent('#wfmBody .wkfiles');
+  ok(/the call history \(982 calls, 30-Sep to 25-Oct\)/.test(fnote), `the export's three sheets are all read: Sheet2 and Sheet3 go on without a title or heading row ("${fnote.replace(/\s+/g, ' ').trim().slice(0, 120)}")`);
+  ok(/Virgin Postpaid\s*110 calls · 1-Oct to 24-Oct/.test(top[3].h) && top[3].first === 'Bill Copy', `Postpaid's reasons are month to date, TKT Created not listed ("${top[3].h}")`);
   // the complaint figures, pasted and read
   await p.fill('#wkPaste', F.COMPLAINTS); await p.click('[data-wkread]'); await p.waitForTimeout(200);
   const vals = await p.evaluate(() => ['virgin.complaints', 'virgin.onTime', 'virgin.open', 'friendi.d1.name', 'fpay.open', 'fpay.d0.pct'].map(k => document.querySelector(`[data-wkc="${k}"]`).value));

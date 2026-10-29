@@ -136,9 +136,9 @@
     </div>
 
     <div class="card" style="margin-top:14px">
-      <h2>3 · MC Leaders · tickets to exclude</h2>
+      <h2>3 · MC Leaders · tickets to exclude<span id="leadersExclDay"></span></h2>
       <textarea id="leadersExclude" placeholder="Paste the ticket numbers to leave out of the MC Leaders report — one per line, or the whole table from the email."></textarea>
-      <p class="hint">Only the ticket numbers are read (5 digits or more), so dates and times pasted with them are ignored. The list is kept until you clear it.</p>
+      <p class="hint">Only the ticket numbers are read (5 digits or more), so dates and times pasted with them are ignored. The list is for this report date only — another date starts with an empty list, and coming back to this date brings it back.</p>
       <p class="hint" id="leadersExclStatus"></p>
       <div class="miniact"><button id="clearExclude">Clear list</button></div>
     </div>
@@ -5874,7 +5874,7 @@ root.WFM = {
       state.models.wfm = { kind: 'wfm' };
     }
     {
-      const data = B.computeLeaders(p, state.bag, { exclude: state.prefs.leadersExclude || '' });
+      const data = B.computeLeaders(p, state.bag, { exclude: getPref('leaders', 'exclude') });
       state.data.leaders = data;
       const model = B.buildLeaders(p, data, {});
       const subj = getPref('leaders', 'subject'), intro = getPref('leaders', 'intro');
@@ -5925,11 +5925,15 @@ root.WFM = {
     renderExcludeStatus();
   }
 
-  // under "tickets to exclude": how many numbers were read and how many came out of the report
+  // under "tickets to exclude": the report date's own list, how many numbers were read and how many came out
   function renderExcludeStatus() {
     const el = $('#leadersExclStatus');
     if (!el) return;
-    const asked = E.ticketNumbers(state.prefs.leadersExclude);
+    const box = $('#leadersExclude'), mine = getPref('leaders', 'exclude');
+    if (document.activeElement !== box && box.value !== mine) box.value = mine;
+    const p = period();
+    $('#leadersExclDay').textContent = state.date ? ' · ' + (p.multi ? R.niceRange(p.start, p.end) : R.longDate(state.date)) : '';
+    const asked = E.ticketNumbers(mine);
     const x = state.data.leaders && state.data.leaders.excluded;
     if (!asked.length) { el.textContent = ''; return; }
     let t = E.fmtInt(asked.length) + ' ticket number' + (asked.length > 1 ? 's' : '') + ' read';
@@ -6056,7 +6060,7 @@ root.WFM = {
   // Things that belong to one report (insight, subject, intro, an ASA override) are stored
   // per report date, so today's report never inherits yesterday's wording. The Sunday report
   // keeps its own set, apart from a Saturday-only one.
-  const DAY_FIELDS = { insight: 1, subject: 1, intro: 1, asaOverride: 1 };
+  const DAY_FIELDS = { insight: 1, subject: 1, intro: 1, asaOverride: 1, exclude: 1 };
 
   function dayKey() { return state.weekend ? period().start + '_' + state.date : state.date; }
   function dayBag(key, create) {
@@ -6307,9 +6311,9 @@ root.WFM = {
 
     $('#fpayTickets').value = state.prefs.fpayTickets || '';
     $('#fpayTickets').oninput = e => { state.prefs.fpayTickets = e.target.value; persistPrefs(); rebuild(); };
-    $('#leadersExclude').value = state.prefs.leadersExclude || '';
-    $('#leadersExclude').oninput = e => { state.prefs.leadersExclude = e.target.value; persistPrefs(); rebuild(); renderExcludeStatus(); };
-    $('#clearExclude').onclick = () => { $('#leadersExclude').value = ''; state.prefs.leadersExclude = ''; persistPrefs(); rebuild(); renderExcludeStatus(); };
+    delete state.prefs.leadersExclude;      // an earlier build kept one list for every date
+    $('#leadersExclude').oninput = e => { if (!state.date) return; setPref('leaders', 'exclude', e.target.value); persistPrefs(); rebuild(); };
+    $('#clearExclude').onclick = () => { $('#leadersExclude').value = ''; if (state.date) { setPref('leaders', 'exclude', ''); persistPrefs(); } rebuild(); renderExcludeStatus(); };
 
     $('#exportHist').onclick = exportHistory;
     $('#importHist').onchange = e => { if (e.target.files[0]) importHistory(e.target.files[0]); };

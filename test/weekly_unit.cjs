@@ -38,14 +38,14 @@ ok('the calls: the daily chart is the month to the Saturday, MTD its average day
   assert.equal(across.brands.virgin.daily[0].date, '2026-09-27'); assert.equal(across.brands.virgin.mtd.days, 3);
 });
 
-ok('the top call reasons: as the daily emails count them (rows left out still count in the total), FRiENDi Pay keeps Follow Up, only the week', () => {
-  const rows = E.historyRows(F.eskaRows()), C = W.countReasons(E, rows, week), R = W.reasonsFrom(C, E.DEFAULT_SUPPRESSED);
+ok('the top call reasons: as the daily emails count them (rows left out still count in the total), FRiENDi Pay keeps Follow Up, Virgin Mobile without Postpaid, only the week', () => {
+  const rows = E.historyRows(F.eskaRows()), C = W.countReasons(E, rows, week), R = W.reasonsFrom(C, E.DEFAULT_SUPPRESSED), pp = new Set(E.sliceHistory(rows, 'postpaid', week.days));
   for (const b of ['virgin', 'friendi', 'fpay', 'postpaid']) {
-    const slice = E.sliceHistory(rows, b, week.days), ref = E.topReasons(slice, b === 'fpay' ? E.DEFAULT_SUPPRESSED.filter(s => s !== 'Follow Up') : E.DEFAULT_SUPPRESSED, 5);
+    const slice = E.sliceHistory(rows, b, week.days).filter(r => b !== 'virgin' || !pp.has(r)), ref = E.topReasons(slice, b === 'fpay' ? E.DEFAULT_SUPPRESSED.filter(s => s !== 'Follow Up') : E.DEFAULT_SUPPRESSED, 5);
     assert.equal(R[b].base, ref.base, b); assert.deepEqual(R[b].list.map(x => [x.reason, x.count]), ref.list.map(x => [x.reason, x.count]), b);
   }
-  assert.equal(R.virgin.base, 40 + 30 + 90 + 60 + 35 + 20 + 20 + 15 + 10 + 25 + 12 + 8);   // the 17th is not in the week; queues and New Complaint count in the total
-  assert.deepEqual(R.virgin.list.map(x => x.reason), ['Plan Renewal', 'Data Bundle Info', 'Bill Copy', 'Number Port', 'Roaming Help']);
+  assert.equal(R.virgin.base, 40 + 30 + 90 + 60 + 35 + 20 + 20 + 15 + 10);   // the 17th is not in the week; queues and New Complaint count in the total; Postpaid's 45 calls are its own
+  assert.deepEqual(R.virgin.list.map(x => x.reason), ['Plan Renewal', 'Data Bundle Info', 'Number Port', 'Roaming Help', 'Balance Check']);
   assert.equal(R.fpay.list[0].reason, 'Follow Up'); assert.equal(R.fpay.list[0].count, 30);   // the 25th (99 rows) is the next week
   assert.ok(!R.friendi.list.some(x => /queues|Waiting/.test(x.reason)));
   assert.deepEqual(R.postpaid.list.map(x => [x.reason, x.count]), [['Bill Copy', 33], ['Bill Explanation', 12]]);
@@ -63,8 +63,33 @@ ok('the complaint figures: the workbook\'s block or the email\'s table, pasted; 
   assert.deepEqual([r.brands.friendi.complaints, r.brands.friendi.onTime, r.brands.friendi.open], [190, 1, 41]);
   assert.deepEqual([r.brands.fpay.complaints, r.brands.fpay.onTime, r.brands.fpay.open], [57, null, 12]);
   near(r.brands.fpay.drivers[0].pct, 0.61);
+  // as the email has them: Subcategories | Total | Percentage (the percentage is taken, the count kept), FPAY's resolution days ignored
+  const e = W.parseComplaints(F.COMPLAINTS_EMAIL).brands;
+  assert.deepEqual(e.virgin.drivers.map(d => [d.name, d.count, W.pct(d.pct)]), [['Signal drops', 114, '14%'], ['Virgin app crashes', 89, '11%'], ['Wrong charge', 73, '9%'], ['Slow data', 49, '6%'], ['Activation delay', 41, '5%']]);
+  assert.deepEqual([e.virgin.complaints, e.virgin.onTime, e.virgin.open, e.friendi.onTime, e.friendi.drivers[4].name], [812, 0.97, 133, 1, 'SIM blocked']);
+  assert.deepEqual([e.fpay.complaints, e.fpay.onTime, e.fpay.open, e.fpay.drivers.map(d => W.pct(d.pct)).join(' ')], [57, null, 12, '61% 15% 7% 6% 4%']);
   const pipes = W.parseComplaints('VM | %\nNo. of complaints | 1,204\nResolution time of closed TKT | 0.98\nRemaining open tickets | 77\nTop 5 complaint drivers\nNo coverage | 21 %');
   assert.deepEqual([pipes.brands.virgin.complaints, pipes.brands.virgin.onTime, pipes.brands.virgin.open, pipes.brands.virgin.drivers[0].pct], [1204, 0.98, 77, 0.21]);
+});
+
+ok('Postpaid\'s tickets from the Tickets Report: as the daily Postpaid email counts them, only the week', () => {
+  const T = W.postpaidTickets(E, E.ticketRows(F.ticketsReportRows()), week);
+  // Billing, End service and Migration of Virgin; Final Prepaid Deactivation out; Final Postpaid Deactivation and Post-To-Pre merged; the 17th and the 25th not in the week
+  assert.equal(T.total, 20 + 14 + 7 + 5 + 6 + 3 + 2);
+  assert.deepEqual(T.list.map(x => [x.name, x.count]), [['Monthly Billing/Dispute', 34], ['Final Switch Postpaid Deactivation', 12], ['From Switch postpaid plans to Pre', 6], ['Not receiving the details of billing', 3], ['Activation After Payment', 2]]);
+});
+
+ok('an earlier deck\'s outages: read from its Outages table, the year from the deck\'s date; those in the list already are not added twice', async () => {
+  const tpl = fs.readFileSync(path.join(__dirname, '..', 'wk', 'deck-template.pptx'));
+  const deck = await W.deck(tpl, W.model({ H: F.history(), w: week, outages: F.OUTAGES }));
+  const found = await W.outagesFromDeck(deck);
+  assert.deepEqual(found.map(o => [o.date, o.issue, o.brands, o.desc]), F.OUTAGES.filter(o => ['b', 'c', 'd'].includes(o.id)).map(o => [o.date, o.issue, o.brands, o.desc]));
+  // a deck of January: December's outage is of the year before
+  const jan = W.weekOf('2027-01-06'), dec = [{ id: 'z', date: '2026-12-20', issue: 'Year end issue', brands: 'Virgin', desc: '' }, { id: 'y', date: '2027-01-04', issue: 'New year issue', brands: 'Fpay', desc: '' }];
+  const back = await W.outagesFromDeck(await W.deck(tpl, W.model({ H: F.history(), w: jan, outages: dec })));
+  assert.deepEqual(back.map(o => o.date), ['2026-12-20', '2027-01-04']);
+  assert.deepEqual(W.newOutages(F.OUTAGES, found), []);
+  assert.deepEqual(W.newOutages([F.OUTAGES[1]], found).map(o => o.issue), ['Coverage drop', 'Login issue']);
 });
 
 ok('the outages: the Saturday\'s month and the two before, oldest first; the brands counted once each', () => {

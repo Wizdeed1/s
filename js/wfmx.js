@@ -206,7 +206,7 @@ async function wsDrop(files) {
   const L = [...files], rb = [], old = [], what = [], wk = [];
   for (const f of L) {
     if (state.ws === 'wfm' && state.wfmTab === 'builder' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name)) { rb.push(f); continue; }   // on its own tab every export goes to Report builder
-    if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(xls|xlsx)$/i.test(f.name)) { wk.push(f); continue; }   // Weekly: the ESKA call history export, or the KPI workbook
+    if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(xls|xlsx|pptx)$/i.test(f.name)) { wk.push(f); continue; }   // Weekly: the ESKA exports, the KPI workbook, an earlier deck
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     const v = await recogOne(f), K = Recog.KINDS[v.kind] || Recog.KINDS.unknown;
     if (v.kind === 'inter' && canInter()) { importInteractions(f); continue; }

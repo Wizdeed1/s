@@ -93,6 +93,29 @@ async function eska() {
   return xlsx([{ name: 'Sheet1', cells }]);
 }
 
+// ---------------------------------------------------------------- a Tickets Report export (ESKA) of 17–25 Oct 2026
+/** [date, type, category, sub category, n] */
+const TICKETS_ROWS = [
+  ['2026-10-17', 'Virgin Complaint', 'Billing', 'Monthly Billing/Dispute', 9],
+  ['2026-10-18', 'Virgin Complaint', 'Billing', 'Monthly Billing/Dispute', 20], ['2026-10-20', 'Virgin Complaint', 'Billing', 'Monthly Billing/Dispute', 14],
+  ['2026-10-19', 'Virgin Service Request', 'End service', 'Final Switch Postpaid Deactivation', 7], ['2026-10-21', 'Virgin Service Request', 'End service', 'Final Postpaid Deactivation', 5],
+  ['2026-10-22', 'Virgin Service Request', 'Migration', 'Post-To-Pre', 6], ['2026-10-23', 'Virgin Complaint', 'Billing', 'Not receiving the details of billing', 3],
+  ['2026-10-24', 'Virgin Service Request', 'Migration', 'Activation After Payment', 2], ['2026-10-24', 'Virgin Service Request', 'Migration', 'Final Prepaid Deactivation', 8],
+  ['2026-10-20', 'Virgin Complaint', 'Network', 'Weak Coverage', 30], ['2026-10-21', 'FRiENDi Complaint', 'Billing', 'Monthly Billing/Dispute', 12],
+  ['2026-10-25', 'Virgin Complaint', 'Billing', 'Monthly Billing/Dispute', 40],
+];
+function ticketsReportRows() {
+  const out = [['Tickets Report 17/10/2026 - 25/10/2026'], ['#', 'Agent', 'Lang', 'Created', 'Type', 'Category', 'Sub Category', 'Status', 'Lang', 'Ticket ID', 'Life Cycle', 'Group']];
+  let n = 0;
+  for (const [d, t, c, s, k] of TICKETS_ROWS) for (let i = 0; i < k; i++) out.push([++n, 'Agent ' + (n % 5), 'EN', `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)} 10:00`, t, c, s, 'Closed', 'English', 'T' + n, '2h', 'Billing team']);
+  return out;
+}
+async function ticketsReport() {
+  const rows = ticketsReportRows(), cells = {};
+  rows.forEach((r, i) => r.forEach((v, j) => { cells[colL(j + 1) + (i + 1)] = v; }));
+  return xlsx([{ name: 'Sheet1', cells }]);
+}
+
 // ---------------------------------------------------------------- a KPI workbook at the WFM team's cells
 async function kpiBook() {
   const W1 = {}, P1 = {};
@@ -168,4 +191,6 @@ const OUTAGES = [
   { id: 'd', date: '2026-10-20', issue: 'Login issue', brands: 'Fpay', desc: 'customers could not log in' },
   { id: 'e', date: '2026-10-27', issue: 'Next week', brands: 'Virgin', desc: 'after the week' },
 ];
-module.exports = { history, mtd, xlsx, eska, eskaRows, kpiBook, COMPLAINTS, TICKETS, OUTAGES, CALLS, E, W, Core };
+/** the complaint figures as the email has them: a count and a percentage per driver */
+const COMPLAINTS_EMAIL = `Virgin\tOct 2026\nNo. of Complaints\t812\nResolution Time of Closed TKT\t97%\nThe Remaining Open TKT \t133\n \n Top Complaints :\n     \nSubcategories \tTotal\tPercentage \nSignal drops\t114\t14%\nVirgin app crashes\t89\t11%\nWrong charge\t73\t9%\nSlow data\t49\t6%\nActivation delay\t41\t5%\n\nFriendi\tOct 2026\nNo. of Complaints\t190\nResolution Time of Closed TKT\t100%\nThe Remaining Open TKT \t41\nTop Complaints :\nSubcategories \tTotal\tPercentage \nSignal drops\t34\t18%\nPackage not added\t23\t12%\nWrong charge\t15\t8%\nSlow data\t13\t7%\nSIM blocked\t11\t6%\nFPAY\t18 Oct – 24 Oct\tTarget\nNo. of Complaints\t57\t\nResolution Time in Days\t\t\nResolution Time\t\t5 Days\nResolution Time One day\t\t1 Day\nThe Remaining Open TKT\t12\t\n \nTop Complaints :\nSubcategories \tTotal\tPercentage \nTransfer failed\t35\t61 %\nCard not added\t9\t15 %\nLimit change\t4\t7 %\nPhone number change\t3\t6 %\nRefund failed\t2\t4 %`;
+module.exports = { history, mtd, xlsx, eska, eskaRows, kpiBook, ticketsReport, ticketsReportRows, TICKETS_ROWS, COMPLAINTS_EMAIL, COMPLAINTS, TICKETS, OUTAGES, CALLS, E, W, Core };

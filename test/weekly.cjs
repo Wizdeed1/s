@@ -12,6 +12,7 @@ const PEOPLE = [{ id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user
 (async () => {
   fs.writeFileSync(path.join(out, 'Call Center History.xlsx'), await F.eska());
   fs.writeFileSync(path.join(out, 'BeyondOne_MC_KPIs-2026-10.xlsx'), await F.kpiBook());
+  fs.writeFileSync(path.join(out, 'Tickets Report.xlsx'), await F.ticketsReport());
   const H = F.history(), b = await chromium.launch(), errs = [];
   const open = async user => {
     const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce', acceptDownloads: true }), p = await ctx.newPage();
@@ -53,9 +54,12 @@ const PEOPLE = [{ id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user
   for (const [i, t] of F.TICKETS.list.entries()) { await p.fill(`[data-wkt="${i}.name"]`, t.name); await p.press(`[data-wkt="${i}.name"]`, 'Tab'); await p.fill(`[data-wkt="${i}.count"]`, String(t.count)); await p.press(`[data-wkt="${i}.count"]`, 'Tab'); }
   await p.fill('[data-wkt="total"]', '90'); await p.press('[data-wkt="total"]', 'Tab'); await p.waitForTimeout(150);
   ok(await p.evaluate(() => { const T = window.__mc.state.wk.doc.tickets; return T.total === 90 && T.list.length === 5 && T.list[0].name === 'Bill dispute' && T.list[0].count === 40; }), 'the five tickets and the total are kept');
+  // the Tickets Report: Postpaid's tickets counted as the daily Postpaid email counts them (it takes the place of what was typed)
+  await p.setInputFiles('#wkFile', path.join(out, 'Tickets Report.xlsx')); await p.waitForTimeout(400);
+  ok(await p.evaluate(() => { const T = window.__mc.state.wk.doc.tickets; return T.total === 57 && T.list[0].name === 'Monthly Billing/Dispute' && T.list[0].count === 34 && document.querySelector('[data-wkt="0.name"]').value === 'Monthly Billing/Dispute' && document.querySelector('[data-wkt="total"]').value === '57'; }), 'the Tickets Report fills Postpaid\'s top 5 and the total');
   // an outage
   await p.fill('#wkODate', '2026-10-20'); await p.fill('#wkOIssue', 'Login issue'); await p.fill('#wkOBrand', 'Fpay'); await p.fill('#wkODesc', 'customers could not log in'); await p.click('[data-wkoadd]'); await p.waitForTimeout(150);
-  ok(await p.evaluate(() => document.querySelectorAll('#wfmBody tr.wknew').length === 1 && window.__mc.state.wk.out.length === 1), 'the outage is in the list, marked as this week\'s');
+  ok(await p.evaluate(() => document.querySelectorAll('#wfmBody tr.wknew').length === 3 && window.__mc.state.wk.out.length === 16 && window.__mc.state.wk.set.outStart === true), 'the list starts with the 15 outages of the 25 Oct deck; the new one is added, this week\'s marked');
   chk = await p.textContent('#wfmBody .checklist'); const head = await p.textContent('.wkspan:last-child h2');
   ok(!/Fix/.test(chk) && /to look at/.test(head), `the checks: nothing left to fix ("${head.trim()}")`);
   await p.screenshot({ path: path.join(out, 'weekly.png'), fullPage: true });
@@ -64,7 +68,10 @@ const PEOPLE = [{ id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user
   ok(/Beyond_One_Member_Care_Review - 25 Oct 2026\.pptx$/.test(deckF), `the deck downloads (${path.basename(deckF)})`);
   const z = await Core.readZip(fs.readFileSync(deckF)), s2 = await z.text('ppt/slides/slide2.xml'), s4 = await z.text('ppt/slides/slide4.xml'), s5 = await z.text('ppt/slides/slide5.xml'), s6 = await z.text('ppt/slides/slide6.xml');
   ok(s2.includes('<a:t>812</a:t>') && s2.includes('<a:t>134</a:t>') && s2.includes('<a:t>Plan Renewal</a:t>') && s2.includes(`<a:t>${W.pct(F.mtd('virgin').sl)}</a:t>`), 'the deck: Virgin\'s slide has the figures as checked and its top reasons');
-  ok(s4.includes('<a:t>Transfer failed</a:t>') && s4.includes('<a:t>Service level — Sep \'26</a:t>') && s5.includes('<a:t>Bill dispute</a:t>') && s6.includes('<a:t>Login issue</a:t>'), 'the deck: FRiENDi Pay, Postpaid and the outages');
+  ok(s4.includes('<a:t>Transfer failed</a:t>') && s4.includes('<a:t>Service level — Sep \'26</a:t>') && s5.includes('<a:t>Monthly Billing/Dispute</a:t>') && s6.includes('<a:t>Login issue</a:t>'), 'the deck: FRiENDi Pay, Postpaid and the outages');
+  // an earlier deck dropped on the tab: its outages are in the list already, nothing is added twice
+  await p.setInputFiles('#wkFile', deckF); await p.waitForTimeout(400);
+  ok(await p.evaluate(() => window.__mc.state.wk.out.length === 16) && /in the list already/.test(await p.textContent('#toastMsg')), 'the deck\'s outages are in the list already: nothing added twice');
   // the KPI workbook, filled
   const bookF = await download(p, () => p.setInputFiles('#wkBookFile', path.join(out, 'BeyondOne_MC_KPIs-2026-10.xlsx')));
   const rows = (await Core.readXlsx(fs.readFileSync(bookF))).find(s => s.name === 'Weekly Data').rows;

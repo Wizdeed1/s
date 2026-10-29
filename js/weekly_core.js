@@ -1,9 +1,11 @@
 /* The Weekly Commercial Presentation (WFM team › Weekly). The week is Sunday to Saturday and the deck is dated the Sunday after.
    Everything on it comes from the tool's own data or from what the WFM team types in:
    - the calls (presented, handled, service level), day by day and month by month: the Brands' history the daily emails keep;
-   - the top call reasons: the week's ESKA call history export, counted as the daily emails count them (the same rows left out);
+   - the top call reasons: the week's ESKA call history export, counted as the daily emails count them (the same rows left out;
+     Virgin Mobile without Postpaid's calls, which have their own slide);
    - the complaints (logged, resolved on time, still open, the top 5 drivers): the figures someone sends, pasted and checked;
-   - Postpaid's top 5 tickets: typed in; the outages: a running list.
+   - Postpaid's top 5 tickets: the week's ESKA Tickets Report, as the daily Postpaid email counts them, or typed;
+   - the outages: a running list (an earlier deck's Outages table can be read into it).
    Out of it: the Member Care Performance Review deck, made from its own design (wk/deck-template.pptx, built into the page), and
    the WFM team's KPI workbook with the week written into its cells. Pure: no page and no storage (js/weekly.js is the tab). */
 'use strict';
@@ -85,11 +87,12 @@ function monthlyRows(H, b, w) {
 // ---------------------------------------------------------------- the top call reasons: the ESKA call history rows of the week
 const KEEP = { fpay: ['Follow Up'] };   // FRiENDi Pay lists Follow Up, as its daily email does
 /** E: the report builder's engine (Engine), rows: its historyRows -> per brand, every Sub Service and its rows in the week, the rows
-    in all and the days they cover. Only these counts are kept (no customer's row), so a changed list of rows left out counts again. */
+    in all and the days they cover (Virgin Mobile without Postpaid's calls). Only these counts are kept (no customer's row), so a changed list of rows left out counts again. */
 function countReasons(E, rows, w) {
-  const out = {};
+  const out = {}, pp = new Set(E.sliceHistory(rows || [], 'postpaid', w.days));
   for (const [b] of BRANDS) {
-    const slice = E.sliceHistory(rows || [], b, w.days), counts = new Map();
+    // Virgin Mobile's reasons leave Postpaid's calls out (they have their own slide), as the deck the WFM team sends does
+    const slice = E.sliceHistory(rows || [], b, w.days).filter(r => b !== 'virgin' || !pp.has(r)), counts = new Map();
     slice.forEach(r => { const s = String(r[E.COL.sub] ?? '').trim(); if (s) counts.set(s, (counts.get(s) || 0) + 1); });
     out[b] = { base: slice.length, counts: Array.from(counts, ([r, n]) => ({ r, n })), days: Array.from(new Set(slice.map(r => E.rowDate(r[E.COL.date])).filter(Boolean))).sort() };
   }
@@ -105,25 +108,43 @@ function topOf(b, X, skip) {
 const reasonsFrom = (counted, skip) => (counted ? Object.fromEntries(BRANDS.map(([b]) => [b, topOf(b, counted[b], skip)])) : null);
 const reasonsOf = (E, rows, w, skip) => reasonsFrom(countReasons(E, rows, w), skip || E.DEFAULT_SUPPRESSED);
 
+/** the ESKA Tickets Report's rows (Engine.ticketRows) -> Postpaid's tickets of the week, as the daily Postpaid email counts them
+    (Engine.sliceTickets: Virgin's Billing, End service and Migration tickets, like sub categories merged): all of them, the top 5 */
+function postpaidTickets(E, rows, w) {
+  const tk = E.sliceTickets(rows || [], 'postpaid', w.days);
+  return { total: tk.length, list: E.tally(tk, E.TCOL.sub).slice(0, 5).map(x => ({ name: x.label, count: x.count })), days: Array.from(new Set(tk.map(r => E.rowDate(r[E.TCOL.date])).filter(Boolean))).sort() };
+}
+
 // ---------------------------------------------------------------- the complaint figures, pasted from the email (or the workbook) and checked
 const BRAND_RE = [['fpay', /^(f\s*-?\s*pay|friendi\s*pay)\b/i], ['friendi', /^(friendi|fr)\b/i], ['virgin', /^(virgin|vm)\b/i]];
-/** text -> { virgin: { complaints, onTime, open, drivers: [{ name, pct }] }, friendi, fpay } and the lines it could not place */
+/** text -> { virgin: { complaints, onTime, open, drivers: [{ name, pct, count }] }, friendi, fpay } and the lines it could not place.
+    The drivers' table may have a count and a percentage (Subcategories | Total | Percentage): the percentage is the one taken. */
 function parseComplaints(text) {
-  const out = {}, skipped = []; let brand = null, inDrivers = false;
+  const out = {}, skipped = []; let brand = null, inDrivers = false, cols = null;
   const blank = () => ({ complaints: null, onTime: null, open: null, drivers: [] });
-  const lines = String(text || '').replace(/\r/g, '').split('\n');
+  const lines = String(text || '').replace(/\r/g, '').replace(/\u00a0/g, ' ').split('\n');
   for (const raw of lines) {
     const cells = raw.split(/\t| {2,}|\s\|\s|\|/).map(s => s.trim()).filter(Boolean); if (!cells.length) continue;
     const head = cells[0], rest = cells.slice(1), firstNum = rest.map(readInt).find(v => v !== null), firstPct = rest.map(readPct).find(v => v !== null);
-    const b = (BRAND_RE.find(([, re]) => re.test(head)) || [])[0];   // a brand's heading: its name and no figure (Virgin | %, FPAY | Oct-26 | Target, VM)
-    if (b && firstPct === undefined && !/complaint|ticket|tkt|resol|open/i.test(head)) { brand = b; out[brand] = out[brand] || blank(); inDrivers = false; continue; }
+    const b = (BRAND_RE.find(([, re]) => re.test(head)) || [])[0];   // a brand's heading: its name and no figure (Virgin | Oct 2026, FPAY | 18 Oct – 24 Oct | Target, VM)
+    if (b && firstPct === undefined && !/complaint|ticket|tkt|resol|open/i.test(head)) { brand = b; out[brand] = out[brand] || blank(); inDrivers = false; cols = null; continue; }
     if (/^top\s*\d*\s*(complaint|driver)/i.test(head) || /complaint (type|driver)s?$/i.test(head)) { inDrivers = true; continue; }
+    // the drivers' own heading row: which column is the percentage, which the count
+    if (/^(sub\s*-?\s*categor|categor|complaint\s*type|type|reason|driver)/i.test(head) && rest.some(c => /percent|%|total|count|vol/i.test(c)) && rest.every(c => readPct(c) === null)) {
+      cols = { pct: rest.findIndex(c => /percent|%/i.test(c)), count: rest.findIndex(c => /total|count|vol|no\.?\s*of/i.test(c)) }; inDrivers = true; continue;
+    }
     if (!brand) { skipped.push(raw.trim()); continue; }
     const B = out[brand];
     if (/no\.?\s*of\s*complaints|complaints?\s*logged|^complaints$/i.test(head)) { B.complaints = firstNum ?? B.complaints; inDrivers = false; continue; }
     if (/resol|on\s*time|closed/i.test(head)) { B.onTime = firstPct ?? B.onTime; inDrivers = false; continue; }
     if (/open/i.test(head) && /t(ic)?k(e)?t|remain|still/i.test(head)) { B.open = firstNum ?? B.open; inDrivers = false; continue; }
-    if (inDrivers && firstPct !== undefined && firstPct !== null && B.drivers.length < 5) { B.drivers.push({ name: head, pct: firstPct }); continue; }
+    if (inDrivers && firstPct !== undefined && firstPct !== null && B.drivers.length < 5) {
+      // the percentage: its column when the heading named it, else a cell written with %, else the last of the numbers (a count comes first)
+      const nums = rest.filter(c => readPct(c) !== null), marked = rest.find(c => /%\s*$/.test(c));
+      const pctCell = cols && cols.pct >= 0 && rest[cols.pct] !== undefined ? rest[cols.pct] : marked !== undefined ? marked : nums[nums.length - 1];
+      const countCell = cols && cols.count >= 0 ? rest[cols.count] : nums.length > 1 && !/%/.test(nums[0]) ? nums[0] : undefined;
+      B.drivers.push({ name: head, pct: readPct(pctCell), count: countCell === undefined ? null : readInt(countCell) }); continue;
+    }
     skipped.push(raw.trim());
   }
   return { brands: out, skipped };
@@ -137,6 +158,39 @@ function outagesOf(list, w, max = 18) {
   const shown = rows.slice(-max), brands = new Set();
   shown.forEach(o => BRAND_WORDS.forEach(([n, re]) => { if (re.test(o.brands || '')) brands.add(n); }));
   return { from: first, rows: shown, left: rows.length - shown.length, brands: brands.size, span: `${MON[+first.slice(5, 7) - 1]}–${monthLong(w.end)}` };
+}
+
+/** an earlier deck (its bytes) -> the outages in its Outages table: [{ date, issue, brands, desc }]. A row's day (6-Aug) takes the
+    year of the deck's own date (25 Oct 2026), the year before for a month after it. */
+async function outagesFromDeck(bytes) {
+  const z = await C.readZip(bytes), out = [], plain = tc => (tc.match(/<a:p>[\s\S]*?<\/a:p>/g) || []).map(p => [...p.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(m => xmlUn(m[1])).join('')).join(' ').replace(/\s+/g, ' ').trim();
+  const refOf = x => { const m = /\b(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* (\d{4})\b/.exec(x.replace(/<[^>]+>/g, ' ')); return m ? { y: +m[3], m: MON.indexOf(m[2]) + 1 } : null; };
+  const names = z.names().filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a, b) => +a.match(/\d+/)[0] - +b.match(/\d+/)[0]);
+  let ref0 = null; for (const n of names) { ref0 = refOf(await z.text(n)); if (ref0) break; }
+  for (const n of names) {
+    const x = await z.text(n), ref = refOf(x) || ref0;
+    for (const tbl of x.match(/<a:tbl>[\s\S]*?<\/a:tbl>/g) || []) {
+      const rows = (tbl.match(/<a:tr [^>]*>[\s\S]*?<\/a:tr>/g) || []).map(tr => (tr.match(/<a:tc(?: [^>]*)?>[\s\S]*?<\/a:tc>/g) || []).map(plain));
+      const h = (rows[0] || []).map(norm), iD = h.indexOf('date'), iO = h.findIndex(c => /outage|issue/.test(c)), iB = h.findIndex(c => /brand/.test(c)), iX = h.findIndex(c => /descr/.test(c));
+      if (iD < 0 || iO < 0) continue;
+      for (const r of rows.slice(1)) {
+        const t = String(r[iD] || ''), a = /^(\d{1,2})[\s-]+([A-Za-z]{3})/.exec(t), b = /^(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?/.exec(t);
+        let d = null, m = null, y = null;
+        if (a && MON.indexOf(a[2][0].toUpperCase() + a[2].slice(1).toLowerCase()) >= 0) { d = +a[1]; m = MON.indexOf(a[2][0].toUpperCase() + a[2].slice(1).toLowerCase()) + 1; }
+        else if (b) { d = +b[1]; m = +b[2]; y = b[3] ? (+b[3] < 100 ? 2000 + +b[3] : +b[3]) : null; }
+        if (!d || !m || !r[iO]) continue;
+        if (!y) y = ref ? (m > ref.m ? ref.y - 1 : ref.y) : new Date().getUTCFullYear();
+        const iso = `${y}-${p2(m)}-${p2(d)}`; if (!isIso(iso)) continue;
+        out.push({ date: iso, issue: r[iO], brands: iB >= 0 ? r[iB] || '' : '', desc: iX >= 0 ? r[iX] || '' : '' });
+      }
+    }
+  }
+  return out;
+}
+/** the outages to add to the list: those not in it yet (the same day and the same outage) */
+function newOutages(list, found) {
+  const key = o => o.date + '|' + norm(o.issue), have = new Set((list || []).map(key)), seen = new Set();
+  return (found || []).filter(o => { const k = key(o); if (have.has(k) || seen.has(k)) return false; seen.add(k); return true; });
 }
 
 // ---------------------------------------------------------------- the week's model: what the deck and the workbook show
@@ -440,6 +494,6 @@ function email(M, to, cc) {
 }
 
 return { BRANDS, NAME, COMPLAINT_BRANDS, weekOf, lastWeek, weekLabel, dayLong, monthLong, monthTick, monthCat, dayShort, addDays, isIso, serial, fromSerial, pct, readPct, readInt,
-  dailyRows, mtdOf, closedMonths, monthlyRows, countReasons, topOf, reasonsFrom, reasonsOf, parseComplaints, outagesOf, model, checks, deck, deckName, fillWorkbook, email, Sheet, _x: { paraText, boxText, tableRows, chartData, shapeAt } };
+  dailyRows, mtdOf, closedMonths, monthlyRows, countReasons, topOf, reasonsFrom, reasonsOf, postpaidTickets, parseComplaints, outagesOf, outagesFromDeck, newOutages, model, checks, deck, deckName, fillWorkbook, email, Sheet, _x: { paraText, boxText, tableRows, chartData, shapeAt } };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Weekly;

@@ -136,7 +136,15 @@
     </div>
 
     <div class="card" style="margin-top:14px">
-      <h2>3 · History</h2>
+      <h2>3 · MC Leaders · tickets to exclude</h2>
+      <textarea id="leadersExclude" placeholder="Paste the ticket numbers to leave out of the MC Leaders report — one per line, or the whole table from the email."></textarea>
+      <p class="hint">Only the ticket numbers are read (5 digits or more), so dates and times pasted with them are ignored. The list is kept until you clear it.</p>
+      <p class="hint" id="leadersExclStatus"></p>
+      <div class="miniact"><button id="clearExclude">Clear list</button></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>4 · History</h2>
       <p class="hint">Month-to-date and monthly averages come from here. Every day in the exports you drop is saved automatically (this browser only) — including earlier days you drop to fill a gap.</p>
       <p class="hint" id="histStatus"></p>
       <div class="miniact">
@@ -1121,11 +1129,13 @@
   function leaderTickets(payload) {
     const col = name => payload.headers.find(h => String(h).toLowerCase().trim() === name);
     const cDate = col('call date'), cCat = col('category'), cSub = col('sub category'),
-          cStatus = col('status'), cWho = col('assigned to'), cHours = col('close hours'), cLife = col('life cycle');
+          cStatus = col('status'), cWho = col('assigned to'), cHours = col('close hours'), cLife = col('life cycle'),
+          cTicket = col('ticket id');
     return payload.rows.map(r => {
       const hours = cHours !== undefined ? num(r[cHours]) : null;
       return {
         date: cDate !== undefined ? ticketDate(r[cDate]) : null,
+        ticket: cTicket !== undefined ? ticketKey(r[cTicket]) : '',
         category: String(r[cCat] === null || r[cCat] === undefined ? '' : r[cCat]).trim(),
         sub: String(r[cSub] === null || r[cSub] === undefined ? '' : r[cSub]).trim(),
         status: String(r[cStatus] === null || r[cStatus] === undefined ? '' : r[cStatus]).trim(),
@@ -1133,6 +1143,17 @@
         hours: hours !== null ? hours : (cLife !== undefined ? lifeCycleHours(r[cLife]) : null)
       };
     }).filter(r => r.category || r.sub || r.assigned);
+  }
+
+  // a ticket number as digits only, without leading zeros: "776220", 776220 and "0776220" are one ticket
+  function ticketKey(v) {
+    return String(v === null || v === undefined ? '' : v).trim().replace(/\.0+$/, '').replace(/\D/g, '').replace(/^0+/, '');
+  }
+  // the ticket numbers in a pasted list or table: every run of 5+ digits (dates and times are shorter)
+  function ticketNumbers(text) {
+    const out = [];
+    (String(text || '').match(/\d{5,}/g) || []).forEach(n => { const k = ticketKey(n); if (k && out.indexOf(k) < 0) out.push(k); });
+    return out;
   }
 
   // the dashboard's own bands: from the lower bound up to (not including) the upper one
@@ -1149,6 +1170,7 @@
     const s = v => String(v === null || v === undefined ? '' : v).trim();
     return (rows || []).map(r => ({
       date: rowDate(r[TCOL.date]),
+      ticket: ticketKey(r[TCOL.ticketId]),
       category: s(r[TCOL.category]),
       sub: s(r[TCOL.sub]),
       status: s(r[TCOL.status]),
@@ -1258,7 +1280,7 @@
     tally, parsePastedTickets, intervalDate, rowDate, monthKey, mean, averageRow,
     addDays, dayDiff, weekday, dateRange, parseStamp, rowStamp, splitByDay, inDates,
     isTicketsByCategory, parseTicketsByCategory, isFpayTicketSummary, parseFpayTicketSummary, isTicketSheet, parseTicketSheet, ticketsOnDays, sheetPayload, ticketDate, summariseTickets,
-    isLeaderTickets, leaderTickets, leaderRowsFromTickets, fpayRowsFromTickets, leaderStats, lifeCycleHours, LEADER_BUCKETS,
+    isLeaderTickets, leaderTickets, leaderRowsFromTickets, ticketKey, ticketNumbers, fpayRowsFromTickets, leaderStats, lifeCycleHours, LEADER_BUCKETS,
     DEFAULT_SUPPRESSED, POSTPAID_SERVICES, COL, TCOL
   };
 })(typeof module !== 'undefined' ? module.exports : window);
@@ -5439,13 +5461,25 @@ root.WFM = {
       out.warnings.push('No tickets export found — drop the Crystal tickets export (.xls) to fill the MC Leaders report.');
       return out;
     }
-    const mine = src.rows.filter(r => LEADER_TEAM.test(r.assigned));
+    let mine = src.rows.filter(r => LEADER_TEAM.test(r.assigned));
     if (!mine.length) {
       out.stats = E.leaderStats([]);
       const who = Array.from(new Set(src.rows.map(r => r.assigned).filter(Boolean))).slice(0, 6);
       out.warnings.push('No tickets assigned to MC Leaders in ' + src.name +
         (who.length ? ' — it has ' + who.join(', ') + '.' : '.'));
       return out;
+    }
+    // ticket numbers pasted in "tickets to exclude" are left out of everything below
+    const excl = E.ticketNumbers(opts.exclude);
+    if (excl.length) {
+      const set = new Set(excl), found = new Set();
+      mine = mine.filter(r => { if (r.ticket && set.has(r.ticket)) { found.add(r.ticket); return false; } return true; });
+      out.excluded = { asked: excl, removed: excl.filter(n => found.has(n)), missing: excl.filter(n => !found.has(n)) };
+      if (!mine.length) {
+        out.stats = E.leaderStats([]);
+        out.warnings.push('Every MC Leaders ticket in ' + src.name + ' is in the tickets to exclude.');
+        return out;
+      }
     }
     const dates = period.days;
     const onDays = mine.filter(r => r.date && dates.indexOf(r.date) >= 0);
@@ -5840,7 +5874,7 @@ root.WFM = {
       state.models.wfm = { kind: 'wfm' };
     }
     {
-      const data = B.computeLeaders(p, state.bag, {});
+      const data = B.computeLeaders(p, state.bag, { exclude: state.prefs.leadersExclude || '' });
       state.data.leaders = data;
       const model = B.buildLeaders(p, data, {});
       const subj = getPref('leaders', 'subject'), intro = getPref('leaders', 'intro');
@@ -5888,6 +5922,22 @@ root.WFM = {
     renderTabs();
     renderPanel();
     renderHistStatus();
+    renderExcludeStatus();
+  }
+
+  // under "tickets to exclude": how many numbers were read and how many came out of the report
+  function renderExcludeStatus() {
+    const el = $('#leadersExclStatus');
+    if (!el) return;
+    const asked = E.ticketNumbers(state.prefs.leadersExclude);
+    const x = state.data.leaders && state.data.leaders.excluded;
+    if (!asked.length) { el.textContent = ''; return; }
+    let t = E.fmtInt(asked.length) + ' ticket number' + (asked.length > 1 ? 's' : '') + ' read';
+    if (x) {
+      t += ' · ' + E.fmtInt(x.removed.length) + ' left out of the report';
+      if (x.missing.length) t += ' · not among the MC Leaders tickets dropped: ' + x.missing.join(', ');
+    } else t += ' — drop the Crystal tickets export to apply them.';
+    el.textContent = t;
   }
 
   function renderTabs() {
@@ -6257,6 +6307,9 @@ root.WFM = {
 
     $('#fpayTickets').value = state.prefs.fpayTickets || '';
     $('#fpayTickets').oninput = e => { state.prefs.fpayTickets = e.target.value; persistPrefs(); rebuild(); };
+    $('#leadersExclude').value = state.prefs.leadersExclude || '';
+    $('#leadersExclude').oninput = e => { state.prefs.leadersExclude = e.target.value; persistPrefs(); rebuild(); renderExcludeStatus(); };
+    $('#clearExclude').onclick = () => { $('#leadersExclude').value = ''; state.prefs.leadersExclude = ''; persistPrefs(); rebuild(); renderExcludeStatus(); };
 
     $('#exportHist').onclick = exportHistory;
     $('#importHist').onchange = e => { if (e.target.files[0]) importHistory(e.target.files[0]); };

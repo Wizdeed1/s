@@ -54,9 +54,11 @@ const PEOPLE = [{ id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user
   for (const [i, t] of F.TICKETS.list.entries()) { await p.fill(`[data-wkt="${i}.name"]`, t.name); await p.press(`[data-wkt="${i}.name"]`, 'Tab'); await p.fill(`[data-wkt="${i}.count"]`, String(t.count)); await p.press(`[data-wkt="${i}.count"]`, 'Tab'); }
   await p.fill('[data-wkt="total"]', '90'); await p.press('[data-wkt="total"]', 'Tab'); await p.waitForTimeout(150);
   ok(await p.evaluate(() => { const T = window.__mc.state.wk.doc.tickets; return T.total === 90 && T.list.length === 5 && T.list[0].name === 'Bill dispute' && T.list[0].count === 40; }), 'the five tickets and the total are kept');
+  ok(/has no tickets: Postpaid's tickets come from the ESKA tickets export/.test(await p.textContent('#wfmBody .wkfiles')), 'the call history alone: the tab says it has no tickets and where they come from');
   // the Tickets Report: Postpaid's tickets counted as the daily Postpaid email counts them (it takes the place of what was typed)
   await p.setInputFiles('#wkFile', path.join(out, 'Tickets Report.xlsx')); await p.waitForTimeout(400);
   ok(await p.evaluate(() => { const T = window.__mc.state.wk.doc.tickets; return T.total === 57 && T.list[0].name === 'Monthly Billing/Dispute' && T.list[0].count === 34 && document.querySelector('[data-wkt="0.name"]').value === 'Monthly Billing/Dispute' && document.querySelector('[data-wkt="total"]').value === '57'; }), 'the Tickets Report fills Postpaid\'s top 5 and the total');
+  ok(/tickets: 57 Postpaid tickets in the week/.test(await p.textContent('#wfmBody .wkfiles')), 'and the tab says what the file was taken as');
   // an outage
   await p.fill('#wkODate', '2026-10-20'); await p.fill('#wkOIssue', 'Login issue'); await p.fill('#wkOBrand', 'Fpay'); await p.fill('#wkODesc', 'customers could not log in'); await p.click('[data-wkoadd]'); await p.waitForTimeout(150);
   ok(await p.evaluate(() => document.querySelectorAll('#wfmBody tr.wknew').length === 3 && window.__mc.state.wk.out.length === 16 && window.__mc.state.wk.set.outStart === true), 'the list starts with the 15 outages of the 25 Oct deck; the new one is added, this week\'s marked');

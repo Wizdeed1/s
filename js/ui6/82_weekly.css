@@ -36,3 +36,7 @@
 .wkacts { flex-wrap: wrap; }
 @media (max-width: 1080px) { .wkgrid, .wkcomp { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .wkbrands, .wk3, .wkmail, .wkadd { grid-template-columns: minmax(0, 1fr); } .wkweek { flex-wrap: wrap; } }
+.wkfiles { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; }
+.wkfiles li { padding: 6px 10px; border-radius: 8px; background: var(--good-bg); color: var(--ink-2); }
+.wkfiles li.bad { background: var(--bad-bg); }
+.wkfiles li b { font-weight: 600; color: var(--ink); }

@@ -98,6 +98,7 @@ function renderWeeklyWs() {
   const R = M.brands, from = D.from;
   const reasons = `${from ? `<p class="wkfrom"><svg class="tick" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg><span><b dir="auto">${esc(from.names.join(', '))}</b> · ${plural(from.rows, 'call')} in the week (the file covers ${esc(from.span || '–')}) · read ${esc(fmtWhen(from.at))}${from.by ? ' by ' + esc(from.by) : ''}</span></p>` : ''}
     <div class="drop small rbdrop" data-wkdrop tabindex="0" role="button"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>${from ? 'Drop another export for this week' : 'Drop the week\'s ESKA exports'}</strong><span>The Call Center History of ${esc(Weekly.weekLabel(w))} (all the brands in one file, or one file a brand) for the call reasons, and the Tickets Report for Postpaid's tickets. Only how many each reason or ticket type had is kept.</span></div>
+    ${(state.wk.files || []).length ? `<ul class="wkfiles">${state.wk.files.map(n => `<li class="${n.bad ? 'bad' : ''}"><b dir="auto">${esc(n.name)}</b> <span>${esc(n.text)}</span></li>`).join('')}</ul>` : ''}
     ${D.counted ? `<div class="wkbrands">${WK_BRANDS().map(([b, name]) => { const X = R[b].reasons; return `<div class="wkbr"><h3>${esc(name)} <small>${X ? plural(X.base, 'call') : '–'}</small></h3>${X && X.list.length ? `<ol class="wklist">${X.list.map(x => `<li><span dir="auto">${esc(x.reason)}</span><b class="num">${x.count.toLocaleString('en-US')}</b><small class="num">${wkP(X.base ? x.count / X.base : null)}</small></li>`).join('')}</ol>` : '<p class="subtle">No calls of this brand in the export.</p>'}</div>`; }).join('')}</div>` : ''}
     <details class="wkdet" data-wkdet="skip"${state.wk.skipOpen ? ' open' : ''}><summary>Reasons left out of the top 5 <span class="pill">${wkSkip().length}</span></summary><p class="hint">They still count in each brand's total, as on the daily emails. One a line. FRiENDi Pay always lists Follow Up.</p><textarea class="cell" id="wkSkip" rows="8" spellcheck="false">${esc(wkSkip().join('\n'))}</textarea><div class="acts"><button class="btn sm ghost" data-wkskipdef>The daily emails' list</button><button class="btn sm" data-wkskipsave>Save the list</button></div></details>`;
 
@@ -110,7 +111,7 @@ function renderWeeklyWs() {
   const T = D.tickets || {}, tl = T.list || [], tf = D.ticketsFrom;
   const tickets = `${tf ? `<p class="wkfrom"><svg class="tick" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg><span><b dir="auto">${esc(tf.names.join(', '))}</b> · ${plural(T.total || 0, 'Postpaid ticket')} in the week · read ${esc(fmtWhen(tf.at))}${tf.by ? ' by ' + esc(tf.by) : ''}. A changed figure below is kept.</span></p>` : ''}<div class="wktk">${[0, 1, 2, 3, 4].map(i => `<input class="cell" data-wkt="${i}.name" aria-label="Ticket type ${i + 1}" placeholder="Ticket type ${i + 1}" dir="auto" value="${esc((tl[i] && tl[i].name) || '')}"><input class="cell num" data-wkt="${i}.count" aria-label="Tickets of type ${i + 1}" placeholder="Tickets" inputmode="numeric" value="${tl[i] && tl[i].count !== null && tl[i].count !== undefined ? esc(String(tl[i].count)) : ''}"><small class="num">${wkP(T.total > 0 && tl[i] && tl[i].count ? tl[i].count / T.total : null)}</small>`).join('')}</div>
     <label class="field wktot"><span class="lbl">All Postpaid tickets (the % is out of these)</span><input class="cell num" data-wkt="total" inputmode="numeric" value="${T.total ? esc(String(T.total)) : ''}"></label>
-    <div class="acts"><button class="btn sm" data-wkdrop-tk><svg width="14" height="14" aria-hidden="true"><use href="#i-up"/></svg>Count them from the Tickets Report…</button></div>`;
+    <div class="acts"><button class="btn sm" data-wkdrop-tk><svg width="14" height="14" aria-hidden="true"><use href="#i-up"/></svg>Count them from the ESKA tickets export…</button></div>${tf ? '' : '<p class="hint">The tickets export is not the Call Center History: it is ESKA\'s tickets report, with a Category and a Sub Category for each ticket.</p>'}`;
 
   const O = M.outages, all = (state.wk.out || []).slice().sort((a, b) => (a.date < b.date ? 1 : -1));
   const outages = `<div class="tablewrap"><table class="wktab"><thead><tr><th>Date</th><th>Outage and issue</th><th>Brand</th><th>Description</th><th class="r"><span class="sr">Remove</span></th></tr></thead><tbody>${O.rows.length ? O.rows.slice().reverse().map(o => `<tr${o.date >= w.start ? ' class="wknew"' : ''}><td>${esc(Weekly.dayShort(o.date))}</td><td dir="auto">${esc(o.issue)}</td><td>${esc(o.brands)}</td><td dir="auto">${esc(o.desc)}</td><td class="r"><button class="btn sm ghost" data-wkodel="${esc(o.id)}" aria-label="Remove ${esc(o.issue)}">×</button></td></tr>`).join('') : '<tr><td colspan="5" class="subtle">No outages in these months yet.</td></tr>'}</tbody></table></div>
@@ -147,7 +148,8 @@ function wkKeepFocus(root) {
 async function wkFiles(list) {
   if (!canWeekly()) return;
   await rbBoot(); const E = rbE(), w = wkWeek();
-  let rows = [], names = [], book = null, trows = [], tnames = []; const bad = [], decks = [];
+  let rows = [], names = [], book = null, trows = [], tnames = []; const decks = [], notes = [];
+  const span = ds => (ds.length ? `${Weekly.dayShort(ds[0])} to ${Weekly.dayShort(ds[ds.length - 1])}` : 'no dates');
   for (const f of Array.from(list)) {
     try {
       if (/\.pptx$/i.test(f.name)) { decks.push(f); continue; }
@@ -155,35 +157,41 @@ async function wkFiles(list) {
       let sheets = null;
       if (/\.xlsx$/i.test(f.name)) { sheets = await window.parseXlsx(buf); if (sheets.some(s => /^weekly data$/i.test(String(s.name).trim()))) { book = f; continue; } }
       else if (/\.xls$/i.test(f.name)) sheets = window.parseXls(buf);
-      else { bad.push(`${f.name}: not an Excel file`); continue; }
-      let took = '';
+      else { notes.push({ name: f.name, text: 'not an Excel file', bad: true }); continue; }
+      let h = 0, t = 0;
       for (const sh of sheets || []) {
-        const c = E.classify(f.name, 'xls', { rows: sh.rows || [] });
-        if (c.type === 'history') { rows = rows.concat(E.historyRows(sh.rows)); took = 'h'; }
-        else if (c.type === 'tickets') { trows = trows.concat(E.ticketRows(sh.rows)); took = 't'; }
+        const r = Weekly.recognise(E, sh.rows || []);
+        if (r.kind === 'history') { rows = rows.concat(r.rows); h += r.rows.length; }
+        else if (r.kind === 'tickets') { trows = trows.concat(r.rows); t += r.rows.length; }
       }
-      if (took === 'h') names.push(f.name); else if (took === 't') tnames.push(f.name); else bad.push(`${f.name}: not a Call Center History or a Tickets Report export`);
-    } catch (e) { bad.push(`${f.name}: ${errText(e)}`); }
+      if (h) names.push(f.name);
+      if (t) tnames.push(f.name);
+      if (!h && !t) notes.push({ name: f.name, text: 'not read: neither the Call Center History (the calls, with Sub Service) nor a tickets export (with Category and Sub Category)', bad: true });
+    } catch (e) { notes.push({ name: f.name, text: 'could not be read: ' + errText(e), bad: true }); }
   }
-  if (bad.length) toast(bad.join(' · '));
   for (const f of decks) await wkDeckOutages(f);
   if (book) await wkFillBook(book);
+  const D = wkDoc(), now = new Date().toISOString();
   if (tnames.length) {
-    const T = Weekly.postpaidTickets(E, trows, w);
-    if (!T.total) toast(`${tnames.join(', ')} has no Postpaid tickets in ${Weekly.weekLabel(w)}.`);
-    else { const D = wkDoc(); D.tickets = { total: T.total, list: T.list }; D.ticketsFrom = { names: tnames, at: new Date().toISOString(), by: whoNow() }; wkSaveDoc(); renderWeeklyWs(); toast(`Counted ${plural(T.total, 'Postpaid ticket')} of ${Weekly.weekLabel(w)}.`); }
+    const T = Weekly.postpaidTickets(E, trows, w), all = Array.from(new Set(trows.map(r => E.rowDate(r[E.TCOL.date])).filter(Boolean))).sort();
+    if (!T.total) notes.push({ name: tnames.join(', '), text: `tickets (${trows.length}, ${span(all)}), but no Postpaid ticket (Virgin's Billing, End service or Migration) in ${Weekly.weekLabel(w)}`, bad: true });
+    else { D.tickets = { total: T.total, list: T.list }; D.ticketsFrom = { names: tnames, at: now, by: whoNow() }; notes.push({ name: tnames.join(', '), text: `tickets: ${plural(T.total, 'Postpaid ticket')} in the week, the top 5 in step 4` }); }
   }
-  if (!names.length) return;
-  const counted = Weekly.countReasons(E, rows, w), inWeek = Weekly.BRANDS.reduce((s, [b]) => s + (b === 'postpaid' ? 0 : counted[b].base), 0);
-  const ds = Array.from(new Set(rows.map(r => E.rowDate(r[E.COL.date])).filter(Boolean))).sort();
-  if (!inWeek) { toast(`${names.join(', ')} has no calls in ${Weekly.weekLabel(w)}${ds.length ? ` (it covers ${Weekly.dayShort(ds[0])} to ${Weekly.dayShort(ds[ds.length - 1])})` : ''}.`); return; }
-  const D = wkDoc(), prev = D.counted, merge = prev && D.from && Date.now() - Date.parse(D.from.at || 0) < 6 * 3600000 && !names.some(n => D.from.names.includes(n));
-  if (merge) {   // one file a brand: the files dropped one after the other add up (a brand found again in a new file takes the new count)
-    Weekly.BRANDS.forEach(([b]) => { if (counted[b].base) prev[b] = counted[b]; });
-    D.from = { names: D.from.names.concat(names), rows: D.from.rows + rows.length, span: D.from.span, at: new Date().toISOString(), by: whoNow() };
-  } else { D.counted = counted; D.from = { names, rows: rows.length, span: ds.length ? `${Weekly.dayShort(ds[0])} to ${Weekly.dayShort(ds[ds.length - 1])}` : '', at: new Date().toISOString(), by: whoNow() }; }
-  wkSaveDoc(); renderWeeklyWs();
-  toast(`Counted the call reasons of ${Weekly.weekLabel(w)}.`);
+  if (names.length) {
+    const counted = Weekly.countReasons(E, rows, w), inWeek = Weekly.BRANDS.reduce((s2, [b]) => s2 + (b === 'postpaid' ? 0 : counted[b].base), 0);
+    const ds = Array.from(new Set(rows.map(r => E.rowDate(r[E.COL.date])).filter(Boolean))).sort();
+    if (!inWeek) notes.push({ name: names.join(', '), text: `the call history, but no call in ${Weekly.weekLabel(w)} (it covers ${span(ds)})`, bad: true });
+    else {
+      const prev = D.counted, merge = prev && D.from && Date.now() - Date.parse(D.from.at || 0) < 6 * 3600000 && !names.some(n => D.from.names.includes(n));
+      if (merge) {   // one file a brand: the files dropped one after the other add up (a brand found again in a new file takes the new count)
+        Weekly.BRANDS.forEach(([b]) => { if (counted[b].base) prev[b] = counted[b]; });
+        D.from = { names: D.from.names.concat(names), rows: D.from.rows + rows.length, span: D.from.span, at: now, by: whoNow() };
+      } else { D.counted = counted; D.from = { names, rows: rows.length, span: span(ds), at: now, by: whoNow() }; }
+      notes.push({ name: names.join(', '), text: `the call history: the call reasons of ${Weekly.weekLabel(w)} in step 2` + (tnames.length ? '' : '. It has no tickets: Postpaid\'s tickets come from the ESKA tickets export (with Sub Category)') });
+    }
+  }
+  if (tnames.length || names.length) wkSaveDoc();
+  if (notes.length) { state.wk.files = notes; renderWeeklyWs(); toast(notes.map(n => `${n.name}: ${n.text}`).join(' · ')); }
 }
 /** an earlier deck: the outages in its Outages table that the list does not have yet */
 async function wkDeckOutages(file) {

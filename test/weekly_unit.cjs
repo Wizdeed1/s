@@ -79,6 +79,17 @@ ok('Postpaid\'s tickets from the Tickets Report: as the daily Postpaid email cou
   assert.deepEqual(T.list.map(x => [x.name, x.count]), [['Monthly Billing/Dispute', 34], ['Final Switch Postpaid Deactivation', 12], ['From Switch postpaid plans to Pre', 6], ['Not receiving the details of billing', 3], ['Activation After Payment', 2]]);
 });
 
+ok('a dropped sheet is recognised by its title row (as the Report builder) or by its column names; anything else is not read', () => {
+  const t = F.ticketsReportRows(), h = F.eskaRows(), w = week;
+  const plain = [['Ticket ID', 'Created', 'Type', 'Category', 'Sub Category', 'Status']].concat(t.slice(2).map(r => [r[9], r[3], r[4], r[5], r[6], r[7]]));
+  const hplain = [['note'], ['Date', 'Agent', 'Type', 'Service', 'Sub Service']].concat(h.slice(2).map(r => [r[3], r[1], r[4], r[5], r[6]]));
+  assert.equal(W.recognise(E, t).kind, 'tickets'); assert.equal(W.recognise(E, h).kind, 'history');
+  const rt = W.recognise(E, plain), rh = W.recognise(E, hplain);
+  assert.equal(rt.kind, 'tickets'); assert.deepEqual(W.postpaidTickets(E, rt.rows, w), W.postpaidTickets(E, E.ticketRows(t), w));
+  assert.equal(rh.kind, 'history'); assert.deepEqual(W.countReasons(E, rh.rows, w), W.countReasons(E, E.historyRows(h), w));
+  assert.equal(W.recognise(E, [['Name', 'Value'], ['a', 1]]).kind, null);
+});
+
 ok('an earlier deck\'s outages: read from its Outages table, the year from the deck\'s date; those in the list already are not added twice', async () => {
   const tpl = fs.readFileSync(path.join(__dirname, '..', 'wk', 'deck-template.pptx'));
   const deck = await W.deck(tpl, W.model({ H: F.history(), w: week, outages: F.OUTAGES }));

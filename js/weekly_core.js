@@ -108,6 +108,25 @@ function topOf(b, X, skip) {
 const reasonsFrom = (counted, skip) => (counted ? Object.fromEntries(BRANDS.map(([b]) => [b, topOf(b, counted[b], skip)])) : null);
 const reasonsOf = (E, rows, w, skip) => reasonsFrom(countReasons(E, rows, w), skip || E.DEFAULT_SUPPRESSED);
 
+/** one sheet of a dropped file -> { kind: 'history' | 'tickets' | null, rows } in the layout the engine reads (Engine.COL, Engine.TCOL):
+    by the ESKA export's title row (Call Center History, Tickets Report, as the Report builder reads them), else by its column names
+    (Sub Service and Service: the call history; Sub Category and Category: the tickets), wherever its heading row is */
+function recognise(E, rows) {
+  rows = rows || [];
+  const c = E.classify('', 'xls', { rows });
+  if (c.type === 'history') return { kind: 'history', rows: E.historyRows(rows) };
+  if (c.type === 'tickets') return { kind: 'tickets', rows: E.ticketRows(rows) };
+  const cell = v => (v instanceof Date ? isoOf(new Date(Date.UTC(v.getFullYear(), v.getMonth(), v.getDate()))) : v);
+  const remap = (body, map) => body.map(r => { const o = []; for (const k of Object.keys(map)) if (map[k] >= 0) o[+k] = cell((r || [])[map[k]]); return o; }).filter(r => r.some(v => v !== undefined && v !== null && v !== ''));
+  for (let h = 0; h < Math.min(10, rows.length); h++) {
+    const H = (rows[h] || []).map(v => norm(v)), at = re => H.findIndex(x => re.test(x));
+    const date = at(/^(date|created|creation date|created (on|at|date)|open(ed)? (on|date)|call date|date ?\/ ?time|start time)$/), type = at(/^((ticket|call) )?type$/);
+    const sub = at(/^sub[\s-]*categor(y|ies)$/), cat = at(/^categor(y|ies)$/), subS = at(/^sub[\s-]*service$/), svc = at(/^service$/);
+    if (sub >= 0 && cat >= 0 && date >= 0) return { kind: 'tickets', rows: remap(rows.slice(h + 1), { [E.TCOL.date]: date, [E.TCOL.type]: type, [E.TCOL.category]: cat, [E.TCOL.sub]: sub }) };
+    if (subS >= 0 && svc >= 0 && date >= 0 && type >= 0) return { kind: 'history', rows: remap(rows.slice(h + 1), { [E.COL.date]: date, [E.COL.type]: type, [E.COL.service]: svc, [E.COL.sub]: subS }) };
+  }
+  return { kind: null, rows: [] };
+}
 /** the ESKA Tickets Report's rows (Engine.ticketRows) -> Postpaid's tickets of the week, as the daily Postpaid email counts them
     (Engine.sliceTickets: Virgin's Billing, End service and Migration tickets, like sub categories merged): all of them, the top 5 */
 function postpaidTickets(E, rows, w) {
@@ -494,6 +513,6 @@ function email(M, to, cc) {
 }
 
 return { BRANDS, NAME, COMPLAINT_BRANDS, weekOf, lastWeek, weekLabel, dayLong, monthLong, monthTick, monthCat, dayShort, addDays, isIso, serial, fromSerial, pct, readPct, readInt,
-  dailyRows, mtdOf, closedMonths, monthlyRows, countReasons, topOf, reasonsFrom, reasonsOf, postpaidTickets, parseComplaints, outagesOf, outagesFromDeck, newOutages, model, checks, deck, deckName, fillWorkbook, email, Sheet, _x: { paraText, boxText, tableRows, chartData, shapeAt } };
+  dailyRows, mtdOf, closedMonths, monthlyRows, countReasons, topOf, reasonsFrom, reasonsOf, recognise, postpaidTickets, parseComplaints, outagesOf, outagesFromDeck, newOutages, model, checks, deck, deckName, fillWorkbook, email, Sheet, _x: { paraText, boxText, tableRows, chartData, shapeAt } };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Weekly;

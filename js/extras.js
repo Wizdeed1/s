@@ -280,26 +280,30 @@ const contactsNow = () => ({ ...CONTACTS0, ...(state.contacts || {}) });
 const splitAddr = s => String(s || '').split(/[;,\n]+/).map(normSpace).filter(Boolean);
 /** "Name <email>" for a roster person, or '' when the roster has no email for them */
 function addrOf(pid) { const p = state.roster.find(x => x._id === pid); if (!p || !normSpace(p.email)) return ''; return `${gname(effP(p._id) || p) || p.name} <${normSpace(p.email)}>`; }
-/** a ready-to-send Outlook draft (.eml, opens as a new message) with any attachments; no logo and no name under the text,
- *  because Outlook adds the company signature to every new email */
-async function saveEml(name, { to, cc, subject, html, text, files }) {
-  const logo = null, fn = name.replace(/[\\/:*?"<>|]/g, '') + '.eml';
-  const bytes = enc8.encode(emlFile({ to: to || [], cc: cc || [], subject, text: text || htmlText(html), html: wrapMail(html, !!logo), attach: files || [], logo }));
+/** a ready-to-send Outlook draft (.eml, opens as a new message) with any attachments, in the emails' card (cardMail): card is
+ *  { eyebrow, title, foot } (markup: names escaped), the subject when there is none; no logo and no name under the text, because
+ *  Outlook adds the company signature to every new email */
+async function saveEml(name, { to, cc, subject, html, text, files, card }) {
+  const logo = null, fn = name.replace(/[\\/:*?"<>|]/g, '') + '.eml', cd = card || {};
+  const body = cardMail({ eyebrow: cd.eyebrow || 'MC Workforce', title: cd.title || esc(subject), body: html, foot1: 'Member Care · Workforce Management', foot2: cd.foot || esc(subject), logo: '', preview: false });
+  const bytes = enc8.encode(emlFile({ to: to || [], cc: cc || [], subject, text: text || htmlText(html), html: body, attach: files || [], logo }));
   let c = await saveRaw(fn, new Blob([bytes], { type: 'message/rfc822' }));
   if (c === 'rejected_extension' || c === 'extension_not_enabled') { const zn = fn.replace(/\.eml$/, '.zip'); c = await saveRaw(zn, new Blob([await Core.writeZip([{ name: fn, data: bytes }])], { type: 'application/zip' })); if (c === 'ok') { toast(`Saved ${zn}: the .eml is inside the zip.`); return true; } }
   toast(c === 'ok' ? `Saved ${fn}. Open it for a ready-to-send Outlook draft.` : saveMsg(c, fn));
   return c === 'ok';
 }
 const htmlText = h => String(h || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|tr|li|h\d)>/gi, '\n').replace(/<\/t[dh]>/gi, '\t').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\n{3,}/g, '\n\n').trim();
-/** an Outlook-friendly body: Calibri 11, tables with the navy header */
-function wrapMail(inner, logo) {
-  return `<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body lang="EN-US" style="word-wrap:break-word;background:#ffffff"><div class="WordSection1" style="font-family:Calibri,sans-serif;font-size:11pt;color:#000">${inner}${logo ? `<p style="margin:12px 0 0">${logoTag('cid:logo@mc')}</p>` : ''}</div></body></html>`;
-}
-const mP = t => `<p class="MsoNormal" style="margin:0 0 10px;font-family:Calibri,sans-serif;font-size:11pt">${t}</p>`;
+// the parts of an email's body, in the emails' card (ui3.js: cardP, cardH, cardTable, cardBand); each takes markup (names escaped)
+const mP = (t, st) => cardP(t, st);
+/** the greeting ("Dear Team Leaders,") and the closing ("Best regards,") */
+const mHi = t => `<p class="MsoNormal" style="margin:0 0 12pt 0;${CF}"><b><span style="font-size:11.5pt;color:${CARD.ink}">${t}</span></b></p>`;
+const mSign = t => `<p class="MsoNormal" style="margin:20pt 0 0 0;${CF}"><span style="font-size:10.5pt;color:${CARD.soft}">${t}</span></p>`;
+const mH = (t, note) => cardH(t, note);
+/** the status band: tone true (done, final) green, false (a deadline, for review) amber, 'late' red, 'info' blue */
+const mBand = (tone, label, value) => cardBand(tone, label, value);
+/** a table: rows of cells (markup); widths marks the columns of numbers with 'r' (centred), the others read from the left */
 function mTable(head, rows, widths) {
-  const th = t => `<td style="background:#1F3864;padding:3pt 6pt;border:solid #1F3864 1pt"><p class="MsoNormal" style="margin:0;font-family:Calibri,sans-serif"><b><span style="font-size:10pt;color:white">${t}</span></b></p></td>`;
-  const td = (t, r) => `<td style="padding:2pt 6pt;border:solid #BFBFBF 1pt${r ? ';text-align:right' : ''}"><p class="MsoNormal" style="margin:0;font-family:Calibri,sans-serif${r ? ';text-align:right' : ''}"><span style="font-size:10pt;color:black">${t}</span></p></td>`;
-  return `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:0 0 12px">${`<tr>${head.map(th).join('')}</tr>`}${rows.map(r => `<tr>${r.map((c, i) => td(c, widths && widths[i] === 'r')).join('')}</tr>`).join('')}</table>`;
+  return cardTable(head, rows.map(r => r.map(t => ({ t }))), head.map((h, i) => i).filter(i => !(widths && widths[i] === 'r')));
 }
 
 // ---------------------------------------------------------------- Outlook .msg: the body text (for the Teams Distribution email)

@@ -243,8 +243,9 @@ async function wkDownloadDeck() {
 async function wkEmail() {
   state.wk.busy = 'deck'; renderWeeklyWs();
   try {
-    const M = wkModel(), m = Weekly.email(M, wkTo(), wkCc());
-    await saveEml(`Weekly Commercial Presentation - ${Weekly.dayLong(M.w.deck)}`, { to: splitAddr(m.to), cc: splitAddr(m.cc), subject: m.subject, html: m.html, files: [{ name: m.attach, bytes: await wkDeckBytes() }] });
+    const M = wkModel(), m = Weekly.email(M, wkTo(), wkCc()), when = esc(Weekly.dayLong(M.w.deck));
+    const html = mHi(`Hi ${esc(m.first)},`) + mP('Kindly find the Weekly Commercial Presentation as attached.') + mBand('info', 'Report week', esc(Weekly.weekLabel(M.w))) + mSign('Sincerely.');
+    await saveEml(`Weekly Commercial Presentation - ${Weekly.dayLong(M.w.deck)}`, { to: splitAddr(m.to), cc: splitAddr(m.cc), subject: m.subject, html, files: [{ name: m.attach, bytes: await wkDeckBytes() }], card: { eyebrow: 'MC Workforce · Weekly', title: `Weekly Commercial Presentation · ${when}`, foot: `Member Care Performance Review · ${when}` } });
   } catch (e) { toast('Could not make the email: ' + errText(e)); }
   finally { state.wk.busy = ''; renderWeeklyWs(); }
 }

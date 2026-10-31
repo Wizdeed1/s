@@ -537,7 +537,7 @@ async function fillWorkbook(bytes, M) {
 // ---------------------------------------------------------------- the email
 function email(M, to, cc) {
   const first = String(to || '').split(/[;,]/)[0].replace(/<[^>]*>/g, '').trim().split(/\s+/)[0] || '';
-  return { to, cc, subject: 'Weekly Commercial Presentation', html: `<p>Hi ${xesc(first)},</p><p>Kindly find the Weekly Commercial Presentation as attached.</p><p>Sincerely.</p>`, attach: deckName(M.w) };
+  return { to, cc, first, subject: 'Weekly Commercial Presentation', html: `<p>Hi ${xesc(first)},</p><p>Kindly find the Weekly Commercial Presentation as attached.</p><p>Sincerely.</p>`, attach: deckName(M.w) };
 }
 
 return { BRANDS, NAME, COMPLAINT_BRANDS, weekOf, lastWeek, weekLabel, dayLong, monthLong, monthTick, monthCat, dayShort, addDays, isIso, serial, fromSerial, pct, readPct, readInt,

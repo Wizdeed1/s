@@ -13917,7 +13917,7 @@ async function fillWorkbook(bytes, M) {
 // ---------------------------------------------------------------- the email
 function email(M, to, cc) {
   const first = String(to || '').split(/[;,]/)[0].replace(/<[^>]*>/g, '').trim().split(/\s+/)[0] || '';
-  return { to, cc, subject: 'Weekly Commercial Presentation', html: `<p>Hi ${xesc(first)},</p><p>Kindly find the Weekly Commercial Presentation as attached.</p><p>Sincerely.</p>`, attach: deckName(M.w) };
+  return { to, cc, first, subject: 'Weekly Commercial Presentation', html: `<p>Hi ${xesc(first)},</p><p>Kindly find the Weekly Commercial Presentation as attached.</p><p>Sincerely.</p>`, attach: deckName(M.w) };
 }
 
 return { BRANDS, NAME, COMPLAINT_BRANDS, weekOf, lastWeek, weekLabel, dayLong, monthLong, monthTick, monthCat, dayShort, addDays, isIso, serial, fromSerial, pct, readPct, readInt,
@@ -16949,14 +16949,14 @@ async function kpiExcel(list, name, single) {
   SC.titleLogo(11, 380); sheets.push(SC);
   await save(name, new Blob([await Writer2.pack(sheets, S, {}, { logo: await xlLogo() })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
 }
+/** one person's KPI results, in the emails' card (copied for Outlook): each KPI with its ranking, then the result */
 function kpiEmailHtml(K) {
-  const r = K.res, td = (t, o = {}) => `<td style="border:solid #BFBFBF 1.0pt;padding:2pt 6pt;${o.bg ? `background:${o.bg};` : ''}"><p class="MsoNormal" style="margin:0in;${o.c ? '' : 'text-align:center;'}font-family:Calibri,sans-serif;font-size:10.5pt;${o.color ? `color:${o.color};` : ''}">${o.b ? '<b>' : ''}${esc(t)}${o.b ? '</b>' : ''}</p></td>`;
-  const lab = t => td(t, { bg: '#1F3864', color: '#FFFFFF', b: true }), rows = [];
-  rows.push([lab('Name'), td(K.m.exp, { b: true })], [lab('Team'), td(`${normSpace(K.m.p.brand)} · ${K.m.p.team}`)]);
-  for (const x of r.rows) { rows.push([lab(x.k.name), td(Kpi.fmtVal(x.k, Kpi.rankedVal(x)), { b: true })]); rows.push([lab('Ranking'), td(x.r == null ? '–' : String(x.r), { bg: '#D9D9D9' })]); }
-  rows.push([lab('Final ranking'), td(r.finalRank == null ? '–' : r.finalRank.toFixed(2), { bg: '#D9D9D9' })], [lab('Final %'), td(pct1(r.finalPct), { b: true })], [lab('Scheduled days'), td(r.sched ?? '–')], [lab('Actual days'), td(r.actual ?? '–')], [lab('Actual days %'), td(pct1(r.daysPct))], ...(srHidden() ? [] : [[lab('Incentive target'), td(r.target ?? '–')], [lab('Earned SR'), td(r.earned ?? '–', { b: true })]]));
-  const t = `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse">${rows.map(x => `<tr>${x.join('')}</tr>`).join('')}</table>`;
-  return `<html><head><meta charset="utf-8"></head><body><p class="MsoNormal" style="font-family:Calibri,sans-serif;font-size:11pt;margin:0 0 8pt"><b>KPI results – ${esc(kpiPeriod())}</b></p>${t}${state.logo && state.mailLogo ? '<p class="MsoNormal">&nbsp;</p>' + logoTag(state.logo.dataUrl) : ''}</body></html>`;
+  const r = K.res, v = t => esc(t ?? '–');
+  const kpis = cardTable(['KPI', 'Result', 'Ranking'], r.rows.map(x => [{ t: esc(x.k.name) }, { t: esc(Kpi.fmtVal(x.k, Kpi.rankedVal(x))), b: true }, { t: x.r == null ? '–' : String(x.r) }]), [0]);
+  const res = [['Final ranking', r.finalRank == null ? '–' : r.finalRank.toFixed(2)], ['Final %', pct1(r.finalPct), true], ['Scheduled days', v(r.sched)], ['Actual days', v(r.actual)], ['Actual days %', pct1(r.daysPct)], ...(srHidden() ? [] : [['Incentive target', v(r.target)], ['Earned SR', v(r.earned), true]])];
+  const b = cardP(`<b style="color:${CARD.ink}">${esc(K.m.exp)}</b> · ${esc(normSpace(K.m.p.brand))} · ${esc(K.m.p.team)}`)
+    + cardH('KPIs') + kpis + cardH('Result') + cardTable(['', 'Value'], res.map(([l, x, bold]) => [{ t: l }, { t: x, b: !!bold }]), [0]);
+  return cardMail({ eyebrow: 'MC Workforce · KPI results', title: `KPI Results · ${esc(kpiPeriod())}`, body: b, foot1: 'Member Care · Workforce Management', foot2: `KPI results · ${esc(kpiPeriod())}`, logo: cardLogo(state.logo && state.logo.dataUrl), preview: false });
 }
 const kpiEmailText = K => [`KPI results – ${kpiPeriod()}`, `Name\t${K.m.exp}`, ...K.res.rows.flatMap(x => [`${x.k.name}\t${Kpi.fmtVal(x.k, Kpi.rankedVal(x))}`, `Ranking\t${x.r ?? '–'}`]), `Final ranking\t${K.res.finalRank ?? '–'}`, `Final %\t${pct1(K.res.finalPct)}`, `Scheduled days\t${K.res.sched ?? '–'}`, `Actual days\t${K.res.actual ?? '–'}`, `Actual days %\t${pct1(K.res.daysPct)}`, ...(srHidden() ? [] : [`Incentive target\t${K.res.target ?? '–'}`, `Earned SR\t${K.res.earned ?? '–'}`])].join('\r\n');
 async function kpiTemplate() {
@@ -17666,18 +17666,22 @@ function mailText(md) {
 }
 // ---------------------------------------------------------------- the monthly emails' card look
 // After the WFM team's notification emails: a white card on a light ground, a navy band with the email's name, a status band
-// (amber while it is for review, green when it is final), tables with a navy heading row and a light footer. Tables and inline
-// styles only, so Outlook shows it as designed. The words are the same as before; "Classic look" in the form keeps the old layout.
+// (amber while it is for review, green when it is final, red when it is late, blue to note), tables with a navy heading row and a
+// light footer. Tables and inline styles only, so Outlook shows it as designed. Every email the tool makes is in it (saveEml wraps
+// the others); "Classic look" in the form keeps the old layout of these two.
 const CARD = { ground: '#F1F5F9', line: '#E2E8F0', navy: '#0F172A', sky: '#38BDF8', ink: '#0F172A', text: '#475569', soft: '#334155', muted: '#64748B', faint: '#94A3B8', foot: '#FAFAFA', zebra: '#F8FAFC' };
 const CF = "font-family:Aptos,'Segoe UI',Calibri,Arial,sans-serif";
-const cardTone = fin => (fin ? { bg: '#F0FDF4', line: '#DCFCE7', bar: '#16A34A', label: '#15803D', value: '#166534', mark: '&#10003;' } : { bg: '#FFFBEB', line: '#FEF3C7', bar: '#D97706', label: '#B45309', value: '#92400E', mark: '!' });
+/** the status band's colours: true (final, done) green, false (for review, a deadline) amber, 'late' red, 'info' blue */
+const cardTone = fin => (fin === 'late' ? { bg: '#FEF2F2', line: '#FEE2E2', bar: '#DC2626', label: '#B91C1C', value: '#991B1B', mark: '!' }
+  : fin === 'info' ? { bg: '#EFF6FF', line: '#DBEAFE', bar: '#2563EB', label: '#1D4ED8', value: '#1E3A8A', mark: 'i' }
+  : fin ? { bg: '#F0FDF4', line: '#DCFCE7', bar: '#16A34A', label: '#15803D', value: '#166534', mark: '&#10003;' } : { bg: '#FFFBEB', line: '#FEF3C7', bar: '#D97706', label: '#B45309', value: '#92400E', mark: '!' });
 const cardP = (inner, st = '') => `<p class="MsoNormal" style="margin:0 0 10pt 0;font-size:11.5pt;line-height:150%;color:${CARD.text};${CF};${st}">${inner}</p>`;
 const cardH = (t, note) => `<p class="MsoNormal" style="margin:20pt 0 8pt 0;${CF}"><b><span style="font-size:12.5pt;color:${CARD.ink}">${t}</span></b>${note ? `<span style="font-size:10pt;color:${CARD.muted}">&nbsp;&nbsp;·&nbsp;&nbsp;${note}</span>` : ''}</p>`;
-/** a table: head is a list of headings, rows a list of cells { t, left, b, absent }; left lists the columns read from the left */
+/** a table: head is a list of headings, rows a list of cells { t, left, b, absent, h (a taller row), w (a wider column) }; left lists the columns read from the left */
 function cardTable(head, rows, left = [1]) {
   const al = i => (left.includes(i) ? '' : 'text-align:center;');
   const th = (h, i) => `<td nowrap style="background:${CARD.navy};border:none;padding:6pt 10pt"><p class="MsoNormal" style="margin:0;${al(i)}${CF}"><b><span style="font-size:9.5pt;color:#FFFFFF">${h}</span></b></p></td>`;
-  const td = (c, i, z) => `<td nowrap style="${c.absent ? 'background:#FEE2E2;' : z ? `background:${CARD.zebra};` : 'background:#FFFFFF;'}border:none;border-bottom:solid ${CARD.line} 1.0pt;padding:5pt 10pt"><p class="MsoNormal" style="margin:0;${al(i)}${CF}">${c.b || c.absent ? '<b>' : ''}<span style="font-size:10pt;color:${c.absent ? '#B91C1C' : CARD.ink}">${c.t}</span>${c.b || c.absent ? '</b>' : ''}</p></td>`;
+  const td = (c, i, z) => `<td nowrap style="${c.absent ? 'background:#FEE2E2;' : z ? `background:${CARD.zebra};` : 'background:#FFFFFF;'}border:none;border-bottom:solid ${CARD.line} 1.0pt;padding:5pt 10pt${c.h ? `;height:${c.h}` : ''}${c.w ? `;width:${c.w}` : ''}"><p class="MsoNormal" style="margin:0;${al(i)}${CF}">${c.b || c.absent ? '<b>' : ''}<span style="font-size:10pt;color:${c.absent ? '#B91C1C' : CARD.ink}">${c.t}</span>${c.b || c.absent ? '</b>' : ''}</p></td>`;
   return `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:solid ${CARD.line} 1.0pt"><tr>${head.map(th).join('')}</tr>${rows.map((r, j) => `<tr>${r.map((c, i) => td(c, i, j % 2 === 1)).join('')}</tr>`).join('')}</table>`;
 }
 /** the status band: what stage this email is, and the one thing to know (the deadline, or that it is final) */
@@ -20753,26 +20757,30 @@ const contactsNow = () => ({ ...CONTACTS0, ...(state.contacts || {}) });
 const splitAddr = s => String(s || '').split(/[;,\n]+/).map(normSpace).filter(Boolean);
 /** "Name <email>" for a roster person, or '' when the roster has no email for them */
 function addrOf(pid) { const p = state.roster.find(x => x._id === pid); if (!p || !normSpace(p.email)) return ''; return `${gname(effP(p._id) || p) || p.name} <${normSpace(p.email)}>`; }
-/** a ready-to-send Outlook draft (.eml, opens as a new message) with any attachments; no logo and no name under the text,
- *  because Outlook adds the company signature to every new email */
-async function saveEml(name, { to, cc, subject, html, text, files }) {
-  const logo = null, fn = name.replace(/[\\/:*?"<>|]/g, '') + '.eml';
-  const bytes = enc8.encode(emlFile({ to: to || [], cc: cc || [], subject, text: text || htmlText(html), html: wrapMail(html, !!logo), attach: files || [], logo }));
+/** a ready-to-send Outlook draft (.eml, opens as a new message) with any attachments, in the emails' card (cardMail): card is
+ *  { eyebrow, title, foot } (markup: names escaped), the subject when there is none; no logo and no name under the text, because
+ *  Outlook adds the company signature to every new email */
+async function saveEml(name, { to, cc, subject, html, text, files, card }) {
+  const logo = null, fn = name.replace(/[\\/:*?"<>|]/g, '') + '.eml', cd = card || {};
+  const body = cardMail({ eyebrow: cd.eyebrow || 'MC Workforce', title: cd.title || esc(subject), body: html, foot1: 'Member Care · Workforce Management', foot2: cd.foot || esc(subject), logo: '', preview: false });
+  const bytes = enc8.encode(emlFile({ to: to || [], cc: cc || [], subject, text: text || htmlText(html), html: body, attach: files || [], logo }));
   let c = await saveRaw(fn, new Blob([bytes], { type: 'message/rfc822' }));
   if (c === 'rejected_extension' || c === 'extension_not_enabled') { const zn = fn.replace(/\.eml$/, '.zip'); c = await saveRaw(zn, new Blob([await Core.writeZip([{ name: fn, data: bytes }])], { type: 'application/zip' })); if (c === 'ok') { toast(`Saved ${zn}: the .eml is inside the zip.`); return true; } }
   toast(c === 'ok' ? `Saved ${fn}. Open it for a ready-to-send Outlook draft.` : saveMsg(c, fn));
   return c === 'ok';
 }
 const htmlText = h => String(h || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|tr|li|h\d)>/gi, '\n').replace(/<\/t[dh]>/gi, '\t').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\n{3,}/g, '\n\n').trim();
-/** an Outlook-friendly body: Calibri 11, tables with the navy header */
-function wrapMail(inner, logo) {
-  return `<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body lang="EN-US" style="word-wrap:break-word;background:#ffffff"><div class="WordSection1" style="font-family:Calibri,sans-serif;font-size:11pt;color:#000">${inner}${logo ? `<p style="margin:12px 0 0">${logoTag('cid:logo@mc')}</p>` : ''}</div></body></html>`;
-}
-const mP = t => `<p class="MsoNormal" style="margin:0 0 10px;font-family:Calibri,sans-serif;font-size:11pt">${t}</p>`;
+// the parts of an email's body, in the emails' card (ui3.js: cardP, cardH, cardTable, cardBand); each takes markup (names escaped)
+const mP = (t, st) => cardP(t, st);
+/** the greeting ("Dear Team Leaders,") and the closing ("Best regards,") */
+const mHi = t => `<p class="MsoNormal" style="margin:0 0 12pt 0;${CF}"><b><span style="font-size:11.5pt;color:${CARD.ink}">${t}</span></b></p>`;
+const mSign = t => `<p class="MsoNormal" style="margin:20pt 0 0 0;${CF}"><span style="font-size:10.5pt;color:${CARD.soft}">${t}</span></p>`;
+const mH = (t, note) => cardH(t, note);
+/** the status band: tone true (done, final) green, false (a deadline, for review) amber, 'late' red, 'info' blue */
+const mBand = (tone, label, value) => cardBand(tone, label, value);
+/** a table: rows of cells (markup); widths marks the columns of numbers with 'r' (centred), the others read from the left */
 function mTable(head, rows, widths) {
-  const th = t => `<td style="background:#1F3864;padding:3pt 6pt;border:solid #1F3864 1pt"><p class="MsoNormal" style="margin:0;font-family:Calibri,sans-serif"><b><span style="font-size:10pt;color:white">${t}</span></b></p></td>`;
-  const td = (t, r) => `<td style="padding:2pt 6pt;border:solid #BFBFBF 1pt${r ? ';text-align:right' : ''}"><p class="MsoNormal" style="margin:0;font-family:Calibri,sans-serif${r ? ';text-align:right' : ''}"><span style="font-size:10pt;color:black">${t}</span></p></td>`;
-  return `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:0 0 12px">${`<tr>${head.map(th).join('')}</tr>`}${rows.map(r => `<tr>${r.map((c, i) => td(c, widths && widths[i] === 'r')).join('')}</tr>`).join('')}</table>`;
+  return cardTable(head, rows.map(r => r.map(t => ({ t }))), head.map((h, i) => i).filter(i => !(widths && widths[i] === 'r')));
 }
 
 // ---------------------------------------------------------------- Outlook .msg: the body text (for the Teams Distribution email)
@@ -21901,8 +21909,9 @@ async function finishTeam(k) {
   const pids = team.map(p => p._id).filter(agentHasAccount); if (pids.length) publishMonthToAgents(k, pids).catch(() => {});
   const C = contactsNow(), to = splitAddr(C.senior), cc = [addrOf(u.pid)].filter(Boolean);
   const rows = st.sort((a, b) => byExp({ exp: gname(a.p) }, { exp: gname(b.p) })).map(x => [esc(gname(effP(x.p._id) || x.p) || x.p.name), esc((FORM_STATUS.find(z => z[0] === x.os.st) || [, 'None'])[1]), esc(x.os.o && x.os.o.date ? Forms.fmtDate(x.os.o.date) : ''), x.os.o && sigState(x.os.o) === 'signed' ? 'Yes' : 'No']);
-  const html = mP(`Dear ${esc(firstName(splitAddr(C.senior)[0] || '') || 'Mohammed')},`) + mP(`I have finished the one-to-ones for my team for <b>${esc(ymLabel(k))}</b>: ${held} of ${team.length} held${signed ? `, ${signed} already signed by the agent in the tool` : ''}.`) + mTable(['Agent', 'One-to-one', 'Date', 'Signed by the agent'], rows) + mP('Everything is in the MC tool.') + mP('Best regards,');
-  await saveEml(`${body.name} - one-to-ones done - ${ymLabel(k)}`, { to, cc, subject: `${body.name} | ${ymLabel(k)} one-to-ones done (${held}/${team.length})`, html });
+  const html = mHi(`Dear ${esc(firstName(splitAddr(C.senior)[0] || '') || 'Mohammed')},`) + mP(`I have finished the one-to-ones for my team for <b>${esc(ymLabel(k))}</b>: ${held} of ${team.length} held${signed ? `, ${signed} already signed by the agent in the tool` : ''}.`)
+    + mBand(true, 'One-to-ones held', `${held} of ${team.length}${signed ? ` · ${signed} signed` : ''}`) + mH('My team', plural(team.length, 'agent')) + mTable(['Agent', 'One-to-one', 'Date', 'Signed by the agent'], rows) + mP('Everything is in the MC tool.', 'margin-top:12pt') + mSign('Best regards,');
+  await saveEml(`${body.name} - one-to-ones done - ${ymLabel(k)}`, { to, cc, subject: `${body.name} | ${ymLabel(k)} one-to-ones done (${held}/${team.length})`, html, card: { eyebrow: 'MC Workforce · One-to-ones', title: `${esc(body.name)} · One-to-ones Done`, foot: `One-to-ones · ${esc(ymLabel(k))}` } });
   return 'ok';
 }
 async function reopenTeam(k) {
@@ -21919,8 +21928,9 @@ async function mailFormToAgent(f) {
   if (!to) toast(`${f.agent.name} has no email in the roster yet: the draft has no recipient.`);
   try {
     const bytes = await formPdf(f), first = String(f.agent.name || '').split(' ')[0];
-    const html = mP(`Dear ${esc(first)},`) + mP(`Please find attached your ${f.kind === 'final' ? 'final form' : 'one-to-one form'} for <b>${esc(f.period || '')}</b>.`) + mP(agentHasAccount(f.pid) ? (f.verdict ? 'My final comment is on it: please read it and sign it on your own page in the MC tool.' : 'Please fill in your part on your own page in the MC tool and send it to me.') : 'Please read it and let me know if anything is not right.') + mP('Best regards,');
-    await saveEml(`${f.kind === 'final' ? 'Final form' : 'One-to-one'} - ${f.agent.name} - ${f.period}`, { to: to ? [to] : [], cc, subject: `Your ${f.kind === 'final' ? 'final form' : 'one-to-one'} | ${f.period}`, html, files: [{ name: formFile(f), bytes, type: 'application/pdf' }] });
+    const html = mHi(`Dear ${esc(first)},`) + mP(`Please find attached your ${f.kind === 'final' ? 'final form' : 'one-to-one form'} for <b>${esc(f.period || '')}</b>.`) + mP(agentHasAccount(f.pid) ? (f.verdict ? 'My final comment is on it: please read it and sign it on your own page in the MC tool.' : 'Please fill in your part on your own page in the MC tool and send it to me.') : 'Please read it and let me know if anything is not right.')
+      + mBand(false, agentHasAccount(f.pid) ? (f.verdict ? 'To read and sign' : 'To fill in') : 'To read', esc(f.period || '')) + mSign('Best regards,');
+    await saveEml(`${f.kind === 'final' ? 'Final form' : 'One-to-one'} - ${f.agent.name} - ${f.period}`, { to: to ? [to] : [], cc, subject: `Your ${f.kind === 'final' ? 'final form' : 'one-to-one'} | ${f.period}`, html, files: [{ name: formFile(f), bytes, type: 'application/pdf' }], card: { eyebrow: `MC Workforce · ${f.kind === 'final' ? 'Final form' : 'One-to-one'}`, title: `Your ${f.kind === 'final' ? 'Final Form' : 'One-to-one'} · ${esc(f.period || '')}`, foot: `${esc(f.agent.name || '')} · ${esc(f.period || '')}` } });
   } catch (e) { toast('Could not make the email: ' + (e && e.message ? e.message : e)); }
 }
 /** a line in the month's cycle log (the senior manager sees it) */
@@ -22120,24 +22130,26 @@ function resultsList(k, onlyEligible) {
 async function mail4(kind) {
   const k = wsMonthNow(); if (!k || !canCycle()) return;
   const C = cycleOf(k), dl = C.deadline, R = cycleRows(k), con = contactsNow(), me = whoNow(), M = ymLabel(k);
-  const sign = mP('Thanks and regards,');   // the name and the logo come with the Outlook signature
+  const sign = mSign('Thanks and regards,');   // the name and the logo come with the Outlook signature
   let ok = false;
   if (kind === 'ready') {
     if (!dl) { toast('Set the deadline first (One-to-ones due, above).'); $('cycleBar').querySelector('[data-deadline]').focus(); return; }
     const to = supEmails(R); if (!to.length) toast('No supervisor has an email in the roster yet: the draft has no recipient.');
     const rows = R.map(r => { const map = rowsByPid(k), L = r.team.map(p => map.get(p._id)).filter(Boolean); return [esc(r.name), String(r.team.length), pct1(mean(L.map(x => x.fin))), pct(mean(L.map(x => x.adh)), 1)]; });
-    const html = mP('Dear Team Leaders,') + mP(`The <b>${esc(M)}</b> results are ready in the MC tool. Please hold the one-to-one with each of your agents and record it in the tool by <b>${esc(Forms.fmtDate(dl))}</b>. Agents with an account read and sign their form on their own page.`)
-      + mP('When your whole team is done, press <b>Finish my team</b> on your Team page; I am told straight away.') + mTable(['Team leader', 'Agents', 'Team final %', 'Team adherence'], rows, ['', 'r', 'r', 'r']) + sign;
-    ok = await saveEml(`One-to-ones ready - ${M}`, { to, cc: splitAddr(con.wfm), subject: `MC ${M} | One-to-ones are ready (deadline ${Forms.fmtDate(dl)})`, html });
+    const html = mHi('Dear Team Leaders,') + mP(`The <b>${esc(M)}</b> results are ready in the MC tool. Please hold the one-to-one with each of your agents and record it in the tool by <b>${esc(Forms.fmtDate(dl))}</b>. Agents with an account read and sign their form on their own page.`)
+      + mP('When your whole team is done, press <b>Finish my team</b> on your Team page; I am told straight away.') + mBand(false, 'One-to-ones due', esc(Forms.fmtDate(dl)))
+      + mH('The teams', plural(R.length, 'team leader')) + mTable(['Team leader', 'Agents', 'Team final %', 'Team adherence'], rows, ['', 'r', 'r', 'r']) + sign;
+    ok = await saveEml(`One-to-ones ready - ${M}`, { to, cc: splitAddr(con.wfm), subject: `MC ${M} | One-to-ones are ready (deadline ${Forms.fmtDate(dl)})`, html, card: { eyebrow: 'MC Workforce · One-to-ones', title: `One-to-ones Are Ready · ${esc(M)}`, foot: `One-to-ones · ${esc(M)}` } });
   }
   if (kind === 'warn') {
     const L = R.filter(r => !r.done); if (!L.length) { toast('Every supervisor has finished.'); return; }
     const to = supEmails(L); if (!to.length) toast('These supervisors have no email in the roster: the draft has no recipient.');
     const days = dl ? Math.ceil((new Date(dl + 'T23:59:59') - Date.now()) / 86400000) : null;
-    const html = mP('Dear Team Leaders,') + mP(`A reminder that the <b>${esc(M)}</b> one-to-ones are ${dl ? (days < 0 ? `<b>overdue since ${esc(Forms.fmtDate(dl))}</b>` : `due on <b>${esc(Forms.fmtDate(dl))}</b>${days <= 1 ? ' (tomorrow at the latest)' : ''}`) : 'due'}. Your team is not finished in the MC tool yet:`)
-      + mTable(['Team leader', 'One-to-ones held', 'Signed by the agent'], L.map(r => [esc(r.name), `${r.held} of ${r.team.length}`, String(r.signed)]), ['', 'r', 'r'])
-      + mP('Please finish them and press <b>Finish my team</b> on your Team page.') + sign;
-    ok = await saveEml(`Deadline reminder - ${M}`, { to, cc: splitAddr(con.wfm), subject: `Reminder | ${M} one-to-ones ${dl ? (days < 0 ? 'overdue' : `due ${Forms.fmtDate(dl)}`) : 'due'}`, html });
+    const html = mHi('Dear Team Leaders,') + mP(`A reminder that the <b>${esc(M)}</b> one-to-ones are ${dl ? (days < 0 ? `<b>overdue since ${esc(Forms.fmtDate(dl))}</b>` : `due on <b>${esc(Forms.fmtDate(dl))}</b>${days <= 1 ? ' (tomorrow at the latest)' : ''}`) : 'due'}. Your team is not finished in the MC tool yet:`)
+      + (dl ? mBand(days < 0 ? 'late' : false, days < 0 ? 'Overdue since' : 'One-to-ones due', esc(Forms.fmtDate(dl))) : '')
+      + mH('Not finished yet', plural(L.length, 'team leader')) + mTable(['Team leader', 'One-to-ones held', 'Signed by the agent'], L.map(r => [esc(r.name), `${r.held} of ${r.team.length}`, String(r.signed)]), ['', 'r', 'r'])
+      + mP('Please finish them and press <b>Finish my team</b> on your Team page.', 'margin-top:12pt') + sign;
+    ok = await saveEml(`Deadline reminder - ${M}`, { to, cc: splitAddr(con.wfm), subject: `Reminder | ${M} one-to-ones ${dl ? (days < 0 ? 'overdue' : `due ${Forms.fmtDate(dl)}`) : 'due'}`, html, card: { eyebrow: `MC Workforce · ${dl && days < 0 ? 'Overdue' : 'Reminder'}`, title: `One-to-ones ${dl && days < 0 ? 'Overdue' : 'Due'} · ${esc(M)}`, foot: `One-to-ones · ${esc(M)}` } });
   }
   if (kind === 'final') {
     const L = incRows(k).filter(x => x.pid); if (!L.length) { toast('The incentive list is empty: add the people below.'); return; }
@@ -22146,13 +22158,13 @@ async function mail4(kind) {
     const tot = L.reduce((a, x) => a + (finalEarned(x) || 0), 0), title = finalTitle(k), signers = signersNow();   // the total is the column's sum
     let bytes = null; try { bytes = await finalFormXlsx(title, L, tot, signers); } catch (e) { toast('Could not make the Excel file: ' + (e && e.message ? e.message : e)); }
     const to = splitAddr(con.form); if (!to.length) toast('No address for the final result form yet (Email addresses, below): the draft has no recipient.');
-    ok = await saveEml(title, { to, cc: [], subject: title, html: finalFormHtml(title, L, tot, signers), files: bytes ? [{ name: `${fileSafe(title)}.xlsx`, bytes }] : [] });
+    ok = await saveEml(title, { to, cc: [], subject: title, html: finalFormHtml(title, L, tot, signers), files: bytes ? [{ name: `${fileSafe(title)}.xlsx`, bytes }] : [], card: { eyebrow: 'MC Incentive · Final result', title: `Final Result · ${esc(M)} Incentive`, foot: `Final result · ${esc(M)} incentive` } });
   }
   if (kind === 'review') {   // as the senior manager writes it: "Hi All", the people on the incentive list who earned it
     const L = incRows(k).filter(x => x.pid && (finalEarned(x) || 0) > 0); if (!L.length) { toast(`Nobody on the incentive list has an earned SR for ${M} yet.`); return; }
     const [y, m] = k.split('-').map(Number), label = `${MON[m - 1]} ${y}`;
     let bytes = null; try { bytes = await reviewXlsx(L); } catch (e) { toast('Could not make the Excel file: ' + (e && e.message ? e.message : e)); }
-    ok = await saveEml(`Results for review - ${M}`, { to: splitAddr(con.vp), cc: splitAddr(con.mgmt), subject: `MC Incentive ${M} | For review`, html: reviewMailHtml(label, L), files: bytes ? [{ name: `MC Incentive - ${M} - for review.xlsx`, bytes }] : [] });
+    ok = await saveEml(`Results for review - ${M}`, { to: splitAddr(con.vp), cc: splitAddr(con.mgmt), subject: `MC Incentive ${M} | For review`, html: reviewMailHtml(label, L), files: bytes ? [{ name: `MC Incentive - ${M} - for review.xlsx`, bytes }] : [], card: { eyebrow: 'MC Incentive · For review', title: `Incentive Results · ${esc(label)}`, foot: `Incentive results · ${esc(label)}` } });
   }
   if (ok) cycleUpdate(k, c => { c.sent = { ...(c.sent || {}), [kind]: { at: new Date().toISOString(), by: me } }; }, `Prepared the "${{ ready: 'one-to-ones ready', warn: 'deadline reminder', review: 'results for review', final: 'final result form' }[kind]}" email`);
 }
@@ -22227,14 +22239,9 @@ function incListHtml(k) {
 }
 /** the results for review, as the senior manager writes it: "Hi All", the month, the red-header table */
 function reviewMailHtml(label, L) {
-  const P = t => `<p class="MsoNormal" style="margin:0 0 10.0pt;font-family:Calibri,sans-serif;font-size:11.0pt">${t}</p>`;
-  const W = [91.2, 242.65, 134.65, 71.0], B = 'solid windowtext 1.0pt', px = pt => Math.round(pt * 4 / 3);
-  const cell = (i, inner, o = {}) => `<td width="${px(W[i])}" nowrap valign="bottom" style="width:${W[i]}pt;border-top:${o.top ? B : 'none'};border-left:${i === 0 ? B : 'none'};border-bottom:${B};border-right:${B};${o.bg ? `background:${o.bg};` : ''}padding:0in 5.4pt 0in 5.4pt;height:${o.h || '.2in'}"><p class="MsoNormal"${o.c ? ' align="center" style="margin:0;text-align:center"' : ' style="margin:0"'}>${inner}</p></td>`;
-  const sp = (t, sz, col, b) => `${b ? '<b>' : ''}<span style="font-size:${sz}.0pt;font-family:&quot;Calibri&quot;,sans-serif;color:${col}">${t}</span>${b ? '</b>' : ''}`;
-  const head = `<tr style="height:15.6pt">${['ID', 'Name', 'Final %', 'Earned SR'].map((t, i) => cell(i, sp(t, 12, 'white', true), { c: true, bg: '#C00000', h: '15.6pt', top: true })).join('')}</tr>`;
-  const rows = L.map(x => `<tr style="height:.2in">${cell(0, sp(esc(x.id), 11, 'black'))}${cell(1, sp(esc(x.name), 11, 'black'))}${cell(2, sp(x.fin == null ? '&nbsp;' : Math.round(x.fin * 100) + '%', 11, 'black'), { c: true })}${cell(3, sp(String(finalEarned(x)), 11, 'black'), { c: true })}</tr>`).join('');
-  return P('Hi All,') + P('Hope this email finds you well') + P(`Kindly find attached and below incentive results for all Member Care Staff for <b>${esc(label)} :</b>`)
-    + `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="${px(539.5)}" style="width:539.5pt;border-collapse:collapse">${head}${rows}</table><p class="MsoNormal">&nbsp;</p>`;
+  return mHi('Hi All,') + mP('Hope this email finds you well') + mP(`Kindly find attached and below incentive results for all Member Care Staff for <b>${esc(label)}</b>:`)
+    + mBand(false, 'For review', esc(label)) + mH('Incentive results', plural(L.length, 'person', 'people'))
+    + cardTable(['ID', 'Name', 'Final %', 'Earned SR'], L.map(x => [{ t: esc(x.id) }, { t: esc(x.name) }, { t: x.fin == null ? '&nbsp;' : Math.round(x.fin * 100) + '%' }, { t: String(finalEarned(x)), b: true }]));
 }
 /** the same table as an Excel file */
 async function reviewXlsx(L) {
@@ -22249,9 +22256,9 @@ async function reviewXlsx(L) {
 }
 
 // ---------------------------------------------------------------- the final result form, as the senior manager sends it
-// A range pasted from his Excel: "Final result For Aug. 2026 Incentive", the red header (ID, Name, Final %, Earned SR), one row a
-// Virgin person with the final % and the earned SR, the month's total in red, then the table the VP, HR, Finance and the CEO sign.
-// The same form goes with it as an Excel file (same columns, widths, colours and borders).
+// His Excel form, "Final result For Aug. 2026 Incentive": the red header (ID, Name, Final %, Earned SR), one row a Virgin person
+// with the final % and the earned SR, the month's total in red, then the table the VP, HR, Finance and the CEO sign. It goes as an
+// Excel file (same columns, widths, colours and borders); the email shows the same rows in the emails' card.
 const SIGNERS0 = [['Rasha Mogaddam', 'VP-Group Member Care'], ['Ahmed Alremali', 'HR Director'], ['Islam Aref', 'Finance Director'], ['Yaarob AlSayegh', 'CEO']];
 function signersNow() { const L = String(contactsNow().signers || '').split('\n').map(l => l.split('|').map(normSpace)).filter(x => x[0]); return L.length ? L.map(x => [x[0], x[1] || '']) : SIGNERS0; }
 const signRows = i => (i < 2 ? 2 : 3);   // as in his form: two rows for the first two, three for the others
@@ -22260,27 +22267,10 @@ function finalTitle(k) { const [y, m] = k.split('-').map(Number), mo = MON[m - 1
 const finalEarned = x => (x.el && !x.el.ok ? 0 : x.earned == null ? null : Math.round(x.earned));
 const finalId = id => (/^[1-9]\d{0,14}$/.test(String(id || '')) ? Number(id) : String(id || ''));
 function finalFormHtml(title, L, tot, signers) {
-  const W = [91.2, 242.65, 134.65, 71.0, 27.3], B = 'solid windowtext 1.0pt', RED = '#C00000', NB = '&nbsp;', px = pt => Math.round(pt * 4 / 3);
-  const cell = (i, inner, o = {}) => {
-    const n = o.cs || 1, w = +W.slice(i, i + n).reduce((a, b) => a + b, 0).toFixed(2);
-    return `<td width="${px(w)}" nowrap${n > 1 ? ` colspan="${n}"` : ''}${o.rs > 1 ? ` rowspan="${o.rs}"` : ''}${o.va ? '' : ' valign="bottom"'} style="width:${w}pt;border-top:none;border-left:${i === 0 ? B : 'none'};border-bottom:${B};border-right:${B};${o.bg ? `background:${o.bg};` : ''}padding:0in 5.4pt 0in 5.4pt;height:${o.h || '.2in'}"><p class="MsoNormal"${o.c ? ' align="center" style="margin:0;text-align:center"' : ' style="margin:0"'}>${inner}</p></td>`;
-  };
-  const sp = (t, ff, sz, col, b) => `${b ? '<b>' : ''}<span style="font-size:${sz}.0pt;font-family:&quot;${ff}&quot;,sans-serif;color:${col}">${t}</span>${b ? '</b>' : ''}`;
-  const cal = (t, sz = 11, col = 'black', b = false) => sp(t, 'Calibri', sz, col, b), ver = (t, sz, col = 'black', b = false) => sp(t, 'Verdana', sz, col, b);
-  const gap = h => `<td width="1" style="width:.75pt;padding:0in 0in 0in 0in;height:${h}"></td>`;   // the narrow column Excel adds when it is pasted
-  const R = [];
-  R.push(`<tr style="height:18.75pt"><td width="${px(566.8)}" nowrap colspan="5" valign="bottom" style="width:566.8pt;background:white;padding:0in 5.4pt 0in 5.4pt;height:18.75pt"><p class="MsoNormal" align="center" style="margin:0;text-align:center">${cal(esc(title), 14, 'black', true)}</p></td>${gap('18.75pt')}</tr>`);
-  R.push(`<tr style="height:15.6pt">${['ID', 'Name', 'Final %', 'Earned SR', ''].map((t, i) => cell(i, cal(t ? esc(t) : NB, 12, 'white', true), { c: true, bg: RED, h: '15.6pt' })).join('')}${gap('15.6pt')}</tr>`);
-  for (const x of L) R.push(`<tr style="height:.2in">${cell(0, ver(esc(x.id), 10), { c: true })}${cell(1, cal(esc(x.name)), { bg: 'white' })}${cell(2, cal(x.fin == null ? NB : Math.round(x.fin * 100) + '%'), { c: true })}${cell(3, cal(finalEarned(x) == null ? NB : String(finalEarned(x))), { c: true })}${cell(4, cal(NB), { c: true })}${gap('.2in')}</tr>`);
-  R.push(`<tr style="height:15.6pt">${cell(0, cal(NB, 12, 'white', true), { cs: 3, c: true, bg: RED, h: '15.6pt' })}${cell(3, cal(Math.round(tot).toLocaleString('en-US'), 12, 'white', true), { c: true, bg: RED, h: '15.6pt' })}${cell(4, cal(NB), { h: '15.6pt' })}${gap('15.6pt')}</tr>`);
-  R.push(`<tr style="height:.2in">${[0, 1, 2, 3, 4].map(i => cell(i, cal(NB), { c: true })).join('')}${gap('.2in')}</tr>`);
-  R.push(`<tr style="height:.2in">${cell(0, ver(NB, 8, 'white', true), { cs: 2, c: true, bg: RED })}${cell(2, ver('Designation', 8, 'white', true), { bg: RED })}${cell(3, ver('Signature', 8, 'white', true), { c: true, bg: RED })}${cell(4, ver('Date', 8, 'white', true), { c: true, bg: RED })}${gap('.2in')}</tr>`);
-  signers.forEach(([n, d], i) => {
-    const rs = signRows(i);
-    R.push(`<tr style="height:.2in">${cell(0, ver(esc(n), 8, 'black', true), { cs: 2, rs, c: true, va: 1 })}${cell(2, ver(esc(d), 8, 'black', true), { rs, c: true, va: 1 })}${cell(3, ver(NB, 8), { rs, c: true })}${cell(4, ver(NB, 8), { rs, c: true })}${gap('.2in')}</tr>`);
-    for (let j = 1; j < rs; j++) R.push(`<tr style="height:.2in">${gap('.2in')}</tr>`);
-  });
-  return `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="${px(567.35)}" style="width:567.35pt;border-collapse:collapse">${R.join('')}</table><p class="MsoNormal">&nbsp;</p><p class="MsoNormal">&nbsp;</p>`;
+  const NB = '&nbsp;', rows = L.map(x => [{ t: esc(x.id) }, { t: esc(x.name) }, { t: x.fin == null ? NB : Math.round(x.fin * 100) + '%' }, { t: finalEarned(x) == null ? NB : String(finalEarned(x)), b: true }]);
+  rows.push([{ t: NB }, { t: 'Total', b: true }, { t: NB }, { t: Math.round(tot).toLocaleString('en-US'), b: true }]);
+  return mBand(true, 'Final result', esc(title)) + mH('Incentive results', plural(L.length, 'person', 'people')) + cardTable(['ID', 'Name', 'Final %', 'Earned SR'], rows)
+    + mH('Signatures') + cardTable(['Name', 'Designation', 'Signature', 'Date'], signers.map(([n, d]) => [{ t: esc(n), b: true }, { t: esc(d) }, { t: NB, h: '30pt', w: '130pt' }, { t: NB, w: '70pt' }]), [0, 1]);
 }
 /** the same form as an Excel file: Sheet1, A1:E1 title, red header, the people, the total, the signature table */
 async function finalFormXlsx(title, L, tot, signers) {
@@ -22577,8 +22567,9 @@ async function mailSigned() {
   if (!me && !spv) toast('There is no email for you or your supervisor in the roster yet: add the recipients in Outlook.');
   try {
     const bytes = await formPdf(f), first = String(P.spvName || '').split(' ')[0] || 'Team Leader';
-    const html = mP(`Dear ${esc(first)},`) + mP(`Please find attached my signed ${f.kind === 'final' ? 'final form' : 'one-to-one form'} for <b>${esc(f.period || '')}</b>, signed in the MC tool on ${esc(fmtWhen(M.sigs[f.id].at))}.`) + mP('Best regards,');
-    await saveEml(`Signed ${f.kind === 'final' ? 'final form' : 'one-to-one'} - ${f.period}`, { to: [me].filter(Boolean), cc: [spv].filter(Boolean), subject: `Signed ${f.kind === 'final' ? 'final form' : 'one-to-one'} | ${P.name || f.agent.name} | ${f.period}`, html, files: [{ name: formFile(f).replace(/\.pdf$/, ' - signed.pdf'), bytes, type: 'application/pdf' }] });
+    const html = mHi(`Dear ${esc(first)},`) + mP(`Please find attached my signed ${f.kind === 'final' ? 'final form' : 'one-to-one form'} for <b>${esc(f.period || '')}</b>, signed in the MC tool on ${esc(fmtWhen(M.sigs[f.id].at))}.`)
+      + mBand(true, 'Signed', esc(fmtWhen(M.sigs[f.id].at))) + mSign('Best regards,');
+    await saveEml(`Signed ${f.kind === 'final' ? 'final form' : 'one-to-one'} - ${f.period}`, { to: [me].filter(Boolean), cc: [spv].filter(Boolean), subject: `Signed ${f.kind === 'final' ? 'final form' : 'one-to-one'} | ${P.name || f.agent.name} | ${f.period}`, html, files: [{ name: formFile(f).replace(/\.pdf$/, ' - signed.pdf'), bytes, type: 'application/pdf' }], card: { eyebrow: 'MC Workforce · Signed', title: `Signed ${f.kind === 'final' ? 'Final Form' : 'One-to-one'} · ${esc(f.period || '')}`, foot: `${esc(P.name || f.agent.name || '')} · ${esc(f.period || '')}` } });
   } catch (e) { toast('Could not make the email: ' + (e && e.message ? e.message : e)); }
 }
 /** the signature that goes on a form's PDF: only when the agent signed this very version */
@@ -24162,8 +24153,9 @@ async function wkDownloadDeck() {
 async function wkEmail() {
   state.wk.busy = 'deck'; renderWeeklyWs();
   try {
-    const M = wkModel(), m = Weekly.email(M, wkTo(), wkCc());
-    await saveEml(`Weekly Commercial Presentation - ${Weekly.dayLong(M.w.deck)}`, { to: splitAddr(m.to), cc: splitAddr(m.cc), subject: m.subject, html: m.html, files: [{ name: m.attach, bytes: await wkDeckBytes() }] });
+    const M = wkModel(), m = Weekly.email(M, wkTo(), wkCc()), when = esc(Weekly.dayLong(M.w.deck));
+    const html = mHi(`Hi ${esc(m.first)},`) + mP('Kindly find the Weekly Commercial Presentation as attached.') + mBand('info', 'Report week', esc(Weekly.weekLabel(M.w))) + mSign('Sincerely.');
+    await saveEml(`Weekly Commercial Presentation - ${Weekly.dayLong(M.w.deck)}`, { to: splitAddr(m.to), cc: splitAddr(m.cc), subject: m.subject, html, files: [{ name: m.attach, bytes: await wkDeckBytes() }], card: { eyebrow: 'MC Workforce · Weekly', title: `Weekly Commercial Presentation · ${when}`, foot: `Member Care Performance Review · ${when}` } });
   } catch (e) { toast('Could not make the email: ' + errText(e)); }
   finally { state.wk.busy = ''; renderWeeklyWs(); }
 }

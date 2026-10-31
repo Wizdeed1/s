@@ -1881,14 +1881,14 @@ async function kpiExcel(list, name, single) {
   SC.titleLogo(11, 380); sheets.push(SC);
   await save(name, new Blob([await Writer2.pack(sheets, S, {}, { logo: await xlLogo() })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
 }
+/** one person's KPI results, in the emails' card (copied for Outlook): each KPI with its ranking, then the result */
 function kpiEmailHtml(K) {
-  const r = K.res, td = (t, o = {}) => `<td style="border:solid #BFBFBF 1.0pt;padding:2pt 6pt;${o.bg ? `background:${o.bg};` : ''}"><p class="MsoNormal" style="margin:0in;${o.c ? '' : 'text-align:center;'}font-family:Calibri,sans-serif;font-size:10.5pt;${o.color ? `color:${o.color};` : ''}">${o.b ? '<b>' : ''}${esc(t)}${o.b ? '</b>' : ''}</p></td>`;
-  const lab = t => td(t, { bg: '#1F3864', color: '#FFFFFF', b: true }), rows = [];
-  rows.push([lab('Name'), td(K.m.exp, { b: true })], [lab('Team'), td(`${normSpace(K.m.p.brand)} · ${K.m.p.team}`)]);
-  for (const x of r.rows) { rows.push([lab(x.k.name), td(Kpi.fmtVal(x.k, Kpi.rankedVal(x)), { b: true })]); rows.push([lab('Ranking'), td(x.r == null ? '–' : String(x.r), { bg: '#D9D9D9' })]); }
-  rows.push([lab('Final ranking'), td(r.finalRank == null ? '–' : r.finalRank.toFixed(2), { bg: '#D9D9D9' })], [lab('Final %'), td(pct1(r.finalPct), { b: true })], [lab('Scheduled days'), td(r.sched ?? '–')], [lab('Actual days'), td(r.actual ?? '–')], [lab('Actual days %'), td(pct1(r.daysPct))], ...(srHidden() ? [] : [[lab('Incentive target'), td(r.target ?? '–')], [lab('Earned SR'), td(r.earned ?? '–', { b: true })]]));
-  const t = `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse">${rows.map(x => `<tr>${x.join('')}</tr>`).join('')}</table>`;
-  return `<html><head><meta charset="utf-8"></head><body><p class="MsoNormal" style="font-family:Calibri,sans-serif;font-size:11pt;margin:0 0 8pt"><b>KPI results – ${esc(kpiPeriod())}</b></p>${t}${state.logo && state.mailLogo ? '<p class="MsoNormal">&nbsp;</p>' + logoTag(state.logo.dataUrl) : ''}</body></html>`;
+  const r = K.res, v = t => esc(t ?? '–');
+  const kpis = cardTable(['KPI', 'Result', 'Ranking'], r.rows.map(x => [{ t: esc(x.k.name) }, { t: esc(Kpi.fmtVal(x.k, Kpi.rankedVal(x))), b: true }, { t: x.r == null ? '–' : String(x.r) }]), [0]);
+  const res = [['Final ranking', r.finalRank == null ? '–' : r.finalRank.toFixed(2)], ['Final %', pct1(r.finalPct), true], ['Scheduled days', v(r.sched)], ['Actual days', v(r.actual)], ['Actual days %', pct1(r.daysPct)], ...(srHidden() ? [] : [['Incentive target', v(r.target)], ['Earned SR', v(r.earned), true]])];
+  const b = cardP(`<b style="color:${CARD.ink}">${esc(K.m.exp)}</b> · ${esc(normSpace(K.m.p.brand))} · ${esc(K.m.p.team)}`)
+    + cardH('KPIs') + kpis + cardH('Result') + cardTable(['', 'Value'], res.map(([l, x, bold]) => [{ t: l }, { t: x, b: !!bold }]), [0]);
+  return cardMail({ eyebrow: 'MC Workforce · KPI results', title: `KPI Results · ${esc(kpiPeriod())}`, body: b, foot1: 'Member Care · Workforce Management', foot2: `KPI results · ${esc(kpiPeriod())}`, logo: cardLogo(state.logo && state.logo.dataUrl), preview: false });
 }
 const kpiEmailText = K => [`KPI results – ${kpiPeriod()}`, `Name\t${K.m.exp}`, ...K.res.rows.flatMap(x => [`${x.k.name}\t${Kpi.fmtVal(x.k, Kpi.rankedVal(x))}`, `Ranking\t${x.r ?? '–'}`]), `Final ranking\t${K.res.finalRank ?? '–'}`, `Final %\t${pct1(K.res.finalPct)}`, `Scheduled days\t${K.res.sched ?? '–'}`, `Actual days\t${K.res.actual ?? '–'}`, `Actual days %\t${pct1(K.res.daysPct)}`, ...(srHidden() ? [] : [`Incentive target\t${K.res.target ?? '–'}`, `Earned SR\t${K.res.earned ?? '–'}`])].join('\r\n');
 async function kpiTemplate() {
@@ -2598,18 +2598,22 @@ function mailText(md) {
 }
 // ---------------------------------------------------------------- the monthly emails' card look
 // After the WFM team's notification emails: a white card on a light ground, a navy band with the email's name, a status band
-// (amber while it is for review, green when it is final), tables with a navy heading row and a light footer. Tables and inline
-// styles only, so Outlook shows it as designed. The words are the same as before; "Classic look" in the form keeps the old layout.
+// (amber while it is for review, green when it is final, red when it is late, blue to note), tables with a navy heading row and a
+// light footer. Tables and inline styles only, so Outlook shows it as designed. Every email the tool makes is in it (saveEml wraps
+// the others); "Classic look" in the form keeps the old layout of these two.
 const CARD = { ground: '#F1F5F9', line: '#E2E8F0', navy: '#0F172A', sky: '#38BDF8', ink: '#0F172A', text: '#475569', soft: '#334155', muted: '#64748B', faint: '#94A3B8', foot: '#FAFAFA', zebra: '#F8FAFC' };
 const CF = "font-family:Aptos,'Segoe UI',Calibri,Arial,sans-serif";
-const cardTone = fin => (fin ? { bg: '#F0FDF4', line: '#DCFCE7', bar: '#16A34A', label: '#15803D', value: '#166534', mark: '&#10003;' } : { bg: '#FFFBEB', line: '#FEF3C7', bar: '#D97706', label: '#B45309', value: '#92400E', mark: '!' });
+/** the status band's colours: true (final, done) green, false (for review, a deadline) amber, 'late' red, 'info' blue */
+const cardTone = fin => (fin === 'late' ? { bg: '#FEF2F2', line: '#FEE2E2', bar: '#DC2626', label: '#B91C1C', value: '#991B1B', mark: '!' }
+  : fin === 'info' ? { bg: '#EFF6FF', line: '#DBEAFE', bar: '#2563EB', label: '#1D4ED8', value: '#1E3A8A', mark: 'i' }
+  : fin ? { bg: '#F0FDF4', line: '#DCFCE7', bar: '#16A34A', label: '#15803D', value: '#166534', mark: '&#10003;' } : { bg: '#FFFBEB', line: '#FEF3C7', bar: '#D97706', label: '#B45309', value: '#92400E', mark: '!' });
 const cardP = (inner, st = '') => `<p class="MsoNormal" style="margin:0 0 10pt 0;font-size:11.5pt;line-height:150%;color:${CARD.text};${CF};${st}">${inner}</p>`;
 const cardH = (t, note) => `<p class="MsoNormal" style="margin:20pt 0 8pt 0;${CF}"><b><span style="font-size:12.5pt;color:${CARD.ink}">${t}</span></b>${note ? `<span style="font-size:10pt;color:${CARD.muted}">&nbsp;&nbsp;·&nbsp;&nbsp;${note}</span>` : ''}</p>`;
-/** a table: head is a list of headings, rows a list of cells { t, left, b, absent }; left lists the columns read from the left */
+/** a table: head is a list of headings, rows a list of cells { t, left, b, absent, h (a taller row), w (a wider column) }; left lists the columns read from the left */
 function cardTable(head, rows, left = [1]) {
   const al = i => (left.includes(i) ? '' : 'text-align:center;');
   const th = (h, i) => `<td nowrap style="background:${CARD.navy};border:none;padding:6pt 10pt"><p class="MsoNormal" style="margin:0;${al(i)}${CF}"><b><span style="font-size:9.5pt;color:#FFFFFF">${h}</span></b></p></td>`;
-  const td = (c, i, z) => `<td nowrap style="${c.absent ? 'background:#FEE2E2;' : z ? `background:${CARD.zebra};` : 'background:#FFFFFF;'}border:none;border-bottom:solid ${CARD.line} 1.0pt;padding:5pt 10pt"><p class="MsoNormal" style="margin:0;${al(i)}${CF}">${c.b || c.absent ? '<b>' : ''}<span style="font-size:10pt;color:${c.absent ? '#B91C1C' : CARD.ink}">${c.t}</span>${c.b || c.absent ? '</b>' : ''}</p></td>`;
+  const td = (c, i, z) => `<td nowrap style="${c.absent ? 'background:#FEE2E2;' : z ? `background:${CARD.zebra};` : 'background:#FFFFFF;'}border:none;border-bottom:solid ${CARD.line} 1.0pt;padding:5pt 10pt${c.h ? `;height:${c.h}` : ''}${c.w ? `;width:${c.w}` : ''}"><p class="MsoNormal" style="margin:0;${al(i)}${CF}">${c.b || c.absent ? '<b>' : ''}<span style="font-size:10pt;color:${c.absent ? '#B91C1C' : CARD.ink}">${c.t}</span>${c.b || c.absent ? '</b>' : ''}</p></td>`;
   return `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:solid ${CARD.line} 1.0pt"><tr>${head.map(th).join('')}</tr>${rows.map((r, j) => `<tr>${r.map((c, i) => td(c, i, j % 2 === 1)).join('')}</tr>`).join('')}</table>`;
 }
 /** the status band: what stage this email is, and the one thing to know (the deadline, or that it is final) */

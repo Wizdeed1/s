@@ -514,8 +514,9 @@ async function finishTeam(k) {
   const pids = team.map(p => p._id).filter(agentHasAccount); if (pids.length) publishMonthToAgents(k, pids).catch(() => {});
   const C = contactsNow(), to = splitAddr(C.senior), cc = [addrOf(u.pid)].filter(Boolean);
   const rows = st.sort((a, b) => byExp({ exp: gname(a.p) }, { exp: gname(b.p) })).map(x => [esc(gname(effP(x.p._id) || x.p) || x.p.name), esc((FORM_STATUS.find(z => z[0] === x.os.st) || [, 'None'])[1]), esc(x.os.o && x.os.o.date ? Forms.fmtDate(x.os.o.date) : ''), x.os.o && sigState(x.os.o) === 'signed' ? 'Yes' : 'No']);
-  const html = mP(`Dear ${esc(firstName(splitAddr(C.senior)[0] || '') || 'Mohammed')},`) + mP(`I have finished the one-to-ones for my team for <b>${esc(ymLabel(k))}</b>: ${held} of ${team.length} held${signed ? `, ${signed} already signed by the agent in the tool` : ''}.`) + mTable(['Agent', 'One-to-one', 'Date', 'Signed by the agent'], rows) + mP('Everything is in the MC tool.') + mP('Best regards,');
-  await saveEml(`${body.name} - one-to-ones done - ${ymLabel(k)}`, { to, cc, subject: `${body.name} | ${ymLabel(k)} one-to-ones done (${held}/${team.length})`, html });
+  const html = mHi(`Dear ${esc(firstName(splitAddr(C.senior)[0] || '') || 'Mohammed')},`) + mP(`I have finished the one-to-ones for my team for <b>${esc(ymLabel(k))}</b>: ${held} of ${team.length} held${signed ? `, ${signed} already signed by the agent in the tool` : ''}.`)
+    + mBand(true, 'One-to-ones held', `${held} of ${team.length}${signed ? ` · ${signed} signed` : ''}`) + mH('My team', plural(team.length, 'agent')) + mTable(['Agent', 'One-to-one', 'Date', 'Signed by the agent'], rows) + mP('Everything is in the MC tool.', 'margin-top:12pt') + mSign('Best regards,');
+  await saveEml(`${body.name} - one-to-ones done - ${ymLabel(k)}`, { to, cc, subject: `${body.name} | ${ymLabel(k)} one-to-ones done (${held}/${team.length})`, html, card: { eyebrow: 'MC Workforce · One-to-ones', title: `${esc(body.name)} · One-to-ones Done`, foot: `One-to-ones · ${esc(ymLabel(k))}` } });
   return 'ok';
 }
 async function reopenTeam(k) {
@@ -532,8 +533,9 @@ async function mailFormToAgent(f) {
   if (!to) toast(`${f.agent.name} has no email in the roster yet: the draft has no recipient.`);
   try {
     const bytes = await formPdf(f), first = String(f.agent.name || '').split(' ')[0];
-    const html = mP(`Dear ${esc(first)},`) + mP(`Please find attached your ${f.kind === 'final' ? 'final form' : 'one-to-one form'} for <b>${esc(f.period || '')}</b>.`) + mP(agentHasAccount(f.pid) ? (f.verdict ? 'My final comment is on it: please read it and sign it on your own page in the MC tool.' : 'Please fill in your part on your own page in the MC tool and send it to me.') : 'Please read it and let me know if anything is not right.') + mP('Best regards,');
-    await saveEml(`${f.kind === 'final' ? 'Final form' : 'One-to-one'} - ${f.agent.name} - ${f.period}`, { to: to ? [to] : [], cc, subject: `Your ${f.kind === 'final' ? 'final form' : 'one-to-one'} | ${f.period}`, html, files: [{ name: formFile(f), bytes, type: 'application/pdf' }] });
+    const html = mHi(`Dear ${esc(first)},`) + mP(`Please find attached your ${f.kind === 'final' ? 'final form' : 'one-to-one form'} for <b>${esc(f.period || '')}</b>.`) + mP(agentHasAccount(f.pid) ? (f.verdict ? 'My final comment is on it: please read it and sign it on your own page in the MC tool.' : 'Please fill in your part on your own page in the MC tool and send it to me.') : 'Please read it and let me know if anything is not right.')
+      + mBand(false, agentHasAccount(f.pid) ? (f.verdict ? 'To read and sign' : 'To fill in') : 'To read', esc(f.period || '')) + mSign('Best regards,');
+    await saveEml(`${f.kind === 'final' ? 'Final form' : 'One-to-one'} - ${f.agent.name} - ${f.period}`, { to: to ? [to] : [], cc, subject: `Your ${f.kind === 'final' ? 'final form' : 'one-to-one'} | ${f.period}`, html, files: [{ name: formFile(f), bytes, type: 'application/pdf' }], card: { eyebrow: `MC Workforce · ${f.kind === 'final' ? 'Final form' : 'One-to-one'}`, title: `Your ${f.kind === 'final' ? 'Final Form' : 'One-to-one'} · ${esc(f.period || '')}`, foot: `${esc(f.agent.name || '')} · ${esc(f.period || '')}` } });
   } catch (e) { toast('Could not make the email: ' + (e && e.message ? e.message : e)); }
 }
 /** a line in the month's cycle log (the senior manager sees it) */

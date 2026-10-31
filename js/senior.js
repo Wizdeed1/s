@@ -135,24 +135,26 @@ function resultsList(k, onlyEligible) {
 async function mail4(kind) {
   const k = wsMonthNow(); if (!k || !canCycle()) return;
   const C = cycleOf(k), dl = C.deadline, R = cycleRows(k), con = contactsNow(), me = whoNow(), M = ymLabel(k);
-  const sign = mP('Thanks and regards,');   // the name and the logo come with the Outlook signature
+  const sign = mSign('Thanks and regards,');   // the name and the logo come with the Outlook signature
   let ok = false;
   if (kind === 'ready') {
     if (!dl) { toast('Set the deadline first (One-to-ones due, above).'); $('cycleBar').querySelector('[data-deadline]').focus(); return; }
     const to = supEmails(R); if (!to.length) toast('No supervisor has an email in the roster yet: the draft has no recipient.');
     const rows = R.map(r => { const map = rowsByPid(k), L = r.team.map(p => map.get(p._id)).filter(Boolean); return [esc(r.name), String(r.team.length), pct1(mean(L.map(x => x.fin))), pct(mean(L.map(x => x.adh)), 1)]; });
-    const html = mP('Dear Team Leaders,') + mP(`The <b>${esc(M)}</b> results are ready in the MC tool. Please hold the one-to-one with each of your agents and record it in the tool by <b>${esc(Forms.fmtDate(dl))}</b>. Agents with an account read and sign their form on their own page.`)
-      + mP('When your whole team is done, press <b>Finish my team</b> on your Team page; I am told straight away.') + mTable(['Team leader', 'Agents', 'Team final %', 'Team adherence'], rows, ['', 'r', 'r', 'r']) + sign;
-    ok = await saveEml(`One-to-ones ready - ${M}`, { to, cc: splitAddr(con.wfm), subject: `MC ${M} | One-to-ones are ready (deadline ${Forms.fmtDate(dl)})`, html });
+    const html = mHi('Dear Team Leaders,') + mP(`The <b>${esc(M)}</b> results are ready in the MC tool. Please hold the one-to-one with each of your agents and record it in the tool by <b>${esc(Forms.fmtDate(dl))}</b>. Agents with an account read and sign their form on their own page.`)
+      + mP('When your whole team is done, press <b>Finish my team</b> on your Team page; I am told straight away.') + mBand(false, 'One-to-ones due', esc(Forms.fmtDate(dl)))
+      + mH('The teams', plural(R.length, 'team leader')) + mTable(['Team leader', 'Agents', 'Team final %', 'Team adherence'], rows, ['', 'r', 'r', 'r']) + sign;
+    ok = await saveEml(`One-to-ones ready - ${M}`, { to, cc: splitAddr(con.wfm), subject: `MC ${M} | One-to-ones are ready (deadline ${Forms.fmtDate(dl)})`, html, card: { eyebrow: 'MC Workforce · One-to-ones', title: `One-to-ones Are Ready · ${esc(M)}`, foot: `One-to-ones · ${esc(M)}` } });
   }
   if (kind === 'warn') {
     const L = R.filter(r => !r.done); if (!L.length) { toast('Every supervisor has finished.'); return; }
     const to = supEmails(L); if (!to.length) toast('These supervisors have no email in the roster: the draft has no recipient.');
     const days = dl ? Math.ceil((new Date(dl + 'T23:59:59') - Date.now()) / 86400000) : null;
-    const html = mP('Dear Team Leaders,') + mP(`A reminder that the <b>${esc(M)}</b> one-to-ones are ${dl ? (days < 0 ? `<b>overdue since ${esc(Forms.fmtDate(dl))}</b>` : `due on <b>${esc(Forms.fmtDate(dl))}</b>${days <= 1 ? ' (tomorrow at the latest)' : ''}`) : 'due'}. Your team is not finished in the MC tool yet:`)
-      + mTable(['Team leader', 'One-to-ones held', 'Signed by the agent'], L.map(r => [esc(r.name), `${r.held} of ${r.team.length}`, String(r.signed)]), ['', 'r', 'r'])
-      + mP('Please finish them and press <b>Finish my team</b> on your Team page.') + sign;
-    ok = await saveEml(`Deadline reminder - ${M}`, { to, cc: splitAddr(con.wfm), subject: `Reminder | ${M} one-to-ones ${dl ? (days < 0 ? 'overdue' : `due ${Forms.fmtDate(dl)}`) : 'due'}`, html });
+    const html = mHi('Dear Team Leaders,') + mP(`A reminder that the <b>${esc(M)}</b> one-to-ones are ${dl ? (days < 0 ? `<b>overdue since ${esc(Forms.fmtDate(dl))}</b>` : `due on <b>${esc(Forms.fmtDate(dl))}</b>${days <= 1 ? ' (tomorrow at the latest)' : ''}`) : 'due'}. Your team is not finished in the MC tool yet:`)
+      + (dl ? mBand(days < 0 ? 'late' : false, days < 0 ? 'Overdue since' : 'One-to-ones due', esc(Forms.fmtDate(dl))) : '')
+      + mH('Not finished yet', plural(L.length, 'team leader')) + mTable(['Team leader', 'One-to-ones held', 'Signed by the agent'], L.map(r => [esc(r.name), `${r.held} of ${r.team.length}`, String(r.signed)]), ['', 'r', 'r'])
+      + mP('Please finish them and press <b>Finish my team</b> on your Team page.', 'margin-top:12pt') + sign;
+    ok = await saveEml(`Deadline reminder - ${M}`, { to, cc: splitAddr(con.wfm), subject: `Reminder | ${M} one-to-ones ${dl ? (days < 0 ? 'overdue' : `due ${Forms.fmtDate(dl)}`) : 'due'}`, html, card: { eyebrow: `MC Workforce · ${dl && days < 0 ? 'Overdue' : 'Reminder'}`, title: `One-to-ones ${dl && days < 0 ? 'Overdue' : 'Due'} · ${esc(M)}`, foot: `One-to-ones · ${esc(M)}` } });
   }
   if (kind === 'final') {
     const L = incRows(k).filter(x => x.pid); if (!L.length) { toast('The incentive list is empty: add the people below.'); return; }
@@ -161,13 +163,13 @@ async function mail4(kind) {
     const tot = L.reduce((a, x) => a + (finalEarned(x) || 0), 0), title = finalTitle(k), signers = signersNow();   // the total is the column's sum
     let bytes = null; try { bytes = await finalFormXlsx(title, L, tot, signers); } catch (e) { toast('Could not make the Excel file: ' + (e && e.message ? e.message : e)); }
     const to = splitAddr(con.form); if (!to.length) toast('No address for the final result form yet (Email addresses, below): the draft has no recipient.');
-    ok = await saveEml(title, { to, cc: [], subject: title, html: finalFormHtml(title, L, tot, signers), files: bytes ? [{ name: `${fileSafe(title)}.xlsx`, bytes }] : [] });
+    ok = await saveEml(title, { to, cc: [], subject: title, html: finalFormHtml(title, L, tot, signers), files: bytes ? [{ name: `${fileSafe(title)}.xlsx`, bytes }] : [], card: { eyebrow: 'MC Incentive · Final result', title: `Final Result · ${esc(M)} Incentive`, foot: `Final result · ${esc(M)} incentive` } });
   }
   if (kind === 'review') {   // as the senior manager writes it: "Hi All", the people on the incentive list who earned it
     const L = incRows(k).filter(x => x.pid && (finalEarned(x) || 0) > 0); if (!L.length) { toast(`Nobody on the incentive list has an earned SR for ${M} yet.`); return; }
     const [y, m] = k.split('-').map(Number), label = `${MON[m - 1]} ${y}`;
     let bytes = null; try { bytes = await reviewXlsx(L); } catch (e) { toast('Could not make the Excel file: ' + (e && e.message ? e.message : e)); }
-    ok = await saveEml(`Results for review - ${M}`, { to: splitAddr(con.vp), cc: splitAddr(con.mgmt), subject: `MC Incentive ${M} | For review`, html: reviewMailHtml(label, L), files: bytes ? [{ name: `MC Incentive - ${M} - for review.xlsx`, bytes }] : [] });
+    ok = await saveEml(`Results for review - ${M}`, { to: splitAddr(con.vp), cc: splitAddr(con.mgmt), subject: `MC Incentive ${M} | For review`, html: reviewMailHtml(label, L), files: bytes ? [{ name: `MC Incentive - ${M} - for review.xlsx`, bytes }] : [], card: { eyebrow: 'MC Incentive · For review', title: `Incentive Results · ${esc(label)}`, foot: `Incentive results · ${esc(label)}` } });
   }
   if (ok) cycleUpdate(k, c => { c.sent = { ...(c.sent || {}), [kind]: { at: new Date().toISOString(), by: me } }; }, `Prepared the "${{ ready: 'one-to-ones ready', warn: 'deadline reminder', review: 'results for review', final: 'final result form' }[kind]}" email`);
 }
@@ -242,14 +244,9 @@ function incListHtml(k) {
 }
 /** the results for review, as the senior manager writes it: "Hi All", the month, the red-header table */
 function reviewMailHtml(label, L) {
-  const P = t => `<p class="MsoNormal" style="margin:0 0 10.0pt;font-family:Calibri,sans-serif;font-size:11.0pt">${t}</p>`;
-  const W = [91.2, 242.65, 134.65, 71.0], B = 'solid windowtext 1.0pt', px = pt => Math.round(pt * 4 / 3);
-  const cell = (i, inner, o = {}) => `<td width="${px(W[i])}" nowrap valign="bottom" style="width:${W[i]}pt;border-top:${o.top ? B : 'none'};border-left:${i === 0 ? B : 'none'};border-bottom:${B};border-right:${B};${o.bg ? `background:${o.bg};` : ''}padding:0in 5.4pt 0in 5.4pt;height:${o.h || '.2in'}"><p class="MsoNormal"${o.c ? ' align="center" style="margin:0;text-align:center"' : ' style="margin:0"'}>${inner}</p></td>`;
-  const sp = (t, sz, col, b) => `${b ? '<b>' : ''}<span style="font-size:${sz}.0pt;font-family:&quot;Calibri&quot;,sans-serif;color:${col}">${t}</span>${b ? '</b>' : ''}`;
-  const head = `<tr style="height:15.6pt">${['ID', 'Name', 'Final %', 'Earned SR'].map((t, i) => cell(i, sp(t, 12, 'white', true), { c: true, bg: '#C00000', h: '15.6pt', top: true })).join('')}</tr>`;
-  const rows = L.map(x => `<tr style="height:.2in">${cell(0, sp(esc(x.id), 11, 'black'))}${cell(1, sp(esc(x.name), 11, 'black'))}${cell(2, sp(x.fin == null ? '&nbsp;' : Math.round(x.fin * 100) + '%', 11, 'black'), { c: true })}${cell(3, sp(String(finalEarned(x)), 11, 'black'), { c: true })}</tr>`).join('');
-  return P('Hi All,') + P('Hope this email finds you well') + P(`Kindly find attached and below incentive results for all Member Care Staff for <b>${esc(label)} :</b>`)
-    + `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="${px(539.5)}" style="width:539.5pt;border-collapse:collapse">${head}${rows}</table><p class="MsoNormal">&nbsp;</p>`;
+  return mHi('Hi All,') + mP('Hope this email finds you well') + mP(`Kindly find attached and below incentive results for all Member Care Staff for <b>${esc(label)}</b>:`)
+    + mBand(false, 'For review', esc(label)) + mH('Incentive results', plural(L.length, 'person', 'people'))
+    + cardTable(['ID', 'Name', 'Final %', 'Earned SR'], L.map(x => [{ t: esc(x.id) }, { t: esc(x.name) }, { t: x.fin == null ? '&nbsp;' : Math.round(x.fin * 100) + '%' }, { t: String(finalEarned(x)), b: true }]));
 }
 /** the same table as an Excel file */
 async function reviewXlsx(L) {
@@ -264,9 +261,9 @@ async function reviewXlsx(L) {
 }
 
 // ---------------------------------------------------------------- the final result form, as the senior manager sends it
-// A range pasted from his Excel: "Final result For Aug. 2026 Incentive", the red header (ID, Name, Final %, Earned SR), one row a
-// Virgin person with the final % and the earned SR, the month's total in red, then the table the VP, HR, Finance and the CEO sign.
-// The same form goes with it as an Excel file (same columns, widths, colours and borders).
+// His Excel form, "Final result For Aug. 2026 Incentive": the red header (ID, Name, Final %, Earned SR), one row a Virgin person
+// with the final % and the earned SR, the month's total in red, then the table the VP, HR, Finance and the CEO sign. It goes as an
+// Excel file (same columns, widths, colours and borders); the email shows the same rows in the emails' card.
 const SIGNERS0 = [['Rasha Mogaddam', 'VP-Group Member Care'], ['Ahmed Alremali', 'HR Director'], ['Islam Aref', 'Finance Director'], ['Yaarob AlSayegh', 'CEO']];
 function signersNow() { const L = String(contactsNow().signers || '').split('\n').map(l => l.split('|').map(normSpace)).filter(x => x[0]); return L.length ? L.map(x => [x[0], x[1] || '']) : SIGNERS0; }
 const signRows = i => (i < 2 ? 2 : 3);   // as in his form: two rows for the first two, three for the others
@@ -275,27 +272,10 @@ function finalTitle(k) { const [y, m] = k.split('-').map(Number), mo = MON[m - 1
 const finalEarned = x => (x.el && !x.el.ok ? 0 : x.earned == null ? null : Math.round(x.earned));
 const finalId = id => (/^[1-9]\d{0,14}$/.test(String(id || '')) ? Number(id) : String(id || ''));
 function finalFormHtml(title, L, tot, signers) {
-  const W = [91.2, 242.65, 134.65, 71.0, 27.3], B = 'solid windowtext 1.0pt', RED = '#C00000', NB = '&nbsp;', px = pt => Math.round(pt * 4 / 3);
-  const cell = (i, inner, o = {}) => {
-    const n = o.cs || 1, w = +W.slice(i, i + n).reduce((a, b) => a + b, 0).toFixed(2);
-    return `<td width="${px(w)}" nowrap${n > 1 ? ` colspan="${n}"` : ''}${o.rs > 1 ? ` rowspan="${o.rs}"` : ''}${o.va ? '' : ' valign="bottom"'} style="width:${w}pt;border-top:none;border-left:${i === 0 ? B : 'none'};border-bottom:${B};border-right:${B};${o.bg ? `background:${o.bg};` : ''}padding:0in 5.4pt 0in 5.4pt;height:${o.h || '.2in'}"><p class="MsoNormal"${o.c ? ' align="center" style="margin:0;text-align:center"' : ' style="margin:0"'}>${inner}</p></td>`;
-  };
-  const sp = (t, ff, sz, col, b) => `${b ? '<b>' : ''}<span style="font-size:${sz}.0pt;font-family:&quot;${ff}&quot;,sans-serif;color:${col}">${t}</span>${b ? '</b>' : ''}`;
-  const cal = (t, sz = 11, col = 'black', b = false) => sp(t, 'Calibri', sz, col, b), ver = (t, sz, col = 'black', b = false) => sp(t, 'Verdana', sz, col, b);
-  const gap = h => `<td width="1" style="width:.75pt;padding:0in 0in 0in 0in;height:${h}"></td>`;   // the narrow column Excel adds when it is pasted
-  const R = [];
-  R.push(`<tr style="height:18.75pt"><td width="${px(566.8)}" nowrap colspan="5" valign="bottom" style="width:566.8pt;background:white;padding:0in 5.4pt 0in 5.4pt;height:18.75pt"><p class="MsoNormal" align="center" style="margin:0;text-align:center">${cal(esc(title), 14, 'black', true)}</p></td>${gap('18.75pt')}</tr>`);
-  R.push(`<tr style="height:15.6pt">${['ID', 'Name', 'Final %', 'Earned SR', ''].map((t, i) => cell(i, cal(t ? esc(t) : NB, 12, 'white', true), { c: true, bg: RED, h: '15.6pt' })).join('')}${gap('15.6pt')}</tr>`);
-  for (const x of L) R.push(`<tr style="height:.2in">${cell(0, ver(esc(x.id), 10), { c: true })}${cell(1, cal(esc(x.name)), { bg: 'white' })}${cell(2, cal(x.fin == null ? NB : Math.round(x.fin * 100) + '%'), { c: true })}${cell(3, cal(finalEarned(x) == null ? NB : String(finalEarned(x))), { c: true })}${cell(4, cal(NB), { c: true })}${gap('.2in')}</tr>`);
-  R.push(`<tr style="height:15.6pt">${cell(0, cal(NB, 12, 'white', true), { cs: 3, c: true, bg: RED, h: '15.6pt' })}${cell(3, cal(Math.round(tot).toLocaleString('en-US'), 12, 'white', true), { c: true, bg: RED, h: '15.6pt' })}${cell(4, cal(NB), { h: '15.6pt' })}${gap('15.6pt')}</tr>`);
-  R.push(`<tr style="height:.2in">${[0, 1, 2, 3, 4].map(i => cell(i, cal(NB), { c: true })).join('')}${gap('.2in')}</tr>`);
-  R.push(`<tr style="height:.2in">${cell(0, ver(NB, 8, 'white', true), { cs: 2, c: true, bg: RED })}${cell(2, ver('Designation', 8, 'white', true), { bg: RED })}${cell(3, ver('Signature', 8, 'white', true), { c: true, bg: RED })}${cell(4, ver('Date', 8, 'white', true), { c: true, bg: RED })}${gap('.2in')}</tr>`);
-  signers.forEach(([n, d], i) => {
-    const rs = signRows(i);
-    R.push(`<tr style="height:.2in">${cell(0, ver(esc(n), 8, 'black', true), { cs: 2, rs, c: true, va: 1 })}${cell(2, ver(esc(d), 8, 'black', true), { rs, c: true, va: 1 })}${cell(3, ver(NB, 8), { rs, c: true })}${cell(4, ver(NB, 8), { rs, c: true })}${gap('.2in')}</tr>`);
-    for (let j = 1; j < rs; j++) R.push(`<tr style="height:.2in">${gap('.2in')}</tr>`);
-  });
-  return `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="${px(567.35)}" style="width:567.35pt;border-collapse:collapse">${R.join('')}</table><p class="MsoNormal">&nbsp;</p><p class="MsoNormal">&nbsp;</p>`;
+  const NB = '&nbsp;', rows = L.map(x => [{ t: esc(x.id) }, { t: esc(x.name) }, { t: x.fin == null ? NB : Math.round(x.fin * 100) + '%' }, { t: finalEarned(x) == null ? NB : String(finalEarned(x)), b: true }]);
+  rows.push([{ t: NB }, { t: 'Total', b: true }, { t: NB }, { t: Math.round(tot).toLocaleString('en-US'), b: true }]);
+  return mBand(true, 'Final result', esc(title)) + mH('Incentive results', plural(L.length, 'person', 'people')) + cardTable(['ID', 'Name', 'Final %', 'Earned SR'], rows)
+    + mH('Signatures') + cardTable(['Name', 'Designation', 'Signature', 'Date'], signers.map(([n, d]) => [{ t: esc(n), b: true }, { t: esc(d) }, { t: NB, h: '30pt', w: '130pt' }, { t: NB, w: '70pt' }]), [0, 1]);
 }
 /** the same form as an Excel file: Sheet1, A1:E1 title, red header, the people, the total, the signature table */
 async function finalFormXlsx(title, L, tot, signers) {

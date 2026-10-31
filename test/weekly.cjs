@@ -85,6 +85,8 @@ const PEOPLE = [{ id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user
   // the email: Rasha, cc Essam, the deck attached
   const emlF = await download(p, () => p.click('[data-wkeml]')), eml = fs.readFileSync(emlF, 'utf8');
   ok(/rasha\.mogaddam@beyond\.one/i.test(eml) && /^Cc: .*Essam\.Alzhrani@beyond\.one/im.test(eml) && /Subject: Weekly Commercial Presentation/.test(eml) && /Beyond_One_Member_Care_Review - 25 Oct 2026\.pptx/.test(eml), 'the email: to Rasha, cc Essam, the subject and the deck attached');
+  const hm = eml.match(/Content-Type: text\/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+?)\r\n\r\n--/), mh = hm ? Buffer.from(hm[1].replace(/\r\n/g, ''), 'base64').toString('utf8') : '';
+  ok(mh.includes('background:#0F172A') && mh.includes('MC Workforce · Weekly') && mh.includes('Weekly Commercial Presentation · 25 Oct 2026') && mh.includes('Report week') && mh.includes('18–24 Oct 2026') && mh.includes('Hi Rasha,'), 'the email is in the emails\' card: the navy band, the report week, "Hi Rasha,"');
   // text that looks like HTML stays text: in the page and in the deck
   const evil = '"><img src=x onerror="top.__x=1">';
   await p.fill('[data-wkc="virgin.d4.name"]', evil); await p.press('[data-wkc="virgin.d4.name"]', 'Tab');

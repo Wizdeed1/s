@@ -10,6 +10,7 @@ let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? 'âœ“ ' : 'âœ
 (async () => {
   const b = await chromium.launch(), ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' }), p = await ctx.newPage(), errs = [];
   p.on('pageerror', e => errs.push(e.message));
+  await p.clock.setFixedTime(new Date('2026-10-20T10:00:00'));   // September, the exports' month, is the month being closed: it comes back by itself
   await p.addInitScript(([fx]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user' }; }, [fixture]);
   const boot = async () => { await p.goto('file://' + path.resolve(page0)); await p.waitForFunction(() => window.__mc && window.__mc.state.rosterReady); };
   const slots = () => p.evaluate(() => Object.entries(window.__mc.state.slots).filter(([, v]) => v).map(([k, v]) => `${k}:${v.upId ? 'saved' : 'not saved'}`).sort().join(','));

@@ -13,6 +13,7 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   // the folder picker answers with a folder of the browser's own (the origin private file system), named MC Data
   await ctx.addInitScript(() => { window.showDirectoryPicker = async () => (await navigator.storage.getDirectory()).getDirectoryHandle('MC Data', { create: true }); });
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
+  await p.clock.setFixedTime(new Date('2026-10-20T10:00:00'));   // September, the exports' month, is the month being closed: it comes back by itself after a sign-in
   // what is in the folder, read from the page: { 'upmeta': [names], ... } and the first bytes of a file
   const tree = () => p.evaluate(async () => { const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('MC Data'), o = {}; for await (const [n, h] of root.entries()) if (h.kind === 'directory') { o[n] = []; for await (const [m] of h.entries()) o[n].push(m); } return o; });
   const head = (dir, name) => p.evaluate(async ([d, n]) => { const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('MC Data'), f = await (await (await root.getDirectoryHandle(d)).getFileHandle(n)).getFile(); return { size: f.size, head: new TextDecoder().decode(new Uint8Array(await f.slice(0, 4).arrayBuffer())) }; }, [dir, name]);

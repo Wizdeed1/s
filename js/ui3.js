@@ -1180,8 +1180,32 @@ function placeAttendance(it, dets) {
   if (!list.length) return false;
   state.attFiles = state.attFiles.filter(f => f.name !== it.name);
   state.attFiles.push({ fid: it.fid, name: it.name, size: it.size, dets: list });
+  placeTeamKpis(it.name, list);
   return true;
 }
+// ---- a team's own workbook (the CT incentive file, Core.parseDayBlocks): its days are attendance, and its month's Utilization (the
+// average of each day's %) is kept for the month in ksrc/<month>, where the CT scorecard reads what the KPI file has not
+const UTIL_KEY = Kpi.key('Utilization');
+/** the month most of a sheet's dates are in */
+function datesMonth(ds) { const by = new Map(); for (const x of ds || []) if (x && x.y) { const k = ymKey(x.y, x.m); by.set(k, (by.get(k) || 0) + 1); } const t = [...by].sort((a, b) => b[1] - a[1])[0]; return t ? t[0] : ''; }
+function placeTeamKpis(name, dets) {
+  for (const d of dets) {
+    const D = d.data; if (!D || D.layout !== 'dayBlocks') continue;
+    const P = D.people.filter(x => typeof x.util === 'number' && Number.isFinite(x.util)), k = datesMonth(D.dates); if (!P.length || !k) continue;
+    const rec = { name, sheet: d.sheet || '', at: new Date().toISOString(), by: whoNow(), rows: P.map(x => ({ id: x.id || '', name: x.name, cols: { [UTIL_KEY]: x.util }, days: x.utilDays })) };
+    ksrcSet(k, name, rec);
+  }
+}
+/** a file's KPI values for a month put in, replaced (rec) or taken out (null), kept with the shared data */
+function ksrcSet(k, name, rec) {
+  const cur = state.ksrc[k] && Array.isArray(state.ksrc[k].files) ? state.ksrc[k].files : [], files = cur.filter(f => f && f.name !== name);
+  if (rec) files.push(rec);
+  if (files.length) state.ksrc[k] = { files }; else delete state.ksrc[k];
+  if (state.db) queueWrite(`ksrc/${k}`, () => (files.length ? state.db.doc(`ksrc/${k}`).set(JSON.parse(JSON.stringify(state.ksrc[k]))) : state.db.doc(`ksrc/${k}`).delete()));
+  state.kxVer++;
+}
+/** the months and records a file gave KPI values for: [[month, rec]] */
+const ksrcOf = name => Object.entries(state.ksrc).flatMap(([k, x]) => (x && Array.isArray(x.files) ? x.files.filter(f => f && f.name === name).map(f => [k, f]) : []));
 const attOf = pid => (state.attRes && state.attRes.byPerson.get(pid)) || null;
 function effRoster() { return state.ctx ? state.ctx.roster : rosterRows(); }
 
@@ -1387,14 +1411,15 @@ function renderAttCard() {
     return;
   }
   if (!F.length) { el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-file"/></svg></span><h3>Supervisors' attendance</h3></div><span class="pill">Optional</span></div>
-    <p class="hint">CC and SM come from Genesys once the Schedule and the Agent Status Timeline are in. ${tplTeams().length ? `${esc(tplTeams().join(', '))} send the attendance template (one row per late, absent, leave or day off): make them with Attendance templates, then drop the filled files here. ` : ''}Older attendance sheets (.xlsx or .xlsb) work too: the right month's tab is picked by its dates and names and IDs are matched to the roster.</p>
+    <p class="hint">CC and SM come from Genesys once the Schedule and the Agent Status Timeline are in. ${tplTeams().length ? `${esc(tplTeams().join(', '))} send the attendance template (one row per late, absent, leave or day off): make them with Attendance templates, then drop the filled files here. ` : ''}Older attendance sheets (.xlsx or .xlsb) work too: the right month's tab is picked by its dates and names and IDs are matched to the roster. The CT team's incentive workbook (a block per day ending in Attendance) gives its agents' days and the month's Utilization.</p>
     <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Choose files</button></div>`; el.classList.remove('ready'); return; }
   el.classList.add('ready');
   const open = state.notes.filter(n => (n.sev === 'decide' || n.sev === 'warn') && /^Attendance/.test(n.group || '')).length;
   const fixes = R ? R.fixes.reduce((t, f) => t + (f.undoable === false ? 0 : f.count), 0) : 0;
   const rows = F.map(f => {
     const info = R ? R.files.filter(x => x.file === f.name) : [], used = info.filter(x => x.used);
-    return `<li><div class="fname" dir="auto">${esc(f.name)}</div><div class="meta">${fmtSize(f.size)} · ${used.length ? `used ${esc(used.map(x => `${normSpace(x.sheet)} (${x.filled} people)`).join(', '))}` : 'no tab for this month'}${info.length > used.length ? ` · ${plural(info.length - used.length, 'tab')} for other months skipped` : ''}</div><button class="btn sm ghost" data-unatt="${esc(f.name)}">Remove</button></li>`;
+    const kx = ksrcOf(f.name).filter(([, rec]) => Array.isArray(rec.rows)).map(([k, rec]) => `Utilization for ${plural(rec.rows.length, 'person', 'people')}${k !== monthKey() ? ` (${ymLabel(k)})` : ''}`);   // what a team's own workbook gives the scorecards too
+    return `<li><div class="fname" dir="auto">${esc(f.name)}</div><div class="meta">${fmtSize(f.size)} · ${used.length ? `used ${esc(used.map(x => `${normSpace(x.sheet)} (${x.filled} people)`).join(', '))}` : 'no tab for this month'}${info.length > used.length ? ` · ${plural(info.length - used.length, 'tab')} for other months skipped` : ''}${kx.length ? ` · ${esc(kx.join(', '))}` : ''}</div><button class="btn sm ghost" data-unatt="${esc(f.name)}">Remove</button></li>`;
   }).join('');
   el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-check"/></svg></span><h3>Supervisors' attendance</h3></div>${open ? `<span class="pill warn">${plural(open, 'item')} to check</span>` : '<span class="pill good">Ready</span>'}</div>
     <div class="kv"><div><b>${F.length}</b><span>files</span></div><div><b>${R ? R.stats.people - (R.genesys || 0) : 0}</b><span>people in them</span></div><div><b>${R && R.genesys ? R.genesys : 0}</b><span>from Genesys</span></div><div><b>${(R ? R.stats.tardy : 0).toLocaleString('en-US')}</b><span>tardy minutes</span></div><div><b>${fixes.toLocaleString('en-US')}</b><span>cells fixed</span></div></div>
@@ -3918,7 +3943,12 @@ noteOn('change', e => {
 // attendance card on Import
 $('attCard').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.unatt) { const f = state.attFiles.find(x => x.name === b.dataset.unatt), before = upInBuild(); state.attFiles = state.attFiles.filter(x => x !== f); if (f) impLogAdd('removed', `Removed attendance sheet: ${f.name}`); refresh(); upPrune(before); if (f) toast(`Removed ${f.name}`, { label: 'Undo', fn: () => { state.attFiles.push(f); impLogAdd('read', `Put back attendance sheet: ${f.name}`); refresh(); upPutBack(f.upId); } }); }
+  if (b.dataset.unatt) {
+    const f = state.attFiles.find(x => x.name === b.dataset.unatt), before = upInBuild(), kx = f ? ksrcOf(f.name) : [];
+    state.attFiles = state.attFiles.filter(x => x !== f); kx.forEach(([k]) => ksrcSet(k, f.name, null));   // its Utilization goes with it
+    if (f) impLogAdd('removed', `Removed attendance sheet: ${f.name}`); refresh(); upPrune(before);
+    if (f) toast(`Removed ${f.name}`, { label: 'Undo', fn: () => { state.attFiles.push(f); kx.forEach(([k, rec]) => ksrcSet(k, f.name, rec)); impLogAdd('read', `Put back attendance sheet: ${f.name}`); refresh(); upPutBack(f.upId); } });
+  }
   if (b.id === 'attNotes') openNotes();
   if (b.id === 'attPick') $('picker').click();
 });

@@ -163,6 +163,16 @@ Every role's pages read in the order the work is done, the most urgent first, in
 
 Nothing that is counted or stored changed, and the only email that changed is the final incentive email, back to its old body. `test/steps.cjs` checks the order of every role's pages.
 
+## November 2026, the CT team's incentive workbook
+
+The CT team keeps its month in its own workbook (*CT - Incentive - October.xlsb*): a date over a block of columns for each day (TKT, hours, other, hours, %, Comment, Attendance), one row per agent, a legend of the codes and a list of National IDs, names, brands and departments. **WFM team › Import** now reads it (`Core.parseDayBlocks`):
+
+| Part | What the tool does with it |
+|---|---|
+| Attendance | Each CT agent's day codes come from the Attendance column of each day's block (Attend, OFF, AL, SL, Exam, Absent, Unpaid…), matched to the roster by the National IDs in the workbook's own list (its ID column holds staff numbers). The file shows on the Attendance card like any attendance sheet: *used CT (6 people)*. |
+| Utilization | Each day's % is (hours on tickets + hours on other tasks) ÷ 7, and the month's Utilization is their average, as the workbook's own formula has it. It is kept for the month (`ksrc/<month>` with the shared data) and counts in the CT scorecard's Utilization where the KPI file has no value; the KPI file's value wins, a value typed by hand wins over both. The Attendance card says, for example, *Utilization for 6 people*; Remove takes the days and the Utilization away, Undo brings both back. |
+| Not the IDs file | Its list of IDs no longer makes the recogniser call it the HR IDs file (which would have replaced the IDs file): it is a supervisor's attendance sheet, sure, for the month of its dates. |
+
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.
 
@@ -230,8 +240,9 @@ node test/depts.cjs "final/MC Monthly Report Builder.html" test/shots exportsDir
 node test/dailyhist.cjs "final/MC Monthly Report Builder.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
 node test/incmail.cjs "final/MC Monthly Report Builder.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see)
 node test/steps.cjs "final/MC Monthly Report Builder.html" test/shots            # every page in the month's order: the sidebar, the numbered steps (Supervisors, Quality), the dashboard's priority, the agent's waiting one-to-one first
+node test/ctflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # the CT team's incentive workbook on Import: its days, its Utilization in the CT scorecard (the KPI file wins), never the IDs file, Remove and Undo
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)
-npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
+npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
 ```
 
 They load the page with `window.__NOLOCK__` and `window.__ROSTER__` (the existing test hooks) and `window.__mcUser`,

@@ -484,6 +484,54 @@ function parseGrid(rows) {
   return { kind: words >= pct ? 'attendance' : 'adhGrid', dates: dates.filter(Boolean), people };
 }
 
+/* A team's day-by-day workbook (the CT team's incentive file): a row of dates, each date over a block of columns for that day
+   (TKT, hours, other, hours, %, Comment, Attendance), a header row under it with the Name (and an ID) before the first block, and
+   one row per agent. It is read as an attendance sheet: each day's Attendance cell. Each block's % is the day's utilization (the
+   hours on tickets and on other tasks over the shift), and the month's Utilization is their average, as the workbook's own formula
+   has it. A list elsewhere on the sheet with ID (the National ID), Name, Team and Dep gives each agent's ID, brand and department. */
+const BLOCK_ATT = /^attend[a-z]*$/i;   // "Attendance", and the "Attendace" the CT file has
+const BLOCK_NAME = /^(name|agent name|employee name|member care champions)$/i;
+function parseDayBlocks(rows) {
+  const h = headerRow(rows, r => r.filter(x => BLOCK_ATT.test(x)).length >= 7 && r.some(x => BLOCK_NAME.test(x)));
+  if (h < 1) return null;
+  const hdr = (rows[h] || []).map(cellStr);
+  let ds = null;   // the dates: just above the header, each at its block's first column (merged over the block)
+  for (let i = h - 1; i >= Math.max(0, h - 3) && !ds; i--) { const x = resolveDates(rows[i] || []); if (x.filter(Boolean).length >= 7) ds = x; }
+  if (!ds) return null;
+  const dcols = ds.map((d, c) => (d ? c : -1)).filter(c => c >= 0);
+  const nameCol = hdr.findIndex((x, c) => c < dcols[0] && BLOCK_NAME.test(x));
+  const idCol = hdr.findIndex((x, c) => c < dcols[0] && /^(national\s*id|id|emp(loyee)?\s*(id|no\.?|number))$/i.test(x));
+  if (nameCol < 0) return null;
+  const blocks = dcols.map((c, j) => {
+    const end = j + 1 < dcols.length ? dcols[j + 1] : hdr.length, H = hdr.slice(c, end), a = H.findIndex(x => BLOCK_ATT.test(x)), u = H.findIndex(x => /^(%|util(i[sz]ation)?)$/i.test(x));
+    return { d: ds[c], att: a >= 0 ? c + a : -1, pct: u >= 0 ? c + u : -1 };
+  }).filter(b => b.att >= 0);
+  if (blocks.length < 7) return null;
+  // the agents: the rows under the header, to the first empty row; a row needs a name with letters and something in its days
+  const people = [];
+  for (let i = h + 1; i < rows.length; i++) {
+    const r = rows[i] || []; if (!r.some(v => !isBlank(v))) break;
+    const nm = normSpace(r[nameCol]); if (!/\p{L}/u.test(nm) || /^(total|grand total|sum|average)/i.test(nm)) continue;
+    const cells = blocks.map(b => [b.d, r[b.att] ?? null]);
+    if (!cells.some(([, v]) => !isBlank(v))) continue;
+    const pv = blocks.map(b => (b.pct >= 0 ? r[b.pct] : null)).filter(v => typeof v === 'number' && Number.isFinite(v));
+    people.push({ name: nm, id: idCol >= 0 ? cleanId(r[idCol]) : '', idRaw: idCol >= 0 ? normSpace(r[idCol]) : '', team: '', dep: '', status: '', tardyTotal: null, cells,
+      util: pv.length ? Math.round(pv.reduce((a, v) => a + v, 0) / pv.length * 1e6) / 1e6 : null, utilDays: pv.length });
+  }
+  if (!people.length) return null;
+  // the list of IDs, brands and departments, wherever it is on the sheet: an ID column with Name next to it
+  for (let i = 0; i < rows.length; i++) {
+    if (i === h) continue;
+    const R = (rows[i] || []).map(cellStr), c = R.findIndex((x, j) => /^(national\s*id|id)$/i.test(x) && /^name$/i.test(R[j + 1] || ''));
+    if (c < 0) continue;
+    const tc = R.findIndex((x, j) => j > c && /^(team|brand)$/i.test(x)), dc = R.findIndex((x, j) => j > c && /^(dep|dept|department)$/i.test(x)), by = new Map();
+    for (let j = i + 1; j < rows.length; j++) { const r = rows[j] || [], nm = normSpace(r[c + 1]); if (!nm) break; by.set(normName(nm), { id: cleanId(r[c]), team: tc >= 0 ? normTeam(r[tc]) : '', dep: dc >= 0 ? normDep(r[dc]) : '' }); }
+    for (const p of people) { const x = by.get(normName(p.name)); if (!x) continue; if (x.id && !p.id) { p.id = x.id; p.idRaw = x.id; } p.team = p.team || x.team; p.dep = p.dep || x.dep; }
+    break;
+  }
+  return { kind: 'attendance', layout: 'dayBlocks', dates: blocks.map(b => b.d), people };
+}
+
 const MON3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 /* Monthly Adherence over several months: "Apr | 26 | %PCT - Adherence", "May | 01 | …". There is no year, so the newest
    month is taken as the latest one not after today. people[].days holds the latest complete month; byMonth has every month ("2026-5"). */
@@ -904,6 +952,7 @@ function analyzeTables(name, all) {
     if (!d) { const x = parseGenesysAdh(rows); if (x) d = { kind: 'adhGenesys', data: x }; }
     if (!d) { const x = parseSchedule(rows); if (x) d = { kind: 'schedule', data: x }; }
     if (!d) { const x = parseTimeline(rows); if (x) d = { kind: 'timeline', data: x }; }
+    if (!d) { const x = parseDayBlocks(rows); if (x) d = { kind: 'attendance', data: x }; }   // a team's day-by-day workbook (the CT incentive file), never a roster
     if (!d) { const x = parseGrid(rows); if (x) d = x.kind === 'deductionSheet' ? { kind: 'ignored', msg: 'Deduction sheet - not an input' } : { kind: x.kind, data: x }; }
     if (!d) { const r = parseRoster(rows); if (r && r.length) d = { kind: 'roster', data: r }; }
     if (d) { d.sheet = t.name; out.push(d); }
@@ -1044,6 +1093,6 @@ function buildModel(dets, settings, overrides = {}) {
 
 return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, cleanDate, daysIn, ymdSerial, weekday, colName, ref, round6,
   readZip, writeZip, crc32, readXlsx, readXlsb, parseCSV, parseHeaderDate, adhVal, ahtSeconds, normAtt, attCat, normDep, normTeam, normStatus, parseAttTemplate, ATT_TPL_MARK,
-  analyzeFile, readTables, analyzeTables, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
+  analyzeFile, readTables, analyzeTables, parseDayBlocks, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
 })();
 if (typeof module !== 'undefined') module.exports = Core;

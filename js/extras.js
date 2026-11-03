@@ -1,6 +1,6 @@
 // ================================================================ SHARED PIECES: supervisors, incentive rules, live scores,
 // attendance from Genesys, freshness, email drafts, the Outlook .msg reader
-Object.assign(state, { quality: {}, qualityVer: 0, kfig: {}, khand: {}, kxVer: 0, attEditsBy: {}, attEditsVer: 0, fresh: {}, contacts: null, spvCard: null, cycles: {}, cycleDone: {}, sigs: new Map(), sigVer: 0 });
+Object.assign(state, { quality: {}, qualityVer: 0, kfig: {}, khand: {}, ksrc: {}, kxVer: 0, attEditsBy: {}, attEditsVer: 0, fresh: {}, contacts: null, spvCard: null, cycles: {}, cycleDone: {}, sigs: new Map(), sigVer: 0 });
 
 // ---------------------------------------------------------------- supervisors: each person's Supervisor is another person in the roster
 function supName(pid) { const p = state.roster.find(x => x._id === pid); return p ? gname(effP(p._id) || p) || p.name : ''; }
@@ -103,6 +103,17 @@ function kpiFileRowK(k, p, r) {
   const pp = p ? effP(p._id) || p : null, id = Core.cleanId(pp ? pp.nid : r && r.id), names = new Set([pp && normName(pp.name), pp && normName(pp.sys), r && normName(r.n)].filter(Boolean));
   return (id && F.rows.find(x => x.id === id)) || F.rows.find(x => names.has(normName(x.name))) || null;
 }
+/** a person's row in the KPI values a team's own workbook gave for a month (ksrc/<month>: { files: [{ name, at, by, rows: [{ id,
+    name, cols }] }] }: the CT incentive file's Utilization), by National ID, then by name; the newest file first */
+function ksrcRowK(k, p, r) {
+  const F = state.ksrc[k] && state.ksrc[k].files; if (!Array.isArray(F) || !F.length) return null;   // a record from the shared folder is checked, never trusted
+  const pp = p ? effP(p._id) || p : null, id = Core.cleanId(pp ? pp.nid : r && r.id), names = new Set([pp && normName(pp.name), pp && normName(pp.sys), r && normName(r.n)].filter(Boolean));
+  for (const f of F.slice().reverse()) {
+    const L = f && Array.isArray(f.rows) ? f.rows.filter(y => y && typeof y === 'object' && y.cols && typeof y.cols === 'object') : [];
+    const x = (id && L.find(y => y.id === id)) || L.find(y => names.has(normName(y.name))); if (x) return x;
+  }
+  return null;
+}
 /** DRC-CSAT is the same for every agent: one number per month, typed once (null when nobody typed it) */
 function csatAll(k) { const Q = k ? state.quality[k] : null, v = Q ? Q.csat : null; return typeof v === 'number' && Number.isFinite(v) ? v : null; }
 function fileValues(card, k, p, r) {
@@ -111,6 +122,7 @@ function fileValues(card, k, p, r) {
     if (kk.id === 'csat' && csat != null) { out.csat = csat; continue; }
     const fromQ = q && q.kpi ? q.kpi[kk.id] : null, fromF = Kpi.fileValue(kk, fr && fr.cols);
     out[kk.id] = ownerOf(kk) === 'quality' ? (fromQ != null ? fromQ : fromF) : (fromF != null ? fromF : fromQ);
+    if (out[kk.id] == null) { const xr = ksrcRowK(k, p, r); out[kk.id] = Kpi.fileValue(kk, xr && xr.cols); }   // what the KPI file has not: a team's own workbook (the CT file's Utilization)
   }
   return out;
 }

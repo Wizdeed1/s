@@ -346,6 +346,10 @@ function monthOf(name, V, feats, dets, opts) {
   for (const d of dets || []) {
     const D = d.data || {};
     if ((d.kind === 'aht' || d.kind === 'timeline') && D.month) votes.push({ k: ymKey(D.month.y, D.month.m), w: 3, src: 'export' });
+    if (d.kind === 'attendance' && D.layout === 'dayBlocks' && D.dates) {   // the day-by-day workbook's dates sit one per block, not in a row of their own
+      const by = new Map(); D.dates.forEach(x => { if (x && x.y) { const k = ymKey(x.y, x.m); by.set(k, (by.get(k) || 0) + 1); } }); const t = [...by].sort((a, b) => b[1] - a[1])[0];
+      if (t) votes.push({ k: t[0], w: 3, src: 'dates', sheet: d.sheet });
+    }
     if (d.kind === 'perf' && D.months) { D.months.forEach(x => months.set(ymKey(x.y, x.m), x)); if (D.month) votes.push({ k: ymKey(D.month.y, D.month.m), w: 3, src: 'export' }); }
     if (d.kind === 'adhGenesys' && D.multi) { (D.months || []).forEach(x => months.set(ymKey(x.y, x.m), x)); if (D.month) votes.push({ k: ymKey(D.month.y, D.month.m), w: 3, src: 'export' }); }
     if (d.kind === 'schedule' && D.segs && D.segs.length) {
@@ -381,6 +385,9 @@ function recognise(name, tables, opts = {}) {
   // the tool's own attendance template (Core.parseAttTemplate read it): the people are on its Team sheet
   const tpl = dets.find(d => d && d.kind === 'attendance' && d.data && d.data.template);
   if (tpl) cands.unshift({ kind: 'attendance', score: 0.99, reasons: [`The tool's attendance template${tpl.data.template.spv ? ` from ${tpl.data.template.spv}` : ''}: one row per late, absent, leave or day off, every other day a working day`], sheet: (V.find(t => /^team$/i.test(normSpace(t.name))) || {}).name || '' });
+  // a team's day-by-day workbook (Core.parseDayBlocks read it: the CT incentive file): its list of IDs never makes it the IDs file
+  const blk = dets.find(d => d && d.kind === 'attendance' && d.data && d.data.layout === 'dayBlocks');
+  if (blk) cands.unshift({ kind: 'attendance', score: 0.99, blocks: true, sheet: blk.sheet || '', reasons: [`Day by day on "${normSpace(blk.sheet)}": for each date a block of columns ending in Attendance${blk.data.people.some(x => x.util != null) ? ', with each day\'s % (the Utilization)' : ''}`] });
   // the best of each kind, highest first
   const best = new Map(); for (const c of cands.sort((a, b) => b.score - a.score)) if (!best.has(c.kind)) best.set(c.kind, c);
   let L = [...best.values()];
@@ -407,6 +414,10 @@ function recognise(name, tables, opts = {}) {
     return feats.find(F => F.cands.some(c => c.kind === top.kind));
   })();
   let people = peopleSheet ? peopleOf(V.find(t => t.name === peopleSheet.sheet), peopleSheet, segs) : null;
+  if (top.blocks && blk) {   // its agents as the reader found them (the sheet also holds a code legend and the list of IDs)
+    const P = blk.data.people, ids = P.map(x => x.id).filter(Boolean);
+    people = { n: P.length, rows: P.length, withId: ids.length, nid10: ids.filter(x => x.length === 10).length, badIds: { na: 0, naErr: 0, short: 0, nbsp: 0, none: P.length - ids.length }, dupIds: ids.length - new Set(ids).size, dupNames: 0, sameIdTwoNames: 0, sheet: blk.sheet, names: P.map(x => x.name), ids };
+  }
   if (top.kind === 'evalBook') {   // every EVAL sheet's agents together
     const L2 = feats.filter(F => F.cands.some(c => c.kind === 'evalBook')).map(F => peopleOf(V.find(t => t.name === F.sheet), F, false)).filter(Boolean);
     if (L2.length) { const nm = new Map(); L2.forEach(p => p.names.forEach(n => nm.set(normName(n), n))); people = { ...L2[0], n: nm.size, rows: L2.reduce((a, p) => a + p.rows, 0), names: [...nm.values()], sheet: L2.map(p => p.sheet).join(', ') }; }

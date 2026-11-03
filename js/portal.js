@@ -85,7 +85,7 @@ function watchShared(db) {
   live('kpi', sn => { sn.docs.forEach(d => { const x = d.data(); if (x && Array.isArray(x.rows)) state.kpiFiles[d.id] = x; }); });
   // the month's figures and the values typed by hand (Review › KPI results): every month is scored again with them
   const kx = (c, f) => live(c, sn => { const o = {}; sn.docs.forEach(d => { const x = d.data(); if (x && typeof x === 'object' && /^\d{4}-\d{2}$/.test(d.id)) o[d.id] = x; }); state[f] = o; state.kxVer++; if (state.ctx) state.kpi = computeKpi(); });
-  kx('kfig', 'kfig'); kx('khand', 'khand');
+  kx('kfig', 'kfig'); kx('khand', 'khand'); kx('ksrc', 'ksrc');
   live('spvdone', sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); const before = state.spvDone; state.spvDone = o; state.spvDoneVer++; notifyDone(before, o); });
   live('cyclelog', sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); state.cycleLog = o; });
   live('rules', rulesLoaded);

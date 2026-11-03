@@ -187,6 +187,10 @@ Smart-Link, the third party, takes the month's attendance of FRiENDi's agents in
 
 The file is downloaded and kept in Saved workbooks (*Smart-Link attendance*); the tool sends nothing, so it goes to Smart-Link from Outlook as before.
 
+## November 2026, the deduction email's Absenteeism table
+
+In the card look, the Absenteeism table (ID, Name, Total Absent and a column for each day someone was absent) no longer squeezes into the 600pt email: Outlook broke "Absent" over two lines and names over three or four. Every column now has a fixed width (the ID and Name as wide as the longest one, each day 36pt), no cell wraps (names keep their spaces as non-breaking ones), the cells are compact and carry their colour as `bgcolor` too, so Outlook shades the whole cell. When the table is wider than the email, the email widens with it (a month with 30 days of absences scrolls sideways). The classic look and the plain text are as they were.
+
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.
 
@@ -256,6 +260,7 @@ node test/incmail.cjs "final/MC Monthly Report Builder.html" test/shots exportsD
 node test/steps.cjs "final/MC Monthly Report Builder.html" test/shots            # every page in the month's order: the sidebar, the numbered steps (Supervisors, Quality), the dashboard's priority, the agent's waiting one-to-one first
 node test/ctflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # the CT team's incentive workbook on Import: its days, its Utilization in the CT scorecard (the KPI file wins), never the IDs file, Remove and Undo
 node test/smartlink.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # Export › Smart-Link attendance: FRiENDi and FRiENDi Pay only, Smart-Link's sheet and formulas, a late day as Attend with its minutes, the shared month's corrections, Saved workbooks
+node test/absgrid.cjs "final/MC Monthly Report Builder.html" test/shots           # the deduction email's Absenteeism table: every cell on one line at any window width, fixed widths, the email as wide as the table
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)
 npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, Smart-Link's attendance file, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
 ```

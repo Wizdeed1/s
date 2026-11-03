@@ -2774,6 +2774,17 @@ function cardTable(head, rows, left = [1]) {
   const td = (c, i, z) => `<td nowrap style="${c.absent ? 'background:#FEE2E2;' : z ? `background:${CARD.zebra};` : 'background:#FFFFFF;'}border:none;border-bottom:solid ${CARD.line} 1.0pt;padding:5pt 10pt"><p class="MsoNormal" style="margin:0;${al(i)}${CF}">${c.b || c.absent ? '<b>' : ''}<span style="font-size:10pt;color:${c.absent ? '#B91C1C' : CARD.ink}">${c.t}</span>${c.b || c.absent ? '</b>' : ''}</p></td>`;
   return `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:solid ${CARD.line} 1.0pt"><tr>${head.map(th).join('')}</tr>${rows.map((r, j) => `<tr>${r.map((c, i) => td(c, i, j % 2 === 1)).join('')}</tr>`).join('')}</table>`;
 }
+/** a wide table whose every cell stays on one line (the absences by day): each column a fixed width in pt (cols: [{ w, pad, left }]),
+    no wrapping (names keep their spaces as non-breaking ones), compact cells, and each cell's colour as bgcolor too, so Outlook paints
+    the whole cell. -> { html, width } (the table's width in pt, for the email around it) */
+function cardGrid(head, rows, cols) {
+  const W = cols.reduce((a, c) => a + c.w, 0), px = pt => Math.round(pt * 4 / 3), nb = t => String(t).replace(/ /g, '&nbsp;');
+  const box = (i, bg, pv) => `width="${px(cols[i].w)}" bgcolor="${bg}" nowrap style="width:${cols[i].w}pt;white-space:nowrap;background:${bg};border:none;${pv ? `border-bottom:solid ${CARD.line} 1.0pt;` : ''}padding:${pv || 5}pt ${cols[i].pad}pt"`;
+  const para = i => `<p class="MsoNormal" style="margin:0;white-space:nowrap;${cols[i].left ? '' : 'text-align:center;'}${CF}">`;
+  const th = (h, i) => `<td ${box(i, CARD.navy, 0)}>${para(i)}<b><span style="font-size:8.5pt;color:#FFFFFF">${nb(h)}</span></b></p></td>`;
+  const td = (c, i, z) => { const bg = c.absent ? '#FEE2E2' : z ? CARD.zebra : '#FFFFFF', b = c.b || c.absent; return `<td ${box(i, bg, 4)}>${para(i)}${b ? '<b>' : ''}<span style="font-size:${c.absent ? 8.5 : 9}pt;color:${c.absent ? '#B91C1C' : CARD.ink}">${nb(c.t)}</span>${b ? '</b>' : ''}</p></td>`; };
+  return { width: W, html: `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="${px(W)}" style="width:${W}pt;table-layout:fixed;border-collapse:collapse;border:solid ${CARD.line} 1.0pt"><tr>${head.map(th).join('')}</tr>${rows.map((r, j) => `<tr>${r.map((c, i) => td(c, i, j % 2 === 1)).join('')}</tr>`).join('')}</table>` };
+}
 /** the status band: what stage this email is, and the one thing to know (the deadline, or that it is final) */
 function cardBand(fin, label, value) {
   const t = cardTone(fin);
@@ -2782,7 +2793,7 @@ function cardBand(fin, label, value) {
     + `<td style="border:none;padding:0 0 0 12pt"><p class="MsoNormal" style="margin:0;${CF}"><b><span style="font-size:9pt;color:${t.label};text-transform:uppercase;letter-spacing:.6pt">${label}</span></b></p><p class="MsoNormal" style="margin:0;${CF}"><b><span style="font-size:13.5pt;color:${t.value}">${value}</span></b></p></td></tr></table></td></tr></table>`;
 }
 /** the whole email: the navy band, the body, the footer, on the light ground */
-function cardMail({ eyebrow, title, body, foot1, foot2, logo, preview }) {
+function cardMail({ eyebrow, title, body, foot1, foot2, logo, preview, width = 600 }) {   // width in pt: more when a table needs it
   const head = `<tr><td style="background:${CARD.navy};border:none;padding:22pt 42pt"><table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse"><tr><td style="border:none;padding:0">`
     + `<p class="MsoNormal" style="margin:0;${CF}"><b><span style="font-size:8.5pt;color:${CARD.sky};text-transform:uppercase;letter-spacing:1.15pt">${eyebrow}</span></b></p>`
     + `<p class="MsoNormal" style="margin:3pt 0 0 0;${CF}"><b><span style="font-size:15pt;color:#FFFFFF;letter-spacing:-.25pt">${title}</span></b></p></td>`
@@ -2790,7 +2801,7 @@ function cardMail({ eyebrow, title, body, foot1, foot2, logo, preview }) {
   const foot = `<tr><td style="border:none;border-top:solid #F1F5F9 1.0pt;background:${CARD.foot};padding:16pt 42pt"><p class="MsoNormal" align="center" style="margin:0 0 3pt 0;text-align:center;${CF}"><b><span style="font-size:9pt;color:${CARD.text}">${foot1}</span></b></p><p class="MsoNormal" align="center" style="margin:0;text-align:center;${CF}"><span style="font-size:8.5pt;color:${CARD.faint}">${foot2}</span></p></td></tr>`;
   return `<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">${preview ? '<style>body{margin:0;}</style>' : ''}</head><body lang="EN-US" style="word-wrap:break-word;margin:0;background:#FFFFFF"><div class="WordSection1">`
     + `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;background:${CARD.ground};border-collapse:collapse"><tr><td style="border:none;padding:28pt 10pt"><div align="center">`
-    + `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="800" style="width:600pt;background:#FFFFFF;border:solid ${CARD.line} 1.0pt;border-collapse:collapse">${head}<tr><td style="border:none;padding:28pt 42pt 22pt 42pt">${body}</td></tr>${foot}</table>`
+    + `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="${Math.round(width * 4 / 3)}" style="width:${width}pt;background:#FFFFFF;border:solid ${CARD.line} 1.0pt;border-collapse:collapse">${head}<tr><td style="border:none;padding:28pt 42pt 22pt 42pt">${body}</td></tr>${foot}</table>`
     + '</div></td></tr></table></div></body></html>';
 }
 const cardLines = t => String(t || '').split(/\r?\n/).map(l => esc(l) || '&nbsp;');
@@ -2812,12 +2823,18 @@ function mailHtml(md, logoSrc, preview) {
   }
   b += cardH('Conformance Deduction', md.ded.length ? plural(md.ded.length, 'person', 'people') : '');
   b += md.ded.length ? cardTable(['ID', 'Name', 'Total Deduction (min)'], md.ded.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.total), b: true }])) : cardP('No deduction minutes this month.');
+  let width = 600;
   if (md.abs) {
     b += cardH('Absenteeism', md.abs.rows.length ? plural(md.abs.rows.length, 'person', 'people') : '');
-    b += md.abs.rows.length ? cardTable(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(d => `${d}-${M}`)], md.abs.rows.map(a => [{ t: esc(a.id) }, { t: esc(a.name), left: true }, { t: String(a.days.length), b: true }, ...md.abs.dates.map(d => (a.days.includes(d) ? { t: 'Absent', absent: true } : { t: '&nbsp;' }))])) : cardP('No absences this month.');
+    if (md.abs.rows.length) {   // one line a cell: each column as wide as its longest text, a day 36pt ("Absent", "30-Oct"); the card grows to fit
+      const L = md.abs.rows, longest = f => Math.max(...L.map(a => String(f(a) || '').length));
+      const cols = [{ w: Math.max(56, Math.ceil(longest(a => a.id) * 5.4) + 12), pad: 6 }, { w: Math.max(110, Math.ceil(longest(a => a.name) * 5.2) + 14), pad: 7, left: true }, { w: 64, pad: 5 }, ...md.abs.dates.map(() => ({ w: 36, pad: 3 }))];
+      const G = cardGrid(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(d => `${d}-${M}`)], L.map(a => [{ t: esc(a.id) }, { t: esc(a.name) }, { t: String(a.days.length), b: true }, ...md.abs.dates.map(d => (a.days.includes(d) ? { t: 'Absent', absent: true } : { t: '&nbsp;' }))]), cols);
+      b += G.html; width = Math.max(600, G.width + 84 + 2);
+    } else b += cardP('No absences this month.');
   }
   b += cardSign(state.mail.sign);
-  return cardMail({ eyebrow: `MC Workforce · ${fin ? 'Final' : 'For review'}`, title: `Monthly Deduction · ${MONTH_LONG[md.m - 1]} ${md.y}`, body: b, foot1: 'Member Care · Workforce Management', foot2: `Conformance deduction and absenteeism · ${M} ${md.y}`, logo: cardLogo(logoSrc), preview });
+  return cardMail({ eyebrow: `MC Workforce · ${fin ? 'Final' : 'For review'}`, title: `Monthly Deduction · ${MONTH_LONG[md.m - 1]} ${md.y}`, body: b, foot1: 'Member Care · Workforce Management', foot2: `Conformance deduction and absenteeism · ${M} ${md.y}`, logo: cardLogo(logoSrc), preview, width });
 }
 /** the incentive email (the classic one stays one tick away) */
 function incMailHtml(md, logoSrc, preview) {

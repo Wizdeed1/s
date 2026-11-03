@@ -1,8 +1,9 @@
 // ================================================================ WFM TEAM: one page for the WFM analysts and the WFM manager
-// Its tabs, in three groups. This month: Import, Review and Export (the month's build, for the WFM analysts) and Emails (the
+// Its tabs, in five groups. This month: Import, Review and Export (the month's build, for the WFM analysts) and Emails (the
 // four daily brand emails, and the month's deduction and absences emails; the incentive email is the senior manager's). Every day: Daily (the daily data) and
-// Report builder (the analysts make the daily emails). Insight: Analytics (departments and months), Agents (every measure per
-// agent) and Interactions (the interactions export). Each role sees its own tabs; the senior manager reads.
+// Report builder (the analysts make the daily emails). Every week: Weekly commercial (the presentation for the VP, weekly.js).
+// Insight: Analytics (departments and months), Agents (every measure per agent) and Interactions (the interactions export).
+// Keep: Data (export and import of everything). Each role sees its own tabs; the senior manager reads.
 Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core', wfmAt: '' });
 const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['weekly', 'Weekly commercial'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
 const WFM_STEPS = ['import', 'review', 'export'];   // the month's build, shown on the WFM team page

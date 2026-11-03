@@ -2342,7 +2342,7 @@ const slBrand = b => /^friendi/i.test(normBrand(b || ''));
 function slData(k) {
   const [y, m] = k.split('-').map(Number), ND = Core.daysIn(y, m), cfg = countFor(k), rows = [];
   if (state.history[k]) {
-    for (const x of liveRows(k)) { if (!slBrand(x.brand)) continue; const days = daysOfRow(x, ND); if (days.some(v => v != null)) rows.push({ id: idText(x.id), name: x.n, brand: normBrand(x.brand), team: normSpace(x.team), days }); }
+    for (const x of liveRows(k)) { if (!slBrand(x.brand)) continue; const days = daysOfRow(x, ND); if (days.some(v => v != null)) rows.push({ id: idText(x.id), name: x.n, brand: normBrand(x.brand), team: normSpace(x.team), days, tardy: x.tardy }); }   // tardy: the month's total, also when an attendance sheet gave it as one number
   } else if (state.model && k === monthKey()) {
     const A = state.ctx && state.ctx.attendance;
     for (const x of state.model) {
@@ -2351,7 +2351,7 @@ function slData(k) {
     }
   } else return null;
   const order = x => (DEP_ORDER.indexOf(x.team) + 1 || 99);
-  return { y, m, rows: rows.map(a => ({ ...a, tardy: Kpi.countDays(a.days, cfg).tardy || a.tardyFile || 0 })).sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name)) };
+  return { y, m, rows: rows.map(a => ({ ...a, tardy: typeof a.tardy === 'number' && Number.isFinite(a.tardy) ? a.tardy : Kpi.countDays(a.days, cfg).tardy || a.tardyFile || 0 })).sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name)) };
 }
 function renderSlExport() {
   const k = monthKey(), d = slData(k), n = d ? d.rows.length : 0, by = d ? d.rows.reduce((o, a) => ((o[a.brand] = (o[a.brand] || 0) + 1), o), {}) : {};
@@ -2913,7 +2913,7 @@ function dedMailData() {
   if (mailShared()) {
     for (const x of liveRows(k)) {
       const days = daysOfRow(x, ND), who = { id: idText(x.id), name: x.n, brand: normSpace(x.brand), team: normSpace(x.team) };
-      if (days.some(v => v != null)) att.push({ ...who, days });
+      if (days.some(v => v != null)) att.push({ ...who, days, tardy: x.tardy });   // the month's late minutes, also when they came as one total
       if (inDed(x) && x.ded != null) ded.push({ ...who, sched: minutes(x.ds), act: minutes(x.da), total: Math.round(x.ded || 0) });
     }
   } else if (r) {
@@ -2929,7 +2929,7 @@ function dedMailData() {
     }
   } else return null;
   const order = x => (DEP_ORDER.indexOf(x.team) + 1 || 99), byDep = (a, b) => order(a) - order(b) || a.name.localeCompare(b.name);
-  att = att.map(a => { const c = Kpi.countDays(a.days, cfg); return { ...a, tardy: c.tardy || a.tardyFile || 0, sched: c.sched, actual: c.counted }; }).sort(byDep);
+  att = att.map(a => { const c = Kpi.countDays(a.days, cfg); return { ...a, tardy: typeof a.tardy === 'number' && Number.isFinite(a.tardy) ? a.tardy : c.tardy || a.tardyFile || 0, sched: c.sched, actual: c.counted }; }).sort(byDep);
   return { y, m, att, ded: ded.sort(byDep) };
 }
 function snapNow(kind) {

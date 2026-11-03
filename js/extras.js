@@ -200,9 +200,10 @@ const DAYCH = v => (v == null ? '-' : typeof v === 'number' || v === 'Attend' ? 
 /** a saved row with the supervisor's corrections applied (draft months only), counted with the month's rules */
 function withEdits(r, edits, ND, k) {
   if (!edits || !edits.days || !Object.keys(edits.days).length) return r;
-  const days = daysOfRow(r, ND);
+  const days = daysOfRow(r, ND), byDay = days.some(v => typeof v === 'number');   // a month whose late minutes were never by day (an attendance sheet's Tardy column) keeps its total
   for (const [d, e] of Object.entries(edits.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = e.v === '' ? null : e.v; }
   const t = attTotals(days, k), dx = {};
+  if (!byDay) t.tardy += +r.tardy || 0;   // the sheet's total, plus any late minutes the supervisor typed on a day
   days.forEach((v, i) => { if (v != null && (typeof v === 'number' || !['Attend', 'OFF', 'AL', 'SL', 'Absent'].includes(v))) dx[i + 1] = v; });
   const { kdr, kab, ...rest } = r;
   return { ...rest, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, ...keptCount(t, k), _edited: Object.keys(edits.days).length };

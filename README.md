@@ -181,7 +181,7 @@ Smart-Link, the third party, takes the month's attendance of FRiENDi's agents in
 |---|---|
 | Who | FRiENDi's agents only: the FRiENDi and FRiENDi Pay brands (no Virgin), with a code on at least one day. The card says how many of each go in. |
 | Columns | Row 2: ID (the National ID, as Smart-Link's file has it), Name, Team (the brand), Dep, every day of the month, then Tardy, AL leave, SL leaves, Exam, National Day, EID, Unpaid, Absent, Attend, Scheduled days and Actual days. |
-| Days | Each day's code; a late day is Attend, with its minutes added up under Tardy. The days come from the shared month, with the supervisors' corrections, or from Build while the month is not saved yet. |
+| Days | Each day's code; a late day is Attend. Tardy is the month's late minutes: the minutes of the late days, or, when an attendance sheet gave them as one Tardy total, that total as the month keeps it (also after a supervisor corrects a day; the deduction email's workbook takes it the same way). The days come from the shared month, with the supervisors' corrections, or from Build while the month is not saved yet. |
 | Formulas | Smart-Link's own: COUNTIF over the days for each code, Scheduled days the leaves, absences and attended days added up, Actual days what is left once the leaves and absences are taken off. Each formula carries its value. |
 | Look | The navy headings with Actual days in red, AL green, SL yellow, Absent red, OFF grey, National Day green, ID and Name frozen with the headings, a filter on the table, and an ID written twice coloured. |
 

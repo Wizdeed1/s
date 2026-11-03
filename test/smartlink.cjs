@@ -4,6 +4,7 @@
 //    "Smart-Link Attendance -Sep 2026.xlsx": Smart-Link's sheet, FRiENDi's agents only (no Virgin), each day's code from the month.
 // 2. The shared month wins over the build: a supervisor's correction in it (an AL day) is in the file.
 // 3. The file is kept in Saved workbooks, as Smart-Link attendance.
+// 4. Late minutes an attendance sheet gave as one Tardy total are in the file (and the deduction email's workbook), corrections or not.
 // Usage: node test/smartlink.cjs page.html exportsDir outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -68,6 +69,27 @@ async function frSheet() {
   await p.waitForTimeout(500);
   const kept = await p.evaluate(() => [...document.querySelectorAll('#repCard .uplist li')].map(li => li.textContent.replace(/\s+/g, ' ')));
   ok(kept.some(t => /Smart-Link Attendance -Sep 2026\.xlsx/.test(t) && /Smart-Link attendance/.test(t)), `kept in Saved workbooks: ${kept.filter(t => /Smart-Link/.test(t)).map(t => t.slice(0, 80)).join(' | ') || 'none'}`);
+
+  // ---- 4. late minutes an attendance sheet gave as one Tardy total (no minutes on the days): the saved month's total is in the file,
+  // also after a supervisor corrects a day, and in the deduction email's workbook too
+  const T4 = await p.evaluate(() => {
+    const M = window.__mc, S = M.state, k = '2026-09', H = S.history[k], fr = H.rows.filter(r => /friendi/i.test(r.brand)).slice(0, 3);
+    fr.forEach((r, i) => { r.d = r.d.replace(/[0-9]/g, 'A'); delete r.dx; r.tardy = [25, 40, 7][i]; });   // days as letters only, the minutes as a total
+    const pid = S.roster.find(x => String(x.nid) === String(fr[1].id))._id;
+    S.attEditsBy[k] = new Map([[pid, { days: { 6: { v: 'SL' } } }]]); S.attEditsVer++;   // a supervisor's correction on the second one
+    S.histVer++; M.refresh(); return fr.map(r => ({ id: String(r.id), name: r.n }));
+  });
+  await p.evaluate(() => window.__mc.setStep('export')); await p.waitForTimeout(300);
+  F = await grab(); R = F.T[0].rows.slice(2).filter(r => r && r.length);
+  const tv = T4.map(x => (R.find(r => String(r[0]) === x.id) || [])[34]);
+  ok(tv.join(',') === '25,40,7', `a Tardy total kept with the month is in the Smart-Link file, a supervisor's correction or not (${tv.join(', ')})`);
+  await p.evaluate(() => { const M = window.__mc, S = M.state; S.mailPick = 'shared'; S.mailSrc = 'shared'; S.mailKind = 'ded'; S.mailStage = 'review'; S.wsMonth = '2026-09'; M.setStep('email'); });
+  await p.waitForSelector('#v-email:not([hidden]) #attBtn', { timeout: 15000 });
+  const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#attBtn')]);
+  const dp = path.join(out, dl.suggestedFilename()); await dl.saveAs(dp);
+  const AR = (await Core.readXlsx(fs.readFileSync(dp))).find(t => t.name === 'Attendance Report'), hd = AR.rows[1], ti = hd.indexOf('Tardy');
+  const dv = T4.map(x => (AR.rows.find(r => r && r[0] === x.name) || [])[ti]);
+  ok(ti > 0 && dv.join(',') === '25,40,7', `the deduction email's workbook has them too (${dv.join(', ')})`);
 
   ok(!errs.length, `no errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
   await b.close();

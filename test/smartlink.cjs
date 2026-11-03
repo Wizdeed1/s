@@ -36,7 +36,7 @@ async function frSheet() {
   const fr = await p.evaluate(() => { const S = window.__mc.state, A = S.ctx.attendance; return S.model.filter(x => x.shown && /friendi/i.test(x.p.brand) && A && A.get(x.p._id) && A.get(x.p._id).days.some(v => v != null)).length; });
   const card = await p.evaluate(() => ({ name: document.getElementById('slName').textContent, note: document.getElementById('slNote').textContent }));
   ok(card.name === 'Smart-Link Attendance -Sep 2026.xlsx', `the card names the file: ${card.name}`);
-  ok(/FRiENDi's agents only: 5 Friendi and 2 Friendi Pay, from this build/.test(card.note) && /National IDs/.test(card.note) && fr === FS.n, `it says who goes in: ${card.note.slice(0, 110)}…`);
+  ok(/FRiENDi's agents only: 5 Friendi and 2 Friendi Pay, from this build/.test(card.note) && /Set Smart-Link's own list/.test(card.note) && fr === FS.n, `it says who goes in: ${card.note.slice(0, 110)}…`);
   await p.screenshot({ path: path.join(out, 'smartlink-card.png') });
 
   // ---- 1. the file
@@ -90,6 +90,22 @@ async function frSheet() {
   const AR = (await Core.readXlsx(fs.readFileSync(dp))).find(t => t.name === 'Attendance Report'), hd = AR.rows[1], ti = hd.indexOf('Tardy');
   const dv = T4.map(x => (AR.rows.find(r => r && r[0] === x.name) || [])[ti]);
   ok(ti > 0 && dv.join(',') === '25,40,7', `the deduction email's workbook has them too (${dv.join(', ')})`);
+
+  // ---- 5. Smart-Link's own list (set from one of its files): exactly its agents, whatever their brand in the roster, labelled as the
+  // list labels them, in its order; one with no attendance this month keeps an empty row and the card names them
+  const LP = await p.evaluate(() => {
+    const S = window.__mc.state, H = S.history['2026-09'], fr = H.rows.filter(r => /friendi/i.test(r.brand)).slice(0, 2), vg = H.rows.find(r => /virgin/i.test(r.brand) && r.d && /[AX]/.test(r.d));
+    return [...fr.map(r => ({ id: String(r.id), name: r.n, brand: 'Friendi', team: r.team })), { id: String(vg.id), name: vg.n, brand: 'Friendi', team: 'SM' }, { id: '1999999999', name: 'Samar Q.', brand: 'Friendi', team: 'SM' }];
+  });
+  const listFile = path.join(out, 'Smart-Link Attendance -Sep 2026 (list).xlsx');
+  fs.writeFileSync(listFile, await Writer2.smartLink({ y: 2026, m: 9, rows: LP.map(x => ({ ...x, days: [], tardy: 0 })) }));
+  await p.evaluate(() => window.__mc.setStep('export')); await p.waitForSelector('#slListBtn');
+  const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.click('#slListBtn')]); await fc.setFiles(listFile); await p.waitForTimeout(500);
+  const note5 = await p.textContent('#slNote');
+  F = await grab(); R = F.T[0].rows.slice(2).filter(r => r && r.length);
+  ok(R.length === 4 && R.map(r => r[1]).join('|') === LP.map(x => x.name).join('|'), `the list's agents, in its order (${R.length}: ${R.map(r => r[1]).join(', ')})`);
+  ok(R[2][2] === 'Friendi' && R[2][3] === 'SM' && R[2].slice(4, 34).some(v => v === 'Attend'), 'an agent on Virgin in the roster is in, labelled Friendi · SM as the list has it, with the days');
+  ok(R[3][1] === 'Samar Q.' && R[3].slice(4, 34).every(v => v == null || v === '') && /No attendance in Sep 2026 for 1 of them: Samar Q\./.test(note5), `one with no attendance keeps an empty row, and the card names her: "${note5.slice(0, 140)}…"`);
 
   ok(!errs.length, `no errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
   await b.close();

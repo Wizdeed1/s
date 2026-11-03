@@ -3364,7 +3364,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     </div>
     <div class="card" id="slCard">
       <div class="incgrid"><div><h2 style="margin:0">Smart-Link attendance</h2><div class="fname-big" id="slName"></div><p class="hint" id="slNote"></p></div>
-        <div style="display:grid;gap:8px;justify-items:end"><button class="btn lg" id="buildSl" disabled>Build Smart-Link file</button></div></div>
+        <div style="display:grid;gap:8px;justify-items:end"><button class="btn lg" id="buildSl" disabled>Build Smart-Link file</button><button class="btn sm" id="slListBtn">Set Smart-Link's list from its file</button></div></div>
     </div>
     <div class="card">
       <h2>Sheets in the monthly report</h2>
@@ -13844,6 +13844,7 @@ async function loadData(db) {
   try { const snap = await db.doc('config/logo').get(); if (snap.exists) { const d = snap.data() || {}; if (typeof d.dataUrl === 'string' && d.dataUrl.startsWith('data:image/')) { state.logo = { dataUrl: d.dataUrl, w: d.w, h: d.h }; logoPx = null; renderBrand(); render(); } } } catch (e) { /* none */ }
   try { const snap = await db.doc('config/attLinks').get(); if (snap.exists) { const d = snap.data() || {}; state.attLinks = new Map((d.links || []).filter(x => x && x.n && x.pid).map(x => [x.n, x.pid])); if (state.attFiles.length) refresh(); } } catch (e) { /* none */ }
   try { const snap = await db.doc('config/nameLinks').get(); if (snap.exists) { loadNameMemo(snap.data()); refresh(); } } catch (e) { /* none */ }
+  try { const snap = await db.doc('config/smartlink').get(); if (snap.exists) { state.slList = slListOk(snap.data()); renderSlExport(); } } catch (e) { /* none */ }
   try { const snap = await db.doc('config/ids').get(); if (snap.exists) { const d = snap.data() || {}; if (Array.isArray(d.rows)) { state.idsFile = { name: d.name || 'IDs file', at: d.at || '', rows: d.rows, keep: Array.isArray(d.keep) ? d.keep : [] }; state.idsAuto = true; refresh(); } } } catch (e) { /* none */ }
   if (!state.logo && Auth.team() && Auth.team().logo) { state.logo = Auth.team().logo; render(); }
   watchShared(db);   // history, final results and accounts stay live, so every role sees the same data
@@ -17042,8 +17043,42 @@ async function buildInc() {
 // Smart-Link, the third party, takes the month's attendance of FRiENDi's agents (FRiENDi and FRiENDi Pay) in its own layout
 // (Writer2.smartLink). The days are the shared month's, with the supervisors' corrections, else Build's while the month is not saved.
 const slBrand = b => /^friendi/i.test(normBrand(b || ''));
+// Smart-Link's own list of its agents (config/smartlink: { people: [{ id, name, team, dep }], from, at, by }), set from one of its files:
+// with it the file holds exactly those agents, whatever their brand in the roster (the SM agents, two on Virgin), labelled as Smart-Link
+// labels them; without it, FRiENDi's brands. A record from the shared folder is checked, never trusted.
+const slListOk = d => { const P = d && Array.isArray(d.people) ? d.people.filter(x => x && typeof x === 'object' && typeof x.name === 'string' && x.name.trim()).slice(0, 2000).map(x => ({ id: Core.cleanId(x.id), name: normSpace(x.name), team: normSpace(x.team || ''), dep: normSpace(x.dep || '') })) : []; return P.length ? { people: P, from: String(d.from || ''), at: String(d.at || ''), by: String(d.by || '') } : null; };
+/** a Smart-Link file (or any sheet with ID and Name in a heading row): its agents become Smart-Link's list */
+async function slSetList(file) {
+  let sheets; try { sheets = await parseRaw(file.name, await file.arrayBuffer()); } catch (e) { sheets = null; }
+  const people = [];
+  for (const t of sheets || []) {
+    const rows = t.rows || [], h = rows.slice(0, 10).findIndex(r => (r || []).some(v => /^name$/i.test(normSpace(v))) && (r || []).some(v => /^(id|national id)$/i.test(normSpace(v)))); if (h < 0) continue;
+    const H = rows[h].map(v => normSpace(v)), col = re => H.findIndex(x => re.test(x)), ni = col(/^name$/i), ii = col(/^(id|national id)$/i), ti = col(/^(team|brand)$/i), di = col(/^(dep|dept|department)$/i);
+    for (const r of rows.slice(h + 1)) { const nm = normSpace(r && r[ni]); if (!nm || /^total/i.test(nm)) continue; people.push({ id: Core.cleanId(r[ii]), name: nm, team: ti >= 0 ? normSpace(r[ti]) : '', dep: di >= 0 ? normSpace(r[di]) : '' }); }
+    if (people.length) break;
+  }
+  if (!people.length) { toast(`${file.name} has no sheet with ID and Name headings: no list taken.`); return; }
+  const old = state.slList, rec = { people, from: file.name, at: new Date().toISOString(), by: whoNow() };
+  state.slList = rec; if (state.db) queueWrite('config/smartlink', () => state.db.doc('config/smartlink').set(rec));
+  renderSlExport(); toast(`Smart-Link's list: ${plural(people.length, 'agent')} from ${file.name}`, { label: 'Undo', fn: () => { state.slList = old; if (state.db) queueWrite('config/smartlink', () => (old ? state.db.doc('config/smartlink').set(old) : state.db.doc('config/smartlink').delete())); renderSlExport(); } });
+}
+const slPicker = Object.assign(document.createElement('input'), { type: 'file', accept: '.xlsx,.xlsm,.xlsb,.csv', hidden: true, id: 'slPicker' }); document.body.appendChild(slPicker);
+slPicker.addEventListener('change', () => { const f = slPicker.files[0]; slPicker.value = ''; if (f) slSetList(f); });
 function slData(k) {
-  const [y, m] = k.split('-').map(Number), ND = Core.daysIn(y, m), cfg = countFor(k), rows = [];
+  const [y, m] = k.split('-').map(Number), ND = Core.daysIn(y, m), cfg = countFor(k), rows = [], L = state.slList;
+  if (L) {   // Smart-Link's own list: each of its agents, by National ID or name, with the month's days (none yet: an empty row, and the card says so)
+    const src = state.history[k] ? liveRows(k).map(x => ({ id: Core.cleanId(x.id), names: [x.n], brand: x.brand, team: x.team, days: daysOfRow(x, ND), tardy: x.tardy }))
+      : state.model && k === monthKey() ? state.model.filter(x => x.shown).map(x => { const a = state.ctx && state.ctx.attendance ? state.ctx.attendance.get(x.p._id) : null; return { id: Core.cleanId(x.p.nid), names: [x.exp, x.p.name, x.p.sys], brand: x.p.brand, team: x.p.team, days: a ? a.days : new Array(ND).fill(null), tardyFile: a ? a.tardyFile : null }; }) : null;
+    if (!src) return null;
+    const byId = new Map(src.filter(x => x.id).map(x => [x.id, x])), byName = new Map(); src.forEach(x => x.names.filter(Boolean).forEach(n => byName.set(normName(n), x)));
+    const nm = new Map(rosterRows().map(p => [Core.cleanId(p.nid), p]));
+    for (const e of L.people) {
+      const x = (e.id && byId.get(e.id)) || byName.get(normName(e.name)) || (e.id && nm.get(e.id) && [gname(nm.get(e.id)), nm.get(e.id).name].map(n => byName.get(normName(n))).find(Boolean)) || null;
+      const days = x ? x.days : new Array(ND).fill(null);
+      rows.push({ id: e.id || (x && x.id) || '', name: e.name, brand: e.team || normBrand(x ? x.brand : ''), team: e.dep || normSpace(x ? x.team : ''), days, tardy: x ? x.tardy : 0, tardyFile: x ? x.tardyFile : null, none: !x || !days.some(v => v != null) });
+    }
+    return { y, m, list: true, rows: rows.map(a => ({ ...a, tardy: typeof a.tardy === 'number' && Number.isFinite(a.tardy) ? a.tardy : Kpi.countDays(a.days, cfg).tardy || a.tardyFile || 0 })) };   // in the list's order, as Smart-Link keeps it
+  }
   if (state.history[k]) {
     for (const x of liveRows(k)) { if (!slBrand(x.brand)) continue; const days = daysOfRow(x, ND); if (days.some(v => v != null)) rows.push({ id: idText(x.id), name: x.n, brand: normBrand(x.brand), team: normSpace(x.team), days, tardy: x.tardy }); }   // tardy: the month's total, also when an attendance sheet gave it as one number
   } else if (state.model && k === monthKey()) {
@@ -17057,11 +17092,15 @@ function slData(k) {
   return { y, m, rows: rows.map(a => ({ ...a, tardy: typeof a.tardy === 'number' && Number.isFinite(a.tardy) ? a.tardy : Kpi.countDays(a.days, cfg).tardy || a.tardyFile || 0 })).sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name)) };
 }
 function renderSlExport() {
-  const k = monthKey(), d = slData(k), n = d ? d.rows.length : 0, by = d ? d.rows.reduce((o, a) => ((o[a.brand] = (o[a.brand] || 0) + 1), o), {}) : {};
+  const k = monthKey(), d = slData(k), n = d ? d.rows.length : 0, by = d ? d.rows.reduce((o, a) => ((o[a.brand] = (o[a.brand] || 0) + 1), o), {}) : {}, L = state.slList;
+  if (!$('slName')) return;
   $('slName').textContent = Writer2.slFileName(state.y, state.m);
-  $('slNote').textContent = n ? `FRiENDi's agents only: ${['Friendi', 'Friendi Pay'].filter(b => by[b]).map(b => `${by[b]} ${b}`).join(' and ')}, from ${state.history[k] ? 'the shared month, with the supervisors\' corrections' : 'this build'}. Each day's code, the late minutes and the counts, laid out as Smart-Link's file, with the National IDs it has.`
+  const from = state.history[k] ? 'the shared month, with the supervisors\' corrections' : 'this build', none = d && d.list ? d.rows.filter(a => a.none) : [];
+  $('slNote').textContent = L ? (n ? `Smart-Link's list: ${plural(n, 'agent')} (from ${L.from}${L.by ? `, set by ${L.by}` : ''}), labelled as Smart-Link labels them, with their days from ${from}.${none.length ? ` No attendance in ${ymLabel(k)} for ${plural(none.length, 'of them', 'of them')}: ${none.slice(0, 8).map(a => a.name).join(', ')}${none.length > 8 ? '…' : ''} (their rows stay, empty).` : ''}` : `Smart-Link's list is set (${plural(L.people.length, 'agent')}), but ${ymLabel(k)} has no attendance yet.`)
+    : n ? `FRiENDi's agents only: ${['Friendi', 'Friendi Pay'].filter(b => by[b]).map(b => `${by[b]} ${b}`).join(' and ')}, from ${from}. Set Smart-Link's own list to take exactly its agents (some are not on FRiENDi's brands in the roster, such as the SM agents).`
     : `No FRiENDi attendance for ${ymLabel(k)} yet: it comes with the month's exports and attendance files.`;
   $('buildSl').disabled = !n || !!state.slBuilding;
+  $('slListBtn').textContent = L ? 'Change Smart-Link\'s list' : 'Set Smart-Link\'s list from its file';
 }
 async function buildSl() {
   const k = monthKey(), d = slData(k); if (!d || !d.rows.length || state.slBuilding) return;
@@ -18731,6 +18770,7 @@ noteOn('click', e => {
 // export: incentive
 $('buildInc').addEventListener('click', buildInc);
 $('buildSl').addEventListener('click', buildSl);
+$('slListBtn').addEventListener('click', () => slPicker.click());
 $('histAdd').addEventListener('click', async () => {
   const k0 = ymKey(state.y, state.m), old = state.history[k0];
   const k = await saveMonthToHistory('this page'); if (!k) return; renderExport();
@@ -27282,7 +27322,7 @@ const DEPT = [
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
     '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it). People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
     '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one.',
-    '<b>Export › Smart-Link attendance</b>: the month\'s attendance of FRiENDi\'s agents (FRiENDi and FRiENDi Pay) in Smart-Link\'s own file (Smart-Link Attendance -Sep 2026.xlsx): each day\'s code, the late minutes and the counts with Smart-Link\'s formulas, and the National IDs, as Smart-Link\'s file has them. It is made from the shared month, with the supervisors\' corrections, and kept in Saved workbooks; send it to Smart-Link yourself.',
+    '<b>Export › Smart-Link attendance</b>: first, <b>Set Smart-Link\'s list from its file</b> once (any of Smart-Link\'s attendance files: its ID and Name columns), so the file holds exactly Smart-Link\'s agents, the SM agents and those on Virgin too. Then the month\'s attendance of those agents in Smart-Link\'s own file (Smart-Link Attendance -Sep 2026.xlsx): each day\'s code, the late minutes and the counts with Smart-Link\'s formulas, and the National IDs, as Smart-Link\'s file has them. It is made from the shared month, with the supervisors\' corrections, and kept in Saved workbooks; send it to Smart-Link yourself.',
     '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs.',
     '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',

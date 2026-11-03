@@ -329,7 +329,7 @@
     <div class="viewhead">
       <div>
         <h2 class="vt" id="h-export">Export</h2>
-        <p>Build the monthly report and the incentive data workbook. Both are formula-driven, so a change in Excel updates every table.</p>
+        <p>Build the monthly report, the incentive data workbook and Smart-Link's attendance file. They are formula-driven, so a change in Excel updates every table.</p>
       </div>
     </div>
     <div class="card success" id="success" hidden></div>
@@ -350,6 +350,10 @@
       <div class="incgrid"><div><h2 style="margin:0">Incentive data workbook</h2><div class="fname-big" id="incName"></div><p class="hint" id="incNote"></p></div>
         <div style="display:grid;gap:8px;justify-items:end"><button class="btn primary lg" id="buildInc" disabled>Build incentive file</button><button class="btn sm" id="histAdd" disabled>Add this month to the history</button></div></div>
       <div class="sheets" id="incSheets" style="margin-top:12px"></div>
+    </div>
+    <div class="card" id="slCard">
+      <div class="incgrid"><div><h2 style="margin:0">Smart-Link attendance</h2><div class="fname-big" id="slName"></div><p class="hint" id="slNote"></p></div>
+        <div style="display:grid;gap:8px;justify-items:end"><button class="btn lg" id="buildSl" disabled>Build Smart-Link file</button></div></div>
     </div>
     <div class="card">
       <h2>Sheets in the monthly report</h2>

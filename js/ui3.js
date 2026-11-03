@@ -1006,7 +1006,7 @@ function renderExport() {
   $('build').disabled = !ready || state.building;
   $('buildNote').textContent = ready ? 'The file is saved to your computer after you confirm.' : buildBlocker() + '.';
   $('sheets').innerHTML = sheetsHtml(!!state.ctx);
-  renderIncExport(); renderRepCard();
+  renderIncExport(); renderSlExport(); renderRepCard();
   $('sheets').closest('.card').hidden = !!freshBuild();
   const sc = $('success');
   sc.classList.remove('success', 'building', 'failed', 'sweep');
@@ -2333,6 +2333,44 @@ async function buildInc() {
   }
   catch (e) { toast('Could not build the incentive file: ' + (e && e.message ? e.message : e)); }
   finally { state.incBuilding = false; renderExport(); }
+}
+
+// ---------------------------------------------------------------- the Smart-Link attendance: FRiENDi's agents, for Smart-Link
+// Smart-Link, the third party, takes the month's attendance of FRiENDi's agents (FRiENDi and FRiENDi Pay) in its own layout
+// (Writer2.smartLink). The days are the shared month's, with the supervisors' corrections, else Build's while the month is not saved.
+const slBrand = b => /^friendi/i.test(normBrand(b || ''));
+function slData(k) {
+  const [y, m] = k.split('-').map(Number), ND = Core.daysIn(y, m), cfg = countFor(k), rows = [];
+  if (state.history[k]) {
+    for (const x of liveRows(k)) { if (!slBrand(x.brand)) continue; const days = daysOfRow(x, ND); if (days.some(v => v != null)) rows.push({ id: idText(x.id), name: x.n, brand: normBrand(x.brand), team: normSpace(x.team), days }); }
+  } else if (state.model && k === monthKey()) {
+    const A = state.ctx && state.ctx.attendance;
+    for (const x of state.model) {
+      if (!x.shown || !slBrand(x.p.brand)) continue; const a = A ? A.get(x.p._id) : null;
+      if (a && a.days.some(v => v != null)) rows.push({ id: idText(x.p.nid), name: x.exp, brand: normBrand(x.p.brand), team: normSpace(x.p.team), days: a.days, tardyFile: a.tardyFile });
+    }
+  } else return null;
+  const order = x => (DEP_ORDER.indexOf(x.team) + 1 || 99);
+  return { y, m, rows: rows.map(a => ({ ...a, tardy: Kpi.countDays(a.days, cfg).tardy || a.tardyFile || 0 })).sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name)) };
+}
+function renderSlExport() {
+  const k = monthKey(), d = slData(k), n = d ? d.rows.length : 0, by = d ? d.rows.reduce((o, a) => ((o[a.brand] = (o[a.brand] || 0) + 1), o), {}) : {};
+  $('slName').textContent = Writer2.slFileName(state.y, state.m);
+  $('slNote').textContent = n ? `FRiENDi's agents only: ${['Friendi', 'Friendi Pay'].filter(b => by[b]).map(b => `${by[b]} ${b}`).join(' and ')}, from ${state.history[k] ? 'the shared month, with the supervisors\' corrections' : 'this build'}. Each day's code, the late minutes and the counts, laid out as Smart-Link's file, with the National IDs it has.`
+    : `No FRiENDi attendance for ${ymLabel(k)} yet: it comes with the month's exports and attendance files.`;
+  $('buildSl').disabled = !n || !!state.slBuilding;
+}
+async function buildSl() {
+  const k = monthKey(), d = slData(k); if (!d || !d.rows.length || state.slBuilding) return;
+  state.slBuilding = true; renderSlExport();
+  try {
+    const bytes = await Writer2.smartLink(d), fn = Writer2.slFileName(d.y, d.m), u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    const ok = await save(fn, new Blob([u8], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const locked = await repKeep(fn, u8, 'smartlink');
+    impLogAdd('read', `Built ${fn}: ${plural(d.rows.length, 'FRiENDi agent')}`);
+    if (!ok && locked === 'ok') toast(`${fn}: kept in Saved workbooks`);
+  } catch (e) { toast('Could not build the Smart-Link file: ' + (e && e.message ? e.message : e)); }
+  finally { state.slBuilding = false; renderSlExport(); }
 }
 
 // ---------------------------------------------------------------- forms (one-to-one and final), saved per agent
@@ -3972,6 +4010,7 @@ noteOn('click', e => {
 
 // export: incentive
 $('buildInc').addEventListener('click', buildInc);
+$('buildSl').addEventListener('click', buildSl);
 $('histAdd').addEventListener('click', async () => {
   const k0 = ymKey(state.y, state.m), old = state.history[k0];
   const k = await saveMonthToHistory('this page'); if (!k) return; renderExport();

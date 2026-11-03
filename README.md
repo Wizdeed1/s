@@ -173,6 +173,20 @@ The CT team keeps its month in its own workbook (*CT - Incentive - October.xlsb*
 | Utilization | Each day's % is (hours on tickets + hours on other tasks) ÷ 7, and the month's Utilization is their average, as the workbook's own formula has it. It is kept for the month (`ksrc/<month>` with the shared data) and counts in the CT scorecard's Utilization where the KPI file has no value; the KPI file's value wins, a value typed by hand wins over both. The Attendance card says, for example, *Utilization for 6 people*; Remove takes the days and the Utilization away, Undo brings both back. |
 | Not the IDs file | Its list of IDs no longer makes the recogniser call it the HR IDs file (which would have replaced the IDs file): it is a supervisor's attendance sheet, sure, for the month of its dates. |
 
+## November 2026, Smart-Link's attendance file
+
+Smart-Link, the third party, takes the month's attendance of FRiENDi's agents in its own workbook. **WFM team › Export › Smart-Link attendance** now builds it (`Writer2.smartLink`): *Smart-Link Attendance -Sep 2026.xlsx*, one sheet named *SmartLink-Attendance Sep-2026*, laid out as Smart-Link's file:
+
+| Part | What is in it |
+|---|---|
+| Who | FRiENDi's agents only: the FRiENDi and FRiENDi Pay brands (no Virgin), with a code on at least one day. The card says how many of each go in. |
+| Columns | Row 2: ID (the National ID, as Smart-Link's file has it), Name, Team (the brand), Dep, every day of the month, then Tardy, AL leave, SL leaves, Exam, National Day, EID, Unpaid, Absent, Attend, Scheduled days and Actual days. |
+| Days | Each day's code; a late day is Attend, with its minutes added up under Tardy. The days come from the shared month, with the supervisors' corrections, or from Build while the month is not saved yet. |
+| Formulas | Smart-Link's own: COUNTIF over the days for each code, Scheduled days the leaves, absences and attended days added up, Actual days what is left once the leaves and absences are taken off. Each formula carries its value. |
+| Look | The navy headings with Actual days in red, AL green, SL yellow, Absent red, OFF grey, National Day green, ID and Name frozen with the headings, a filter on the table, and an ID written twice coloured. |
+
+The file is downloaded and kept in Saved workbooks (*Smart-Link attendance*); the tool sends nothing, so it goes to Smart-Link from Outlook as before.
+
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.
 
@@ -241,8 +255,9 @@ node test/dailyhist.cjs "final/MC Monthly Report Builder.html" test/shots       
 node test/incmail.cjs "final/MC Monthly Report Builder.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see)
 node test/steps.cjs "final/MC Monthly Report Builder.html" test/shots            # every page in the month's order: the sidebar, the numbered steps (Supervisors, Quality), the dashboard's priority, the agent's waiting one-to-one first
 node test/ctflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # the CT team's incentive workbook on Import: its days, its Utilization in the CT scorecard (the KPI file wins), never the IDs file, Remove and Undo
+node test/smartlink.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # Export › Smart-Link attendance: FRiENDi and FRiENDi Pay only, Smart-Link's sheet and formulas, a late day as Attend with its minutes, the shared month's corrections, Saved workbooks
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)
-npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
+npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, Smart-Link's attendance file, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
 ```
 
 They load the page with `window.__NOLOCK__` and `window.__ROSTER__` (the existing test hooks) and `window.__mcUser`,

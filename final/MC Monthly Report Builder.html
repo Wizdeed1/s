@@ -3340,7 +3340,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     <div class="viewhead">
       <div>
         <h2 class="vt" id="h-export">Export</h2>
-        <p>Build the monthly report and the incentive data workbook. Both are formula-driven, so a change in Excel updates every table.</p>
+        <p>Build the monthly report, the incentive data workbook and Smart-Link's attendance file. They are formula-driven, so a change in Excel updates every table.</p>
       </div>
     </div>
     <div class="card success" id="success" hidden></div>
@@ -3361,6 +3361,10 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
       <div class="incgrid"><div><h2 style="margin:0">Incentive data workbook</h2><div class="fname-big" id="incName"></div><p class="hint" id="incNote"></p></div>
         <div style="display:grid;gap:8px;justify-items:end"><button class="btn primary lg" id="buildInc" disabled>Build incentive file</button><button class="btn sm" id="histAdd" disabled>Add this month to the history</button></div></div>
       <div class="sheets" id="incSheets" style="margin-top:12px"></div>
+    </div>
+    <div class="card" id="slCard">
+      <div class="incgrid"><div><h2 style="margin:0">Smart-Link attendance</h2><div class="fname-big" id="slName"></div><p class="hint" id="slNote"></p></div>
+        <div style="display:grid;gap:8px;justify-items:end"><button class="btn lg" id="buildSl" disabled>Build Smart-Link file</button></div></div>
     </div>
     <div class="card">
       <h2>Sheets in the monthly report</h2>
@@ -11423,6 +11427,50 @@ async function dedMail(d, opts = {}) {
   return pack([A, DE], S, {}, opts);
 }
 
+// ------------------------------------------------------------ the Smart-Link attendance: FRiENDi's agents, for Smart-Link (the third party)
+// Laid out as the file Smart-Link takes: one sheet, the headings in row 2 (ID, Name, Team, Dep, each day's date, then the counts), a
+// row per agent with each day's code (a late day is Attend, its minutes under Tardy), and the counts as Smart-Link's own formulas:
+// COUNTIF over the days for each code, Scheduled days the leaves, absences and attended days added up, Actual days what is left once
+// the leaves and absences are taken off (the Attend days). Each formula carries its value, so the file reads the same before Excel
+// calculates. Its National IDs stay: Smart-Link's file has them, and an ID written twice is coloured, as there.
+const SL_COUNTS = [['Tardy', 7.5], ['AL leave', 9], ['SL leaves', 9.5], ['Exam', 6.5], ['National Day', 12], ['EID', 6], ['Unpaid', 8], ['Absent', 8], ['Attend', 8], ['Scheduled days', 14], ['Actual days', 11.5]];
+const slFileName = (y, m) => `Smart-Link Attendance -${C.MON[m - 1]} ${y}.xlsx`;
+/** d: { y, m, rows: [{ id, name, brand, team, days: [ND] (codes, tardy minutes, null), tardy }] } -> xlsx bytes */
+async function smartLink(d) {
+  const S = new Styles(), NAVY = 'FF073673', WHITE = 'FFFFFFFF', LINE = 'FF000000';
+  const Y = d.y, M = d.m, ND = C.daysIn(Y, M);
+  const H = (fill, fmt) => S.get({ font: { b: true, color: WHITE }, fill, border: LINE, align: { h: 'center' }, ...(fmt ? { numFmt: fmt } : {}) });
+  const hdr = H(NAVY), hDate = H(NAVY, 'mm-dd-yy'), hRed = H('FFFF0000');
+  const cell = (fill, color = 'FF000000', fmt) => S.get({ font: { color }, ...(fill ? { fill } : {}), border: LINE, align: { h: 'center' }, ...(fmt ? { numFmt: fmt } : {}) });
+  const cC = cell(), cId = cell(null, 'FF000000', '0');
+  const DAY = { Attend: cell('FFFFFFFF'), OFF: cell('FFA6A6A6'), AL: cell('FFC6EFCE', 'FF006100'), SL: cell('FFFFEB9C', 'FF9C6500'), Absent: cell('FFFFC7CE', 'FF9C0006'), 'National Day': cell('FF00B050') };
+  const dOther = cell('FFE4DFEC', 'FF5B2C6F');
+  const W = new Sheet(`SmartLink-Attendance ${C.MON[M - 1]}-${Y}`); W.grid = true; W.defH = 14.25;
+  const D0 = 5, CN = D0 + ND, R0 = 3, RL = Math.max(R0, R0 + d.rows.length - 1);
+  [['ID', 11], ['Name', 34], ['Team', 10], ['Dep', 6]].forEach(([h, w], j) => { W.set(2, j + 1, h, hdr); W.width(j + 1, w); });
+  for (let i = 1; i <= ND; i++) { W.set(2, D0 + i - 1, ymd(Y, M, i), hDate); W.width(D0 + i - 1, 9); }
+  SL_COUNTS.forEach(([h, w], j) => { W.set(2, CN + j, h, h === 'Actual days' ? hRed : hdr); W.width(CN + j, w); });
+  d.rows.forEach((a, i) => {
+    const r = R0 + i, days = Array.from({ length: ND }, (_, k) => { const v = a.days[k]; return typeof v === 'number' ? 'Attend' : v == null ? '' : String(v); });
+    const id = String(a.id ?? '').replace(/\D/g, '');
+    W.set(r, 1, id.length >= 6 && id.length <= 15 && /^\d+$/.test(String(a.id ?? '').trim()) ? Number(id) : a.id || '', cId);
+    W.set(r, 2, a.name || '', cC); W.set(r, 3, a.brand || '', cC); W.set(r, 4, a.team || '', cC);
+    days.forEach((v, k) => W.set(r, D0 + k, v, v ? DAY[v] || dOther : cC));
+    const rg = `${ref(r, D0)}:${ref(r, CN - 1)}`, n = code => days.filter(v => v.toLowerCase() === code.toLowerCase()).length;   // COUNTIF matches without case
+    const N = { AL: n('AL'), SL: n('SL'), Exam: n('Exam'), ND: n('National Day'), EID: n('Eid'), Unpaid: n('Unpaid'), Absent: n('Absent'), Attend: n('Attend') };
+    W.set(r, CN, Math.round(a.tardy || 0), cC);
+    [['=AL', N.AL], ['=SL', N.SL], ['=Exam', N.Exam], ['=National Day', N.ND], ['=Eid', N.EID], ['=Unpaid', N.Unpaid], ['=Absent', N.Absent], ['Attend', N.Attend]]
+      .forEach(([crit, v], j) => W.set(r, CN + 1 + j, v, cC, `COUNTIF(${rg},"${crit}")`));
+    const c = j => ref(r, CN + j);   // 1 AL, 2 SL, 3 Exam, 4 National Day, 5 EID, 6 Unpaid, 7 Absent, 8 Attend, 9 Scheduled days
+    const sched = N.Absent + N.SL + N.AL + N.Attend + N.Unpaid + N.EID + N.Exam + N.ND;
+    W.set(r, CN + 9, sched, cC, `${c(7)}+${c(2)}+${c(1)}+${c(8)}+${c(6)}+${c(5)}+${c(3)}+${c(4)}`);
+    W.set(r, CN + 10, sched - N.Absent - N.Unpaid - N.Exam - N.EID - N.SL - N.AL - N.ND, cC, `${c(9)}-${c(7)}-${c(6)}-${c(3)}-${c(5)}-${c(2)}-${c(1)}-${c(4)}`);
+  });
+  if (d.rows.length) W.addCF(`A${R0}:A${RL}`, '', S.dxf({ color: 'FF9C0006', fill: 'FFFFC7CE' }), false, 'dup');
+  W.freeze = [R0, 3]; W.filter = `A2:${ref(RL, CN + SL_COUNTS.length - 1)}`;
+  return pack([W], S);
+}
+
 /** a workbook made elsewhere (a dropped incentive file), for an email: every column headed ID or National ID in the first rows is
     emptied from its heading down (the agents' privacy). Everything else stays as it was; Excel rebuilds its calculation chain. */
 async function withoutIds(bytes) {
@@ -11457,7 +11505,7 @@ async function withoutIds(bytes) {
   return C.writeZip(out);
 }
 
-return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell, dedMail, dedShowDay, withoutIds };
+return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell, dedMail, dedShowDay, withoutIds, smartLink, slFileName };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Writer2;
 
@@ -15661,7 +15709,7 @@ function renderExport() {
   $('build').disabled = !ready || state.building;
   $('buildNote').textContent = ready ? 'The file is saved to your computer after you confirm.' : buildBlocker() + '.';
   $('sheets').innerHTML = sheetsHtml(!!state.ctx);
-  renderIncExport(); renderRepCard();
+  renderIncExport(); renderSlExport(); renderRepCard();
   $('sheets').closest('.card').hidden = !!freshBuild();
   const sc = $('success');
   sc.classList.remove('success', 'building', 'failed', 'sweep');
@@ -16988,6 +17036,44 @@ async function buildInc() {
   }
   catch (e) { toast('Could not build the incentive file: ' + (e && e.message ? e.message : e)); }
   finally { state.incBuilding = false; renderExport(); }
+}
+
+// ---------------------------------------------------------------- the Smart-Link attendance: FRiENDi's agents, for Smart-Link
+// Smart-Link, the third party, takes the month's attendance of FRiENDi's agents (FRiENDi and FRiENDi Pay) in its own layout
+// (Writer2.smartLink). The days are the shared month's, with the supervisors' corrections, else Build's while the month is not saved.
+const slBrand = b => /^friendi/i.test(normBrand(b || ''));
+function slData(k) {
+  const [y, m] = k.split('-').map(Number), ND = Core.daysIn(y, m), cfg = countFor(k), rows = [];
+  if (state.history[k]) {
+    for (const x of liveRows(k)) { if (!slBrand(x.brand)) continue; const days = daysOfRow(x, ND); if (days.some(v => v != null)) rows.push({ id: idText(x.id), name: x.n, brand: normBrand(x.brand), team: normSpace(x.team), days }); }
+  } else if (state.model && k === monthKey()) {
+    const A = state.ctx && state.ctx.attendance;
+    for (const x of state.model) {
+      if (!x.shown || !slBrand(x.p.brand)) continue; const a = A ? A.get(x.p._id) : null;
+      if (a && a.days.some(v => v != null)) rows.push({ id: idText(x.p.nid), name: x.exp, brand: normBrand(x.p.brand), team: normSpace(x.p.team), days: a.days, tardyFile: a.tardyFile });
+    }
+  } else return null;
+  const order = x => (DEP_ORDER.indexOf(x.team) + 1 || 99);
+  return { y, m, rows: rows.map(a => ({ ...a, tardy: Kpi.countDays(a.days, cfg).tardy || a.tardyFile || 0 })).sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name)) };
+}
+function renderSlExport() {
+  const k = monthKey(), d = slData(k), n = d ? d.rows.length : 0, by = d ? d.rows.reduce((o, a) => ((o[a.brand] = (o[a.brand] || 0) + 1), o), {}) : {};
+  $('slName').textContent = Writer2.slFileName(state.y, state.m);
+  $('slNote').textContent = n ? `FRiENDi's agents only: ${['Friendi', 'Friendi Pay'].filter(b => by[b]).map(b => `${by[b]} ${b}`).join(' and ')}, from ${state.history[k] ? 'the shared month, with the supervisors\' corrections' : 'this build'}. Each day's code, the late minutes and the counts, laid out as Smart-Link's file, with the National IDs it has.`
+    : `No FRiENDi attendance for ${ymLabel(k)} yet: it comes with the month's exports and attendance files.`;
+  $('buildSl').disabled = !n || !!state.slBuilding;
+}
+async function buildSl() {
+  const k = monthKey(), d = slData(k); if (!d || !d.rows.length || state.slBuilding) return;
+  state.slBuilding = true; renderSlExport();
+  try {
+    const bytes = await Writer2.smartLink(d), fn = Writer2.slFileName(d.y, d.m), u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    const ok = await save(fn, new Blob([u8], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const locked = await repKeep(fn, u8, 'smartlink');
+    impLogAdd('read', `Built ${fn}: ${plural(d.rows.length, 'FRiENDi agent')}`);
+    if (!ok && locked === 'ok') toast(`${fn}: kept in Saved workbooks`);
+  } catch (e) { toast('Could not build the Smart-Link file: ' + (e && e.message ? e.message : e)); }
+  finally { state.slBuilding = false; renderSlExport(); }
 }
 
 // ---------------------------------------------------------------- forms (one-to-one and final), saved per agent
@@ -18627,6 +18713,7 @@ noteOn('click', e => {
 
 // export: incentive
 $('buildInc').addEventListener('click', buildInc);
+$('buildSl').addEventListener('click', buildSl);
 $('histAdd').addEventListener('click', async () => {
   const k0 = ymKey(state.y, state.m), old = state.history[k0];
   const k = await saveMonthToHistory('this page'); if (!k) return; renderExport();
@@ -24626,7 +24713,7 @@ function renderRepCard() {
   const L = REP.list.slice().sort((a, b) => String(b.k).localeCompare(String(a.k)) || String(a.kind).localeCompare(String(b.kind)));
   el.hidden = !L.length;
   el.innerHTML = `<div class="cardhead"><div><h2 id="h-rep">Saved workbooks</h2><p class="cap">Each build is kept ${state.db && state.db.folder ? `in the data folder ${esc(state.db.name)}, locked like the rest of the data` : upMode() === 'db' ? 'with the shared data' : 'in this browser'}: the latest monthly workbook and incentive file of each month. Download one again here.</p></div></div>
-    <ul class="uplist">${L.map(m => `<li><span class="upn"><b dir="auto">${esc(m.name)}</b><small>${esc(ymLabel(m.k))} · ${m.kind === 'incentive' ? 'Incentive file' : 'Monthly workbook'} · ${esc(fmtSize(m.size || 0))} · built by ${esc(m.by || 'someone')}, ${esc(fmtWhen(m.at))}</small></span><span class="upa"><button class="btn sm" data-repdl="${esc(m.id)}"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Download</button><button class="btn sm ${REP.confirm === m.id ? 'danger' : 'ghost'}" data-repdel="${esc(m.id)}">${REP.confirm === m.id ? 'Delete it?' : 'Delete'}</button></span></li>`).join('')}</ul>`;
+    <ul class="uplist">${L.map(m => `<li><span class="upn"><b dir="auto">${esc(m.name)}</b><small>${esc(ymLabel(m.k))} · ${m.kind === 'incentive' ? 'Incentive file' : m.kind === 'smartlink' ? 'Smart-Link attendance' : 'Monthly workbook'} · ${esc(fmtSize(m.size || 0))} · built by ${esc(m.by || 'someone')}, ${esc(fmtWhen(m.at))}</small></span><span class="upa"><button class="btn sm" data-repdl="${esc(m.id)}"><svg width="14" height="14" aria-hidden="true"><use href="#i-down"/></svg>Download</button><button class="btn sm ${REP.confirm === m.id ? 'danger' : 'ghost'}" data-repdel="${esc(m.id)}">${REP.confirm === m.id ? 'Delete it?' : 'Delete'}</button></span></li>`).join('')}</ul>`;
 }
 $('repCard').addEventListener('click', async e => {
   const d = e.target.closest('[data-repdl]'), x = e.target.closest('[data-repdel]');
@@ -27177,6 +27264,7 @@ const DEPT = [
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
     '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it). People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
     '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one.',
+    '<b>Export › Smart-Link attendance</b>: the month\'s attendance of FRiENDi\'s agents (FRiENDi and FRiENDi Pay) in Smart-Link\'s own file (Smart-Link Attendance -Sep 2026.xlsx): each day\'s code, the late minutes and the counts with Smart-Link\'s formulas, and the National IDs, as Smart-Link\'s file has them. It is made from the shared month, with the supervisors\' corrections, and kept in Saved workbooks; send it to Smart-Link yourself.',
     '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs.',
     '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',

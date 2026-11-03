@@ -16,7 +16,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'ok ' : '✗ ') + m); if 
   const open = async (user, w = 1440) => {
     const ctx = await b.newContext({ viewport: { width: w, height: 900 }, reducedMotion: 'reduce' }), p = await ctx.newPage();
     // the test's clock is a script Playwright puts in every frame: the sandboxed email previews refuse it, which is not the page's error
-    p.on('pageerror', e => errs.push('pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error' && !/^Blocked script execution in 'about:blank' because the document's frame is sandboxed/.test(m.text())) errs.push('console: ' + m.text()); });
+    p.on('pageerror', e => errs.push('pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error' && !/^Blocked script execution in 'about:(blank|srcdoc)' because the document's frame is sandboxed/.test(m.text())) errs.push('console: ' + m.text()); });
     await p.clock.setFixedTime(new Date(today + 'T10:00:00'));
     await p.addInitScript(([fx, u, t]) => { eval(fx); try { localStorage.setItem('mc-today-toast:' + u.id, t); } catch (e) {} window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = u; }, [fixture, user, today]);
     await p.goto('file://' + path.resolve(page0));

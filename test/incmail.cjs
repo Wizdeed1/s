@@ -14,13 +14,16 @@ const out = path.resolve(process.argv[3] || 'test/shots'); fs.mkdirSync(out, { r
 const exp = path.resolve(process.argv[4] || '');
 const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');
 const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; } else console.log('✓ ' + m); };
-const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const today = () => '2026-10-20';   // the page's clock (below): the day the late reminder counts as shown
 (async () => {
   const b = await chromium.launch(), errs = [];
   const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce', colorScheme: 'light', acceptDownloads: true });
   const open = async user => {
     const p = await ctx.newPage();
-    p.on('pageerror', e => errs.push(`${user.role}: ${e.message}`)); p.on('console', m => { if (m.type() === 'error') errs.push(`${user.role} console: ${m.text()}`); });
+    // the page's clock in October, so September is the month being closed; the clock is a script Playwright puts in every frame,
+    // which the sandboxed email previews refuse: that refusal is not the page's error
+    p.on('pageerror', e => errs.push(`${user.role}: ${e.message}`)); p.on('console', m => { if (m.type() === 'error' && !/^Blocked script execution in 'about:(blank|srcdoc)' because the document's frame is sandboxed/.test(m.text())) errs.push(`${user.role} console: ${m.text()}`); });
+    await p.clock.setFixedTime(new Date('2026-10-20T10:00:00'));
     // the once-a-day "things late" toast is marked as shown, so the toasts this test reads are not replaced by it
     await p.addInitScript(([fx, u, d]) => { eval(fx); try { localStorage.setItem('mc-today-toast:' + u.id, d); } catch (e) { /* none */ } window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = u; }, [fixture, user, today()]);
     await p.goto('file://' + page0);

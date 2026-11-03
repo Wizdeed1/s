@@ -749,6 +749,50 @@ async function dedMail(d, opts = {}) {
   return pack([A, DE], S, {}, opts);
 }
 
+// ------------------------------------------------------------ the Smart-Link attendance: FRiENDi's agents, for Smart-Link (the third party)
+// Laid out as the file Smart-Link takes: one sheet, the headings in row 2 (ID, Name, Team, Dep, each day's date, then the counts), a
+// row per agent with each day's code (a late day is Attend, its minutes under Tardy), and the counts as Smart-Link's own formulas:
+// COUNTIF over the days for each code, Scheduled days the leaves, absences and attended days added up, Actual days what is left once
+// the leaves and absences are taken off (the Attend days). Each formula carries its value, so the file reads the same before Excel
+// calculates. Its National IDs stay: Smart-Link's file has them, and an ID written twice is coloured, as there.
+const SL_COUNTS = [['Tardy', 7.5], ['AL leave', 9], ['SL leaves', 9.5], ['Exam', 6.5], ['National Day', 12], ['EID', 6], ['Unpaid', 8], ['Absent', 8], ['Attend', 8], ['Scheduled days', 14], ['Actual days', 11.5]];
+const slFileName = (y, m) => `Smart-Link Attendance -${C.MON[m - 1]} ${y}.xlsx`;
+/** d: { y, m, rows: [{ id, name, brand, team, days: [ND] (codes, tardy minutes, null), tardy }] } -> xlsx bytes */
+async function smartLink(d) {
+  const S = new Styles(), NAVY = 'FF073673', WHITE = 'FFFFFFFF', LINE = 'FF000000';
+  const Y = d.y, M = d.m, ND = C.daysIn(Y, M);
+  const H = (fill, fmt) => S.get({ font: { b: true, color: WHITE }, fill, border: LINE, align: { h: 'center' }, ...(fmt ? { numFmt: fmt } : {}) });
+  const hdr = H(NAVY), hDate = H(NAVY, 'mm-dd-yy'), hRed = H('FFFF0000');
+  const cell = (fill, color = 'FF000000', fmt) => S.get({ font: { color }, ...(fill ? { fill } : {}), border: LINE, align: { h: 'center' }, ...(fmt ? { numFmt: fmt } : {}) });
+  const cC = cell(), cId = cell(null, 'FF000000', '0');
+  const DAY = { Attend: cell('FFFFFFFF'), OFF: cell('FFA6A6A6'), AL: cell('FFC6EFCE', 'FF006100'), SL: cell('FFFFEB9C', 'FF9C6500'), Absent: cell('FFFFC7CE', 'FF9C0006'), 'National Day': cell('FF00B050') };
+  const dOther = cell('FFE4DFEC', 'FF5B2C6F');
+  const W = new Sheet(`SmartLink-Attendance ${C.MON[M - 1]}-${Y}`); W.grid = true; W.defH = 14.25;
+  const D0 = 5, CN = D0 + ND, R0 = 3, RL = Math.max(R0, R0 + d.rows.length - 1);
+  [['ID', 11], ['Name', 34], ['Team', 10], ['Dep', 6]].forEach(([h, w], j) => { W.set(2, j + 1, h, hdr); W.width(j + 1, w); });
+  for (let i = 1; i <= ND; i++) { W.set(2, D0 + i - 1, ymd(Y, M, i), hDate); W.width(D0 + i - 1, 9); }
+  SL_COUNTS.forEach(([h, w], j) => { W.set(2, CN + j, h, h === 'Actual days' ? hRed : hdr); W.width(CN + j, w); });
+  d.rows.forEach((a, i) => {
+    const r = R0 + i, days = Array.from({ length: ND }, (_, k) => { const v = a.days[k]; return typeof v === 'number' ? 'Attend' : v == null ? '' : String(v); });
+    const id = String(a.id ?? '').replace(/\D/g, '');
+    W.set(r, 1, id.length >= 6 && id.length <= 15 && /^\d+$/.test(String(a.id ?? '').trim()) ? Number(id) : a.id || '', cId);
+    W.set(r, 2, a.name || '', cC); W.set(r, 3, a.brand || '', cC); W.set(r, 4, a.team || '', cC);
+    days.forEach((v, k) => W.set(r, D0 + k, v, v ? DAY[v] || dOther : cC));
+    const rg = `${ref(r, D0)}:${ref(r, CN - 1)}`, n = code => days.filter(v => v.toLowerCase() === code.toLowerCase()).length;   // COUNTIF matches without case
+    const N = { AL: n('AL'), SL: n('SL'), Exam: n('Exam'), ND: n('National Day'), EID: n('Eid'), Unpaid: n('Unpaid'), Absent: n('Absent'), Attend: n('Attend') };
+    W.set(r, CN, Math.round(a.tardy || 0), cC);
+    [['=AL', N.AL], ['=SL', N.SL], ['=Exam', N.Exam], ['=National Day', N.ND], ['=Eid', N.EID], ['=Unpaid', N.Unpaid], ['=Absent', N.Absent], ['Attend', N.Attend]]
+      .forEach(([crit, v], j) => W.set(r, CN + 1 + j, v, cC, `COUNTIF(${rg},"${crit}")`));
+    const c = j => ref(r, CN + j);   // 1 AL, 2 SL, 3 Exam, 4 National Day, 5 EID, 6 Unpaid, 7 Absent, 8 Attend, 9 Scheduled days
+    const sched = N.Absent + N.SL + N.AL + N.Attend + N.Unpaid + N.EID + N.Exam + N.ND;
+    W.set(r, CN + 9, sched, cC, `${c(7)}+${c(2)}+${c(1)}+${c(8)}+${c(6)}+${c(5)}+${c(3)}+${c(4)}`);
+    W.set(r, CN + 10, sched - N.Absent - N.Unpaid - N.Exam - N.EID - N.SL - N.AL - N.ND, cC, `${c(9)}-${c(7)}-${c(6)}-${c(3)}-${c(5)}-${c(2)}-${c(1)}-${c(4)}`);
+  });
+  if (d.rows.length) W.addCF(`A${R0}:A${RL}`, '', S.dxf({ color: 'FF9C0006', fill: 'FFFFC7CE' }), false, 'dup');
+  W.freeze = [R0, 3]; W.filter = `A2:${ref(RL, CN + SL_COUNTS.length - 1)}`;
+  return pack([W], S);
+}
+
 /** a workbook made elsewhere (a dropped incentive file), for an email: every column headed ID or National ID in the first rows is
     emptied from its heading down (the agents' privacy). Everything else stays as it was; Excel rebuilds its calculation chain. */
 async function withoutIds(bytes) {
@@ -783,6 +827,6 @@ async function withoutIds(bytes) {
   return C.writeZip(out);
 }
 
-return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell, dedMail, dedShowDay, withoutIds };
+return { build, peopleModel, attCounts, Styles, Sheet, pack, keyOf, idCell, dedMail, dedShowDay, withoutIds, smartLink, slFileName };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'));
 if (typeof module !== 'undefined') module.exports = Writer2;

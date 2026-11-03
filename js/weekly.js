@@ -6,7 +6,7 @@
 // here (read in this browser, not kept); the outages from a list the team keeps here (config/outages). The deck is made here
 // (WcDeck) and the email to the VP comes as an Outlook draft with the deck attached; the tool never sends anything itself.
 Object.assign(state, { wcDate: '', wcCfg: null, outages: null, wcBusy: '', wcBuilt: '' });
-const WC = { calls: {}, tickets: {}, fpay: null, files: [], loaded: null, boot: null, ready: false, saveT: 0, open: { paste: false, set: false }, pasteText: '' };
+const WC = { calls: {}, tickets: {}, comb: {}, fpay: null, files: [], loaded: null, boot: null, ready: false, saveT: 0, open: { paste: false, set: false }, pasteText: '' };
 const WC0 = { presenter: '', title: '', to: '', cc: '', onTimeH: 72 };
 const WC_BRAND = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay' };
 const WC_MAXOUT = 500;
@@ -18,12 +18,13 @@ const wcIsDay = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !
 const wcDateNow = () => (wcIsDay(state.wcDate) ? state.wcDate : wcToday());
 const wcAddDays = (s, n) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const wcName = a => normSpace(String(a || '').replace(/<[^>]*>/g, '').replace(/"/g, ''));
+const wcPerson = a => { const n = wcName(a); return /@/.test(n) ? '' : n; };   // the name in "Name <address>" (none for a bare address)
 /** the settings: the presenter on the cover (the VP from the contacts unless typed here), their job title, who gets the email, and
     the hours within which a closed ticket counts as resolved on time */
 function wcCfg() {
   const c = { ...WC0, ...(state.wcCfg || {}) }, K = contactsNow();
   c.to = normSpace(c.to) || K.vp || ''; c.cc = normSpace(c.cc) || K.form || '';
-  c.presenter = normSpace(c.presenter) || wcName(splitAddr(c.to)[0]);
+  c.presenter = normSpace(c.presenter) || wcPerson(splitAddr(c.to)[0]);
   const h = +c.onTimeH; c.onTimeH = Number.isFinite(h) && h > 0 && h <= 24 * 60 ? h : WC0.onTimeH;
   return c;
 }
@@ -64,8 +65,13 @@ function wcBoot() {
   if (!WC.boot) { WC.boot = Promise.all([rbBoot(), wcLoad()]); WC.boot.catch(() => { WC.boot = null; }); }
   return WC.boot;
 }
-const wcCalls = () => (Object.keys(WC.calls).length ? rbCombine(WC.calls) : null);
-const wcTickets = () => (Object.keys(WC.tickets).length ? rbCombine(WC.tickets) : null);
+/** the exports' rows, combined (a row in two overlapping exports counted once), worked out again only when the files change */
+function wcRows(kind) {
+  const F = WC[kind], key = Object.keys(F).map(k => `${k}:${F[k].length}`).join('|'), C = WC.comb[kind];
+  if (C && C.key === key) return C.rows;
+  const rows = key ? rbCombine(F) : null; WC.comb[kind] = { key, rows }; return rows;
+}
+const wcCalls = () => wcRows('calls'), wcTickets = () => wcRows('tickets');
 function wcModel() {
   const c = wcCfg();
   return WcDeck.model({ date: wcDateNow(), hist: rbHist(), calls: wcCalls(), tickets: wcTickets(), fpayTickets: WC.fpay ? WC.fpay.rows : null, outages: outagesNow(), onTimeH: c.onTimeH, reports: (window.Build || {}).REPORTS }, rbE());
@@ -97,7 +103,7 @@ async function wcAddFiles(list) {
       else notes.push({ name: f.name, label: 'not recognised: drop the Call history, the Tickets export or FRiENDi Pay\'s tickets sheet', bad: true });
     } catch (err) { notes.push({ name: f.name, label: 'not readable (' + ((err && err.message) || err) + ')', bad: true }); }
   }
-  WC.files = WC.files.filter(x => !notes.some(n => n.name === x.name)).concat(notes);
+  WC.files = WC.files.filter(x => !notes.some(n => n.name === x.name)).concat(notes); WC.comb = {};
   state.wcBusy = ''; state.wcBuilt = ''; renderWeeklyWs();
   const bad = notes.filter(n => n.bad).length;
   toast(`${plural(notes.length - bad, 'file')} read${bad ? `, ${bad} not recognised` : ''}.`);
@@ -107,7 +113,7 @@ function wcSpan(dates) {
   const R = rbR(), a = D[0], b = D[D.length - 1];
   return ' · ' + (a === b ? R.dayLabel(a) : R.niceRange(a, b));
 }
-function wcClear() { WC.calls = {}; WC.tickets = {}; WC.fpay = null; WC.files = []; state.wcBuilt = ''; renderWeeklyWs(); }
+function wcClear() { WC.calls = {}; WC.tickets = {}; WC.comb = {}; WC.fpay = null; WC.files = []; state.wcBuilt = ''; renderWeeklyWs(); }
 
 // ---------------------------------------------------------------- the outages: typed in, or pasted from Excel
 const WC_MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
@@ -223,7 +229,7 @@ async function wcMake(kind) {
     const { m, bytes, name } = await wcDeckBytes();
     if (kind === 'deck') { if (await save(name, new Blob([bytes], { type: PPTX_TYPE }))) state.wcBuilt = m.date; }
     else {
-      const c = wcCfg(), to = splitAddr(c.to), cc = splitAddr(c.cc), first = (wcName(to[0]).split(' ')[0] || '');
+      const c = wcCfg(), to = splitAddr(c.to), cc = splitAddr(c.cc), first = wcPerson(to[0]).split(' ')[0] || '';
       const text = `Hi${first ? ' ' + first : ''},\r\nKindly find the Weekly Commercial Presentation as attached.\r\nSincerely.`;
       const p = t => `<p class="MsoNormal" style="margin:0;font-family:Calibri,sans-serif;font-size:11pt">${t}</p>`;
       const html = p(`Hi${first ? ' ' + esc(first) : ''},`) + p('Kindly find the Weekly Commercial Presentation as attached.') + p('Sincerely.');

@@ -116,10 +116,12 @@ const near = (a, b) => a != null && Math.abs(a - b) < 1e-9;
   const wb = await Core.readZip(await z.bytes(books[0])), sh = await wb.text('xl/worksheets/sheet1.xml'), ss = (await wb.text('xl/sharedStrings.xml')) || '';
   ok(/Calls Presented|Service Level/.test(sh + ss) && /1-Oct/.test(sh + ss), "the chart's data in its workbook (Edit Data)");
   // ---- many outages: a second slide; nothing dropped: "–"
-  const many = Array.from({ length: 20 }, (_, i) => ({ date: oct(1 + (i % 20)), title: 'Outage ' + (i + 1), brands: ['virgin'], desc: '' }));
+  const many = Array.from({ length: 20 }, (_, i) => ({ date: oct(1 + (i % 20)), title: 'Outage ' + (i + 1), brands: ['virgin'], desc: i ? '' : 'A very long description '.repeat(20) }));
   const zb = await Core.readZip(await WcDeck.deck(WcDeck.model({ date: '2026-10-22', hist: H, outages: many }, E), {}).bytes());
   const sl8 = zb.names().filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n)).length, s7b = await zb.text('ppt/slides/slide7.xml');
-  ok(sl8 === 8 && T(s7b).includes('Outages Insights (continued)') && T(s7b).includes('Outage 18') && T(await zb.text('ppt/slides/slide6.xml')).includes('20'), `20 outages: two outages slides (${sl8} slides)`);
+  const t6b = T(await zb.text('ppt/slides/slide6.xml')), long = t6b.find(x => /^A very long/.test(x)) || '';
+  ok(sl8 === 8 && T(s7b).includes('Outages Insights (continued)') && T(s7b).includes('Outage 18') && t6b.includes('20'), `20 outages: two outages slides (${sl8} slides)`);
+  ok(/…$/.test(long) && long.length <= 140, `a long description cut to one line with … (${long.length} characters)`);
   const e = WcDeck.model({ date: '2026-10-22', hist: {} }, E), ze = await Core.readZip(await WcDeck.deck(e, {}).bytes()), te = T(await ze.text('ppt/slides/slide2.xml'));
   ok(te.filter(x => x === '–').length >= 6 && e.notes.length >= 5 && T(await ze.text('ppt/slides/slide1.xml')).includes('BEYOND ONE'), `no history and no files: "–" on the slides, ${e.notes.length} notes, the company's name for a logo`);
   ok(WcDeck.fileName('2026-10-25') === 'Beyond_One_Member_Care_Review - 25 Oct 2026.pptx', 'the file name as sent before');

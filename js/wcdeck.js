@@ -30,6 +30,8 @@ const mean = L => { const v = L.map(numOr).filter(x => x !== null); return v.len
 const int = v => (v === null || v === undefined ? DASH : Math.round(v).toLocaleString('en-US'));
 const pct = v => (v === null || v === undefined ? DASH : Math.round(v * 100) + '%');
 const norm = s => String(s ?? '').replace(/[’‘`´]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+/** a table cell's text on one line: cut with … to what fits the column (8pt Calibri, about 20 characters an inch) */
+const fit = (t, inches) => { const s = String(t ?? '').replace(/\s+/g, ' ').trim(), n = Math.max(8, Math.floor((inches - 0.12) * 20)); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
 
 // ---------------------------------------------------------------- the numbers
 /** a set of days' voice numbers as the brands' history keeps them: calls presented and handled a day on average, and the service
@@ -185,7 +187,7 @@ function topTable(s, x, y, w, head0, top, withCount, o = {}) {
   const L = top && top.list && top.list.length ? top.list : null;
   const cols = withCount ? [w - 1.3, 0.65, 0.65] : [w - 0.7, 0.7];
   const rows = [withCount ? [head0, { t: 'Vol.', align: 'right' }, { t: '%', align: 'right' }] : [head0, { t: '%', align: 'right' }]];
-  (L || [{ label: DASH, count: null, pct: null }]).forEach(r => rows.push(withCount ? [r.label, { t: int(r.count), align: 'right' }, { t: pct(r.pct), align: 'right' }] : [r.label, { t: pct(r.pct), align: 'right' }]));
+  (L || [{ label: DASH, count: null, pct: null }]).forEach(r => rows.push(withCount ? [fit(r.label, cols[0]), { t: int(r.count), align: 'right' }, { t: pct(r.pct), align: 'right' }] : [fit(r.label, cols[0]), { t: pct(r.pct), align: 'right' }]));
   s.table(x, y, rows, { cols, rowH: o.rowH || 0.25, size: 8, head: { fill: NAVY, color: 'FFFFFF' }, border: 'D9D9D9' });
 }
 /** columns of calls presented and handled, and the service level as a line on its own axis */
@@ -241,7 +243,7 @@ function outageSlides(D, m, n0, o) {
     if (!part.length) s.text(0.5, 2.6, 12.3, 0.4, `No outages logged in ${O.span}.`, { size: 12, color: MUTED, italic: true });
     else {
       const rows = [['Date', 'Outage and Issue', 'Affected Brand', 'Description']]
-        .concat(part.map(x => [dShort(x.date), x.title || '', (Array.isArray(x.brands) ? x.brands : []).map(k => BRAND_NAME[k] || k).join(', '), x.desc || '']));
+        .concat(part.map(x => [dShort(x.date), fit(x.title, 2.7), fit((Array.isArray(x.brands) ? x.brands : []).map(k => BRAND_NAME[k] || k).join(', '), 1.95), fit(x.desc, 6.8)]));
       s.table(0.5, 2.35, rows, { cols: [0.9, 2.7, 1.95, 6.8], rowH: 0.25, size: 8, align: ['center', 'center', 'center', 'center'], head: { fill: NAVY, color: 'FFFFFF' }, border: 'D9D9D9' });
     }
     foot(s, o, n0 + p);

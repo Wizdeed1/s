@@ -1,0 +1,27 @@
+/* ------------------------------------------------------------------------------------------------------------- WFM team › Weekly commercial */
+.wchist { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+.wchist .pill { min-height: 24px; padding: 0 10px; }
+.wcdot { display: inline-block; flex: none; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; }
+.wcflow .rbfiles { margin-top: 10px; }
+.wcflow .rbmini { margin-top: 8px; }
+.wcout { max-height: none; }
+.wcout td { white-space: normal; }
+.wcout td:first-child { width: 152px; }
+.wcout td.wcbr { white-space: nowrap; }
+.wcout .wcbr .check { margin-right: 12px; }
+.wcout input.cell { width: 100%; }
+.wcout input.cell[data-of="title"] { min-width: 170px; }
+.wcout input.cell[data-of="desc"] { min-width: 230px; }
+.wcoacts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 10px; }
+.wcpaste, .wcset { margin-top: 12px; }
+.wcpaste summary, .wcset summary { cursor: pointer; width: fit-content; font: 600 13px/20px var(--text); color: var(--ink-2); }
+.wcpaste textarea { display: block; width: 100%; margin-top: 6px; }
+.wcpaste .acts, .wcset .grid2 { margin-top: 8px; }
+.wcsum { max-height: none; }
+.wcsum td:first-child { white-space: nowrap; }
+.wcnotes { margin: 10px 0 0; padding-left: 18px; color: var(--warn); font-size: 13px; line-height: 1.5; }
+.wcflow .flowstep .stacts { gap: 8px; }
+@media (max-width: 720px) {
+  .wcout td:first-child { width: auto; }
+  .wcout td.wcbr { white-space: normal; }
+}

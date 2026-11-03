@@ -2598,6 +2598,34 @@ p.prange { padding-top: 12px; }
 .rbpeek small { font-size: 11.5px; color: var(--muted); padding: 0 2px; }
 @media (prefers-reduced-motion: reduce) { .rbpeek { transform: none !important; transition-duration: 120ms; } }
 
+/* ------------------------------------------------------------------------------------------------------------- WFM team › Weekly commercial */
+.wchist { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+.wchist .pill { min-height: 24px; padding: 0 10px; }
+.wcdot { display: inline-block; flex: none; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; }
+.wcflow .rbfiles { margin-top: 10px; }
+.wcflow .rbmini { margin-top: 8px; }
+.wcout { max-height: none; }
+.wcout td { white-space: normal; }
+.wcout td:first-child { width: 152px; }
+.wcout td.wcbr { white-space: nowrap; }
+.wcout .wcbr .check { margin-right: 12px; }
+.wcout input.cell { width: 100%; }
+.wcout input.cell[data-of="title"] { min-width: 170px; }
+.wcout input.cell[data-of="desc"] { min-width: 230px; }
+.wcoacts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 10px; }
+.wcpaste, .wcset { margin-top: 12px; }
+.wcpaste summary, .wcset summary { cursor: pointer; width: fit-content; font: 600 13px/20px var(--text); color: var(--ink-2); }
+.wcpaste textarea { display: block; width: 100%; margin-top: 6px; }
+.wcpaste .acts, .wcset .grid2 { margin-top: 8px; }
+.wcsum { max-height: none; }
+.wcsum td:first-child { white-space: nowrap; }
+.wcnotes { margin: 10px 0 0; padding-left: 18px; color: var(--warn); font-size: 13px; line-height: 1.5; }
+.wcflow .flowstep .stacts { gap: 8px; }
+@media (max-width: 720px) {
+  .wcout td:first-child { width: auto; }
+  .wcout td.wcbr { white-space: normal; }
+}
+
 /* ------------------------------------------------------------------------------------------------------------- motion (Apple HIG, motion.md)
    Brief, purposeful, never on an interaction that happens many times a day: typing, filtering, sorting and paging act at once.
    The moments: the dashboard's first load of a visit (72_dash.css), every other page and tab the first time it is shown in a
@@ -13560,6 +13588,469 @@ return { MEAS, meas, val, readTable, titleMonth, nameMonth, datesMonth, monthOf,
   penaltyDays, runs, ruleText, fitAbsence, finalPrecision, sameAt, cellsOf, statusOf, explain, entryProblems, ymKey };
 })(typeof Core !== 'undefined' ? Core : require('./core.js'), typeof Kpi !== 'undefined' ? Kpi : require('./kpi.js'), typeof History !== 'undefined' ? History : require('./history.js'));
 if (typeof module !== 'undefined') module.exports = Recon;
+
+/* MC Monthly Report Builder - a small PowerPoint writer (no dependencies): slides of shapes, text, pictures, tables and native
+   charts (columns with a line on a second axis), each chart with its data in an embedded workbook so Edit Data works in PowerPoint.
+   Positions and sizes are in inches on a 13.333 x 7.5 in (16:9) slide; colours are 'RRGGBB'. */
+'use strict';
+const Pptx = ((C, W) => {
+const EMU = 914400, E = v => Math.round(v * EMU);
+const esc = s => String(s ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const fill = c => (c ? `<a:solidFill><a:srgbClr val="${c}"/></a:solidFill>` : '<a:noFill/>');
+const lineOf = (c, w = 0.75) => (c ? `<a:ln w="${Math.round(w * 12700)}">${fill(c)}</a:ln>` : '<a:ln><a:noFill/></a:ln>');
+/** one run's properties: size in pt, colour, bold, italic, the font (a script font for Arabic and the like too) */
+function rPr(o, tag = 'a:rPr') {
+  const f = o.font || 'Calibri';
+  return `<${tag} lang="en-US" sz="${Math.round((o.size || 12) * 100)}" b="${o.bold ? 1 : 0}" i="${o.italic ? 1 : 0}" dirty="0">${fill(o.color || '262626')}<a:latin typeface="${esc(f)}"/><a:cs typeface="Arial"/></${tag}>`;
+}
+/** paragraphs from a string (lines), a list of runs, or a list of paragraphs (each a list of runs) */
+function paras(content, o) {
+  const P = typeof content === 'string' || typeof content === 'number' ? String(content).split('\n').map(t => [{ t }])
+    : Array.isArray(content) && content.length && !Array.isArray(content[0]) ? [content] : content || [[{ t: '' }]];
+  const al = { left: 'l', center: 'ctr', right: 'r' }[o.align || 'left'];
+  return P.map(runs => `<a:p><a:pPr algn="${al}"${o.lineSpacing ? '' : ''}>${o.lineSpacing ? `<a:lnSpc><a:spcPct val="${Math.round(o.lineSpacing * 100000)}"/></a:lnSpc>` : ''}${o.spaceAfter ? `<a:spcAft><a:spcPts val="${Math.round(o.spaceAfter * 100)}"/></a:spcAft>` : ''}</a:pPr>`
+    + runs.map(r => `<a:r>${rPr({ ...o, ...r })}<a:t>${esc(r.t)}</a:t></a:r>`).join('') + `${rPr({ ...o, ...(runs[0] || {}) }, 'a:endParaRPr')}</a:p>`).join('');
+}
+
+// ------------------------------------------------------------ the chart: columns, and a line on its own axis (0-120%)
+function chartXml(ch, n) {
+  const cats = ch.cats.map(String), N = cats.length, col = i => String.fromCharCode(66 + i);   // B, C, D…
+  const strCache = L => `<c:strCache><c:ptCount val="${L.length}"/>${L.map((v, i) => `<c:pt idx="${i}"><c:v>${esc(v)}</c:v></c:pt>`).join('')}</c:strCache>`;
+  const numCache = (L, fmt) => `<c:numCache><c:formatCode>${esc(fmt)}</c:formatCode><c:ptCount val="${L.length}"/>${L.map((v, i) => (v == null || !Number.isFinite(+v) ? '' : `<c:pt idx="${i}"><c:v>${+v}</c:v></c:pt>`)).join('')}</c:numCache>`;
+  const tx = (name, i) => `<c:tx><c:strRef><c:f>Sheet1!$${col(i)}$1</c:f>${strCache([name])}</c:strRef></c:tx>`;
+  const cat = `<c:cat><c:strRef><c:f>Sheet1!$A$2:$A$${N + 1}</c:f>${strCache(cats)}</c:strRef></c:cat>`;
+  const val = (L, i, fmt) => `<c:val><c:numRef><c:f>Sheet1!$${col(i)}$2:$${col(i)}$${N + 1}</c:f>${numCache(L, fmt)}</c:numRef></c:val>`;
+  const txt = (sz, color = '595959', b = 0, rot) => `<c:txPr><a:bodyPr${rot != null ? ` rot="${rot}" vert="horz"` : ''}/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="${sz}" b="${b}">${fill(color)}<a:latin typeface="Calibri"/></a:defRPr></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>`;
+  const bars = ch.bars.map((s, i) => `<c:ser><c:idx val="${i}"/><c:order val="${i}"/>${tx(s.name, i)}<c:spPr>${fill(s.color)}<a:ln><a:noFill/></a:ln></c:spPr><c:invertIfNegative val="0"/>`
+    + (s.labels ? `<c:dLbls><c:numFmt formatCode="${esc(ch.barFmt || '#,##0')}" sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(700, '404040')}<c:dLblPos val="outEnd"/><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>` : '')
+    + `${cat}${val(s.values, i, ch.barFmt || '#,##0')}</c:ser>`).join('');
+  const li = ch.bars.length, L = ch.line;
+  const line = L ? `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/><c:ser><c:idx val="${li}"/><c:order val="${li}"/>${tx(L.name, li)}<c:spPr><a:ln w="28575" cap="rnd">${fill(L.color)}<a:round/></a:ln></c:spPr><c:marker><c:symbol val="none"/></c:marker>`
+    + `<c:dLbls><c:numFmt formatCode="${esc(L.fmt || '0%')}" sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(L.labelSize || 800, '262626', 0)}<c:dLblPos val="t"/><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>`
+    + `${cat}${val(L.values, li, L.fmt || '0%')}<c:smooth val="1"/></c:ser><c:marker val="1"/><c:axId val="${n * 10 + 3}"/><c:axId val="${n * 10 + 4}"/></c:lineChart>` : '';
+  const ax = (id, cross, pos, del, extra) => `<c:axId val="${id}"/><c:scaling><c:orientation val="minMax"/>${extra || ''}</c:scaling><c:delete val="${del ? 1 : 0}"/><c:axPos val="${pos}"/>`;
+  const catAx = `<c:catAx>${ax(n * 10 + 1, n * 10 + 2, 'b', false)}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln w="6350">${fill('BFBFBF')}</a:ln></c:spPr>${txt(ch.catSize || 800, '595959', 0, ch.catRot != null ? ch.catRot * 60000 : null)}<c:crossAx val="${n * 10 + 2}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`;
+  const valAx = `<c:valAx>${ax(n * 10 + 2, n * 10 + 1, 'l', false, '<c:min val="0"/>')}<c:majorGridlines><c:spPr><a:ln w="6350">${fill('E7E7E7')}</a:ln></c:spPr></c:majorGridlines><c:numFmt formatCode="${esc(ch.barFmt || '#,##0')}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln><a:noFill/></a:ln></c:spPr>${txt(800)}<c:crossAx val="${n * 10 + 1}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>`;
+  const sec = L ? `<c:catAx>${ax(n * 10 + 3, n * 10 + 4, 'b', true)}<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${n * 10 + 4}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`
+    + `<c:valAx>${ax(n * 10 + 4, n * 10 + 3, 'r', false, `<c:max val="${L.max ?? 1.2}"/><c:min val="${L.min ?? 0}"/>`)}<c:numFmt formatCode="${esc(L.fmt || '0%')}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln><a:noFill/></a:ln></c:spPr>${txt(800)}<c:crossAx val="${n * 10 + 3}"/><c:crosses val="max"/><c:crossBetween val="between"/></c:valAx>` : '';
+  return `${XML}<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${REL}"><c:date1904 val="0"/><c:roundedCorners val="0"/>`
+    + `<c:chart><c:autoTitleDeleted val="1"/><c:plotArea><c:layout/><c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${bars}<c:gapWidth val="${ch.gap ?? 60}"/><c:overlap val="${ch.overlap ?? -10}"/><c:axId val="${n * 10 + 1}"/><c:axId val="${n * 10 + 2}"/></c:barChart>${line}${catAx}${valAx}${sec}<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr></c:plotArea>`
+    + `<c:legend><c:legendPos val="b"/><c:overlay val="0"/>${txt(800)}</c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>`
+    + `<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(800)}<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData></c:chartSpace>`;
+}
+/** the chart's data as a workbook (Sheet1: the categories in A, a column per series), for Edit Data */
+async function chartBook(ch) {
+  const S = new W.Styles(), sh = new W.Sheet('Sheet1'), all = [...ch.bars, ...(ch.line ? [ch.line] : [])];
+  all.forEach((s, i) => sh.set(1, i + 2, s.name)); ch.cats.forEach((c, r) => { sh.set(r + 2, 1, String(c)); all.forEach((s, i) => sh.set(r + 2, i + 2, s.values[r] == null || !Number.isFinite(+s.values[r]) ? null : +s.values[r])); });
+  return W.pack([sh], S);
+}
+
+// ------------------------------------------------------------ a slide
+class Slide {
+  constructor(deck, o) { Object.assign(this, { deck, bg: o.bg || 'FFFFFF', items: [], rels: [], id: 1 }); }
+  nid() { return ++this.id; }
+  frame(x, y, w, h) { return `<a:xfrm><a:off x="${E(x)}" y="${E(y)}"/><a:ext cx="${E(w)}" cy="${E(h)}"/></a:xfrm>`; }
+  /** a rectangle (radius: rounded corners, as a part of the shorter side) */
+  rect(x, y, w, h, o = {}) {
+    const id = this.nid(), geo = o.radius ? `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val ${Math.round(o.radius * 100000)}"/></a:avLst></a:prstGeom>` : '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>';
+    this.items.push(`<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${esc(o.name || 'Shape ' + id)}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${this.frame(x, y, w, h)}${geo}${fill(o.fill)}${lineOf(o.line, o.lineW)}</p:spPr>`
+      + `<p:txBody><a:bodyPr rtlCol="0" anchor="ctr"/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`);
+    return this;
+  }
+  /** text in a box: a string (lines), runs or paragraphs; size, color, bold, italic, font, align, valign (top, middle, bottom) */
+  text(x, y, w, h, content, o = {}) {
+    const id = this.nid(), an = { top: 't', middle: 'ctr', bottom: 'b' }[o.valign || 'top'], ins = E(o.inset ?? 0.02);
+    this.items.push(`<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${esc(o.name || 'Text ' + id)}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>${this.frame(x, y, w, h)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fill(o.fill)}${lineOf(o.line)}</p:spPr>`
+      + `<p:txBody><a:bodyPr wrap="square" lIns="${ins}" tIns="${ins}" rIns="${ins}" bIns="${ins}" rtlCol="0" anchor="${an}">${o.shrink ? '<a:normAutofit/>' : '<a:noAutofit/>'}</a:bodyPr><a:lstStyle/>${paras(content, o)}</p:txBody></p:sp>`);
+    return this;
+  }
+  /** a picture: PNG bytes */
+  image(x, y, w, h, png, o = {}) {
+    const id = this.nid(), rid = this.rel('image', this.deck.media(png));
+    this.items.push(`<p:pic><p:nvPicPr><p:cNvPr id="${id}" name="${esc(o.name || 'Picture ' + id)}" descr="${esc(o.descr || '')}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr>${this.frame(x, y, w, h)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`);
+    return this;
+  }
+  /** a table: rows of cells (text, or { t, bold, color, align }); cols: the column widths in inches; the first row is the heading */
+  table(x, y, rows, o = {}) {
+    const id = this.nid(), cols = o.cols, w = cols.reduce((a, v) => a + v, 0), rh = o.rowH || 0.26, h = rh * rows.length, fs = o.size || 9;
+    const head = o.head || { fill: '1F2A5C', color: 'FFFFFF' }, edge = o.border || 'D9D9D9';
+    const ln = (tag, c) => `<a:${tag} w="6350">${fill(c)}</a:${tag}>`;
+    const tr = (r, i) => `<a:tr h="${E(rh)}">${r.map((c0, j) => {
+      const c = c0 && typeof c0 === 'object' ? c0 : { t: c0 }, hd = i === 0 && o.header !== false, al = c.align || (o.align && o.align[j]) || 'left';
+      const bg = hd ? head.fill : c.fill || (o.zebra && i % 2 === 0 ? o.zebra : 'FFFFFF');
+      return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/>${paras([[{ t: c.t ?? '' }]], { size: c.size || fs, color: hd ? head.color : c.color || '262626', bold: hd || c.bold, font: o.font, align: al })}</a:txBody>`
+        + `<a:tcPr marL="${E(0.06)}" marR="${E(0.06)}" marT="${E(0.02)}" marB="${E(0.02)}" anchor="ctr">${ln('lnL', edge)}${ln('lnR', edge)}${ln('lnT', edge)}${ln('lnB', edge)}${fill(bg)}</a:tcPr></a:tc>`;
+    }).join('')}</a:tr>`;
+    this.items.push(`<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="${id}" name="${esc(o.name || 'Table ' + id)}"/><p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="${E(x)}" y="${E(y)}"/><a:ext cx="${E(w)}" cy="${E(h)}"/></p:xfrm>`
+      + `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table"><a:tbl><a:tblPr firstRow="1" bandRow="0"/><a:tblGrid>${cols.map(c => `<a:gridCol w="${E(c)}"/>`).join('')}</a:tblGrid>${rows.map(tr).join('')}</a:tbl></a:graphicData></a:graphic></p:graphicFrame>`);
+    return this;
+  }
+  /** a chart: { cats, bars: [{ name, values, color, labels }], line: { name, values, color, fmt, max }, barFmt, catRot (degrees) } */
+  chart(x, y, w, h, ch, o = {}) {
+    const id = this.nid(), n = this.deck.chartN(ch), rid = this.rel('chart', `../charts/chart${n}.xml`);
+    this.items.push(`<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="${id}" name="${esc(o.name || 'Chart ' + id)}"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="${E(x)}" y="${E(y)}"/><a:ext cx="${E(w)}" cy="${E(h)}"/></p:xfrm>`
+      + `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="${rid}"/></a:graphicData></a:graphic></p:graphicFrame>`);
+    return this;
+  }
+  rel(kind, target) {
+    const rid = `rId${this.rels.length + 2}`;   // rId1 is the layout
+    this.rels.push({ rid, type: `${REL}/${kind}`, target }); return rid;
+  }
+  xml() {
+    return `${XML}<p:sld ${NS}><p:cSld><p:bg><p:bgPr>${fill(this.bg)}<a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>`
+      + `${this.items.join('')}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
+  }
+  relsXml() {
+    return `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>${this.rels.map(r => `<Relationship Id="${r.rid}" Type="${r.type}" Target="${r.target}"/>`).join('')}</Relationships>`;
+  }
+}
+
+// ------------------------------------------------------------ the deck
+function theme(fonts) {
+  const c = { dk1: '000000', lt1: 'FFFFFF', dk2: '1F2A5C', lt2: 'EEF1F7', accent1: '1F2A5C', accent2: 'C8102E', accent3: '0FA3A3', accent4: 'C9870A', accent5: '3D5A8A', accent6: '7F7F7F', hlink: '0563C1', folHlink: '954F72' };
+  const clr = k => (k === 'dk1' || k === 'lt1' ? `<a:${k}><a:srgbClr val="${c[k]}"/></a:${k}>` : `<a:${k}><a:srgbClr val="${c[k]}"/></a:${k}>`);
+  const fs = '<a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>';
+  const ls = '<a:lnStyleLst><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="12700"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="19050"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>';
+  const es = '<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>';
+  return `${XML}<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="MC"><a:themeElements><a:clrScheme name="MC">${['dk1', 'lt1', 'dk2', 'lt2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink'].map(clr).join('')}</a:clrScheme>`
+    + `<a:fontScheme name="MC"><a:majorFont><a:latin typeface="${esc(fonts.head)}"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="${esc(fonts.body)}"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>`
+    + `<a:fmtScheme name="MC">${fs}${ls}${es}<a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults/><a:extraClrSchemeLst/></a:theme>`;
+}
+const MASTER = `${XML}<p:sldMaster ${NS}><p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld>`
+  + '<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>'
+  + '<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle><a:lvl1pPr><a:defRPr sz="3200"/></a:lvl1pPr></p:titleStyle><p:bodyStyle><a:lvl1pPr><a:defRPr sz="1800"/></a:lvl1pPr></p:bodyStyle><p:otherStyle><a:lvl1pPr><a:defRPr sz="1800"/></a:lvl1pPr></p:otherStyle></p:txStyles></p:sldMaster>';
+const LAYOUT = `${XML}<p:sldLayout ${NS} type="blank" preserve="1"><p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;
+
+class Deck {
+  constructor(o = {}) { Object.assign(this, { w: o.w || 13.333, h: o.h || 7.5, slides: [], charts: [], images: [], fonts: { head: o.headFont || 'Georgia', body: o.bodyFont || 'Calibri' } }); }
+  slide(o = {}) { const s = new Slide(this, o); this.slides.push(s); return s; }
+  chartN(ch) { this.charts.push(ch); return this.charts.length; }
+  media(png) { let i = this.images.indexOf(png); if (i < 0) { this.images.push(png); i = this.images.length - 1; } return `../media/image${i + 1}.png`; }   // the same picture once, however many slides show it
+  async bytes() {
+    const f = [], add = (name, data) => f.push({ name, data }), S = this.slides, n = S.length;
+    add('[Content_Types].xml', `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="xlsx" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>`
+      + '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>'
+      + '<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/><Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/><Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/>'
+      + '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>'
+      + S.map((_, i) => `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('')
+      + this.charts.map((_, i) => `<Override PartName="/ppt/charts/chart${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`).join('') + '</Types>');
+    add('_rels/.rels', `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="ppt/presentation.xml"/><Relationship Id="rId2" Type="${REL}/extended-properties" Target="docProps/app.xml"/></Relationships>`);
+    // no core properties part (title, author, dates): its Dublin Core namespaces are web addresses, and the page names none it does not need
+    add('docProps/app.xml', `${XML}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>MC Monthly Report Builder</Application><Slides>${n}</Slides></Properties>`);
+    add('ppt/presentation.xml', `${XML}<p:presentation ${NS} saveSubsetFonts="1"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${S.map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 2}"/>`).join('')}</p:sldIdLst><p:sldSz cx="${E(this.w)}" cy="${E(this.h)}"/><p:notesSz cx="6858000" cy="9144000"/><p:defaultTextStyle><a:defPPr><a:defRPr lang="en-US"/></a:defPPr></p:defaultTextStyle></p:presentation>`);
+    add('ppt/_rels/presentation.xml.rels', `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/slideMaster" Target="slideMasters/slideMaster1.xml"/>${S.map((_, i) => `<Relationship Id="rId${i + 2}" Type="${REL}/slide" Target="slides/slide${i + 1}.xml"/>`).join('')}`
+      + `<Relationship Id="rId${n + 2}" Type="${REL}/presProps" Target="presProps.xml"/><Relationship Id="rId${n + 3}" Type="${REL}/viewProps" Target="viewProps.xml"/><Relationship Id="rId${n + 4}" Type="${REL}/theme" Target="theme/theme1.xml"/><Relationship Id="rId${n + 5}" Type="${REL}/tableStyles" Target="tableStyles.xml"/></Relationships>`);
+    add('ppt/presProps.xml', `${XML}<p:presentationPr ${NS}/>`);
+    add('ppt/viewProps.xml', `${XML}<p:viewPr ${NS}><p:normalViewPr><p:restoredLeft sz="15620"/><p:restoredTop sz="94660"/></p:normalViewPr><p:gridSpacing cx="76200" cy="76200"/></p:viewPr>`);
+    add('ppt/tableStyles.xml', `${XML}<a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/>`);
+    add('ppt/theme/theme1.xml', theme(this.fonts));
+    add('ppt/slideMasters/slideMaster1.xml', MASTER);
+    add('ppt/slideMasters/_rels/slideMaster1.xml.rels', `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="${REL}/theme" Target="../theme/theme1.xml"/></Relationships>`);
+    add('ppt/slideLayouts/slideLayout1.xml', LAYOUT);
+    add('ppt/slideLayouts/_rels/slideLayout1.xml.rels', `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`);
+    S.forEach((s, i) => { add(`ppt/slides/slide${i + 1}.xml`, s.xml()); add(`ppt/slides/_rels/slide${i + 1}.xml.rels`, s.relsXml()); });
+    for (let i = 0; i < this.charts.length; i++) {
+      add(`ppt/charts/chart${i + 1}.xml`, chartXml(this.charts[i], i + 1));
+      add(`ppt/charts/_rels/chart${i + 1}.xml.rels`, `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/package" Target="../embeddings/Microsoft_Excel_Worksheet${i + 1}.xlsx"/></Relationships>`);
+      add(`ppt/embeddings/Microsoft_Excel_Worksheet${i + 1}.xlsx`, await chartBook(this.charts[i]));
+    }
+    this.images.forEach((png, i) => add(`ppt/media/image${i + 1}.png`, png));
+    return C.writeZip(f);
+  }
+}
+return { create: o => new Deck(o), esc, chartXml };
+})(typeof Core !== 'undefined' ? Core : require('./core.js'), typeof Writer2 !== 'undefined' ? Writer2 : require('./writer2.js'));
+if (typeof module !== 'undefined') module.exports = Pptx;
+
+/* MC Monthly Report Builder - the Weekly Commercial Presentation (Member Care Performance Review), every week for the commercial
+   meeting. model(): each brand's numbers for the month to date - the service level and the daily and monthly trends from the
+   brands' history (as the daily brand emails keep it), the top call reasons from the month's call history export, the complaints
+   and tickets from the month's tickets export (FRiENDi Pay's from its tickets sheet when the export has none), and the outages the
+   WFM team logs. deck(): the 7 slides of the presentation as a PowerPoint (cover, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay,
+   Postpaid, outages, thank you); a number the files do not give shows "–". */
+'use strict';
+const WcDeck = ((P) => {
+const BRANDS = [
+  { k: 'virgin', name: 'Virgin Mobile', short: 'Virgin', color: 'C8102E' },
+  { k: 'friendi', name: 'FRiENDi Mobile', short: 'FRiENDi', color: '0FA3A3' },
+  { k: 'fpay', name: 'FRiENDi Pay', short: 'FRiENDi Pay', color: 'C9870A' },
+];
+const POSTPAID = { k: 'postpaid', name: 'Cross-Brand Postpaid', short: 'Postpaid', color: '3D5A8A' };
+const NAVY = '1F2A5C', BAR = 'D9D9D9', INK = '262626', MUTED = '7F7F7F', SOFT = 'F3F4F7', PALE = 'CADCFC';
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DASH = '–';
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+const addDays = (s, n) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return ymd(d); };
+const prevMonth = ym => { let y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1; if (!m) { m = 12; y--; } return `${y}-${pad(m)}`; };
+const mShort = ym => `${MON[+ym.slice(5, 7) - 1]}-${ym.slice(2, 4)}`;                  // Jan-26
+const mLong = ym => `${MON[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;                   // Oct 2026
+const mApos = ym => `${MON[+ym.slice(5, 7) - 1]} '${ym.slice(2, 4)}`;                  // Sep '26
+const dShort = s => `${+s.slice(8, 10)}-${MON[+s.slice(5, 7) - 1]}`;                   // 6-Aug
+const longDate = s => `${+s.slice(8, 10)} ${MON[+s.slice(5, 7) - 1]} ${s.slice(0, 4)}`; // 25 Oct 2026
+const isDay = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const numOr = v => (v === null || v === undefined || v === '' || typeof v === 'boolean' || !Number.isFinite(+v) ? null : +v);
+const mean = L => { const v = L.map(numOr).filter(x => x !== null); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null; };
+const int = v => (v === null || v === undefined ? DASH : Math.round(v).toLocaleString('en-US'));
+const pct = v => (v === null || v === undefined ? DASH : Math.round(v * 100) + '%');
+const norm = s => String(s ?? '').replace(/[’‘`´]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+/** a table cell's text on one line: cut with … to what fits the column (8pt Calibri, about 20 characters an inch) */
+const fit = (t, inches) => { const s = String(t ?? '').replace(/\s+/g, ' ').trim(), n = Math.max(8, Math.floor((inches - 0.12) * 20)); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
+
+// ---------------------------------------------------------------- the numbers
+/** a set of days' voice numbers as the brands' history keeps them: calls presented and handled a day on average, and the service
+    level as the average of the days' service levels (as the daily brand emails show the month to date) */
+function voiceOf(rows) {
+  if (!rows.length) return null;
+  return { presented: mean(rows.map(r => r.presented)), handled: mean(rows.map(r => r.handled)), sl: mean(rows.map(r => r.sl)), days: rows.length };
+}
+/** one brand's voice from the history: the month's days up to ref, the month to date, the months before (this year's, at least
+    six) from the history's monthly rows (or its days when a month has no monthly row), and the month before */
+function brandVoice(H, b, ref) {
+  const V = (H && typeof H === 'object' && H[b] && H[b].voice) || {};
+  const daily = (Array.isArray(V.daily) ? V.daily : []).filter(r => r && isDay(r.date));
+  const monthly = (Array.isArray(V.monthly) ? V.monthly : []).filter(r => r && isDay(r.date));
+  const ym = ref.slice(0, 7), start = ym + '-01';
+  const days = daily.filter(r => r.date >= start && r.date <= ref).sort((a, c) => (a.date < c.date ? -1 : a.date > c.date ? 1 : 0));
+  const seen = new Set(), uniq = days.filter(r => (seen.has(r.date) ? false : (seen.add(r.date), true)));
+  const monthAvg = m => {
+    const e = monthly.find(r => r.date.slice(0, 7) === m);
+    if (e && (numOr(e.presented) !== null || numOr(e.sl) !== null)) return { presented: numOr(e.presented), handled: numOr(e.handled), sl: numOr(e.sl) };
+    return voiceOf(daily.filter(r => r.date.slice(0, 7) === m));
+  };
+  const months = []; let m = prevMonth(ym);
+  while (months.length < 24 && (m.slice(0, 4) === ym.slice(0, 4) || months.length < 6)) { months.unshift(m); m = prevMonth(m); }
+  const trend = months.map(x => ({ m: x, label: mShort(x), v: monthAvg(x) }));
+  while (trend.length && !trend[0].v) trend.shift();
+  const mtd = voiceOf(uniq);
+  trend.push({ m: ym, label: 'MTD', v: mtd });
+  return { daily: uniq, mtd, trend, prev: monthAvg(prevMonth(ym)) };
+}
+/** the brand a ticket is for, from its type: FRiENDi Pay, FRiENDi, or Virgin (as the daily emails split them) */
+function ticketBrand(type) {
+  const t = String(type ?? '').trim(); if (!t) return null;
+  if (/friendi\s*pay|\bf\s*pay\b/i.test(t)) return 'fpay';
+  return /friendi/i.test(t) ? 'friendi' : 'virgin';
+}
+/** the rows of the month up to ref (rows with no date anywhere: all of them) */
+function monthRows(rows, dateOf, ym, ref) {
+  const L = (rows || []).map(r => [r, dateOf(r)]);
+  if (!L.some(x => x[1])) return (rows || []).slice();
+  return L.filter(x => x[1] && x[1].slice(0, 7) === ym && x[1] <= ref).map(x => x[0]);
+}
+/** the top lines by a column: count and share of all the rows */
+function topBy(rows, get, n, skip = []) {
+  const sk = new Set(skip.map(norm)), counts = new Map(), first = new Map();
+  rows.forEach((r, i) => { const v = String(get(r) ?? '').trim(); if (!v) return; counts.set(v, (counts.get(v) || 0) + (numOr(r.count) ?? 1)); if (!first.has(v)) first.set(v, i); });
+  const base = rows.reduce((a, r) => a + (numOr(r.count) ?? 1), 0), list = [];
+  counts.forEach((c, v) => { if (!sk.has(norm(v))) list.push({ label: v, count: c, pct: base ? c / base : 0, at: first.get(v) }); });
+  list.sort((a, c) => c.count - a.count || a.at - c.at);
+  return { base, list: list.slice(0, n) };
+}
+/** a brand's tickets: how many were logged, how many of the closed ones were closed within onTimeH hours, how many are not closed,
+    and the complaint types they were logged for */
+function ticketStats(rows, E, onTimeH, skip) {
+  const T = E.TCOL, st = r => String(r[T.status] ?? '').trim().toLowerCase();
+  const hasSt = rows.some(r => st(r)), closed = rows.filter(r => st(r) === 'closed');
+  const hours = closed.map(r => E.lifeCycleHours(r[T.lifeCycle])).filter(h => h !== null && h !== undefined && Number.isFinite(h));
+  return {
+    total: rows.length, open: hasSt ? rows.filter(r => st(r) !== 'closed').length : null, closed: closed.length,
+    onTime: hours.length ? hours.filter(h => h <= onTimeH).length / hours.length : null, timed: hours.length,
+    drivers: topBy(rows, r => r[T.sub], 5, skip || []),
+  };
+}
+/**
+ * The presentation's numbers.
+ * input: { date (the presentation's day, yyyy-mm-dd), hist (the brands' history), calls (call history rows), tickets (tickets
+ * export rows), fpayTickets ([{ date, category, sub, count }] from FRiENDi Pay's tickets sheet), outages ([{ date, title, brands,
+ * desc }]), onTimeH (hours within which a closed ticket counts as on time), reports (the report builder's settings per brand) }
+ * The month is the one of the day before the presentation: its days up to that day.
+ */
+function model(input, E) {
+  const date = isDay(input.date) ? input.date : ymd(new Date()), ref = addDays(date, -1), ym = ref.slice(0, 7);
+  const onTimeH = numOr(input.onTimeH) > 0 ? +input.onTimeH : 72, R = input.reports || {}, notes = [];
+  const tDate = r => (E.ticketDate ? E.ticketDate(r[E.TCOL.date]) : null) || E.rowDate(r[E.TCOL.date]);
+  const calls = Array.isArray(input.calls) && input.calls.length ? monthRows(input.calls, r => E.rowDate(r[E.COL.date]), ym, ref) : null;
+  const tickets = Array.isArray(input.tickets) && input.tickets.length ? monthRows(input.tickets, tDate, ym, ref) : null;
+  const sheet = Array.isArray(input.fpayTickets) && input.fpayTickets.length ? monthRows(input.fpayTickets, r => (isDay(r.date) ? r.date : null), ym, ref) : null;
+  const supp = k => { const keep = ((R[k] || {}).keepReasons || (k === 'fpay' ? ['Follow Up'] : [])).map(norm); return (E.DEFAULT_SUPPRESSED || []).filter(s => !keep.includes(norm(s))); };
+  const reasonsOf = k => {
+    if (!calls) return null;
+    const t = E.topReasons(E.sliceHistory(calls, k), supp(k), 5);
+    return { base: t.base, list: t.list.map(x => ({ label: x.reason, count: x.count, pct: x.pct })) };
+  };
+  if (!calls) notes.push('No call history export: the top call reasons show –.');
+  if (!tickets) notes.push('No tickets export: the complaints and tickets show –.');
+  const brands = BRANDS.map(B => {
+    const v = brandVoice(input.hist, B.k, ref), o = { ...B, v, reasons: reasonsOf(B.k), tickets: null, from: '' };
+    if (!v.daily.length) notes.push(`${B.name}: no days of ${mLong(ym)} in the brands' history.`);
+    const mine = tickets ? tickets.filter(r => ticketBrand(r[E.TCOL.type]) === B.k) : [];
+    const skip = (R[B.k] || {}).ticketSkip || (B.k === 'virgin' ? ['Other'] : []);
+    if (mine.length) { o.tickets = ticketStats(mine, E, onTimeH, skip); o.from = 'tickets'; }
+    else if (B.k === 'fpay' && sheet) {
+      const total = sheet.reduce((a, r) => a + (numOr(r.count) ?? 1), 0);
+      o.tickets = { total, open: null, closed: null, onTime: null, timed: 0, drivers: topBy(sheet, r => (r.sub && norm(r.sub) !== norm(r.category) ? `${r.category} / ${r.sub}` : r.category || r.sub), 5) };
+      o.from = 'sheet';
+    } else if (tickets) notes.push(`${B.name}: no tickets in the tickets export${B.k === 'fpay' ? ' (drop FRiENDi Pay\'s tickets sheet)' : ''}.`);
+    return o;
+  });
+  const pv = brandVoice(input.hist, 'postpaid', ref);
+  const pt = tickets ? E.sliceTickets(tickets, 'postpaid') : null;
+  const postpaid = { ...POSTPAID, v: pv, reasons: reasonsOf('postpaid'), tickets: pt ? topBy(pt, r => r[E.TCOL.sub], 5) : null };
+  // the outages of the month and the two before, up to the presentation's day
+  const from = prevMonth(prevMonth(ym)), lo = from + '-01';
+  const out = (Array.isArray(input.outages) ? input.outages : []).filter(x => x && isDay(x.date) && x.date >= lo && x.date <= date)
+    .slice().sort((a, c) => (a.date < c.date ? -1 : a.date > c.date ? 1 : 0));
+  const hit = new Set(); out.forEach(x => (Array.isArray(x.brands) ? x.brands : []).forEach(k => hit.add(k)));
+  return {
+    date, ref, ym, month: mLong(ym), prev: mApos(prevMonth(ym)), onTimeH, brands, postpaid, notes,
+    outages: { list: out, brands: hit.size, from, span: `${MON[+from.slice(5, 7) - 1]}–${mLong(ym)}` },
+  };
+}
+
+// ---------------------------------------------------------------- the slides
+const BRAND_NAME = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay' };
+/** the logo at the top left: the company's logo when the tool has one, else its name */
+function logoAt(s, o, x, y, dark) {
+  const L = o.logo;
+  if (L && L.png && L.w && L.h) {
+    const h = 0.5, w = Math.min(2.2, h * L.w / L.h);
+    if (dark) s.rect(x - 0.08, y - 0.08, w + 0.16, h + 0.16, { fill: 'FFFFFF', radius: 0.12 });
+    s.image(x, y, w, h, L.png, { descr: o.org || 'Logo', name: 'Logo' });
+  } else s.text(x, y, 3, 0.4, (o.org || 'Beyond One').toUpperCase(), { size: 12, bold: true, font: 'Georgia', color: dark ? 'FFFFFF' : NAVY, valign: 'middle', name: 'Logo' });
+}
+/** the squares on the dark slides */
+function squares(s, x, y) {
+  [[0.75, 0, 0.35, '2F6B5E'], [0.55, 0.65, 0.8, '1E5BA8'], [1.35, 0.6, 0.55, '1F6F8C'], [0, 1.0, 0.42, '5B3A5E'], [1.2, 1.2, 0.62, '8E7FA6'], [1.85, 0.95, 0.4, '7A6A3E']]
+    .forEach(([dx, dy, w, c]) => s.rect(x + dx, y + dy, w, w, { fill: c }));
+}
+function head(s, o, m, title, sub) {
+  logoAt(s, o, 0.45, 0.3, false);
+  s.text(8.2, 0.72, 4.65, 0.25, `Weekly Commercial Presentation  ·  ${longDate(m.date)}`, { size: 9, color: MUTED, align: 'right' });
+  s.text(0.5, 1.0, 9.5, 0.6, title, { size: 30, bold: true, font: 'Georgia', color: NAVY, name: 'Title' });
+  s.text(0.5, 1.6, 9.5, 0.32, sub, { size: 12, italic: true, color: MUTED });
+}
+function foot(s, o, n) {
+  s.text(0.5, 7.12, 5, 0.25, `${o.org || 'Beyond One'}  |  Member Care`, { size: 8, color: 'A6A6A6' });
+  s.text(11.85, 7.12, 1, 0.25, String(n), { size: 8, color: 'A6A6A6', align: 'right' });
+}
+/** the big number at the top right: the month's service level, in the brand's colour */
+function callout(s, x, y, w, h, color, big, small) {
+  s.rect(x, y, w, h, { fill: color, radius: 0.08, name: 'Callout' });
+  s.text(x, y + 0.1, w, h * 0.55, big, { size: 28, bold: true, color: 'FFFFFF', align: 'center', valign: 'middle' });
+  s.text(x, y + h * 0.6, w, h * 0.3, small, { size: 9, color: 'FFFFFF', align: 'center', valign: 'top' });
+}
+function tile(s, x, y, w, h, big, label, color) {
+  s.rect(x, y, w, h, { fill: SOFT, radius: 0.06 });
+  s.text(x, y + 0.12, w, 0.42, big, { size: 18, bold: true, color, align: 'center', valign: 'middle' });
+  s.text(x + 0.05, y + 0.55, w - 0.1, h - 0.6, label, { size: 8, color: '595959', align: 'center', valign: 'top' });
+}
+function label(s, x, y, w, t) { s.text(x, y, w, 0.25, t, { size: 11, bold: true, color: NAVY }); }
+/** a table of the top lines: label, count and share (or label and share) */
+function topTable(s, x, y, w, head0, top, withCount, o = {}) {
+  const L = top && top.list && top.list.length ? top.list : null;
+  const cols = withCount ? [w - 1.3, 0.65, 0.65] : [w - 0.7, 0.7];
+  const rows = [withCount ? [head0, { t: 'Vol.', align: 'right' }, { t: '%', align: 'right' }] : [head0, { t: '%', align: 'right' }]];
+  (L || [{ label: DASH, count: null, pct: null }]).forEach(r => rows.push(withCount ? [fit(r.label, cols[0]), { t: int(r.count), align: 'right' }, { t: pct(r.pct), align: 'right' }] : [fit(r.label, cols[0]), { t: pct(r.pct), align: 'right' }]));
+  s.table(x, y, rows, { cols, rowH: o.rowH || 0.25, size: 8, head: { fill: NAVY, color: 'FFFFFF' }, border: 'D9D9D9' });
+}
+/** columns of calls presented and handled, and the service level as a line on its own axis */
+function trendChart(s, x, y, w, h, cats, rows, color, o = {}) {
+  s.chart(x, y, w, h, {
+    cats, gap: o.gap ?? 60, overlap: -10, catRot: o.catRot, catSize: o.catSize || 800,
+    bars: [{ name: 'Calls Presented', values: rows.map(r => (r ? r.presented : null)), color: BAR }, { name: 'Calls Handled', values: rows.map(r => (r ? r.handled : null)), color }],
+    line: { name: 'Service Level', values: rows.map(r => (r ? r.sl : null)), color: NAVY, fmt: '0%', max: 1.2, min: 0, labelSize: o.labelSize || 800 },
+  }, { name: o.name || 'Chart' });
+}
+function brandSlide(D, m, B, n, o) {
+  const s = D.slide({ bg: 'FFFFFF' }), v = B.v, t = B.tickets;
+  head(s, o, m, 'Performance Insights', `${B.name} — Contact Centre Voice Channel`);
+  s.text(10.6, 0.3, 2.25, 0.32, B.name, { size: 11, bold: true, color: B.color, align: 'right', name: 'Brand' });
+  callout(s, 10.6, 1.0, 2.25, 1.05, B.color, pct(v.mtd && v.mtd.sl), `Service Level · ${m.month}`);
+  label(s, 0.5, 2.15, 7.8, `Daily Trend — ${m.month}`);
+  trendChart(s, 0.45, 2.38, 7.9, 2.25, v.daily.map(r => dShort(r.date)), v.daily, B.color, { catRot: -45, catSize: 700, labelSize: 700, gap: 50, name: 'Daily trend' });
+  label(s, 0.5, 4.72, 7.8, `Monthly Trend — ${(v.trend[0] || { m: m.ym }).m.slice(0, 4)} to Date`);
+  trendChart(s, 0.45, 4.95, 7.9, 2.12, v.trend.map(x => x.label), v.trend.map(x => x.v), B.color, { name: 'Monthly trend' });
+  const tiles = B.k === 'fpay'
+    ? [[int(t && t.total), 'Complaints logged'], [int(t && t.open), 'Tickets still open'], [pct(v.prev && v.prev.sl), `Service level — ${m.prev}`]]
+    : [[int(t && t.total), 'Complaints logged'], [pct(t && t.onTime), 'Closed tickets resolved on time'], [int(t && t.open), 'Tickets still open']];
+  tiles.forEach(([big, lab], i) => tile(s, 8.65 + i * 1.42, 2.2, 1.32, 0.98, big, lab, B.color));
+  label(s, 8.65, 3.38, 4.2, 'Top Call Reasons');
+  topTable(s, 8.65, 3.62, 4.2, 'Reason', B.reasons, true, { rowH: 0.24 });
+  label(s, 8.65, 5.2, 4.2, 'Top Complaint Drivers');
+  topTable(s, 8.65, 5.44, 4.2, 'Complaint Type', t && t.drivers, false, { rowH: 0.24 });
+  foot(s, o, n);
+}
+function postpaidSlide(D, m, n, o) {
+  const s = D.slide({ bg: 'FFFFFF' }), B = m.postpaid, v = B.v;
+  head(s, o, m, 'Postpaid Insights', `${B.name} — Contact Centre Voice Channel`);
+  callout(s, 10.6, 1.0, 2.25, 1.05, B.color, pct(v.mtd && v.mtd.sl), `Service Level · ${m.month}`);
+  label(s, 0.5, 2.15, 12.3, `Daily Trend — ${m.month}`);
+  trendChart(s, 0.45, 2.38, 12.4, 2.95, v.daily.map(r => dShort(r.date)), v.daily, B.color, { catSize: 750, name: 'Daily trend' });
+  label(s, 0.5, 5.48, 6, 'Top 5 Call Reasons');
+  topTable(s, 0.5, 5.72, 6.0, 'Reason', B.reasons, true);
+  label(s, 6.85, 5.48, 6, 'Top 5 Tickets');
+  topTable(s, 6.85, 5.72, 6.0, 'Ticket Type', B.tickets, true);
+  foot(s, o, n);
+}
+const OUT_ROWS = 17;
+function outageSlides(D, m, n0, o) {
+  const O = m.outages, L = O.list, pages = Math.max(1, Math.ceil(L.length / OUT_ROWS));
+  for (let p = 0; p < pages; p++) {
+    const s = D.slide({ bg: 'FFFFFF' });
+    logoAt(s, o, 0.45, 0.3, false);
+    s.text(8.2, 0.72, 4.65, 0.25, longDate(m.date), { size: 9, color: MUTED, align: 'right' });
+    s.text(0.5, 1.0, 9.5, 0.6, p ? 'Outages Insights (continued)' : 'Outages Insights', { size: 30, bold: true, font: 'Georgia', color: NAVY, name: 'Title' });
+    s.text(0.5, 1.6, 9.5, 0.32, `Service Incidents Logged — Last 3 Months (${O.span})`, { size: 12, italic: true, color: MUTED });
+    callout(s, 10.6, 1.0, 2.25, 1.05, NAVY, String(L.length), `Incidents logged, ${O.brands === 1 ? '1 brand' : O.brands + ' brands'}`);
+    const part = L.slice(p * OUT_ROWS, (p + 1) * OUT_ROWS);
+    if (!part.length) s.text(0.5, 2.6, 12.3, 0.4, `No outages logged in ${O.span}.`, { size: 12, color: MUTED, italic: true });
+    else {
+      const rows = [['Date', 'Outage and Issue', 'Affected Brand', 'Description']]
+        .concat(part.map(x => [dShort(x.date), fit(x.title, 2.7), fit((Array.isArray(x.brands) ? x.brands : []).map(k => BRAND_NAME[k] || k).join(', '), 1.95), fit(x.desc, 6.8)]));
+      s.table(0.5, 2.35, rows, { cols: [0.9, 2.7, 1.95, 6.8], rowH: 0.25, size: 8, align: ['center', 'center', 'center', 'center'], head: { fill: NAVY, color: 'FFFFFF' }, border: 'D9D9D9' });
+    }
+    foot(s, o, n0 + p);
+  }
+  return pages;
+}
+function cover(D, m, o) {
+  const s = D.slide({ bg: NAVY });
+  logoAt(s, o, 0.55, 0.45, true);
+  s.text(0.55, 2.7, 11, 0.75, 'Member Care Performance Review', { size: 36, bold: true, font: 'Georgia', color: 'FFFFFF', name: 'Title' });
+  s.text(0.55, 3.5, 11, 0.35, 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay  —  Weekly Commercial Presentation', { size: 13, color: PALE });
+  s.rect(0.55, 4.22, 2.2, 0.02, { fill: '5B6BA8' });
+  s.text(0.55, 4.45, 4, 0.3, longDate(m.date), { size: 10, color: PALE });
+  if (o.presenter) s.text(0.55, 6.62, 7, 0.28, o.presenter, { size: 10, bold: true, color: 'FFFFFF' });
+  if (o.title || o.org) s.text(0.55, 6.88, 7, 0.28, [o.title, o.org].filter(Boolean).join(' — '), { size: 9, color: PALE });
+  squares(s, 10.7, 4.95);
+}
+function thanks(D, o) {
+  const s = D.slide({ bg: NAVY });
+  logoAt(s, o, 0.55, 0.45, true);
+  s.text(0.5, 3.0, 12.33, 0.8, 'Thank You', { size: 40, bold: true, font: 'Georgia', color: 'FFFFFF', align: 'center', name: 'Title' });
+  s.text(0.5, 3.85, 12.33, 0.35, 'Member Care Performance Review  —  Weekly Commercial Presentation', { size: 13, color: PALE, align: 'center' });
+  const who = [o.presenter, o.title, o.org].filter(Boolean).join('  ·  ');
+  if (who) s.text(0.5, 6.85, 12.33, 0.3, who, { size: 9, color: PALE, align: 'center' });
+  squares(s, 10.7, 4.95);
+}
+/** the PowerPoint: o = { presenter, title (their job title), org (the company), logo: { png, w, h } } */
+function deck(m, o = {}) {
+  const D = P.create({ headFont: 'Georgia', bodyFont: 'Calibri' });
+  cover(D, m, o);
+  m.brands.forEach((B, i) => brandSlide(D, m, B, i + 2, o));
+  postpaidSlide(D, m, 5, o);
+  outageSlides(D, m, 6, o);
+  thanks(D, o);
+  return D;
+}
+const fileName = date => `Beyond_One_Member_Care_Review - ${longDate(date)}.pptx`;
+return { model, deck, fileName, brandVoice, ticketBrand, longDate, dShort, BRANDS, POSTPAID };
+})(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'));
+if (typeof module !== 'undefined') module.exports = WcDeck;
 </script>
 <script id="vendor-motion">
 /*!
@@ -24004,6 +24495,297 @@ for (const page of [$('wfmDm'), $('wfmRb')]) {
   });
 }
 
+// ================================================================ WFM TEAM › WEEKLY COMMERCIAL: the Member Care Performance Review
+// Every week the WFM team sends the VP the Weekly Commercial Presentation: a 7-slide PowerPoint (cover; Virgin Mobile, FRiENDi
+// Mobile and FRiENDi Pay with their service level, daily and monthly trends, complaints, call reasons and complaint drivers;
+// Postpaid; the outages of the last three months; thank you). The service level and the trends come from the brands' history the
+// daily brand emails keep; the call reasons, complaints and tickets from the month-to-date Call history and Tickets exports dropped
+// here (read in this browser, not kept); the outages from a list the team keeps here (config/outages). The deck is made here
+// (WcDeck) and the email to the VP comes as an Outlook draft with the deck attached; the tool never sends anything itself.
+Object.assign(state, { wcDate: '', wcCfg: null, outages: null, wcBusy: '', wcBuilt: '' });
+const WC = { calls: {}, tickets: {}, comb: {}, fpay: null, files: [], loaded: null, boot: null, ready: false, saveT: 0, open: { paste: false, set: false }, pasteText: '' };
+const WC0 = { presenter: '', title: '', to: '', cc: '', onTimeH: 72 };
+const WC_BRAND = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay' };
+const WC_MAXOUT = 500;
+const PPTX_TYPE = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+const canWeekly = () => hasRole('admin', 'wfm', 'user');
+const wcPad = n => String(n).padStart(2, '0');
+const wcToday = () => { const d = new Date(); return `${d.getFullYear()}-${wcPad(d.getMonth() + 1)}-${wcPad(d.getDate())}`; };
+const wcIsDay = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s + 'T00:00:00Z'));
+const wcDateNow = () => (wcIsDay(state.wcDate) ? state.wcDate : wcToday());
+const wcAddDays = (s, n) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const wcName = a => normSpace(String(a || '').replace(/<[^>]*>/g, '').replace(/"/g, ''));
+const wcPerson = a => { const n = wcName(a); return /@/.test(n) ? '' : n; };   // the name in "Name <address>" (none for a bare address)
+/** the settings: the presenter on the cover (the VP from the contacts unless typed here), their job title, who gets the email, and
+    the hours within which a closed ticket counts as resolved on time */
+function wcCfg() {
+  const c = { ...WC0, ...(state.wcCfg || {}) }, K = contactsNow();
+  c.to = normSpace(c.to) || K.vp || ''; c.cc = normSpace(c.cc) || K.form || '';
+  c.presenter = normSpace(c.presenter) || wcPerson(splitAddr(c.to)[0]);
+  const h = +c.onTimeH; c.onTimeH = Number.isFinite(h) && h > 0 && h <= 24 * 60 ? h : WC0.onTimeH;
+  return c;
+}
+/** an outage as kept: its day, what it was, the brands it hit and a description (anything else is dropped) */
+function wcOutageOk(x) {
+  if (!x || typeof x !== 'object' || !wcIsDay(x.date)) return null;
+  const s = (v, n) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').slice(0, n);
+  return { id: /^[a-z0-9]{4,24}$/i.test(String(x.id || '')) ? String(x.id) : wcId(), date: x.date, title: s(x.title, 200), brands: (Array.isArray(x.brands) ? x.brands : []).filter(k => Object.prototype.hasOwnProperty.call(WC_BRAND, k)).filter((k, i, L) => L.indexOf(k) === i), desc: s(x.desc, 600) };
+}
+const wcId = () => Math.random().toString(36).slice(2, 10);
+const outagesNow = () => (Array.isArray(state.outages) ? state.outages : []);
+/** the settings and the outages, from the shared data, once */
+function wcLoad() {
+  if (WC.loaded) return WC.loaded;
+  WC.loaded = (async () => {
+    if (!state.db) return;
+    try { const s = await state.db.doc('config/weekly').get(); if (s.exists) { const d = s.data() || {}; state.wcCfg = { presenter: String(d.presenter || '').slice(0, 120), title: String(d.title || '').slice(0, 160), to: String(d.to || '').slice(0, 600), cc: String(d.cc || '').slice(0, 600), onTimeH: +d.onTimeH || WC0.onTimeH }; } } catch (e) { /* the defaults */ }
+    try { const s = await state.db.doc('config/outages').get(); if (s.exists) { const d = s.data() || {}; if (Array.isArray(d.list)) state.outages = d.list.map(wcOutageOk).filter(Boolean); } } catch (e) { /* none yet */ }
+  })();
+  return WC.loaded;
+}
+function wcSaveCfg() {
+  if (!state.db) return;
+  const body = { ...(state.wcCfg || {}), at: new Date().toISOString(), by: whoNow() };
+  queueWrite('config/weekly', () => state.db.doc('config/weekly').set(body)).catch(e => toast(`The weekly settings were not saved (${(e && e.code) || 'error'}).`));
+}
+function wcSaveOutages(now) {
+  clearTimeout(WC.saveT);
+  const go = () => {
+    if (!state.db) return;
+    const list = outagesNow().slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)).slice(-WC_MAXOUT), body = { list, at: new Date().toISOString(), by: whoNow() };
+    queueWrite('config/outages', () => state.db.doc('config/outages').set(body)).catch(e => toast(`The outages were not saved (${(e && e.code) || 'error'}).`));
+  };
+  if (now) go(); else WC.saveT = setTimeout(go, 600);
+}
+/** the report builder's modules and the brands' history (the shared copy first), once */
+function wcBoot() {
+  if (!WC.boot) { WC.boot = Promise.all([rbBoot(), wcLoad()]); WC.boot.catch(() => { WC.boot = null; }); }
+  return WC.boot;
+}
+/** the exports' rows, combined (a row in two overlapping exports counted once), worked out again only when the files change */
+function wcRows(kind) {
+  const F = WC[kind], key = Object.keys(F).map(k => `${k}:${F[k].length}`).join('|'), C = WC.comb[kind];
+  if (C && C.key === key) return C.rows;
+  const rows = key ? rbCombine(F) : null; WC.comb[kind] = { key, rows }; return rows;
+}
+const wcCalls = () => wcRows('calls'), wcTickets = () => wcRows('tickets');
+function wcModel() {
+  const c = wcCfg();
+  return WcDeck.model({ date: wcDateNow(), hist: rbHist(), calls: wcCalls(), tickets: wcTickets(), fpayTickets: WC.fpay ? WC.fpay.rows : null, outages: outagesNow(), onTimeH: c.onTimeH, reports: (window.Build || {}).REPORTS }, rbE());
+}
+
+// ---------------------------------------------------------------- the files: the month-to-date Crystal exports, FRiENDi Pay's tickets sheet
+async function wcAddFiles(list) {
+  if (!canWeekly()) return;
+  state.wcBusy = 'read'; renderWeeklyWs();
+  try { await wcBoot(); WC.ready = true; } catch (e) { state.wcBusy = ''; toast('The report builder could not open: ' + ((e && e.message) || e)); renderWeeklyWs(); return; }
+  const E = rbE(), notes = [];
+  for (const f of Array.from(list)) {
+    try {
+      if (/\.xls$/i.test(f.name)) {
+        const sheets = window.parseXls(await f.arrayBuffer()), rows = sheets[0] ? sheets[0].rows : [], c = E.classify(f.name, 'xls', { rows });
+        if (c.type === 'history') { const p = E.historyRows(rows); WC.calls[f.name] = p; notes.push({ name: f.name, label: `Call history · ${E.fmtInt(p.length)} rows${wcSpan(p.map(r => E.rowDate(r[E.COL.date])))}` }); }
+        else if (c.type === 'tickets') { const p = E.ticketRows(rows); WC.tickets[f.name] = p; notes.push({ name: f.name, label: `Tickets · ${E.fmtInt(p.length)} rows${wcSpan(p.map(r => E.ticketDate(r[E.TCOL.date]) || E.rowDate(r[E.TCOL.date])))}` }); }
+        else notes.push({ name: f.name, label: 'not a Call history or Tickets export', bad: true });
+        continue;
+      }
+      let rows = null;
+      if (/\.xlsx$/i.test(f.name)) {
+        const sheets = await window.parseXlsx(await f.arrayBuffer());
+        for (const sh of sheets) { const pl = E.sheetPayload(sh.rows || []); if (E.isTicketSheet(pl)) { rows = E.parseTicketSheet(pl); break; } }
+      } else if (/\.csv$/i.test(f.name)) {
+        const pl = E.parseCsv(await f.text()); if (E.classify(f.name, 'csv', pl).type === 'fpayTickets') rows = E.parseTicketSheet(pl);
+      }
+      if (rows) { WC.fpay = { name: f.name, rows }; notes.push({ name: f.name, label: `FRiENDi Pay tickets · ${E.fmtInt(rows.reduce((a, r) => a + (+r.count || 0), 0))} tickets${wcSpan(rows.map(r => r.date))}` }); }
+      else notes.push({ name: f.name, label: 'not recognised: drop the Call history, the Tickets export or FRiENDi Pay\'s tickets sheet', bad: true });
+    } catch (err) { notes.push({ name: f.name, label: 'not readable (' + ((err && err.message) || err) + ')', bad: true }); }
+  }
+  WC.files = WC.files.filter(x => !notes.some(n => n.name === x.name)).concat(notes); WC.comb = {};
+  state.wcBusy = ''; state.wcBuilt = ''; renderWeeklyWs();
+  const bad = notes.filter(n => n.bad).length;
+  toast(`${plural(notes.length - bad, 'file')} read${bad ? `, ${bad} not recognised` : ''}.`);
+}
+function wcSpan(dates) {
+  const D = dates.filter(Boolean).sort(); if (!D.length) return '';
+  const R = rbR(), a = D[0], b = D[D.length - 1];
+  return ' · ' + (a === b ? R.dayLabel(a) : R.niceRange(a, b));
+}
+function wcClear() { WC.calls = {}; WC.tickets = {}; WC.comb = {}; WC.fpay = null; WC.files = []; state.wcBuilt = ''; renderWeeklyWs(); }
+
+// ---------------------------------------------------------------- the outages: typed in, or pasted from Excel
+const WC_MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+/** a day from a pasted cell: 2026-10-02, 2/10/2026 (day first), 2-Oct, 2 Oct 2026, or an Excel date number; a day with no year
+    takes the presentation's year (the year before when that would put it after the presentation) */
+function wcParseDay(v, ref) {
+  const s = normSpace(v); let m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return wcDayOk(+m[1], +m[2], +m[3]);
+  if ((m = s.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})$/))) return wcDayOk(+m[3] < 100 ? 2000 + +m[3] : +m[3], +m[2], +m[1]);
+  if ((m = s.match(/^(\d{1,2})[\s-]+([a-z]{3})[a-z]*\.?(?:[\s-,]+(\d{2,4}))?$/i)) && WC_MON[m[2].toLowerCase()]) {
+    const mo = WC_MON[m[2].toLowerCase()], d = +m[1];
+    if (m[3]) return wcDayOk(+m[3] < 100 ? 2000 + +m[3] : +m[3], mo, d);
+    const y = +ref.slice(0, 4), a = wcDayOk(y, mo, d); return a && a > ref ? wcDayOk(y - 1, mo, d) : a;
+  }
+  if (/^\d{5}(\.\d+)?$/.test(s)) { const n = Math.floor(+s); if (n > 20000 && n < 80000) return new Date(Date.UTC(1899, 11, 30) + n * 86400000).toISOString().slice(0, 10); }
+  return null;
+}
+function wcDayOk(y, m, d) { if (!(y > 1990 && y < 2200 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null; const t = new Date(Date.UTC(y, m - 1, d)); return t.getUTCMonth() === m - 1 ? t.toISOString().slice(0, 10) : null; }
+function wcBrandsOf(s) {
+  const t = String(s || '').toLowerCase(); if (/\ball\b/.test(t)) return ['virgin', 'friendi', 'fpay'];
+  const L = []; if (/virgin/.test(t)) L.push('virgin'); if (/friendi(?!\s*pay)/.test(t.replace(/friendi\s*pay/g, ''))) L.push('friendi'); if (/f\s*pay|friendi\s*pay/.test(t)) L.push('fpay');
+  return L;
+}
+/** rows pasted from Excel (Date, Outage and issue, Affected brand, Description): the lines with a day; a heading line is left out */
+function wcPasteRows(text, ref) {
+  return String(text || '').split(/\r?\n/).map(line => line.split('\t')).filter(c => c.some(x => normSpace(x))).map(c => {
+    const d = wcParseDay(c[0], ref); if (!d) return null;
+    return wcOutageOk({ date: d, title: normSpace(c[1]), brands: wcBrandsOf(c[2]), desc: normSpace(c.slice(3).join(' ')) });
+  }).filter(Boolean);
+}
+
+// ---------------------------------------------------------------- the page
+function renderWeeklyWs() {
+  const body = $('wfmBody'); if (!body || state.ws !== 'wfm' || state.wfmTab !== 'weekly') return;
+  if (!canWeekly()) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; body.innerHTML = emptyCard('Only the WFM team', 'The WFM manager and the WFM analysts make the weekly presentation.'); return; }
+  if (!WC.ready) {
+    $('wfmBar').innerHTML = '<div class="wsacts"></div>';
+    if (!body.querySelector('.wcload')) body.innerHTML = '<div class="rbload big wcload" role="status"><span class="spin"></span><span>Opening the brands\' history…</span></div>';
+    wcBoot().then(() => { WC.ready = true; if (state.ws === 'wfm' && state.wfmTab === 'weekly') renderWeeklyWs(); }).catch(e => { if (state.ws === 'wfm' && state.wfmTab === 'weekly') body.innerHTML = emptyCard('The weekly presentation could not open', (e && e.message) || String(e)); });
+    return;
+  }
+  const c = wcCfg(), date = wcDateNow(), m = wcModel(), R = rbR(), busy = state.wcBusy;
+  const ref = m.ref, first = ref.slice(0, 8) + '01', want = []; for (let d = first; d <= ref; d = wcAddDays(d, 1)) want.push(d);
+  const histRows = m.brands.concat([m.postpaid]).map(B => { const have = new Set(B.v.daily.map(r => r.date)), miss = want.filter(d => !have.has(d)); return { B, n: have.size, miss }; });
+  const histOk = histRows.every(x => x.n && !x.miss.length), filesOk = !!(wcCalls() && wcTickets());
+  const O = m.outages, outOk = O.list.length > 0, built = state.wcBuilt === date;
+  const sts = stepStates([histOk, filesOk, outOk, built]);
+  const span = want.length ? (want.length === 1 ? R.dayLabel(first) : R.niceRange(first, ref)) : '';
+  $('wfmBar').innerHTML = `<label class="wsfield wcdate"><span>Presentation date</span><input type="date" class="cell" data-wcdate value="${esc(date)}" max="2199-12-31"></label><div class="wsacts">
+    <button class="btn" data-wcdeck${busy ? ' disabled' : ''}>${busy === 'deck' ? '<span class="spin" aria-hidden="true"></span>Making the deck…' : '<svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>Download deck'}</button>
+    <button class="btn primary" data-wcmail${busy ? ' disabled' : ''}>${busy === 'mail' ? '<span class="spin" aria-hidden="true"></span>Making the email…' : 'Email with the deck'}</button></div>`;
+  const histHtml = `<div class="wchist">${histRows.map(({ B, n, miss }) => `<span class="pill ${n && !miss.length ? 'good' : n ? 'warn' : 'bad'}" title="${esc(miss.length ? 'Missing: ' + rbShortDays(miss) : 'Every day is in the history')}"><i class="wcdot" style="background:#${B.color}"></i>${esc(B.short)} · ${n}/${want.length} days</span>`).join('')}</div>
+    ${histOk ? '' : `<p class="hint">${histRows.filter(x => x.miss.length).map(({ B, miss }) => `<b>${esc(B.short)}</b> has no ${esc(rbShortDays(miss))}`).join(' · ')}. Drop those days' exports on WFM team › Report builder, or import the brands' history on Emails › Daily brand emails.</p>`}`;
+  const files = WC.files.length ? `<div class="rbfiles">${WC.files.map(f => `<div class="rbfile${f.bad ? ' bad' : ''}"><span class="fname" title="${esc(f.name)}">${esc(f.name)}</span><span class="ftag">${esc(f.label)}</span></div>`).join('')}</div><div class="rbmini"><button class="btn sm ghost" data-wcclear>Clear files</button></div>` : '<p class="hint">No files yet.</p>';
+  const drop = `<div class="drop rbdrop" data-wcdrop role="button" tabindex="0" aria-label="Drop the month's exports, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month-to-date exports</strong><span>The Call history and the Tickets exports from Crystal (.xls), and FRiENDi Pay's tickets sheet (.xlsx or .csv), or click to choose them</span></div><input type="file" multiple accept=".xls,.xlsx,.csv" hidden data-wcpick>${files}`;
+  const lo = O.from + '-01', inRange = x => x.date >= lo && x.date <= date;
+  const L = outagesNow().slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), shown = L.filter(inRange), older = L.length - shown.length;
+  const orow = x => `<tr data-oid="${esc(x.id)}"><td><input type="date" class="cell" data-of="date" value="${esc(x.date)}" aria-label="Day of the outage"></td><td><input class="cell" data-of="title" value="${esc(x.title)}" placeholder="Outage and issue" aria-label="Outage and issue" maxlength="200"></td>
+    <td class="wcbr">${Object.entries(WC_BRAND).map(([k, n]) => `<label class="check"><input type="checkbox" data-ob="${k}"${x.brands.includes(k) ? ' checked' : ''}> ${esc(n)}</label>`).join('')}</td>
+    <td><input class="cell" data-of="desc" value="${esc(x.desc)}" placeholder="What members saw" aria-label="Description" maxlength="600"></td><td class="c"><button class="btn sm ghost" data-odel aria-label="Remove this outage">Remove</button></td></tr>`;
+  const outHtml = `<div class="tablewrap wcout"><table><thead><tr><th>Date</th><th>Outage and issue</th><th>Affected brand</th><th>Description</th><th class="c"><span class="sr">Remove</span></th></tr></thead><tbody>${shown.length ? shown.map(orow).join('') : `<tr><td colspan="5" class="subtle">No outages in ${esc(O.span)} yet.</td></tr>`}</tbody></table></div>
+    <div class="acts wcoacts"><button class="btn sm" data-oadd>Add an outage</button>${older ? `<span class="hint">${plural(older, 'older outage')} kept, not in this deck.</span>` : ''}</div>
+    <details class="wcpaste"${WC.open.paste ? ' open' : ''}><summary>Paste rows from Excel</summary><p class="hint">Copy the rows (Date, Outage and issue, Affected brand, Description) and paste them here. A day like 6-Aug takes the presentation's year; a heading row is left out.</p><textarea class="cell rbta" data-opaste rows="4" placeholder="6-Aug&#9;Genesys outage&#9;Virgin, FRiENDi&#9;What happened">${esc(WC.pasteText)}</textarea><div class="acts"><button class="btn sm" data-opastego>Add these rows</button></div></details>`;
+  const t = B => B.tickets, cell = v => `<td class="num">${esc(v)}</td>`;
+  const pc = v => (v == null ? '–' : Math.round(v * 100) + '%'), nn = v => (v == null ? '–' : Math.round(v).toLocaleString('en-US'));
+  const sum = `<div class="tablewrap wcsum"><table><thead><tr><th>Slide</th><th class="r">Service level</th><th class="r">Complaints logged</th><th class="r">Resolved on time</th><th class="r">Still open</th><th>Top call reason</th></tr></thead><tbody>
+    ${m.brands.map(B => `<tr><td><i class="wcdot" style="background:#${B.color}"></i>${esc(B.name)}</td>${cell(pc(B.v.mtd && B.v.mtd.sl))}${cell(nn(t(B) && t(B).total))}${cell(pc(t(B) && t(B).onTime))}${cell(nn(t(B) && t(B).open))}<td dir="auto">${esc((B.reasons && B.reasons.list[0] || {}).label || '–')}</td></tr>`).join('')}
+    <tr><td><i class="wcdot" style="background:#${m.postpaid.color}"></i>Postpaid</td>${cell(pc(m.postpaid.v.mtd && m.postpaid.v.mtd.sl))}${cell(nn(m.postpaid.tickets && m.postpaid.tickets.base))}<td class="num">–</td><td class="num">–</td><td dir="auto">${esc((m.postpaid.reasons && m.postpaid.reasons.list[0] || {}).label || '–')}</td></tr>
+    <tr><td>Outages</td><td class="num" colspan="5">${plural(O.list.length, 'incident')} in ${esc(O.span)}${O.list.length ? `, ${plural(O.brands, 'brand')}` : ''}</td></tr></tbody></table></div>
+    ${m.notes.length ? `<ul class="wcnotes">${m.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+    <p class="hint">The email goes to ${esc(splitAddr(c.to).map(wcName).join(', ') || 'nobody yet: type the address in the settings below')}${splitAddr(c.cc).length ? `, copy to ${esc(splitAddr(c.cc).map(wcName).join(', '))}` : ''}, with ${esc(WcDeck.fileName(date))} attached. It opens in Outlook as a draft to check and send.</p>
+    <details class="wcset"${WC.open.set ? ' open' : ''}><summary>Settings: the cover and the email</summary><div class="grid2 tight">
+      <label class="field"><span class="lbl">Presenter on the cover</span><input class="cell" data-wcset="presenter" value="${esc(c.presenter)}" maxlength="120"></label>
+      <label class="field"><span class="lbl">Their job title</span><input class="cell" data-wcset="title" value="${esc(c.title)}" placeholder="As it shows under the name" maxlength="160"></label>
+      <label class="field"><span class="lbl">To</span><input class="cell" data-wcset="to" value="${esc(c.to)}" maxlength="600"></label>
+      <label class="field"><span class="lbl">Cc</span><input class="cell" data-wcset="cc" value="${esc(c.cc)}" maxlength="600"></label>
+      <label class="field"><span class="lbl">Resolved on time: closed within (hours)</span><input class="cell" type="number" min="1" max="1440" step="1" data-wcset="onTimeH" value="${esc(c.onTimeH)}"></label></div>
+      <p class="hint">Kept for the whole WFM team. Empty To and Cc take the VP and the final result form's contact from the senior manager's contacts.</p></details>`;
+  const L4 = [
+    { id: 'wcs-hist', title: 'The month in the brands\' history', short: 'History', cap: `The service level and the daily and monthly trends: ${esc(span)} (the month up to the day before the presentation), from the history the daily brand emails keep.`, body: histHtml },
+    { id: 'wcs-files', title: 'Drop the month\'s exports', short: 'Exports', cap: 'Call history for the top call reasons; Tickets for the complaints, resolved on time, still open and the complaint drivers. Read in this browser; nothing is kept.', body: drop },
+    { id: 'wcs-out', title: 'Outages', short: 'Outages', cap: `The last 3 months (${esc(O.span)}) go in the deck. The list is kept for the whole WFM team: add each outage once.`, body: outHtml },
+    { id: 'wcs-send', title: 'The deck and the email', short: 'Deck', cap: 'What the slides show. "–" where a file is missing.', body: sum, acts: `<button class="btn sm" data-wcdeck${busy ? ' disabled' : ''}>Download deck</button><button class="btn sm primary" data-wcmail${busy ? ' disabled' : ''}>Email with the deck</button>` },
+  ];
+  const focus = document.activeElement && body.contains(document.activeElement) ? document.activeElement : null, frow = focus && focus.closest('[data-oid]');
+  const fsel = frow && (focus.dataset.of || focus.dataset.ob) ? `[data-oid="${frow.dataset.oid}"] ${focus.dataset.of ? `[data-of="${focus.dataset.of}"]` : `[data-ob="${focus.dataset.ob}"]`}` : null;
+  body.innerHTML = `<div class="flow wcflow">${L4.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i] })).join('')}</div>`;
+  if (fsel) { const f = body.querySelector(fsel); if (f) f.focus(); }
+}
+
+// ---------------------------------------------------------------- the deck and the email
+async function wcLogo() {
+  try { const x = await xlLogo(); if (x && x.png && x.w && x.h) return { png: x.png, w: x.w, h: x.h }; } catch (e) { /* the next one */ }
+  const bo = window.LOGOS && window.LOGOS.beyondone;
+  if (typeof bo === 'string' && /^data:image\//.test(bo)) {
+    try {
+      const img = await loadImg(bo), w = img.naturalWidth || 0, h = img.naturalHeight || 0; if (!w || !h) return null;
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0);
+      return { png: new Uint8Array(await (await new Promise(r => cv.toBlob(r, 'image/png'))).arrayBuffer()), w, h };
+    } catch (e) { return null; }
+  }
+  return null;
+}
+async function wcDeckBytes() {
+  await wcBoot();
+  const c = wcCfg(), m = wcModel(), D = WcDeck.deck(m, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo() });
+  return { m, bytes: await D.bytes(), name: WcDeck.fileName(m.date) };
+}
+async function wcMake(kind) {
+  if (state.wcBusy || !canWeekly()) return;
+  state.wcBusy = kind; renderWeeklyWs();
+  try {
+    const { m, bytes, name } = await wcDeckBytes();
+    if (kind === 'deck') { if (await save(name, new Blob([bytes], { type: PPTX_TYPE }))) state.wcBuilt = m.date; }
+    else {
+      const c = wcCfg(), to = splitAddr(c.to), cc = splitAddr(c.cc), first = wcPerson(to[0]).split(' ')[0] || '';
+      const text = `Hi${first ? ' ' + first : ''},\r\nKindly find the Weekly Commercial Presentation as attached.\r\nSincerely.`;
+      const p = t => `<p class="MsoNormal" style="margin:0;font-family:Calibri,sans-serif;font-size:11pt">${t}</p>`;
+      const html = p(`Hi${first ? ' ' + esc(first) : ''},`) + p('Kindly find the Weekly Commercial Presentation as attached.') + p('Sincerely.');
+      if (await saveEml(`Weekly Commercial Presentation - ${WcDeck.longDate(m.date)}`, { to, cc, subject: 'Weekly Commercial Presentation', html, text, files: [{ name, bytes, type: PPTX_TYPE }] })) state.wcBuilt = m.date;
+    }
+  } catch (e) { toast('The deck could not be made: ' + ((e && e.message) || e)); }
+  finally { state.wcBusy = ''; renderWeeklyWs(); }
+}
+
+// ---------------------------------------------------------------- what the page does
+const wcOn = () => state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly();
+$('wfmBar').addEventListener('change', e => { if (!wcOn() || !e.target.matches('[data-wcdate]')) return; const v = e.target.value; state.wcDate = wcIsDay(v) ? v : ''; state.wcBuilt = ''; renderWeeklyWs(); });
+document.addEventListener('click', e => {
+  if (!wcOn()) return;
+  const t = e.target.closest && e.target.closest('[data-wcdeck], [data-wcmail], [data-wcdrop], [data-wcclear], [data-oadd], [data-odel], [data-opastego]'); if (!t || !($('wfmBody').contains(t) || $('wfmBar').contains(t))) return;
+  if (t.matches('[data-wcdeck]')) wcMake('deck');
+  else if (t.matches('[data-wcmail]')) wcMake('mail');
+  else if (t.matches('[data-wcdrop]')) { const p = $('wfmBody').querySelector('[data-wcpick]'); if (p) p.click(); }
+  else if (t.matches('[data-wcclear]')) wcClear();
+  else if (t.matches('[data-oadd]')) {
+    const x = wcOutageOk({ date: wcAddDays(wcDateNow(), -1), title: '', brands: [], desc: '' }); state.outages = outagesNow().concat([x]); wcSaveOutages(); renderWeeklyWs();
+    const f = $('wfmBody').querySelector(`[data-oid="${x.id}"] [data-of="title"]`); if (f) f.focus();
+  } else if (t.matches('[data-odel]')) {
+    const id = t.closest('[data-oid]').dataset.oid, old = outagesNow(), x = old.find(o => o.id === id); if (!x) return;
+    state.outages = old.filter(o => o.id !== id); wcSaveOutages(true); renderWeeklyWs();
+    toast(`Removed: ${x.title || 'the outage'} (${WcDeck.dShort(x.date)})`, { label: 'Undo', fn: () => { state.outages = outagesNow().concat([x]); wcSaveOutages(true); renderWeeklyWs(); } });
+  } else if (t.matches('[data-opastego]')) {
+    const ta = $('wfmBody').querySelector('[data-opaste]'), add = wcPasteRows(ta ? ta.value : '', wcDateNow());
+    if (!add.length) { toast('No rows with a day: paste Date, Outage and issue, Affected brand and Description from Excel.'); return; }
+    const key = x => `${x.date}|${normName(x.title)}`, have = new Set(outagesNow().map(key)), fresh = add.filter(x => !have.has(key(x)));
+    WC.pasteText = ''; state.outages = outagesNow().concat(fresh); wcSaveOutages(true); renderWeeklyWs();
+    toast(fresh.length ? `${plural(fresh.length, 'outage')} added${add.length > fresh.length ? `, ${add.length - fresh.length} already in the list` : ''}.` : 'Those outages are already in the list.');
+  }
+});
+$('wfmBody').addEventListener('change', e => {
+  if (!wcOn()) return;
+  const t = e.target;
+  if (t.matches('[data-wcpick]')) { if (t.files && t.files.length) wcAddFiles([...t.files]); t.value = ''; return; }
+  if (t.matches('[data-wcset]')) {
+    const k = t.dataset.wcset, v = k === 'onTimeH' ? Math.round(+t.value) : normSpace(t.value);
+    if (k === 'onTimeH' && !(v > 0 && v <= 1440)) { toast('Type the hours: 1 to 1440.'); t.value = wcCfg().onTimeH; return; }
+    if ((k === 'to' || k === 'cc') && v && !splitAddr(v).every(a => /@/.test(a))) { toast('Type addresses like Name <name@company.com>, separated by a semicolon.'); return; }
+    state.wcCfg = { ...(state.wcCfg || {}), [k]: v }; wcSaveCfg(); state.wcBuilt = ''; renderWeeklyWs(); toast('Saved'); return;
+  }
+  const row = t.closest('[data-oid]'); if (!row) return;
+  const x = outagesNow().find(o => o.id === row.dataset.oid); if (!x) return;
+  if (t.matches('[data-ob]')) { const k = t.dataset.ob; x.brands = t.checked ? [...new Set(x.brands.concat([k]))] : x.brands.filter(b => b !== k); x.brands.sort((a, b) => Object.keys(WC_BRAND).indexOf(a) - Object.keys(WC_BRAND).indexOf(b)); }
+  else if (t.dataset.of === 'date') { if (!wcIsDay(t.value)) { toast('Pick the day of the outage.'); t.value = x.date; return; } x.date = t.value; }
+  else if (t.dataset.of === 'title') x.title = String(t.value).slice(0, 200);
+  else if (t.dataset.of === 'desc') x.desc = String(t.value).slice(0, 600);
+  else return;
+  state.wcBuilt = ''; wcSaveOutages(); renderWeeklyWs();
+});
+$('wfmBody').addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.wcpaste')) WC.open.paste = d.open; else if (d.matches && d.matches('details.wcset')) WC.open.set = d.open; }, true);   // open stays open when the page is drawn again
+$('wfmBody').addEventListener('input', e => { if (e.target.matches && e.target.matches('[data-opaste]')) WC.pasteText = e.target.value; });
+$('wfmBody').addEventListener('keydown', e => { const z = e.target.closest && e.target.closest('[data-wcdrop]'); if (z && wcOn() && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const p = $('wfmBody').querySelector('[data-wcpick]'); if (p) p.click(); } });
+['dragenter', 'dragover'].forEach(ev => $('wfmBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-wcdrop]'); if (z) { e.preventDefault(); z.classList.add('over'); } }));
+['dragleave', 'drop'].forEach(ev => $('wfmBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-wcdrop]'); if (z) { e.preventDefault(); if (ev === 'drop') e.stopPropagation(); z.classList.remove('over'); if (ev === 'drop' && wcOn() && e.dataTransfer && e.dataTransfer.files.length) wcAddFiles([...e.dataTransfer.files]); } }));   // read once: the page's own drop handler does not see it
+
 // ================================================================ INTERACTIONS: the Genesys interactions export, day by day
 // The export lists every inbound interaction: who handled it, when, how long, which queue, who hung up and any error.
 // It is read in a background worker and kept only as day totals, per queue and per agent; the callers' numbers (ANI) are
@@ -24255,19 +25037,20 @@ const interPicker = Object.assign(document.createElement('input'), { type: 'file
 interPicker.addEventListener('change', async () => { const f = interPicker.files[0]; interPicker.value = ''; if (!f) return; if (await isInterFile(f)) importInteractions(f); else toast(`${f.name} does not look like the interactions export (Users, Date, Duration, Disconnect Type…).`); });
 
 // ================================================================ WFM TEAM: one page for the WFM analysts and the WFM manager
-// Its tabs, in three groups. This month: Import, Review and Export (the month's build, for the WFM analysts) and Emails (the
+// Its tabs, in five groups. This month: Import, Review and Export (the month's build, for the WFM analysts) and Emails (the
 // four daily brand emails, and the month's deduction and absences emails; the incentive email is the senior manager's). Every day: Daily (the daily data) and
-// Report builder (the analysts make the daily emails). Insight: Analytics (departments and months), Agents (every measure per
-// agent) and Interactions (the interactions export). Each role sees its own tabs; the senior manager reads.
+// Report builder (the analysts make the daily emails). Every week: Weekly commercial (the presentation for the VP, weekly.js).
+// Insight: Analytics (departments and months), Agents (every measure per agent) and Interactions (the interactions export).
+// Keep: Data (export and import of everything). Each role sees its own tabs; the senior manager reads.
 Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core', wfmAt: '' });
-const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
+const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['weekly', 'Weekly commercial'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
 const WFM_STEPS = ['import', 'review', 'export'];   // the month's build, shown on the WFM team page
-const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Insight', ['analytics', 'agents', 'inter']], ['Keep', ['data']]];
+const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Every week', ['weekly']], ['Insight', ['analytics', 'agents', 'inter']], ['Keep', ['data']]];
 /** every email the WFM team sends, in one place shared by the WFM manager and the WFM analysts: the four daily brand emails and
     the month's deduction and absences emails. Both can edit them and send them (the tool copies them or opens them in Outlook). */
 const canWfmMail = () => hasRole('admin', 'wfm', 'user');
 Object.assign(state, { mailSub: '' });
-function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'data' ? canBackup() : true)); }
+function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'weekly' ? canWeekly() : t === 'data' ? canBackup() : true)); }
 /** the tab now on screen: a step of the month's build, or a WFM tab */
 const wfmTabNow = () => (state.ws === 'build' ? (WFM_STEPS.includes(state.step) ? state.step : 'import') : state.wfmTab);
 /** the WFM team page's header: the title, the tabs of the role (with what each needs), and the actions of the tab */
@@ -24309,6 +25092,7 @@ const WFM_LEAD = {
   builder: 'Drop the day\'s exports: MC Leaders and the WFM Daily Review are made here, and the four brand emails go straight to the WFM manager.',
   emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction and absences emails. Edit them here and send them from Outlook; the tool never sends anything itself. The incentive email is the senior manager\'s (Supervisors › Incentive email), with the incentive file you build on Export.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
+  weekly: 'The Weekly Commercial Presentation for the VP, in four steps: the service level and the trends come from the brands\' history; drop the month\'s Call history and Tickets exports for the call reasons, complaints and tickets; keep the outages list here. The tool makes the PowerPoint and the email with it attached; it never sends anything itself.',
   data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
 function renderWfmWs() {
@@ -24324,7 +25108,7 @@ function renderWfmWs() {
   const builder = t === 'builder', em = t === 'emails', dm = em && state.mailSub === 'daily', mm = em && !dm;
   $('wfmRb').hidden = !builder; $('wfmDm').hidden = !dm; $('wfmBody').hidden = builder || dm || mm;
   if (!mm) mountMail(false);
-  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
+  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'weekly') renderWeeklyWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
   else if (builder) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; rbShow(); }
   else if (dm) { $('wfmBar').innerHTML = mailSubHtml(unsent) + '<div class="wsacts"></div>'; dmShow(); }
 }
@@ -24463,9 +25247,10 @@ $('wfmBody').addEventListener('click', e => {
 /** files dropped on a workspace page (not Build): the page that wants them takes them (the Report builder tab every daily export,
     Results the old Excel, Quality the Final EVAL); anything else is recognised and the Recognise files panel says where it goes */
 async function wsDrop(files) {
-  const L = [...files], rb = [], old = [], what = [];
+  const L = [...files], rb = [], old = [], what = [], wk = [];
   for (const f of L) {
     if (state.ws === 'wfm' && state.wfmTab === 'builder' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name)) { rb.push(f); continue; }   // on its own tab every export goes to Report builder
+    if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(csv|xls|xlsx)$/i.test(f.name)) { wk.push(f); continue; }   // and on Weekly commercial, to the weekly presentation
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     const v = await recogOne(f), K = Recog.KINDS[v.kind] || Recog.KINDS.unknown;
     if (v.kind === 'inter' && canInter()) { importInteractions(f); continue; }
@@ -24475,6 +25260,7 @@ async function wsDrop(files) {
     what.push({ file: f, v });
   }
   if (rb.length) { if (state.wfmTab !== 'builder') { state.wfmTab = 'builder'; renderWs(); } rbAddFiles(rb); }
+  if (wk.length) wcAddFiles(wk);
   if (old.length) cmpFiles(old);   // the old Excel files of a month together, on Results › Reconcile
   if (what.length) recogOpen(what, 'drop');
 }
@@ -27313,6 +28099,7 @@ const DEPT = [
   ['user', 'WFM analyst', [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
+    'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     'At month end, the numbered tabs are the month\'s steps, in order: <b>1 Import</b>, <b>2 Review</b>, <b>3 Export</b>, <b>4 Emails</b>. On <b>Import</b>, drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
@@ -27329,6 +28116,7 @@ const DEPT = [
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
   ['wfm', 'WFM manager', [
     'Every morning, <b>WFM team › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them.',
+    'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
@@ -28795,7 +29583,7 @@ renderBrand();
 render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
-window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB };   // for testing
+window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }) };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
 Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing

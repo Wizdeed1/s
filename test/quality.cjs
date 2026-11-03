@@ -20,7 +20,7 @@ const near = (a, b) => a == null || b == null ? a === b : Math.abs(a - b) < 1e-4
   await p.addInitScript(fx => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user' }; }, fixture);
   await p.goto('file://' + path.resolve(page0));
   await p.waitForFunction(() => window.__mc && window.__mc.state.rosterReady);
-  await p.evaluate(() => { const M = window.__mc, F = window.__FIX__; M.state.history = F.history; M.state.finals = F.finals; M.state.histVer++; M.setWs('build'); M.setStep('import'); });
+  await p.evaluate(() => { const M = window.__mc, F = window.__FIX__; M.state.history = F.history; M.state.finals = F.finals; M.state.histVer++; Object.assign(M.state, { y: 2026, m: 9, monthManual: true }); M.setWs('build'); M.setStep('import'); });   // Build's month is September (by default it is the month before today)
   await p.setInputFiles('#picker', [file]);
   await p.waitForFunction(() => !!window.__mc.state.quality['2026-09'], null, { timeout: 20000 });
   const got = await p.evaluate(names => { const M = window.__mc, Q = M.state.quality['2026-09'], out = {}; for (const n of names) { const per = M.state.roster.find(x => x.name === n); const r = per && Q.rows[per._id]; out[n] = r ? { kpi: r.kpi, ev: r.eval || {}, status: r.status, crit: r.crit } : null; } return { out, unmatched: (Q.unmatched || []).length }; }, Object.keys(expect));

@@ -14609,36 +14609,95 @@ function monthsBack(d, k) {
   const m0 = +d.slice(0, 4) * 12 + (+d.slice(5, 7) - 1) - k, ym = `${Math.floor(m0 / 12)}-${pad((m0 % 12) + 1)}`;
   return `${ym}-${pad(Math.min(+d.slice(8, 10), daysIn(ym)))}`;
 }
+// ---------------------------------------------------------------- the numbers a deck or the KPIs workbook already has, kept as they are
+const unxml = t => String(t).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+/** a chart's series from the values PowerPoint keeps in it: { name, num (the categories are numbers: Excel dates), fmt, cats, vals } */
+function chartSeries(xml) {
+  const out = [], pts = x => { const L = []; for (const p of x.matchAll(/<c:pt idx="(\d+)"[^>]*>\s*<c:v>([^<]*)<\/c:v>/g)) L[+p[1]] = unxml(p[2]); return L; };
+  for (const m of String(xml || '').matchAll(/<c:ser>([\s\S]*?)<\/c:ser>/g)) {
+    const S = m[1], tx = (S.match(/<c:tx>([\s\S]*?)<\/c:tx>/) || [])[1] || '', cat = (S.match(/<c:cat>([\s\S]*?)<\/c:cat>/) || [])[1] || '', val = (S.match(/<c:val>([\s\S]*?)<\/c:val>/) || [])[1] || '';
+    out.push({ name: sp(unxml((tx.match(/<c:v>([^<]*)<\/c:v>/) || tx.match(/<a:t>([^<]*)<\/a:t>/) || [])[1] || '')), num: /<c:num(?:Cache|Lit)>/.test(cat), fmt: unxml((cat.match(/<c:formatCode>([^<]*)<\/c:formatCode>/) || [])[1] || ''), cats: pts(cat), vals: pts(val) });
+  }
+  return out;
+}
 /**
- * What the OTP and final termination slide shows. K: kpiOf() of the MC KPIs workbook; days: callsOf().days (the days kept); rule:
- * { ch: 'all' | 'call', term: 'all' | 'done' } (every channel or calls only; every final termination call or the terminations done).
- * A day of the Call history wins over the workbook's, and so does a month the Call history has whole (every day, to the month's end,
- * or to the last day for the last month). OTP calls: the two months to the last day, day by day (a day with no data left blank);
- * final termination calls: by month, from January of the last month's year. Returns { otp, term, otpEnd, termEnd }.
+ * The OTP calls by day and the final termination calls by month one of the team's decks shows: the values kept in its "OTP Count"
+ * and "Final termination Count" charts (the days as Excel dates, d-mmm-yy, or as labels, 5-Sep-26; the months as Excel dates,
+ * mmm-yy, or labels, Jan-26). A deck the tool made is not read for them (its numbers are the ones the tool keeps). z: a zip.
+ * Returns { otp, term } as kpiOf() has them (either null), and own: true for a deck the tool made.
  */
-function otpTerm(K, days, rule) {
-  K = K || {}; days = days || {}; rule = rule || {};
+async function deckCallsOf(z) {
+  const out = { otp: null, term: null };
+  if (/<Application>MC Monthly Report Builder<\/Application>/.test((await z.text('docProps/app.xml')) || '')) return { ...out, own: true };
+  const charts = z.names().filter(n => /^ppt\/charts\/chart\d+\.xml$/.test(n)).sort((a, b) => +a.match(/(\d+)\.xml$/)[1] - +b.match(/(\d+)\.xml$/)[1]);
+  for (const n of charts) {
+    for (const S of chartSeries(await z.text(n))) {
+      const isOtp = /\botp\b/i.test(S.name), isTerm = /terminat/i.test(S.name), daily = S.num ? /d/i.test(S.fmt.replace(/\[[^\]]*\]|"[^"]*"/g, '')) : null;
+      if ((!isOtp && !isTerm) || (isOtp ? out.otp : out.term)) continue;
+      const L = [];
+      for (let i = 0; i < S.cats.length; i++) {
+        const c = S.cats[i], v = S.vals[i] == null || S.vals[i] === '' ? NaN : +S.vals[i]; if (c == null || !Number.isFinite(v)) continue;
+        if (isOtp) { const d = S.num ? (daily ? SERIAL(+c) : null) : dayOf(c); if (d) L.push({ date: d, n: v }); }
+        else { const M = S.num ? (daily === false && SERIAL(+c) ? { y: +SERIAL(+c).slice(0, 4), m: +SERIAL(+c).slice(5, 7) } : null) : monthOf(c); if (M && M.y) L.push({ ym: `${M.y}-${pad(M.m)}`, n: v }); }
+      }
+      if (L.length) out[isOtp ? 'otp' : 'term'] = L.sort((a, b) => ((a.date || a.ym) < (b.date || b.ym) ? -1 : 1));
+    }
+  }
+  return out;
+}
+/** what a deck or the KPIs workbook gives ({ otp: [{ date, n }], term: [{ ym, n }] }), to keep: { otp: { day: n }, term: { ym: { n, end } } };
+    each month is whole but the last, which ends on the last OTP day when that falls in it */
+function baseOf(src) {
+  const out = { otp: {}, term: {} }; if (!src) return out;
+  for (const r of src.otp || []) if (r && isDay(r.date) && Number.isFinite(r.n)) out.otp[r.date] = r.n;
+  const T = (src.term || []).filter(r => r && /^\d{4}-\d{2}$/.test(r.ym) && Number.isFinite(r.n)).sort((a, b) => (a.ym < b.ym ? -1 : 1)), D = Object.keys(out.otp).sort(), lastD = D[D.length - 1] || '';
+  T.forEach((r, i) => { out.term[r.ym] = { n: r.n, end: i === T.length - 1 && lastD.slice(0, 7) === r.ym ? lastD : `${r.ym}-${pad(daysIn(r.ym))}` }; });
+  return out;
+}
+/** two of them kept together: a day in both takes the newer one's number, a month the one that covers more of it */
+function baseMerge(a, b) {
+  const out = { otp: { ...((a && a.otp) || {}) }, term: { ...((a && a.term) || {}) } };
+  for (const [d, n] of Object.entries((b && b.otp) || {})) out.otp[d] = n;
+  for (const [ym, x] of Object.entries((b && b.term) || {})) if (!out.term[ym] || String(x.end || '9') >= String(out.term[ym].end || '9')) out.term[ym] = x;
+  return out;
+}
+/**
+ * What the OTP and final termination slide shows. B: the numbers kept from the team's deck and the MC KPIs workbook (baseOf()),
+ * shown as they are; days: callsOf().days (the Call history's days kept), for the days after them; rule: { ch: 'all' | 'call',
+ * term: 'all' | 'done' } (every channel or calls only; every final termination call or the terminations done). OTP calls: the two
+ * months to the last day, day by day (a day with no data left blank); final termination calls: by month from January of the last
+ * month's year, a month the deck or the workbook has only part of completed with the Call history's days after it. miss: the days
+ * the slide still lacks (in the two months, and in the months it shows). Returns { otp, term: [{ ym, n, end }], otpEnd, termEnd, miss }.
+ */
+function otpTerm(B, days, rule) {
+  B = B || {}; days = days || {}; rule = rule || {};
   const ch = rule.ch === 'call' ? 'Call' : '', fo = 'otp' + ch, ft = (rule.term === 'done' ? 'done' : 'term') + ch;
-  const own = Object.keys(days).filter(d => isDay(d) && days[d] && typeof days[d] === 'object').sort();
+  const own = Object.keys(days).filter(d => isDay(d) && days[d] && typeof days[d] === 'object').sort(), ownS = new Set(own);
+  const BO = B.otp && typeof B.otp === 'object' ? B.otp : {}, BT = B.term && typeof B.term === 'object' ? B.term : {}, miss = new Set();
   const byDay = new Map();
-  for (const r of K.otp || []) if (r && isDay(r.date) && Number.isFinite(r.n)) byDay.set(r.date, r.n);
   for (const d of own) if (Number.isFinite(+days[d][fo])) byDay.set(d, +days[d][fo]);
+  for (const d of Object.keys(BO)) if (isDay(d) && Number.isFinite(BO[d])) byDay.set(d, BO[d]);   // the deck's and the workbook's days as they are
   let otp = null, otpEnd = null;
   if (byDay.size) {
     const D = [...byDay.keys()].sort(), from = monthsBack(D[D.length - 1], 2); otpEnd = D[D.length - 1]; otp = [];
+    for (let d = nextDay(from); d <= otpEnd; d = nextDay(d)) if (!byDay.has(d)) miss.add(d);
     for (let d = D.find(x => x > from); d <= otpEnd; d = nextDay(d)) otp.push({ date: d, n: byDay.has(d) ? byDay.get(d) : null });
   }
-  const mon = new Map(), M = new Map(), last = own[own.length - 1];
-  for (const r of K.term || []) if (r && /^\d{4}-\d{2}$/.test(r.ym) && Number.isFinite(r.n)) mon.set(r.ym, { n: r.n, end: null });
-  for (const d of own) { const ym = d.slice(0, 7), x = M.get(ym) || { n: 0, k: 0, end: d }; x.n += +days[d][ft] || 0; x.k++; x.end = d; M.set(ym, x); }
-  for (const [ym, x] of M) if (!mon.has(ym) || x.k === (ym === last.slice(0, 7) ? +last.slice(8) : daysIn(ym))) mon.set(ym, { n: x.n, end: x.end });
+  const mon = new Map();
+  for (const ym of Object.keys(BT).sort()) { const x = BT[ym]; if (/^\d{4}-\d{2}$/.test(ym) && x && Number.isFinite(x.n)) mon.set(ym, { n: x.n, end: isDay(x.end) && x.end.slice(0, 7) === ym ? x.end : `${ym}-${pad(daysIn(ym))}`, from: `${ym}-01` }); }
+  for (const d of own) { const ym = d.slice(0, 7), v = +days[d][ft] || 0, x = mon.get(ym); if (!x) mon.set(ym, { n: v, end: d, from: d, own: true }); else if (d > x.end) { x.n += v; x.end = d; } }
   let term = null, termEnd = null;
   if (mon.size) {
-    const Y = [...mon.keys()].sort(), ly = Y[Y.length - 1], kd = K.otp && K.otp.length ? K.otp[K.otp.length - 1].date : '';
-    term = Y.filter(ym => ym >= `${ly.slice(0, 4)}-01`).map(ym => ({ ym, n: mon.get(ym).n }));
-    termEnd = mon.get(ly).end || (kd.slice(0, 7) === ly ? kd : null);
+    const Y = [...mon.keys()].sort(), ly = Y[Y.length - 1], first = Y.find(ym => ym >= `${ly.slice(0, 4)}-01`);
+    term = Y.filter(ym => ym >= first).map(ym => ({ ym, n: mon.get(ym).n, end: mon.get(ym).end }));
+    termEnd = mon.get(ly).end;
+    // the days the months shown lack: before the Call history's first day in a month it alone gives, after the deck's end, a month not there
+    for (let ym = first; ym <= ly; ym = `${monthsBack(`${ym}-15`, -1).slice(0, 7)}`) {
+      const x = mon.get(ym), stop = ym === ly ? termEnd : `${ym}-${pad(daysIn(ym))}`;
+      for (let d = `${ym}-01`; d <= stop; d = nextDay(d)) if (!x || (x.own ? !ownS.has(d) : d > x.end && !ownS.has(d))) miss.add(d);
+    }
   }
-  return { otp, term, otpEnd, termEnd };
+  return { otp, term, otpEnd, termEnd, miss: [...miss].sort() };
 }
 /** the logos in one of the team's decks: the Beyond One mark (the dark slides), the mark with the name (the other slides) and the
     brands' logos (top right of their slides); by the pictures' own names, else by where they sit. z: a zip ({ names, text, bytes }) */
@@ -14734,8 +14793,9 @@ function otpSlide(D, m, o, T, n) {
 }
 /**
  * the Performance Review, as the team's deck: m = WcDeck.model() for the presentation's day (the brands' slides), tables =
- * tablesOf() from the email, o = { presenter, title, org, logo, logos, kpi: kpiOf() of the MC KPIs workbook, calls: the Call
- * history's days (callsOf().days, kept), callRule: what counts (otpTerm()) }
+ * tablesOf() from the email, o = { presenter, title, org, logo, logos, kpi: kpiOf() of the MC KPIs workbook, base: the numbers kept
+ * from the team's deck and the workbook (baseOf(); else the workbook's), calls: the Call history's days (callsOf().days, kept),
+ * callRule: what counts (otpTerm()) }
  */
 function deck(m, tables, o0 = {}) {
   const W = WD.parts, o = { ...o0, kicker: 'Weekly Commercial Presentation', coverSub: 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay', monthlyLabel: 'Monthly Trend', ppLabel: false };
@@ -14747,7 +14807,7 @@ function deck(m, tables, o0 = {}) {
   W.postpaidSlide(D, m, n++, o);
   complaints(D, m, o, by, n++);
   rebooking(D, m, o, by('rebooking'), K, n++);
-  const OT = otpTerm(K, o0.calls, o0.callRule);
+  const OT = otpTerm(o0.base || baseOf(K), o0.calls, o0.callRule);
   if (OT.otp || OT.term) otpSlide(D, m, o, OT, n++);
   // a table the deck does not know (a new one in the email): two a slide
   const other = tables.filter(t => t.key === 'other');
@@ -14761,7 +14821,7 @@ function deck(m, tables, o0 = {}) {
   return D;
 }
 const fileName = date => `MC_Performance_Review - ${WD.longDate(date)}.pptx`;
-return { tablesOf, cellsOf, monthOf, chartOf, kpiOf, logosOf, dayOf, callDay, callsOf, callsMerge, otpTerm, monthsBack, CALL_KEYS, deck, fileName };
+return { tablesOf, cellsOf, monthOf, chartOf, kpiOf, logosOf, dayOf, callDay, callsOf, callsMerge, chartSeries, deckCallsOf, baseOf, baseMerge, otpTerm, monthsBack, CALL_KEYS, deck, fileName };
 })(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'), typeof WcDeck !== 'undefined' ? WcDeck : require('./wcdeck.js'));
 if (typeof module !== 'undefined') module.exports = PrDeck;
 </script>
@@ -25525,8 +25585,10 @@ $('wfmBody').addEventListener('keydown', e => { const z = e.target.closest && e.
 // team's charts are linked to adds Rebooking by day, OTP calls and final termination calls; one of the team's decks dropped here
 // gives its logos to both decks (config/decklogos). The Call history export from Crystal (the raw call reasons) gives the OTP calls and
 // the final termination calls: counted by day (PrDeck.callsOf) and kept for everyone (config/calldays: the counts only), so the slide
-// shows the last two months day by day and the year by month from the exports dropped over the weeks. The email's and the workbook's
-// data stay in this browser; the tool sends nothing.
+// shows the last two months day by day and the year by month from the exports dropped over the weeks. The numbers the team's old
+// deck (its OTP Count and Final termination Count charts) and the KPIs workbook already have are kept too (config/calldays.base) and
+// shown as they are: the Call history only fills the days after them and completes a month they have part of. The email's and the
+// workbook's other data stay in this browser; the tool sends nothing.
 Object.assign(state, { prDate: '', prBusy: '', prBuilt: '', callDays: null });
 const PR = { tables: null, from: '', notes: '', text: '', open: false, kpi: null, kpiFrom: '', calls: null, setOpen: false };
 const PR_MAXDAYS = 800;   // the call days kept: a little over two years
@@ -25557,9 +25619,9 @@ function prRead(text, from) {
   PR.notes = !T.length ? `No tables found in ${from}: drop the "MC performance Review" email (.msg), or paste its text with the tables.` : miss.length ? `Not in the email: ${miss.map(k => PR_NAMES[k]).join(', ')}. Their places say so on the slides.` : '';
   state.prBuilt = '';
 }
-/** one of the team's decks: its logos kept (as PNG pictures) for both decks, for everyone */
-async function prLogos(f, u8) {
-  const L = await PrDeck.logosOf(await Core.readZip(u8)), out = {};
+/** one of the team's decks: its logos kept (as PNG pictures) for both decks, and its OTP and final termination calls, for everyone */
+async function prDeckFile(f, u8) {
+  const z = await Core.readZip(u8), L = await PrDeck.logosOf(z), out = {}, kept = [];
   for (const [k, v] of Object.entries(L)) {
     try {
       let b = ''; for (let i = 0; i < v.bytes.length; i += 32768) b += String.fromCharCode.apply(null, v.bytes.subarray(i, i + 32768));
@@ -25568,11 +25630,15 @@ async function prLogos(f, u8) {
       out[k] = { dataUrl: cv.toDataURL('image/png'), w, h };
     } catch (e) { /* a picture the browser cannot draw: left out */ }
   }
-  const keys = Object.keys(out);
-  if (!keys.length) { PR.notes = `${f.name}: no logos found in it (the Beyond One logo top left, the brands' logos top right).`; return; }
-  state.deckLogos = deckLogosOk({ ...(state.deckLogos || {}), ...out, from: f.name, at: new Date().toISOString(), by: whoNow() });
-  if (state.db) { const body = { ...state.deckLogos }; queueWrite('config/decklogos', () => state.db.doc('config/decklogos').set(body)).catch(e => toast(`The logos were not saved (${(e && e.code) || 'error'}).`)); }
-  toast(`Logos kept from ${f.name}: ${keys.map(k => DECK_LOGOS[k]).join(', ')}. Both decks use them.`);
+  const keys = Object.keys(out), DC = await PrDeck.deckCallsOf(z);
+  if (keys.length) {
+    state.deckLogos = deckLogosOk({ ...(state.deckLogos || {}), ...out, from: f.name, at: new Date().toISOString(), by: whoNow() });
+    if (state.db) { const body = { ...state.deckLogos }; queueWrite('config/decklogos', () => state.db.doc('config/decklogos').set(body)).catch(e => toast(`The logos were not saved (${(e && e.code) || 'error'}).`)); }
+    kept.push(`logos (${keys.map(k => DECK_LOGOS[k]).join(', ')}), for both decks`);
+  }
+  if (DC.otp || DC.term) { prKeepBase(PrDeck.baseOf(DC), f.name); kept.push(prBaseText(PrDeck.baseOf(DC))); }
+  if (!kept.length) { PR.notes = `${f.name}: no logos (the Beyond One logo top left, the brands' logos top right)${DC.own ? '' : ' and no OTP Count or Final termination Count chart'} found in it.`; return; }
+  toast(`Kept from ${f.name}: ${kept.join('; ')}.`);
 }
 /** a spreadsheet: the Call history export (its days go to got) or the MC KPIs workbook (Rebooking by day, OTP calls, final termination calls) */
 async function prSheet(f, buf, got) {
@@ -25589,6 +25655,7 @@ async function prSheet(f, buf, got) {
     return;
   }
   PR.kpi = K; PR.kpiFrom = f.name; state.prBuilt = '';
+  if (K.otp || K.term) prKeepBase(PrDeck.baseOf(K), f.name);
 }
 /** the call days as kept: whole numbers by day (the latest PR_MAXDAYS days) and what counts; anything else is dropped */
 function callDaysOk(d) {
@@ -25598,10 +25665,17 @@ function callDaysOk(d) {
     const x = src[k]; if (!x || typeof x !== 'object') continue;
     days[k] = Object.fromEntries(PrDeck.CALL_KEYS.map(f => { const v = +x[f]; return [f, Number.isInteger(v) && v >= 0 && v < 1e7 ? v : 0]; }));
   }
-  const r = d.rule && typeof d.rule === 'object' ? d.rule : {};
-  return { days, rule: { ch: r.ch === 'call' ? 'call' : 'all', term: r.term === 'done' ? 'done' : 'all' }, from: String(d.from || '').slice(0, 300), at: String(d.at || '').slice(0, 40), by: String(d.by || '').slice(0, 120) };
+  const r = d.rule && typeof d.rule === 'object' ? d.rule : {}, B = d.base && typeof d.base === 'object' ? d.base : {}, bo = {}, bt = {};
+  for (const k of Object.keys(B.otp && typeof B.otp === 'object' ? B.otp : {}).filter(wcIsDay).sort().slice(-PR_MAXDAYS)) { const v = +B.otp[k]; if (Number.isFinite(v) && v >= 0 && v < 1e7) bo[k] = v; }
+  for (const k of Object.keys(B.term && typeof B.term === 'object' ? B.term : {}).filter(x => /^\d{4}-(0[1-9]|1[0-2])$/.test(x)).sort().slice(-120)) {
+    const x = B.term[k], v = x && typeof x === 'object' ? +x.n : NaN; if (Number.isFinite(v) && v >= 0 && v < 1e8) bt[k] = { n: v, end: wcIsDay(x.end) && x.end.slice(0, 7) === k ? x.end : null };
+  }
+  const base = Object.keys(bo).length || Object.keys(bt).length ? { otp: bo, term: bt, from: String(B.from || '').slice(0, 300) } : null;
+  return { days, rule: { ch: r.ch === 'call' ? 'call' : 'all', term: r.term === 'done' ? 'done' : 'all' }, base, from: String(d.from || '').slice(0, 300), at: String(d.at || '').slice(0, 40), by: String(d.by || '').slice(0, 120) };
 }
 const prRule = () => (state.callDays && state.callDays.rule) || { ch: 'all', term: 'all' };
+/** the numbers kept from the old deck and the workbook (none: an empty set, so the slide shows only the Call history's) */
+const prBase = () => (state.callDays && state.callDays.base) || { otp: {}, term: {} };
 /** the fields a rule counts: OTP calls, final termination calls */
 const prFields = r => ({ o: r.ch === 'call' ? 'otpCall' : 'otp', t: (r.term === 'done' ? 'done' : 'term') + (r.ch === 'call' ? 'Call' : '') });
 /** a change to the call days: on this page at once, then made again on what the shared data has now (another computer may have added
@@ -25613,11 +25687,28 @@ function prCallsChange(fn) {
   queueWrite('config/calldays', async () => {
     let cur = state.callDays;
     try { const s = await D().get(); cur = fn(s.exists ? callDaysOk(s.data()) : null); } catch (e) { /* this page's copy */ }
+    const moved = JSON.stringify(cur) !== JSON.stringify(state.callDays);   // another computer changed them meanwhile
     state.callDays = cur;
     await (cur ? D().set({ ...cur }) : D().delete());
-  }).then(() => { if (prOn()) renderPerfWs(); }, e => toast(`The OTP and termination calls were not saved (${(e && e.code) || 'error'}).`));
+    return moved;
+  }).then(moved => { if (moved && prOn()) renderPerfWs(); }, e => toast(`The OTP and termination calls were not saved (${(e && e.code) || 'error'}).`));
 }
 const prStamp = () => ({ at: new Date().toISOString(), by: whoNow() });
+/** the numbers a deck or the KPIs workbook gives, kept with those kept before (a day: the newer one; a month: the one that covers more) */
+function prKeepBase(b, name) {
+  const rule = prRule(), st = prStamp();
+  prCallsChange(cd => {
+    const old = cd && cd.base, from = [...new Set(String((old && old.from) || '').split(', ').filter(Boolean).concat(name))].join(', ');
+    return callDaysOk({ days: {}, rule, ...(cd || {}), base: { ...PrDeck.baseMerge(old, b), from }, ...st });
+  });
+}
+/** the numbers kept from a deck or the workbook, in words */
+function prBaseText(B) {
+  const D = Object.keys(B.otp || {}).sort(), M = Object.keys(B.term || {}).sort(), monL = ym => `${MON[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`, L = [];
+  if (D.length) L.push(`OTP calls on ${plural(D.length, 'day')} (${prRuns(D)})`);
+  if (M.length) { const ly = M[M.length - 1], z = B.term[ly], part = z && z.end && wcAddDays(z.end, 1).slice(0, 7) === ly; L.push(`final termination calls ${M.length > 1 ? `${monL(M[0])} → ${monL(ly)}` : monL(ly)}${part ? `, ${monL(ly).split(' ')[0]} until ${prDmy(z.end)}` : ''}`); }
+  return L.join(' and ');
+}
 /** the Call history exports of one drop: a day in two of them counted once (the fuller one); then kept with the days before */
 function prKeepCalls(got) {
   let add = {}; for (const g of got) add = PrDeck.callsMerge(add, g.days);
@@ -25636,9 +25727,9 @@ async function prFiles(list) {
       else if (/\.eml$/i.test(f.name)) { const P = UpdParse.emlParts(u8); const a = P.text ? PrDeck.tablesOf(P.text, prRef()) : []; prRead(a.length || !P.html ? P.text : prHtmlText(P.html), f.name); }
       else if (/\.(txt|html?)$/i.test(f.name)) { const t = new TextDecoder().decode(u8); prRead(/\.html?$/i.test(f.name) ? prHtmlText(t) : t, f.name); }
       else if (/\.(xls|xlsx|xlsm|xlsb)$/i.test(f.name)) await prSheet(f, buf, got);
-      else if (/\.pptx$/i.test(f.name)) await prLogos(f, u8);
+      else if (/\.pptx$/i.test(f.name)) await prDeckFile(f, u8);
       else if (/\.(png|jpe?g|gif|bmp|webp)$/i.test(f.name)) PR.notes = `${f.name} is a picture, and the tool cannot read pictures: drop the email itself (save it from Outlook as .msg), or copy its text and paste it below.`;
-      else PR.notes = `${f.name}: drop the "MC performance Review" email (.msg or .eml), the Call history export (.xls), the MC KPIs workbook (.xlsx) or one of your decks (.pptx, for its logos).`;
+      else PR.notes = `${f.name}: drop the "MC performance Review" email (.msg or .eml), the Call history export (.xls), the MC KPIs workbook (.xlsx) or one of your decks (.pptx, for its logos and its OTP and final termination calls).`;
     } catch (e) { PR.notes = `${f.name}: ${(e && e.message) || 'could not be read'}.`; }
   }
   if (got.length) prKeepCalls(got);
@@ -25658,6 +25749,7 @@ function prRuns(days) {
 }
 function renderPerfWs() {
   const body = $('wfmBody'); if (!body || state.ws !== 'wfm' || state.wfmTab !== 'perf') return;
+  const ds = body.querySelector('details[data-prset]'), dp = body.querySelector('details[data-prpaste]'); if (ds) PR.setOpen = ds.open; if (dp) PR.open = dp.open;   // as they are on the page now
   if (!canPerf()) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; body.innerHTML = emptyCard('Only the WFM team', 'The WFM manager and the WFM analysts make the performance review.'); return; }
   if (!WC.ready) {
     $('wfmBar').innerHTML = '<div class="wsacts"></div>';
@@ -25678,7 +25770,7 @@ function renderPerfWs() {
   if (K && K.term) kd.push(`Final termination calls ${plural(K.term.length, 'month')}`);
   const kpiLine = K ? `<p class="hint">MC KPIs workbook (${esc(PR.kpiFrom)}): ${esc(kd.join(' · ') || 'Rebooking by month')}.</p>` : '<p class="hint">For Rebooking by day, also drop the <b>MC KPIs workbook</b> (.xlsx) the team\'s charts are linked to; without it the deck shows Rebooking by month only. The OTP and final termination calls come from the Call history export, in step 3.</p>';
   const reading = busy === 'read' ? '<p class="hint" role="status"><span class="spin" aria-hidden="true"></span> Reading the files…</p>' : '';
-  const drop = `<div class="drop rbdrop" data-prdrop role="button" tabindex="0" aria-label="Drop the MC performance Review email and the MC KPIs workbook, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the "MC performance Review" email and the MC KPIs workbook</strong><span>The .msg from Outlook (or a saved .eml) and the .xlsx, or click to choose them. The Call history export (.xls) can go here too; one of your decks (.pptx) gives its logos to both decks.</span></div><input type="file" hidden multiple accept=".msg,.eml,.txt,.html,.htm,.xls,.xlsx,.xlsm,.xlsb,.pptx,.png,.jpg,.jpeg" data-prpick>
+  const drop = `<div class="drop rbdrop" data-prdrop role="button" tabindex="0" aria-label="Drop the MC performance Review email and the MC KPIs workbook, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the "MC performance Review" email and the MC KPIs workbook</strong><span>The .msg from Outlook (or a saved .eml) and the .xlsx, or click to choose them. The Call history export (.xls) can go here too; your old deck (.pptx) gives its logos to both decks and its OTP and final termination calls.</span></div><input type="file" hidden multiple accept=".msg,.eml,.txt,.html,.htm,.xls,.xlsx,.xlsm,.xlsb,.pptx,.png,.jpg,.jpeg" data-prpick>
     ${reading}${PR.notes ? `<p class="hint warnline">${esc(PR.notes)}</p>` : ''}${read}${kpiLine}
     <details class="wcpaste"${PR.open ? ' open' : ''} data-prpaste><summary>Or paste the email's text</summary><p class="hint">In Outlook, select the email's text with its tables (Ctrl+A), copy it and paste it here.</p><textarea class="cell rbta" rows="5" data-prtext spellcheck="false" placeholder="Rebooking TKTs:&#10;Months&#9;Virgin&#9;FRiENDi&#9;Total&#10;Jan&#9;…"></textarea><div class="acts"><button class="btn sm" data-prread>Read the text</button></div></details>`;
   // 2. the brands' slides
@@ -25688,24 +25780,26 @@ function renderPerfWs() {
   const pills = `<div class="wchist">${B.map(({ b, n, miss }) => `<span class="pill ${n && !miss.length ? 'good' : n ? 'warn' : 'bad'}" title="${esc(miss.length ? 'Missing: ' + rbShortDays(miss) : 'Every day is in the history')}"><i class="wcdot" style="background:#${b.color}"></i>${esc(b.short)} · ${n}/${want.length} days</span>`).join('')}</div>`;
   const span = want.length ? (want.length === 1 ? R.dayLabel(first) : R.niceRange(first, ref)) : '';
   const brand = `${pills}<p class="hint">The month to date (${esc(span)}) and the months before, from the history the daily brand emails keep. The call reasons and complaints on these slides come from the month's exports when they were dropped on <b>Weekly commercial</b> in this browser; else they show "–".</p>`;
-  // 3. OTP and final termination calls: the Call history's days kept (and the workbook's)
-  const CD = state.callDays, rule = prRule(), F = prFields(rule), OT = PrDeck.otpTerm(K, CD && CD.days, rule), own = CD ? Object.keys(CD.days).sort() : [];
+  // 3. OTP and final termination calls: the old deck's and the workbook's numbers as they are, the Call history's days after them
+  const CD = state.callDays, rule = prRule(), F = prFields(rule), OT = PrDeck.otpTerm(prBase(), CD && CD.days, rule), own = CD ? Object.keys(CD.days).sort() : [], BS = CD && CD.base;
   const fmt = v => Math.round(v).toLocaleString('en-US'), C = PR.calls, cd = C ? Object.keys(C.days).sort() : [], tot = f => cd.reduce((a, d) => a + C.days[d][f], 0);
   const labs = L => Object.entries(L).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt(v)}`).join(', ') || 'none';
   const nb = (v, one, many) => `<b>${fmt(v)}</b> ${v === 1 ? one : many}`;
   const readLine = C ? `<p class="hint">Read from ${esc(C.files.join(', '))}: ${esc(prRuns(cd))} · ${fmt(C.rows)} ${C.rows === 1 ? 'contact' : 'contacts'} · ${nb(tot(F.o), 'OTP call', 'OTP calls')} · ${nb(tot(F.t), 'final termination call', 'final termination calls')}.</p><p class="hint">In the export, every channel: ${esc(labs(C.labels.otp))}; ${esc(labs(C.labels.term))}.</p>` : '';
   const span2 = []; if (OT.otpEnd) for (let d = wcAddDays(PrDeck.monthsBack(OT.otpEnd, 2), 1); d <= OT.otpEnd; d = wcAddDays(d, 1)) span2.push(d);
-  const have = new Set((OT.otp || []).filter(r => r.n != null).map(r => r.date)), miss = span2.filter(d => !have.has(d)), monL = ym => `${MON[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
-  const keptLine = own.length ? `<p class="hint">Kept for the deck, for everyone: the counts of ${plural(own.length, 'day')} (${esc(prRuns(own))})${CD.at ? ` · last added ${esc(ago(CD.at))}${CD.by ? ' by ' + esc(CD.by) : ''}` : ''} <button class="btn sm ghost" data-prcallsrm>Clear</button></p>` : '';
-  const slideLine = OT.otp || OT.term ? `<p class="hint">On the slide: OTP calls ${OT.otp ? `day by day, ${esc(dmy(OT.otp[0].date))} → ${esc(dmy(OT.otpEnd))} (${have.size} of the ${span2.length} days of the two months)` : '–'}; final termination calls ${OT.term ? `by month, ${esc(OT.term.length > 1 ? `${monL(OT.term[0].ym)} → ${monL(OT.term[OT.term.length - 1].ym)}` : monL(OT.term[0].ym))}${OT.termEnd ? `, until ${esc(dmy(OT.termEnd))}` : ''}` : '–'}.</p>${miss.length && have.size ? `<p class="hint warnline">No OTP calls yet for ${esc(prRuns(miss))}: drop those days' Call history to fill the two months.</p>` : ''}`
-    : '<p class="hint">Nothing yet: drop the Call history export (Crystal\'s "Call Center History Report", .xls). Without it, or the MC KPIs workbook, the deck leaves the OTP and final termination slide out.</p>';
+  const have = new Set((OT.otp || []).filter(r => r.n != null).map(r => r.date)), monL = ym => `${MON[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
+  const by = CD && CD.at ? ` Last changed ${ago(CD.at)}${CD.by ? ' by ' + CD.by : ''}` : '', stamp = esc(by + (by && !/\.$/.test(by) ? '.' : '')), clear = BS || own.length ? ' <button class="btn sm ghost" data-prcallsrm>Clear</button>' : '';
+  const baseLine = BS ? `<p class="hint">Kept as they are, from ${esc(BS.from || 'a deck')}: ${esc(prBaseText(BS))}.</p>` : '<p class="hint">Drop your old deck (.pptx) or the MC KPIs workbook once, and its OTP and final termination calls are kept as they are; the Call history then only adds the days after them.</p>';
+  const keptLine = own.length || BS ? `<p class="hint">${own.length ? `From the Call history: the counts of ${plural(own.length, 'day')} (${esc(prRuns(own))}).` : 'No Call history kept yet.'}${stamp}${clear}</p>` : '';
+  const slideLine = OT.otp || OT.term ? `<p class="hint">On the slide: OTP calls ${OT.otp ? `day by day, ${esc(dmy(OT.otp[0].date))} → ${esc(dmy(OT.otpEnd))} (${have.size} of the ${span2.length} days of the two months)` : '–'}; final termination calls ${OT.term ? `by month, ${esc(OT.term.length > 1 ? `${monL(OT.term[0].ym)} → ${monL(OT.term[OT.term.length - 1].ym)}` : monL(OT.term[0].ym))}${OT.termEnd ? `, until ${esc(dmy(OT.termEnd))}` : ''}` : '–'}.</p>${OT.miss.length ? `<p class="hint warnline">No data yet for ${esc(prRuns(OT.miss))}: drop those days' Call history to complete the slide.</p>` : ''}`
+    : '<p class="hint">Nothing yet: drop the Call history export (Crystal\'s "Call Center History Report", .xls), and your old deck or the MC KPIs workbook for the days and months before. Without them the deck leaves the OTP and final termination slide out.</p>';
   const opt = (v, cur, t) => `<option value="${v}"${v === cur ? ' selected' : ''}>${esc(t)}</option>`;
   const setBox = `<details class="wcset" data-prset${PR.setOpen ? ' open' : ''}><summary>What counts</summary><div class="grid2">
     <label class="wsfield"><span>Channels</span><select class="cell" data-prrule="ch">${opt('all', rule.ch, 'Every channel: calls, WhatsApp, email, social media')}${opt('call', rule.ch, 'Calls only')}</select></label>
     <label class="wsfield"><span>Final termination calls</span><select class="cell" data-prrule="term">${opt('all', rule.term, 'Every Final Deactivation contact')}${opt('done', rule.term, 'Only the terminations done')}</select></label></div>
-    <p class="hint">OTP calls: the contacts whose Service or Sub Service names OTP ("OTP is not received", "App OTP isn't Received"). Final termination calls: the Virgin and FRiENDi Final Deactivation contacts, or only those with the Sub Service "Termination Done". The days kept hold each way of counting, so a change here needs no new drop; the MC KPIs workbook's days stay as the workbook has them.</p></details>`;
-  const calls = `<div class="drop rbdrop" data-prdrop="calls" role="button" tabindex="0" aria-label="Drop the Call history export, or choose it"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the Call history export</strong><span>Crystal's "Call Center History Report" (.xls), one or more, or click to choose them. Whole days, up to yesterday; a day dropped again keeps its fuller export.</span></div><input type="file" hidden multiple accept=".xls,.xlsx,.xlsb" data-prpick="calls">
-    ${reading}${readLine}${keptLine}${slideLine}${setBox}`;
+    <p class="hint">OTP calls: the contacts whose Service or Sub Service names OTP ("OTP is not received", "App OTP isn't Received"). Final termination calls: the Virgin and FRiENDi Final Deactivation contacts, or only those with the Sub Service "Termination Done". The days kept hold each way of counting, so a change here needs no new drop; the old deck's and the MC KPIs workbook's numbers stay as they are.</p></details>`;
+  const calls = `<div class="drop rbdrop" data-prdrop="calls" role="button" tabindex="0" aria-label="Drop the Call history export, or choose it"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the Call history export</strong><span>Crystal's "Call Center History Report" (.xls), one or more, or click to choose them. Whole days, up to yesterday; a day dropped again keeps its fuller export. Your old deck (.pptx) or the MC KPIs workbook can go here too.</span></div><input type="file" hidden multiple accept=".xls,.xlsx,.xlsb,.pptx" data-prpick="calls">
+    ${reading}${readLine}${baseLine}${keptLine}${slideLine}${setBox}`;
   // 4. the deck and the email
   const slides = ['Cover', 'Virgin Mobile', 'FRiENDi Mobile', 'Postpaid', 'Complaints Insights: Web + App, Network, Social media', `Complaints Insights: Rebooking ${K && K.byDay ? 'by day and by month' : 'by month'}`]
     .concat(OT.otp || OT.term ? ['OTP calls and Final termination calls'] : [], T ? T.filter(t => t.key === 'other').map(t => `More Insights: ${t.title}`) : [], ['Thank you']);
@@ -25728,7 +25822,7 @@ async function prMake(kind) {
   state.prBusy = kind; renderPerfWs();
   try {
     await wcBoot();
-    const c = wcCfg(), date = prDateNow(), m = wcModel(date), D = PrDeck.deck(m, PR.tables, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo(), logos: wcDeckLogos(), kpi: PR.kpi || undefined, calls: state.callDays ? state.callDays.days : undefined, callRule: prRule() });
+    const c = wcCfg(), date = prDateNow(), m = wcModel(date), D = PrDeck.deck(m, PR.tables, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo(), logos: wcDeckLogos(), kpi: PR.kpi || undefined, base: prBase(), calls: state.callDays ? state.callDays.days : undefined, callRule: prRule() });
     const bytes = await D.bytes(), name = PrDeck.fileName(date);
     if (kind === 'deck') { if (await save(name, new Blob([bytes], { type: PPTX_TYPE }))) state.prBuilt = date; }
     else {
@@ -25748,8 +25842,8 @@ document.addEventListener('click', e => {
   const t = e.target.closest && e.target.closest('[data-prdeck], [data-prmail], [data-prdrop], [data-prread], [data-prlogosrm], [data-prcallsrm]'); if (!t || !($('wfmBody').contains(t) || $('wfmBar').contains(t))) return;
   if (t.matches('[data-prcallsrm]')) {
     const old = state.callDays, oc = PR.calls, st = prStamp(); PR.calls = null;
-    prCallsChange(cd => (cd ? { ...cd, days: {}, ...st } : null)); renderPerfWs();
-    toast('The OTP and final termination calls kept are cleared.', { label: 'Undo', fn: () => { PR.calls = oc; prCallsChange(() => old); renderPerfWs(); } });
+    prCallsChange(cd => (cd ? { ...cd, days: {}, base: null, ...st } : null)); renderPerfWs();
+    toast('The OTP and final termination calls kept are cleared (the old deck\'s and the Call history\'s).', { label: 'Undo', fn: () => { PR.calls = oc; prCallsChange(() => old); renderPerfWs(); } });
     return;
   }
   if (t.matches('[data-prlogosrm]')) { const old = state.deckLogos; state.deckLogos = null; if (state.db) queueWrite('config/decklogos', () => state.db.doc('config/decklogos').delete()).catch(() => {}); renderPerfWs(); toast('Logos removed: the tool\'s logo and the brands\' names again.', { label: 'Undo', fn: () => { state.deckLogos = old; if (state.db && old) queueWrite('config/decklogos', () => state.db.doc('config/decklogos').set(old)).catch(() => {}); renderPerfWs(); } }); return; }
@@ -29287,7 +29381,7 @@ const DEPT = [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
     'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
-    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
+    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Drop your old deck (.pptx) once too: its OTP and final termination numbers are kept as they are, and the exports only add the days after them. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     'At month end, the numbered tabs are the month\'s steps, in order: <b>1 Import</b>, <b>2 Review</b>, <b>3 Export</b>, <b>4 Emails</b>. On <b>Import</b>, drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
@@ -29306,7 +29400,7 @@ const DEPT = [
   ['wfm', 'WFM manager', [
     'Every morning, <b>WFM team › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them.',
     'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
-    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
+    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Drop your old deck (.pptx) once too: its OTP and final termination numbers are kept as they are, and the exports only add the days after them. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',

@@ -10,7 +10,10 @@
 // 5. The made-up .msg the browser test drops is read back by the tool's own reader.
 // 6. The Call history export (made up, laid out as Crystal's): OTP calls and final termination calls by day, every channel and calls
 //    only, the terminations done; two exports of a day (the fuller one kept); the slide's two months day by day (a day with no data
-//    left blank) and the year by month, the Call history winning over the workbook where it is whole; the deck from the calls alone.
+//    left blank) and the year by month; the deck from the calls alone.
+// 7. The numbers the team's old deck (made up: its charts as PowerPoint keeps them, Excel dates or labels) and the workbook already
+//    have: kept as they are, the Call history only after them (a month they have part of completed), the days still missing named;
+//    a deck the tool made is not read for them.
 // Usage: node test/prdeck.test.cjs [outDir: the made-up deck is written there]
 const fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
 const repo = path.join(__dirname, '..');
@@ -115,17 +118,42 @@ const ref = { y: 2026, m: 11 };
   const mg = PrDeck.callsMerge({ '2026-11-01': { calls: 10, otp: 1 }, '2026-11-02': { calls: 50, otp: 5 } }, { '2026-11-01': { calls: 12, otp: 2 }, '2026-11-02': { calls: 20, otp: 9 }, '2026-11-03': { calls: 5, otp: 0 } });
   ok(mg['2026-11-01'].otp === 2 && mg['2026-11-02'].otp === 5 && mg['2026-11-03'].otp === 0, 'a day in two exports keeps the fuller one; a new day is added');
   ok(PrDeck.monthsBack('2026-11-03', 2) === '2026-09-03' && PrDeck.monthsBack('2026-04-30', 2) === '2026-02-28' && PrDeck.monthsBack('2026-01-15', 2) === '2025-11-15', 'two months back (the 30th of April: the last day of February; January: November of the year before)');
-  const T1 = PrDeck.otpTerm(K, CH.days, {});
-  ok(T1.otp.length === 60 && T1.otp[0].date === '2026-09-05' && T1.otp.find(r => r.date === '2026-11-01').n === 4 && T1.otpEnd === '2026-11-03', 'with the workbook: two months to 3 Nov, the Call history\'s days instead of the workbook\'s');
-  ok(T1.term.length === 11 && T1.term[10].ym === '2026-11' && T1.term[10].n === 11 && T1.term[9].n === K.term[9].n && T1.termEnd === '2026-11-03', `the Call history has November whole (1–3 Nov): its 11 final termination calls; October stays the workbook's (${T1.term[9].n})`);
+  const T1 = PrDeck.otpTerm(PrDeck.baseOf(K), CH.days, {});
+  ok(T1.otp.length === 60 && T1.otp[0].date === '2026-09-05' && T1.otp.find(r => r.date === '2026-11-01').n === 37 && T1.otpEnd === '2026-11-03', 'with the workbook: two months to 3 Nov, the workbook\'s days as they are (1 Nov: 37, not the Call history\'s 4)');
+  ok(T1.term.length === 11 && T1.term[10].ym === '2026-11' && T1.term[10].n === 9000 && T1.termEnd === '2026-11-03' && T1.miss.join() === '2026-09-04', `the workbook's months as they are (November to the 3rd: ${T1.term[10].n}); missing only 4 Sep, before the workbook's first day`);
   const T2c = PrDeck.otpTerm({}, { '2026-11-01': CH.days['2026-11-01'], '2026-11-03': CH.days['2026-11-03'] }, { ch: 'call', term: 'done' });
   ok(T2c.otp.map(r => r.n).join() === '3,,0' && T2c.term.length === 1 && T2c.term[0].n === 4, `calls only, terminations done; a day with no data left blank (${T2c.otp.map(r => r.n).join()})`);
-  const T3c = PrDeck.otpTerm({ term: [{ ym: '2026-10', n: 9000 }] }, { '2026-10-20': CH.days['2026-11-01'], '2026-12-01': CH.days['2026-11-02'] }, {});
-  ok(T3c.term.map(r => `${r.ym}:${r.n}`).join() === '2026-10:9000,2026-12:3' && T3c.otp[0].date === '2026-10-20' && T3c.otp.length === 43, 'a month the Call history has only part of keeps the workbook\'s; a month the workbook lacks comes from the Call history');
+  const T3c = PrDeck.otpTerm(PrDeck.baseOf({ term: [{ ym: '2026-10', n: 9000 }] }), { '2026-10-20': CH.days['2026-11-01'], '2026-12-01': CH.days['2026-11-02'] }, {});
+  ok(T3c.term.map(r => `${r.ym}:${r.n}`).join() === '2026-10:9000,2026-12:3' && T3c.otp[0].date === '2026-10-20' && T3c.otp.length === 43, 'a month the workbook has whole stays the workbook\'s; a month it lacks comes from the Call history');
   ok(PrDeck.otpTerm({}, {}, {}).otp === null && PrDeck.otpTerm({}, {}, {}).term === null, 'nothing to show: no slide');
   const zc = await Core.readZip(await PrDeck.deck(m, T, { calls: CH.days }).bytes()), zcs = zc.names().filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n));
   const cx = await Promise.all(zc.names().filter(n => /^ppt\/charts\/chart\d+\.xml$/.test(n)).map(n => zc.text(n))), ocx = cx.find(x => /OTP Count/.test(x)) || '', otx = cx.find(x => /Final termination Count/.test(x)) || '';
   const s7c = [...((await zc.text('ppt/slides/slide7.xml')) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]);
   ok(zcs.length === 9 && s7c.includes('OTP Calls') && s7c.filter(x => x === 'Until 03 Nov').length === 2 && /<c:v>1-Nov-26<\/c:v>/.test(ocx) && /<c:v>4<\/c:v>/.test(ocx) && (ocx.match(/<c:trendline>/g) || []).length === 2 && /<c:v>Nov-26<\/c:v>/.test(otx) && /<c:v>11<\/c:v>/.test(otx) && !/<c:trendline>/.test(otx), 'the deck from the Call history alone: OTP calls 1–3 Nov with their trend, final termination calls for November (no trend for one month)');
+  // ---- 7. the numbers the team's old deck already has (made up), kept as they are
+  const sv = iso => ser(iso), chartX = (name, fmt, cats, vals, num) => `<c:chartSpace><c:chart><c:plotArea><c:barChart><c:ser><c:tx><c:strRef><c:f>'OTP &amp; Termination'!$C$3</c:f><c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>${name}</c:v></c:pt></c:strCache></c:strRef></c:tx>`
+    + `<c:cat>${num ? `<c:numRef><c:numCache><c:formatCode>${fmt}</c:formatCode>` : '<c:strRef><c:strCache>'}<c:ptCount val="${cats.length}"/>${cats.map((c, i) => `<c:pt idx="${i}"><c:v>${c}</c:v></c:pt>`).join('')}${num ? '</c:numCache></c:numRef>' : '</c:strCache></c:strRef>'}</c:cat>`
+    + `<c:val><c:numRef><c:numCache><c:formatCode>#,##0</c:formatCode><c:ptCount val="${vals.length}"/>${vals.map((v, i) => (v == null ? '' : `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`)).join('')}</c:numCache></c:numRef></c:val></c:ser></c:barChart></c:plotArea></c:chart></c:chartSpace>`;
+  const od = []; for (let k = 0; k < 50; k++) od.push(new Date(Date.UTC(2026, 7, 20 + k)).toISOString().slice(0, 10));
+  const oldDeck = async (num, app = 'Microsoft Office PowerPoint') => Core.readZip(await Core.writeZip([
+    { name: 'docProps/app.xml', data: `<Properties><Application>${app}</Application></Properties>` },
+    { name: 'ppt/charts/chart1.xml', data: chartX('Total', 'General', ['Jan-26', 'Feb-26'], [5, 6], false) },   // another chart of the deck
+    { name: 'ppt/charts/chart3.xml', data: chartX('OTP Count', 'd\\-mmm\\-yy', od.map(d => (num ? sv(d) : `${+d.slice(8)}-${['Aug', 'Sep', 'Oct'][+d.slice(5, 7) - 8]}-26`)), od.map((d, k) => (k === 3 ? null : 40 + (k % 9))), num) },
+    { name: 'ppt/charts/chart2.xml', data: chartX('Final termination Count', 'mmm\\-yy', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(mo => (num ? sv(`2026-${String(mo).padStart(2, '0')}-01`) : `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'][mo - 1]}-26`)), [12000, 11500, 11000, 10500, 10000, 9500, 9000, 8500, 8000, 2000], num) }]));
+  for (const num of [true, false]) {
+    const DC = await PrDeck.deckCallsOf(await oldDeck(num));
+    ok(DC.otp && DC.otp.length === 49 && DC.otp[0].date === '2026-08-20' && DC.otp[48].date === '2026-10-08' && DC.term && DC.term.length === 10 && DC.term[9].ym === '2026-10' && DC.term[9].n === 2000, `the team's deck (${num ? 'Excel dates' : 'labels'}): OTP calls 20 Aug – 8 Oct (a blank day left out), final termination calls Jan – Oct; another chart left alone`);
+  }
+  const own = await PrDeck.deckCallsOf(await Core.readZip(bytes));
+  ok(own.own && !own.otp && !own.term, 'a deck the tool made: not read for its numbers (they are the ones the tool keeps)');
+  const B0 = PrDeck.baseOf(await PrDeck.deckCallsOf(await oldDeck(true)));
+  ok(B0.term['2026-10'].end === '2026-10-08' && B0.term['2026-09'].end === '2026-09-30' && B0.otp['2026-10-08'] === 40 + (49 % 9), 'kept as they are: October to the deck\'s last day (8 Oct), the months before whole');
+  const late = { '2026-10-09': CH.days['2026-11-01'], '2026-10-10': CH.days['2026-11-02'], '2026-11-01': CH.days['2026-11-01'], '2026-11-02': CH.days['2026-11-02'], '2026-11-03': CH.days['2026-11-03'], '2026-10-08': { ...CH.days['2026-11-01'], otp: 999, term: 999 } };
+  const T7 = PrDeck.otpTerm(B0, late, {}), o7 = d => (T7.otp.find(r => r.date === d) || {}).n;
+  ok(T7.otp.length === 61 && T7.otp[0].date === '2026-09-04' && o7('2026-10-08') === B0.otp['2026-10-08'] && o7('2026-10-09') === 4 && o7('2026-10-11') === null && o7('2026-11-03') === 0, 'OTP calls: the deck\'s days as they are (8 Oct not the Call history\'s 999), the Call history after them, a day with neither blank');
+  ok(T7.term.length === 11 && T7.term[8].n === 8000 && T7.term[9].n === 2000 + 7 + 3 && T7.term[10].n === 11 && T7.termEnd === '2026-11-03', `final termination calls: the deck's months as they are, October completed with the Call history's 9–10 Oct (${T7.term[9].n}), November from it`);
+  ok(T7.miss[0] === '2026-10-11' && T7.miss[T7.miss.length - 1] === '2026-10-31' && T7.miss.length === 21, `the days still missing: ${T7.miss[0]} to ${T7.miss[T7.miss.length - 1]}`);
+  const M2 = PrDeck.baseMerge(B0, PrDeck.baseOf({ otp: [{ date: '2026-10-08', n: 1 }, { date: '2026-10-09', n: 2 }], term: [{ ym: '2026-10', n: 2100 }] }));
+  ok(M2.otp['2026-10-08'] === 1 && M2.otp['2026-08-20'] === 40 && M2.term['2026-10'].n === 2100 && M2.term['2026-10'].end === '2026-10-09' && PrDeck.baseMerge(M2, PrDeck.baseOf({ term: [{ ym: '2026-10', n: 50 }], otp: [{ date: '2026-10-02', n: 3 }] })).term['2026-10'].n === 2100, 'kept together: a day takes the newer number, a month the one that covers more of it');
   console.log(bad ? `${bad} failed` : 'all passed'); process.exit(bad ? 1 : 0);
 })().catch(e => { console.log('✗ ' + (e && e.stack || e)); process.exit(1); });

@@ -185,36 +185,95 @@ function monthsBack(d, k) {
   const m0 = +d.slice(0, 4) * 12 + (+d.slice(5, 7) - 1) - k, ym = `${Math.floor(m0 / 12)}-${pad((m0 % 12) + 1)}`;
   return `${ym}-${pad(Math.min(+d.slice(8, 10), daysIn(ym)))}`;
 }
+// ---------------------------------------------------------------- the numbers a deck or the KPIs workbook already has, kept as they are
+const unxml = t => String(t).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+/** a chart's series from the values PowerPoint keeps in it: { name, num (the categories are numbers: Excel dates), fmt, cats, vals } */
+function chartSeries(xml) {
+  const out = [], pts = x => { const L = []; for (const p of x.matchAll(/<c:pt idx="(\d+)"[^>]*>\s*<c:v>([^<]*)<\/c:v>/g)) L[+p[1]] = unxml(p[2]); return L; };
+  for (const m of String(xml || '').matchAll(/<c:ser>([\s\S]*?)<\/c:ser>/g)) {
+    const S = m[1], tx = (S.match(/<c:tx>([\s\S]*?)<\/c:tx>/) || [])[1] || '', cat = (S.match(/<c:cat>([\s\S]*?)<\/c:cat>/) || [])[1] || '', val = (S.match(/<c:val>([\s\S]*?)<\/c:val>/) || [])[1] || '';
+    out.push({ name: sp(unxml((tx.match(/<c:v>([^<]*)<\/c:v>/) || tx.match(/<a:t>([^<]*)<\/a:t>/) || [])[1] || '')), num: /<c:num(?:Cache|Lit)>/.test(cat), fmt: unxml((cat.match(/<c:formatCode>([^<]*)<\/c:formatCode>/) || [])[1] || ''), cats: pts(cat), vals: pts(val) });
+  }
+  return out;
+}
 /**
- * What the OTP and final termination slide shows. K: kpiOf() of the MC KPIs workbook; days: callsOf().days (the days kept); rule:
- * { ch: 'all' | 'call', term: 'all' | 'done' } (every channel or calls only; every final termination call or the terminations done).
- * A day of the Call history wins over the workbook's, and so does a month the Call history has whole (every day, to the month's end,
- * or to the last day for the last month). OTP calls: the two months to the last day, day by day (a day with no data left blank);
- * final termination calls: by month, from January of the last month's year. Returns { otp, term, otpEnd, termEnd }.
+ * The OTP calls by day and the final termination calls by month one of the team's decks shows: the values kept in its "OTP Count"
+ * and "Final termination Count" charts (the days as Excel dates, d-mmm-yy, or as labels, 5-Sep-26; the months as Excel dates,
+ * mmm-yy, or labels, Jan-26). A deck the tool made is not read for them (its numbers are the ones the tool keeps). z: a zip.
+ * Returns { otp, term } as kpiOf() has them (either null), and own: true for a deck the tool made.
  */
-function otpTerm(K, days, rule) {
-  K = K || {}; days = days || {}; rule = rule || {};
+async function deckCallsOf(z) {
+  const out = { otp: null, term: null };
+  if (/<Application>MC Monthly Report Builder<\/Application>/.test((await z.text('docProps/app.xml')) || '')) return { ...out, own: true };
+  const charts = z.names().filter(n => /^ppt\/charts\/chart\d+\.xml$/.test(n)).sort((a, b) => +a.match(/(\d+)\.xml$/)[1] - +b.match(/(\d+)\.xml$/)[1]);
+  for (const n of charts) {
+    for (const S of chartSeries(await z.text(n))) {
+      const isOtp = /\botp\b/i.test(S.name), isTerm = /terminat/i.test(S.name), daily = S.num ? /d/i.test(S.fmt.replace(/\[[^\]]*\]|"[^"]*"/g, '')) : null;
+      if ((!isOtp && !isTerm) || (isOtp ? out.otp : out.term)) continue;
+      const L = [];
+      for (let i = 0; i < S.cats.length; i++) {
+        const c = S.cats[i], v = S.vals[i] == null || S.vals[i] === '' ? NaN : +S.vals[i]; if (c == null || !Number.isFinite(v)) continue;
+        if (isOtp) { const d = S.num ? (daily ? SERIAL(+c) : null) : dayOf(c); if (d) L.push({ date: d, n: v }); }
+        else { const M = S.num ? (daily === false && SERIAL(+c) ? { y: +SERIAL(+c).slice(0, 4), m: +SERIAL(+c).slice(5, 7) } : null) : monthOf(c); if (M && M.y) L.push({ ym: `${M.y}-${pad(M.m)}`, n: v }); }
+      }
+      if (L.length) out[isOtp ? 'otp' : 'term'] = L.sort((a, b) => ((a.date || a.ym) < (b.date || b.ym) ? -1 : 1));
+    }
+  }
+  return out;
+}
+/** what a deck or the KPIs workbook gives ({ otp: [{ date, n }], term: [{ ym, n }] }), to keep: { otp: { day: n }, term: { ym: { n, end } } };
+    each month is whole but the last, which ends on the last OTP day when that falls in it */
+function baseOf(src) {
+  const out = { otp: {}, term: {} }; if (!src) return out;
+  for (const r of src.otp || []) if (r && isDay(r.date) && Number.isFinite(r.n)) out.otp[r.date] = r.n;
+  const T = (src.term || []).filter(r => r && /^\d{4}-\d{2}$/.test(r.ym) && Number.isFinite(r.n)).sort((a, b) => (a.ym < b.ym ? -1 : 1)), D = Object.keys(out.otp).sort(), lastD = D[D.length - 1] || '';
+  T.forEach((r, i) => { out.term[r.ym] = { n: r.n, end: i === T.length - 1 && lastD.slice(0, 7) === r.ym ? lastD : `${r.ym}-${pad(daysIn(r.ym))}` }; });
+  return out;
+}
+/** two of them kept together: a day in both takes the newer one's number, a month the one that covers more of it */
+function baseMerge(a, b) {
+  const out = { otp: { ...((a && a.otp) || {}) }, term: { ...((a && a.term) || {}) } };
+  for (const [d, n] of Object.entries((b && b.otp) || {})) out.otp[d] = n;
+  for (const [ym, x] of Object.entries((b && b.term) || {})) if (!out.term[ym] || String(x.end || '9') >= String(out.term[ym].end || '9')) out.term[ym] = x;
+  return out;
+}
+/**
+ * What the OTP and final termination slide shows. B: the numbers kept from the team's deck and the MC KPIs workbook (baseOf()),
+ * shown as they are; days: callsOf().days (the Call history's days kept), for the days after them; rule: { ch: 'all' | 'call',
+ * term: 'all' | 'done' } (every channel or calls only; every final termination call or the terminations done). OTP calls: the two
+ * months to the last day, day by day (a day with no data left blank); final termination calls: by month from January of the last
+ * month's year, a month the deck or the workbook has only part of completed with the Call history's days after it. miss: the days
+ * the slide still lacks (in the two months, and in the months it shows). Returns { otp, term: [{ ym, n, end }], otpEnd, termEnd, miss }.
+ */
+function otpTerm(B, days, rule) {
+  B = B || {}; days = days || {}; rule = rule || {};
   const ch = rule.ch === 'call' ? 'Call' : '', fo = 'otp' + ch, ft = (rule.term === 'done' ? 'done' : 'term') + ch;
-  const own = Object.keys(days).filter(d => isDay(d) && days[d] && typeof days[d] === 'object').sort();
+  const own = Object.keys(days).filter(d => isDay(d) && days[d] && typeof days[d] === 'object').sort(), ownS = new Set(own);
+  const BO = B.otp && typeof B.otp === 'object' ? B.otp : {}, BT = B.term && typeof B.term === 'object' ? B.term : {}, miss = new Set();
   const byDay = new Map();
-  for (const r of K.otp || []) if (r && isDay(r.date) && Number.isFinite(r.n)) byDay.set(r.date, r.n);
   for (const d of own) if (Number.isFinite(+days[d][fo])) byDay.set(d, +days[d][fo]);
+  for (const d of Object.keys(BO)) if (isDay(d) && Number.isFinite(BO[d])) byDay.set(d, BO[d]);   // the deck's and the workbook's days as they are
   let otp = null, otpEnd = null;
   if (byDay.size) {
     const D = [...byDay.keys()].sort(), from = monthsBack(D[D.length - 1], 2); otpEnd = D[D.length - 1]; otp = [];
+    for (let d = nextDay(from); d <= otpEnd; d = nextDay(d)) if (!byDay.has(d)) miss.add(d);
     for (let d = D.find(x => x > from); d <= otpEnd; d = nextDay(d)) otp.push({ date: d, n: byDay.has(d) ? byDay.get(d) : null });
   }
-  const mon = new Map(), M = new Map(), last = own[own.length - 1];
-  for (const r of K.term || []) if (r && /^\d{4}-\d{2}$/.test(r.ym) && Number.isFinite(r.n)) mon.set(r.ym, { n: r.n, end: null });
-  for (const d of own) { const ym = d.slice(0, 7), x = M.get(ym) || { n: 0, k: 0, end: d }; x.n += +days[d][ft] || 0; x.k++; x.end = d; M.set(ym, x); }
-  for (const [ym, x] of M) if (!mon.has(ym) || x.k === (ym === last.slice(0, 7) ? +last.slice(8) : daysIn(ym))) mon.set(ym, { n: x.n, end: x.end });
+  const mon = new Map();
+  for (const ym of Object.keys(BT).sort()) { const x = BT[ym]; if (/^\d{4}-\d{2}$/.test(ym) && x && Number.isFinite(x.n)) mon.set(ym, { n: x.n, end: isDay(x.end) && x.end.slice(0, 7) === ym ? x.end : `${ym}-${pad(daysIn(ym))}`, from: `${ym}-01` }); }
+  for (const d of own) { const ym = d.slice(0, 7), v = +days[d][ft] || 0, x = mon.get(ym); if (!x) mon.set(ym, { n: v, end: d, from: d, own: true }); else if (d > x.end) { x.n += v; x.end = d; } }
   let term = null, termEnd = null;
   if (mon.size) {
-    const Y = [...mon.keys()].sort(), ly = Y[Y.length - 1], kd = K.otp && K.otp.length ? K.otp[K.otp.length - 1].date : '';
-    term = Y.filter(ym => ym >= `${ly.slice(0, 4)}-01`).map(ym => ({ ym, n: mon.get(ym).n }));
-    termEnd = mon.get(ly).end || (kd.slice(0, 7) === ly ? kd : null);
+    const Y = [...mon.keys()].sort(), ly = Y[Y.length - 1], first = Y.find(ym => ym >= `${ly.slice(0, 4)}-01`);
+    term = Y.filter(ym => ym >= first).map(ym => ({ ym, n: mon.get(ym).n, end: mon.get(ym).end }));
+    termEnd = mon.get(ly).end;
+    // the days the months shown lack: before the Call history's first day in a month it alone gives, after the deck's end, a month not there
+    for (let ym = first; ym <= ly; ym = `${monthsBack(`${ym}-15`, -1).slice(0, 7)}`) {
+      const x = mon.get(ym), stop = ym === ly ? termEnd : `${ym}-${pad(daysIn(ym))}`;
+      for (let d = `${ym}-01`; d <= stop; d = nextDay(d)) if (!x || (x.own ? !ownS.has(d) : d > x.end && !ownS.has(d))) miss.add(d);
+    }
   }
-  return { otp, term, otpEnd, termEnd };
+  return { otp, term, otpEnd, termEnd, miss: [...miss].sort() };
 }
 /** the logos in one of the team's decks: the Beyond One mark (the dark slides), the mark with the name (the other slides) and the
     brands' logos (top right of their slides); by the pictures' own names, else by where they sit. z: a zip ({ names, text, bytes }) */
@@ -310,8 +369,9 @@ function otpSlide(D, m, o, T, n) {
 }
 /**
  * the Performance Review, as the team's deck: m = WcDeck.model() for the presentation's day (the brands' slides), tables =
- * tablesOf() from the email, o = { presenter, title, org, logo, logos, kpi: kpiOf() of the MC KPIs workbook, calls: the Call
- * history's days (callsOf().days, kept), callRule: what counts (otpTerm()) }
+ * tablesOf() from the email, o = { presenter, title, org, logo, logos, kpi: kpiOf() of the MC KPIs workbook, base: the numbers kept
+ * from the team's deck and the workbook (baseOf(); else the workbook's), calls: the Call history's days (callsOf().days, kept),
+ * callRule: what counts (otpTerm()) }
  */
 function deck(m, tables, o0 = {}) {
   const W = WD.parts, o = { ...o0, kicker: 'Weekly Commercial Presentation', coverSub: 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay', monthlyLabel: 'Monthly Trend', ppLabel: false };
@@ -323,7 +383,7 @@ function deck(m, tables, o0 = {}) {
   W.postpaidSlide(D, m, n++, o);
   complaints(D, m, o, by, n++);
   rebooking(D, m, o, by('rebooking'), K, n++);
-  const OT = otpTerm(K, o0.calls, o0.callRule);
+  const OT = otpTerm(o0.base || baseOf(K), o0.calls, o0.callRule);
   if (OT.otp || OT.term) otpSlide(D, m, o, OT, n++);
   // a table the deck does not know (a new one in the email): two a slide
   const other = tables.filter(t => t.key === 'other');
@@ -337,6 +397,6 @@ function deck(m, tables, o0 = {}) {
   return D;
 }
 const fileName = date => `MC_Performance_Review - ${WD.longDate(date)}.pptx`;
-return { tablesOf, cellsOf, monthOf, chartOf, kpiOf, logosOf, dayOf, callDay, callsOf, callsMerge, otpTerm, monthsBack, CALL_KEYS, deck, fileName };
+return { tablesOf, cellsOf, monthOf, chartOf, kpiOf, logosOf, dayOf, callDay, callsOf, callsMerge, chartSeries, deckCallsOf, baseOf, baseMerge, otpTerm, monthsBack, CALL_KEYS, deck, fileName };
 })(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'), typeof WcDeck !== 'undefined' ? WcDeck : require('./wcdeck.js'));
 if (typeof module !== 'undefined') module.exports = PrDeck;

@@ -1,18 +1,19 @@
 // ================================================================ WFM TEAM: one page for the WFM analysts and the WFM manager
 // Its tabs, in five groups. This month: Import, Review and Export (the month's build, for the WFM analysts) and Emails (the
 // four daily brand emails, and the month's deduction and absences emails; the incentive email is the senior manager's). Every day: Daily (the daily data) and
-// Report builder (the analysts make the daily emails). Every week: Weekly commercial (the presentation for the VP, weekly.js).
+// Report builder (the analysts make the daily emails). Every week: Weekly commercial (the presentation for the VP, weekly.js) and
+// Performance Review (the deck from the complaints team's email, perfrev.js).
 // Insight: Analytics (departments and months), Agents (every measure per agent) and Interactions (the interactions export).
 // Keep: Data (export and import of everything). Each role sees its own tabs; the senior manager reads.
 Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core', wfmAt: '' });
-const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['weekly', 'Weekly commercial'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
+const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['weekly', 'Weekly commercial'], ['perf', 'Performance Review'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
 const WFM_STEPS = ['import', 'review', 'export'];   // the month's build, shown on the WFM team page
-const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Every week', ['weekly']], ['Insight', ['analytics', 'agents', 'inter']], ['Keep', ['data']]];
+const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Every week', ['weekly', 'perf']], ['Insight', ['analytics', 'agents', 'inter']], ['Keep', ['data']]];
 /** every email the WFM team sends, in one place shared by the WFM manager and the WFM analysts: the four daily brand emails and
     the month's deduction and absences emails. Both can edit them and send them (the tool copies them or opens them in Outlook). */
 const canWfmMail = () => hasRole('admin', 'wfm', 'user');
 Object.assign(state, { mailSub: '' });
-function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'weekly' ? canWeekly() : t === 'data' ? canBackup() : true)); }
+function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'weekly' || t === 'perf' ? canWeekly() : t === 'data' ? canBackup() : true)); }
 /** the tab now on screen: a step of the month's build, or a WFM tab */
 const wfmTabNow = () => (state.ws === 'build' ? (WFM_STEPS.includes(state.step) ? state.step : 'import') : state.wfmTab);
 /** the WFM team page's header: the title, the tabs of the role (with what each needs), and the actions of the tab */
@@ -55,6 +56,7 @@ const WFM_LEAD = {
   emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction and absences emails. Edit them here and send them from Outlook; the tool never sends anything itself. The incentive email is the senior manager\'s (Supervisors › Incentive email), with the incentive file you build on Export.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
   weekly: 'The Weekly Commercial Presentation for the VP, in four steps: the service level and the trends come from the brands\' history; drop the month\'s Call history and Tickets exports for the call reasons, complaints and tickets; keep the outages list here. The tool makes the PowerPoint and the email with it attached; it never sends anything itself.',
+  perf: 'The Member Care Performance Review for the VP: drop the "MC performance Review" email (.msg) and the tool reads its tables (Rebooking, Network issues, Web + App, Social media, Vnet) and makes the PowerPoint in the weekly presentation\'s look, with the brands\' slides, and the email with it attached; it never sends anything itself.',
   data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
 function renderWfmWs() {
@@ -70,7 +72,7 @@ function renderWfmWs() {
   const builder = t === 'builder', em = t === 'emails', dm = em && state.mailSub === 'daily', mm = em && !dm;
   $('wfmRb').hidden = !builder; $('wfmDm').hidden = !dm; $('wfmBody').hidden = builder || dm || mm;
   if (!mm) mountMail(false);
-  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'weekly') renderWeeklyWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
+  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'weekly') renderWeeklyWs(); else if (t === 'perf') renderPerfWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
   else if (builder) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; rbShow(); }
   else if (dm) { $('wfmBar').innerHTML = mailSubHtml(unsent) + '<div class="wsacts"></div>'; dmShow(); }
   renderUpd();   // Emails › Deduction and absences: the corrections that come back after the review
@@ -210,11 +212,12 @@ $('wfmBody').addEventListener('click', e => {
 /** files dropped on a workspace page (not Build): the page that wants them takes them (the Report builder tab every daily export,
     Results the old Excel, Quality the Final EVAL); anything else is recognised and the Recognise files panel says where it goes */
 async function wsDrop(files) {
-  const L = [...files], rb = [], old = [], what = [], wk = [], up = [];
+  const L = [...files], rb = [], old = [], what = [], wk = [], up = [], pr = [];
   for (const f of L) {
     if (state.ws === 'wfm' && state.wfmTab === 'builder' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name)) { rb.push(f); continue; }   // on its own tab every export goes to Report builder
     if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(csv|xls|xlsx)$/i.test(f.name)) { wk.push(f); continue; }   // and on Weekly commercial, to the weekly presentation
     if (updShown() && !$('wfmUpd').hidden && /\.(msg|eml)$/i.test(f.name)) { up.push(f); continue; }   // an email on the deduction email page: its corrections
+    if (state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf() && /\.(msg|eml|txt|html?)$/i.test(f.name)) { pr.push(f); continue; }   // the MC performance Review email on Performance Review
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     const v = await recogOne(f), K = Recog.KINDS[v.kind] || Recog.KINDS.unknown;
     if (v.kind === 'inter' && canInter()) { importInteractions(f); continue; }
@@ -226,6 +229,7 @@ async function wsDrop(files) {
   if (rb.length) { if (state.wfmTab !== 'builder') { state.wfmTab = 'builder'; renderWs(); } rbAddFiles(rb); }
   if (wk.length) wcAddFiles(wk);
   if (up.length) updFiles(up);
+  if (pr.length) prFiles(pr);
   if (old.length) cmpFiles(old);   // the old Excel files of a month together, on Results › Reconcile
   if (what.length) recogOpen(what, 'drop');
 }

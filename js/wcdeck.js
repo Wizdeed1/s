@@ -162,7 +162,7 @@ function squares(s, x, y) {
 }
 function head(s, o, m, title, sub) {
   logoAt(s, o, 0.45, 0.3, false);
-  s.text(8.2, 0.72, 4.65, 0.25, `Weekly Commercial Presentation  ·  ${longDate(m.date)}`, { size: 9, color: MUTED, align: 'right' });
+  s.text(8.2, 0.72, 4.65, 0.25, `${o.kicker || 'Weekly Commercial Presentation'}  ·  ${longDate(m.date)}`, { size: 9, color: MUTED, align: 'right' });
   s.text(0.5, 1.0, 9.5, 0.6, title, { size: 30, bold: true, font: 'Georgia', color: NAVY, name: 'Title' });
   s.text(0.5, 1.6, 9.5, 0.32, sub, { size: 12, italic: true, color: MUTED });
 }
@@ -254,7 +254,7 @@ function cover(D, m, o) {
   const s = D.slide({ bg: NAVY });
   logoAt(s, o, 0.55, 0.45, true);
   s.text(0.55, 2.7, 11, 0.75, 'Member Care Performance Review', { size: 36, bold: true, font: 'Georgia', color: 'FFFFFF', name: 'Title' });
-  s.text(0.55, 3.5, 11, 0.35, 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay  —  Weekly Commercial Presentation', { size: 13, color: PALE });
+  s.text(0.55, 3.5, 11, 0.35, o.coverSub || 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay  —  Weekly Commercial Presentation', { size: 13, color: PALE });
   s.rect(0.55, 4.22, 2.2, 0.02, { fill: '5B6BA8' });
   s.text(0.55, 4.45, 4, 0.3, longDate(m.date), { size: 10, color: PALE });
   if (o.presenter) s.text(0.55, 6.62, 7, 0.28, o.presenter, { size: 10, bold: true, color: 'FFFFFF' });
@@ -265,7 +265,7 @@ function thanks(D, o) {
   const s = D.slide({ bg: NAVY });
   logoAt(s, o, 0.55, 0.45, true);
   s.text(0.5, 3.0, 12.33, 0.8, 'Thank You', { size: 40, bold: true, font: 'Georgia', color: 'FFFFFF', align: 'center', name: 'Title' });
-  s.text(0.5, 3.85, 12.33, 0.35, 'Member Care Performance Review  —  Weekly Commercial Presentation', { size: 13, color: PALE, align: 'center' });
+  s.text(0.5, 3.85, 12.33, 0.35, o.thanksSub || 'Member Care Performance Review  —  Weekly Commercial Presentation', { size: 13, color: PALE, align: 'center' });
   const who = [o.presenter, o.title, o.org].filter(Boolean).join('  ·  ');
   if (who) s.text(0.5, 6.85, 12.33, 0.3, who, { size: 9, color: PALE, align: 'center' });
   squares(s, 10.7, 4.95);
@@ -281,6 +281,7 @@ function deck(m, o = {}) {
   return D;
 }
 const fileName = date => `Beyond_One_Member_Care_Review - ${longDate(date)}.pptx`;
-return { model, deck, fileName, brandVoice, ticketBrand, longDate, dShort, BRANDS, POSTPAID };
+return { model, deck, fileName, brandVoice, ticketBrand, longDate, dShort, BRANDS, POSTPAID,
+  parts: { cover, thanks, brandSlide, postpaidSlide, logoAt, foot, callout, label, fit, int, pct, NAVY, MUTED, MON } };   // for the Performance Review deck (prdeck.js)
 })(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'));
 if (typeof module !== 'undefined') module.exports = WcDeck;

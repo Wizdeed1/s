@@ -216,6 +216,18 @@ After the deduction email for review, champions and supervisors send corrections
 
 Each person is matched to the month's people by ID, or by name (the email's full name against the roster's shorter one, a first name when only one person in the month has it); when two people fit, the box asks which. Each day shows now → new; a day already so, an OFF day inside a typed range and a final month's days are not ticked. **Apply** makes them the month's attendance corrections (`att/<month>/edits/<person>`, the same records as a supervisor's, marked `src: 'update'` with who and when), so the month's row, the deduction workbook, the final email's list of what changed and the agent's page follow; Undo takes them back, and the list of corrections made from here has Remove. `js/updparse.js` reads (no page code), `js/attupd.js` is the box.
 
+## November 2026, the Member Care Performance Review
+
+The Control and Complaint team sends the *MC performance Review* email: tables by month of Rebooking TKTs (Virgin, FRiENDi), Network Issues TKTs (No Network, Weak Coverage, MNP - Port In, Inbound, Outbound), Web + App TKTs (against all complaints, with the share), Social Media issue TKTs (Postpaid, Prepaid) and Vnet Complaints, each ending with the month to date ("Nov to 3"). **WFM team › Performance Review** (in *Every week*, after Weekly commercial) makes the deck from it:
+
+| Step | What it does |
+|---|---|
+| 1 Drop the email | The .msg saved from Outlook (or a saved .eml, or its text pasted). Its tables are read: a title ending with ":", the header, a row per month (Jan, Jun-25, 1-Jan, Oct-26), the month to date as *Until 03 Nov*; the signature is left out. The page lists each table with its months and last row, and says which of the five are not in the email. Read in the browser; nothing is kept. |
+| 2 The brands' slides | Virgin Mobile, FRiENDi Mobile and Postpaid, as on Weekly commercial (the brands' history; the call reasons and complaints when the month's exports were dropped there). |
+| 3 The deck and the email | **Download deck** (*MC_Performance_Review - 4 Nov 2026.pptx*): cover; the three brands; Complaints Insights (Web + App with the share as a line, Network this year, Social media); Complaints Insights (Rebooking by month, Vnet, *This Month So Far* against the month before); a *More Insights* slide for any other table in the email; thank you. A table the email lacks says "Not in the email" in its place. **Email with the deck**: the Outlook draft to the VP (the Weekly commercial settings: presenter, job title, To, Cc), subject *MC Performance Review*, the deck attached. |
+
+`js/prdeck.js` reads the tables and makes the slides (with WcDeck's), `js/perfrev.js` is the page; `test/msgfile.cjs` writes made-up .msg files for the tests.
+
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.
 
@@ -288,8 +300,9 @@ node test/smartlink.cjs "final/MC Monthly Report Builder.html" /tmp/exports test
 node test/absgrid.cjs "final/MC Monthly Report Builder.html" test/shots           # the deduction email's Absenteeism table: every cell on one line at any window width, fixed widths, the email as wide as the table
 node test/weekly.cjs "final/MC Monthly Report Builder.html" test/shots           # WFM team › Weekly commercial: the month from the history, the sheet read (another file refused, a drop read once), the exports' numbers, outages typed, pasted and undone, settings, the deck and the email to the VP, another day, the shared settings and outages, the senior manager without the tab, phone width
 node test/attupd.cjs "final/MC Monthly Report Builder.html" test/shots           # Emails › Deduction and absences › Corrections after the review: a champion's table pasted, typed lines (choose between two people, a range's OFF day, clear), Apply, Undo, Remove, an .eml chosen and dropped, a picture refused, a final month, text as text, the senior manager without the box
+node test/perfrev.cjs "final/MC Monthly Report Builder.html" test/shots          # WFM team › Performance Review: a made-up .msg chosen and one dropped, its tables listed, the deck and the email to the VP, a pasted text, a picture refused, the senior manager without the tab, phone width
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)
-npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, Smart-Link's attendance file, the weekly presentation's numbers and PowerPoint, the corrections read after the deduction email, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
+npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, Smart-Link's attendance file, the weekly presentation's numbers and PowerPoint, the corrections read after the deduction email, the performance review's tables and deck, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
 ```
 
 They load the page with `window.__NOLOCK__` and `window.__ROSTER__` (the existing test hooks) and `window.__mcUser`,

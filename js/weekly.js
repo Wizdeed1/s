@@ -72,9 +72,9 @@ function wcRows(kind) {
   const rows = key ? rbCombine(F) : null; WC.comb[kind] = { key, rows }; return rows;
 }
 const wcCalls = () => wcRows('calls'), wcTickets = () => wcRows('tickets');
-function wcModel() {
+function wcModel(date) {
   const c = wcCfg();
-  return WcDeck.model({ date: wcDateNow(), hist: rbHist(), calls: wcCalls(), tickets: wcTickets(), fpayTickets: WC.fpay ? WC.fpay.rows : null, outages: outagesNow(), onTimeH: c.onTimeH, reports: (window.Build || {}).REPORTS }, rbE());
+  return WcDeck.model({ date: date || wcDateNow(), hist: rbHist(), calls: wcCalls(), tickets: wcTickets(), fpayTickets: WC.fpay ? WC.fpay.rows : null, outages: outagesNow(), onTimeH: c.onTimeH, reports: (window.Build || {}).REPORTS }, rbE());
 }
 
 // ---------------------------------------------------------------- the files: the month-to-date Crystal exports, FRiENDi Pay's tickets sheet

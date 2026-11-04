@@ -4,9 +4,13 @@
 // 2. The .msg chosen: its tables listed (months, the month to date, the last row), an extra table marked as its own slide.
 // 3. Download deck: the .pptx with the brands' slides, the two Complaints Insights slides and the extra one; Email with the deck:
 //    an Outlook draft to the VP from the contacts (the final result form's contact in copy), the deck attached.
-// 4. An email dropped on the drop zone is read once; a pasted text with two tables says which are not in it; a picture is refused
+// 4. The Call history export (made up, as Crystal's; as .xlsx, and as .xls read by the report builder's reader): OTP calls and final
+//    termination calls counted by day and kept with the days the shared data had, and with a day another computer added meanwhile
+//    (a day dropped again keeps its fuller export),
+//    what counts changed without a new drop, the deck's OTP slide from them, Clear and Undo.
+// 5. An email dropped on the drop zone is read once; a pasted text with two tables says which are not in it; a picture is refused
 //    with what to do instead.
-// 5. The senior manager has no tab; at phone width nothing runs off the page; no errors.
+// 6. The senior manager has no tab; at phone width nothing runs off the page; no errors.
 // Usage: node test/perfrev.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -54,7 +58,7 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   const txt = (eml.match(/Content-Type: text\/plain; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+?)\r\n\r\n/) || [])[1] || '';
   ok(em.suggestedFilename() === 'MC Performance Review - 4 Nov 2026.eml' && /\r\nTo: "Huda S\." <huda\.s@example\.com>/.test(eml) && /\r\nCc: "Omar T\." <omar\.t@example\.com>/.test(eml) && /\r\nSubject: MC Performance Review\r\n/.test(eml), 'Email with the deck: to the VP, the contact in copy, "MC Performance Review"');
   ok(/name="MC_Performance_Review - 4 Nov 2026\.pptx"/.test(part) && att && att.has('ppt/presentation.xml') && Buffer.from(txt.replace(/\s+/g, ''), 'base64').toString('utf8') === 'Hi Huda,\r\nKindly find the MC Performance Review as attached.\r\nSincerely.', 'the deck attached; "Hi Huda, Kindly find the MC Performance Review as attached. Sincerely."');
-  ok(await p.evaluate(() => [...document.querySelectorAll('#wfmBody .flowstep')].map(s => s.classList.contains('done')).join()) === 'true,true,true', 'every step done');
+  ok(await p.evaluate(() => [...document.querySelectorAll('#wfmBody .flowstep')].map(s => s.classList.contains('done')).join()) === 'true,true,false,true', 'every step done but the OTP and final termination calls (no Call history yet)');
   // ---- the MC KPIs workbook and one of the team's decks (both made up): the three charts the email lacks, and the logos
   const W2 = require('../js/writer2.js'), Pptx = require('../js/pptx.js'), S2 = new W2.Styles(), rbS = new W2.Sheet('Reactivate the Booking code '), otS = new W2.Sheet('OTP & Termination');
   const ser = iso => Math.round((Date.parse(iso + 'T00:00:00Z') - Date.UTC(1899, 11, 30)) / 86400000), iso = (m, d) => new Date(Date.UTC(2026, m - 1, d)).toISOString().slice(0, 10);
@@ -71,13 +75,56 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   const deckIn = path.join(out, 'An old review.pptx'); fs.writeFileSync(deckIn, Buffer.from(await LD.bytes()));
   await p.setInputFiles('#wfmBody [data-prpick]', [kpiF, deckIn]); await p.waitForFunction(() => document.querySelectorAll('#wfmBody .prlogos img').length > 0, null, { timeout: 15000 });
   const kp = await p.evaluate(() => ({ line: [...document.querySelectorAll('#prs-mail .hint')].map(x => x.textContent).find(t => /MC KPIs workbook/.test(t)) || '', logos: [...document.querySelectorAll('#wfmBody .prlogos img')].map(i => i.alt).join(), slides: [...document.querySelectorAll('#wfmBody .prslides li')].map(l => l.textContent).join('|') }));
-  ok(/MC KPIs workbook \(MC KPIs\.xlsx\): Rebooking by day 14 Oct → 3 Nov · OTP calls 52 days to 3 Nov · Final termination calls 11 months/.test(kp.line), `the workbook read: ${kp.line}`);
+  ok(/MC KPIs workbook \(MC KPIs\.xlsx\): Rebooking by day 14 Oct → 3 Nov · OTP calls 60 days to 3 Nov · Final termination calls 11 months/.test(kp.line), `the workbook read: ${kp.line}`);
   ok(kp.logos === 'Beyond One mark,Beyond One,Virgin Mobile,FRiENDi Mobile' && /Rebooking by day and by month\|OTP calls and Final termination calls/.test(kp.slides), `the deck's logos kept (${kp.logos}); the slides now with Rebooking by day and OTP calls`);
   const [dl2] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#wfmBar [data-prdeck]')]);
   const d2 = path.join(out, 'with-kpi.pptx'); await dl2.saveAs(d2);
   const z2 = await Core.readZip(fs.readFileSync(d2)), n2 = z2.names().filter(x => /^ppt\/slides\/slide\d+\.xml$/.test(x)).length, x2 = await z2.text('ppt/slides/slide2.xml'), x7 = await z2.text('ppt/slides/slide7.xml');
   ok(n2 === 9 && (x2.match(/<p:pic>/g) || []).length === 2 && /OTP Calls/.test(x7) && /Final termination calls/.test(x7) && /Booking Code Reactivations by Day/.test(await z2.text('ppt/charts/chart9.xml')), `the deck with the workbook and the logos: ${n2} slides, Rebooking by day, OTP and final termination calls, the logos on the slides`);
-  // ---- 4. a drop, a paste, a picture
+  // ---- 4. the Call history export (made up, laid out as Crystal's), with the days the shared data had
+  const chS = new W2.Sheet('Sheet1'), CH = [['User :', 'A.TEST', 'Call Center History Report', 'From :', '01-11-2026', 'To :', '03-11-2026'], ['Ser.', 'Caller ID', 'Agent ID', 'Call Date', 'Type', 'Service', 'Sub Service', 'Notes', 'Language', 'Contact Type', 'App User']];
+  const crow = (d, h, type, service, subS, contact, k) => { for (let i = 0; i < k; i++) CH.push([CH.length - 1, '0500000000', 'AGENT.A', ser(iso(11, d)) + h / 24, type, service, subS, 'note', 'Arabic', contact, 'NA']); };
+  for (const d of [1, 2, 3]) { crow(d, 9, 'FRiENDi Complaint', 'New Complaint', 'OTP is not received', 'CALL', 10 + d); crow(d, 10, 'Virgin Complaints', 'App', "App OTP isn't Received", 'WhatsApp', 2); crow(d, 11, 'FRiENDi Final Deactivation', 'Prepaid/Basic Number', 'Termination Done', 'CALL', 100 + d); crow(d, 12, 'Virgin Final Deactivation', 'Prepaid/Basic Number', 'Backing out from Final Termination', 'CALL', 20); crow(d, 13, 'Virgin Inquiry', 'Bundles/Plans', 'Data Bundles', 'CALL', 50); }
+  CH.forEach((r, i) => r.forEach((v, j) => chS.set(i + 1, j + 1, v)));
+  const chF = path.join(out, 'Call history.xlsx'); fs.writeFileSync(chF, Buffer.from(await W2.pack([chS], new W2.Styles())));
+  await p.evaluate(async () => {
+    const M = window.__mc, day = (calls, otp) => ({ calls, otp, otpCall: otp - 1, term: 90, termCall: 88, done: 70, doneCall: 69 });
+    window.__store = { 'config/calldays': { days: { '2026-10-30': day(100, 7), '2026-10-31': day(100, 9), nope: day(1, 1), '2026-11-01': day(50, 99) }, rule: { ch: 'all', term: 'nope' } } };
+    const doc = k => ({ get: async () => ({ exists: k in window.__store, data: () => JSON.parse(JSON.stringify(window.__store[k])) }), set: async v => { window.__store[k] = JSON.parse(JSON.stringify(v)); }, delete: async () => { delete window.__store[k]; } });
+    const W = M.wc().WC; M.state.db = { doc, local: true, persistent: true }; W.loaded = null; W.boot = null; W.ready = false; M.state.callDays = null;
+    M.renderWs(); await new Promise(r => setTimeout(r, 1500));
+  });
+  const seeded = await p.evaluate(() => ({ kept: (document.querySelector('#prs-calls') || {}).textContent || '', days: Object.keys(window.__mc.state.callDays.days).join(), rule: window.__mc.state.callDays.rule.term }));
+  ok(seeded.days === '2026-10-30,2026-10-31,2026-11-01' && seeded.rule === 'all' && /the counts of 3 days \(30 Oct – 1 Nov\)/.test(seeded.kept), `the days the shared data had (a key that is not a day and a rule it does not know dropped): ${seeded.days}`);
+  await p.evaluate(() => { window.__store['config/calldays'].days['2026-10-29'] = { calls: 100, otp: 5, otpCall: 4, term: 90, termCall: 88, done: 70, doneCall: 69 }; });   // another computer adds 29 Oct
+  await p.setInputFiles('#wfmBody [data-prpick="calls"]', chF);
+  await p.waitForFunction(() => /Read from Call history\.xlsx/.test(document.querySelector('#prs-calls').textContent) && /the counts of 6 days/.test(document.querySelector('#prs-calls').textContent), null, { timeout: 15000 }); await p.waitForTimeout(300);
+  const c1 = await p.evaluate(() => ({ t: document.querySelector('#prs-calls').textContent, done: document.querySelector('#prs-calls').classList.contains('done'), saved: window.__store['config/calldays'], slides: [...document.querySelectorAll('#wfmBody .prslides li')].map(l => l.textContent).join('|') }));
+  ok(/Read from Call history\.xlsx: 1–3 Nov · 558 contacts · 42 OTP calls · 366 final termination calls\./.test(c1.t) && /OTP is not received 36, App OTP isn't Received 6; FRiENDi Final Deactivation 306, Virgin Final Deactivation 60/.test(c1.t), 'the Call history read: 42 OTP calls and 366 final termination calls over 1–3 Nov, what was counted by name');
+  ok(/the counts of 6 days \(29 Oct – 3 Nov\)/.test(c1.t) && /OTP calls day by day, 5 Sep → 3 Nov \(60 of the 61 days of the two months\); final termination calls by month, Jan 2026 → Nov 2026, until 3 Nov\./.test(c1.t) && /No OTP calls yet for 4 Sep/.test(c1.t) && c1.done, 'kept with the days before, and 29 Oct added on another computer meanwhile (1 Nov from the fuller export); the slide: two months day by day (the workbook\'s and the Call history\'s), the year by month; the day missing named');
+  ok(Object.keys(c1.saved.days).join() === '2026-10-29,2026-10-30,2026-10-31,2026-11-01,2026-11-02,2026-11-03' && c1.saved.days['2026-11-01'].otp === 13 && c1.saved.days['2026-11-03'].done === 103 && c1.saved.by === 'Noura B.' && !JSON.stringify(c1.saved).includes('0500000000') && /OTP calls and Final termination calls/.test(c1.slides), 'kept for everyone (config/calldays): the counts by day only, by Noura B.');
+  await p.click('#wfmBody [data-prset] summary'); await p.selectOption('#wfmBody [data-prrule="ch"]', 'call'); await p.waitForTimeout(200); await p.selectOption('#wfmBody [data-prrule="term"]', 'done'); await p.waitForTimeout(300);
+  const c2 = await p.evaluate(() => ({ t: document.querySelector('#prs-calls').textContent, rule: window.__store['config/calldays'].rule, open: document.querySelector('#wfmBody [data-prset]').open }));
+  ok(/· 36 OTP calls · 306 final termination calls\./.test(c2.t) && c2.rule.ch === 'call' && c2.rule.term === 'done' && c2.open, `calls only and the terminations done, with no new drop: ${(c2.t.match(/· (\d+) OTP calls · (\d+) final/) || []).slice(1).join(', ')}; saved`);
+  const [dl3] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#wfmBar [data-prdeck]')]);
+  const d3 = path.join(out, 'with-calls.pptx'); await dl3.saveAs(d3);
+  const z3 = await Core.readZip(fs.readFileSync(d3)), cx3 = await Promise.all(z3.names().filter(n => /^ppt\/charts\/chart\d+\.xml$/.test(n)).map(n => z3.text(n))), oc3 = cx3.find(x => /OTP Count/.test(x)) || '', tc3 = cx3.find(x => /Final termination Count/.test(x)) || '';
+  ok(/<c:ptCount val="60"\/>/.test(oc3) && /<c:v>3-Nov-26<\/c:v>/.test(oc3) && /<c:v>13<\/c:v>/.test(oc3) && /<c:v>Nov-26<\/c:v>/.test(tc3) && /<c:v>306<\/c:v>/.test(tc3), 'the deck: OTP calls to 3 Nov from the Call history (13 by phone on 3 Nov), 306 terminations done in November');
+  await p.click('#wfmBody [data-prcallsrm]'); await p.waitForTimeout(300);
+  const c3 = await p.evaluate(() => ({ t: document.querySelector('#prs-calls').textContent, n: Object.keys(window.__store['config/calldays'].days).length }));
+  ok(!/Kept for the deck/.test(c3.t) && c3.n === 0, 'Clear: no day kept');
+  await p.click('#toast button'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => Object.keys(window.__store['config/calldays'].days).length === 6 && /the counts of 6 days/.test(document.querySelector('#prs-calls').textContent)), 'Undo: the six days back');
+  const x4 = await p.evaluate(async () => {   // the Crystal .xls, read by the report builder's reader (its rows made up here)
+    const old = window.parseXls, ser = d => Date.UTC(2026, 10, d) / 86400000 + 25569;
+    window.parseXls = () => [{ name: 'Sheet1', rows: [['User :', 'A.TEST', 'Call Center History Report'], ['Ser.', 'Caller ID', 'Agent ID', 'Call Date', 'Type', 'Service', 'Sub Service', 'Notes', 'Language', 'Contact Type', 'App User'], [1, '0500000000', 'AGENT.A', ser(4) + 0.4, 'FRiENDi Complaint', 'New Complaint', 'OTP is not received', '', 'Arabic', 'CALL', 'NA'], [2, '0500000000', 'AGENT.A', ser(4) + 0.5, 'Virgin Final Deactivation', 'Prepaid/Basic Number', 'Termination Done', '', 'Arabic', 'CALL', 'NA']] }];
+    const dt = new DataTransfer(); dt.items.add(new File([new Uint8Array(8)], 'Call history (6).xls')); document.querySelector('#wfmBody [data-prdrop="calls"]').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    await new Promise(r => setTimeout(r, 800)); window.parseXls = old;
+    return { t: document.querySelector('#prs-calls').textContent, days: Object.keys(window.__store['config/calldays'].days).join(), recog: !!document.querySelector('#recogPanel:not([hidden])') };
+  });
+  ok(/Read from Call history \(6\)\.xls: 4 Nov · 2 contacts · 1 OTP call · 1 final termination call\./.test(x4.t) && /2026-11-04$/.test(x4.days) && !x4.recog, `a Crystal .xls dropped on the box: read, 4 Nov added (${x4.days.split(',').length} days)`);
+  await p.evaluate(() => { window.__mc.state.db = null; });
+  // ---- 5. a drop, a paste, a picture
   const dt = await p.evaluateHandle(b64 => { const d = new DataTransfer(); d.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'Review 2.msg', { type: 'application/vnd.ms-outlook' })); return d; }, msgFile(sampleBody({ vnet: false })).toString('base64'));
   await p.dispatchEvent('#wfmBody [data-prdrop]', 'drop', { dataTransfer: dt }); await p.waitForTimeout(600);
   ok(await p.evaluate(() => /Read from Review 2\.msg/.test(document.querySelector('#prs-mail').textContent) && document.querySelectorAll('#wfmBody .prtab tbody tr').length === 4 && /Not in the email: Vnet Complaints/.test(document.querySelector('#prs-mail .warnline').textContent) && !document.querySelector('#recogPanel:not([hidden])')), 'an email dropped on the box: read once; Vnet said to be missing');

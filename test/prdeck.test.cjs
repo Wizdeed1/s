@@ -7,7 +7,10 @@
 //    termination calls; the logos of a deck, by their names or where they sit.
 // 4. The deck as the team's: the cover, the brands' slides (Cambria, the brands' colours, the callout's shadow, the brand's logo),
 //    Complaints Insights in 3-D, Rebooking by day and by month, OTP and final termination calls, thank you; "not in the email".
-// 4. The made-up .msg the browser test drops is read back by the tool's own reader.
+// 5. The made-up .msg the browser test drops is read back by the tool's own reader.
+// 6. The Call history export (made up, laid out as Crystal's): OTP calls and final termination calls by day, every channel and calls
+//    only, the terminations done; two exports of a day (the fuller one kept); the slide's two months day by day (a day with no data
+//    left blank) and the year by month, the Call history winning over the workbook where it is whole; the deck from the calls alone.
 // Usage: node test/prdeck.test.cjs [outDir: the made-up deck is written there]
 const fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
 const repo = path.join(__dirname, '..');
@@ -81,8 +84,8 @@ const ref = { y: 2026, m: 11 };
   const cd = await z.text('ppt/charts/chart9.xml'), cm = await z.text('ppt/charts/chart10.xml');
   ok(/Booking Code Reactivations by Day/.test(cd) && /Avg Time to Close \(hh:mm\)/.test(cd) && /\[h\]:mm/.test(cd) && /<c:symbol val="circle"\/>/.test(cd) && /Booking Code Reactivations by Month/.test(cm) && /<c:v>Until 03 Nov<\/c:v>/.test(cm), 'by day (the time to close in hours and minutes, round marks) and by month (the email\'s), their titles in the charts');
   const co = await z.text('ppt/charts/chart11.xml'), ct = await z.text('ppt/charts/chart12.xml');
-  ok(s7.includes('OTP Calls') && s7.includes('Final termination calls') && s7.includes('Until 03 Nov') && (co.match(/<c:trendline>/g) || []).length === 2 && /trendlineType val="exp"/.test(ct) && !/<c:legend>/.test(co), 'OTP calls (the last 52 days, two trend lines) and final termination calls (this year, a dotted trend), as the team\'s');
-  ok(co.match(/<c:ptCount val="(\d+)"\/>/)[1] === '1' && (co.match(/<c:pt idx="51">/g) || []).length > 0, 'OTP: 52 days');
+  ok(s7.includes('OTP Calls') && s7.includes('Final termination calls') && s7.includes('Until 03 Nov') && (co.match(/<c:trendline>/g) || []).length === 2 && /trendlineType val="exp"/.test(ct) && !/<c:legend>/.test(co), 'OTP calls (two months, day by day, two trend lines) and final termination calls (this year, a dotted trend), as the team\'s');
+  ok(/<c:ptCount val="60"\/>/.test(co) && /<c:pt idx="59">/.test(co) && !/<c:pt idx="60">/.test(co) && /<c:v>5-Sep-26<\/c:v>/.test(co) && /<c:ptCount val="11"\/>/.test(ct), 'OTP: the two months to 3 Nov (the workbook\'s 60 days from 5 Sep); termination: Jan to Nov');
   ok(s9.includes('Thank You') && s9.includes('Member Care Performance Review  —  Weekly Commercial Presentation') && !s5.concat(s6).some(x => /Vnet|This Month So Far/.test(x)), 'thank you as the team\'s; no Vnet and no month-so-far table, as in the team\'s deck');
   const T3 = PrDeck.tablesOf(sampleBody({ network: false, vnet: false }), ref), z3 = await Core.readZip(await PrDeck.deck(m, T3, {}).bytes());
   const t5 = [...((await z3.text('ppt/slides/slide5.xml')) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]);
@@ -93,5 +96,36 @@ const ref = { y: 2026, m: 11 };
   const msgBodyText = new Function(fn + '; return msgBodyText;')();
   const back = msgBodyText(new Uint8Array(msgFile(sampleBody())));
   ok(PrDeck.tablesOf(back, ref).length === 5, 'the made-up .msg read back by the tool\'s Outlook reader: five tables');
+  // ---- 6. the Call history export (made up, laid out as Crystal's)
+  const sr = (iso, h = 10) => ser(iso) + h / 24, hdr = ['Ser.', 'Caller ID', 'Agent ID', 'Call Date', 'Type', 'Service', 'Sub Service', 'Notes', 'Language', 'Contact Type', 'App User'];
+  let k0 = 0; const cr = (date, type, service, subS, contact = 'CALL', n = 1) => Array.from({ length: n }, () => [++k0, '0500000000', 'AGENT.A', date, type, service, subS, 'note', 'Arabic', contact, 'NA']);
+  const hist = [['User :', 'A.TEST', 'Call Center History Report', 'From :', '01-11-2026', 'To :', '03-11-2026', null, null, null, null], hdr,
+    ...cr(sr('2026-11-01'), 'FRiENDi Complaint', 'New Complaint', 'OTP is not received', 'CALL', 2), ...cr(sr('2026-11-01'), 'FRiENDi Complaint', 'New Complaint', 'OTP is not received', 'WhatsApp'),
+    ...cr(sr('2026-11-01'), 'Virgin Complaints', 'App', 'App OTP isn’t Received'), ...cr(sr('2026-11-01'), 'FRiENDi Final Deactivation', 'Prepaid/Basic Number', 'Termination Done', 'CALL', 4),
+    ...cr(sr('2026-11-01'), 'Virgin Final Deactivation', 'Social Media', 'Waiting Reply', 'WhatsApp'), ...cr(sr('2026-11-01'), 'Virgin Final Deactivation', 'Prepaid/Basic Number', 'Backing out from Final Termination', 'CALL', 2),
+    ...cr(sr('2026-11-01'), 'Virgin Inquiry', 'Bundles/Plans', 'Data Bundles', 'CALL', 5), ...cr(sr('2026-11-01'), 'Virgin Inquiry', 'Internet', 'Hotspot settings'),
+    ...cr(ser('2026-11-02') + 0.99999, 'FRiENDi Complaint', 'New Complaint', 'OTP is not received'), ...cr(sr('2026-11-02'), 'FRiENDi Final Deactivation', 'Prepaid/Basic Number', 'Termination Done', 'CALL', 3),
+    ...cr('03-11-2026 10:15', 'FRiENDi Final Deactivation', 'Prepaid/Basic Number', 'Call Dropped'), [null, null, null, sr('2026-11-03'), null, null, null, null, null, null, null]];
+  const CH = PrDeck.callsOf([{ name: 'Sheet1', rows: hist }]), n1 = CH && CH.days['2026-11-01'];
+  ok(CH && Object.keys(CH.days).sort().join() === '2026-11-01,2026-11-02,2026-11-03' && CH.rows === 22, `the Call history: its header found under the title, three days, 22 contacts (an empty row left out): ${CH && Object.keys(CH.days).join(', ')}`);
+  ok(n1 && n1.calls === 17 && n1.otp === 4 && n1.otpCall === 3 && n1.term === 7 && n1.termCall === 6 && n1.done === 4 && n1.doneCall === 4, `1 Nov: 4 OTP calls (3 by phone; "Hotspot" is not OTP), 7 final termination calls (6 by phone), 4 terminations done: ${JSON.stringify(n1)}`);
+  ok(CH.days['2026-11-02'].otp === 1 && CH.days['2026-11-02'].done === 3 && CH.days['2026-11-03'].term === 1 && CH.days['2026-11-03'].done === 0, 'a call at 23:59 is on its own day; a date written as text (03-11-2026 10:15) is read');
+  ok(CH.labels.otp['OTP is not received'] === 4 && CH.labels.otp['App OTP isn’t Received'] === 1 && CH.labels.term['FRiENDi Final Deactivation'] === 8 && CH.labels.term['Virgin Final Deactivation'] === 3, 'what was counted, by name');
+  ok(PrDeck.callsOf(book) === null && PrDeck.callsOf([{ name: 'x', rows: [['Tickets Report'], ['Ser.', 'Ticket Date', 'Type']] }]) === null, 'the KPIs workbook and the Tickets export are not a Call history');
+  const mg = PrDeck.callsMerge({ '2026-11-01': { calls: 10, otp: 1 }, '2026-11-02': { calls: 50, otp: 5 } }, { '2026-11-01': { calls: 12, otp: 2 }, '2026-11-02': { calls: 20, otp: 9 }, '2026-11-03': { calls: 5, otp: 0 } });
+  ok(mg['2026-11-01'].otp === 2 && mg['2026-11-02'].otp === 5 && mg['2026-11-03'].otp === 0, 'a day in two exports keeps the fuller one; a new day is added');
+  ok(PrDeck.monthsBack('2026-11-03', 2) === '2026-09-03' && PrDeck.monthsBack('2026-04-30', 2) === '2026-02-28' && PrDeck.monthsBack('2026-01-15', 2) === '2025-11-15', 'two months back (the 30th of April: the last day of February; January: November of the year before)');
+  const T1 = PrDeck.otpTerm(K, CH.days, {});
+  ok(T1.otp.length === 60 && T1.otp[0].date === '2026-09-05' && T1.otp.find(r => r.date === '2026-11-01').n === 4 && T1.otpEnd === '2026-11-03', 'with the workbook: two months to 3 Nov, the Call history\'s days instead of the workbook\'s');
+  ok(T1.term.length === 11 && T1.term[10].ym === '2026-11' && T1.term[10].n === 11 && T1.term[9].n === K.term[9].n && T1.termEnd === '2026-11-03', `the Call history has November whole (1–3 Nov): its 11 final termination calls; October stays the workbook's (${T1.term[9].n})`);
+  const T2c = PrDeck.otpTerm({}, { '2026-11-01': CH.days['2026-11-01'], '2026-11-03': CH.days['2026-11-03'] }, { ch: 'call', term: 'done' });
+  ok(T2c.otp.map(r => r.n).join() === '3,,0' && T2c.term.length === 1 && T2c.term[0].n === 4, `calls only, terminations done; a day with no data left blank (${T2c.otp.map(r => r.n).join()})`);
+  const T3c = PrDeck.otpTerm({ term: [{ ym: '2026-10', n: 9000 }] }, { '2026-10-20': CH.days['2026-11-01'], '2026-12-01': CH.days['2026-11-02'] }, {});
+  ok(T3c.term.map(r => `${r.ym}:${r.n}`).join() === '2026-10:9000,2026-12:3' && T3c.otp[0].date === '2026-10-20' && T3c.otp.length === 43, 'a month the Call history has only part of keeps the workbook\'s; a month the workbook lacks comes from the Call history');
+  ok(PrDeck.otpTerm({}, {}, {}).otp === null && PrDeck.otpTerm({}, {}, {}).term === null, 'nothing to show: no slide');
+  const zc = await Core.readZip(await PrDeck.deck(m, T, { calls: CH.days }).bytes()), zcs = zc.names().filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n));
+  const cx = await Promise.all(zc.names().filter(n => /^ppt\/charts\/chart\d+\.xml$/.test(n)).map(n => zc.text(n))), ocx = cx.find(x => /OTP Count/.test(x)) || '', otx = cx.find(x => /Final termination Count/.test(x)) || '';
+  const s7c = [...((await zc.text('ppt/slides/slide7.xml')) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]);
+  ok(zcs.length === 9 && s7c.includes('OTP Calls') && s7c.filter(x => x === 'Until 03 Nov').length === 2 && /<c:v>1-Nov-26<\/c:v>/.test(ocx) && /<c:v>4<\/c:v>/.test(ocx) && (ocx.match(/<c:trendline>/g) || []).length === 2 && /<c:v>Nov-26<\/c:v>/.test(otx) && /<c:v>11<\/c:v>/.test(otx) && !/<c:trendline>/.test(otx), 'the deck from the Call history alone: OTP calls 1–3 Nov with their trend, final termination calls for November (no trend for one month)');
   console.log(bad ? `${bad} failed` : 'all passed'); process.exit(bad ? 1 : 0);
 })().catch(e => { console.log('✗ ' + (e && e.stack || e)); process.exit(1); });

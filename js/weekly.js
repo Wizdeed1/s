@@ -44,6 +44,7 @@ function wcLoad() {
     try { const s = await state.db.doc('config/weekly').get(); if (s.exists) { const d = s.data() || {}; state.wcCfg = { presenter: String(d.presenter || '').slice(0, 120), title: String(d.title || '').slice(0, 160), to: String(d.to || '').slice(0, 600), cc: String(d.cc || '').slice(0, 600), onTimeH: +d.onTimeH || WC0.onTimeH }; } } catch (e) { /* the defaults */ }
     try { const s = await state.db.doc('config/outages').get(); if (s.exists) { const d = s.data() || {}; if (Array.isArray(d.list)) state.outages = d.list.map(wcOutageOk).filter(Boolean); } } catch (e) { /* none yet */ }
     try { const s = await state.db.doc('config/decklogos').get(); if (s.exists) state.deckLogos = deckLogosOk(s.data()); } catch (e) { /* the tool's logo */ }
+    try { const s = await state.db.doc('config/calldays').get(); if (s.exists) state.callDays = callDaysOk(s.data()); } catch (e) { /* none kept yet */ }
   })();
   return WC.loaded;
 }

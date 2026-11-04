@@ -56,7 +56,7 @@ const WFM_LEAD = {
   emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction and absences emails. Edit them here and send them from Outlook; the tool never sends anything itself. The incentive email is the senior manager\'s (Supervisors › Incentive email), with the incentive file you build on Export.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
   weekly: 'The Weekly Commercial Presentation for the VP, in four steps: the service level and the trends come from the brands\' history; drop the month\'s Call history and Tickets exports for the call reasons, complaints and tickets; keep the outages list here. The tool makes the PowerPoint and the email with it attached; it never sends anything itself.',
-  perf: 'The Member Care Performance Review for the VP: drop the "MC performance Review" email (.msg) and the tool reads its tables (Rebooking, Network issues, Web + App, Social media, Vnet) and makes the PowerPoint in the weekly presentation\'s look, with the brands\' slides, and the email with it attached; it never sends anything itself.',
+  perf: 'The Member Care Performance Review for the VP: drop the "MC performance Review" email (.msg) and the tool reads its tables (Rebooking, Network issues, Web + App, Social media, Vnet) and makes the PowerPoint in the weekly presentation\'s look, with the brands\' slides, the OTP and final termination calls from the Call history export, and the email with it attached; it never sends anything itself.',
   data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
 function renderWfmWs() {
@@ -217,7 +217,7 @@ async function wsDrop(files) {
     if (state.ws === 'wfm' && state.wfmTab === 'builder' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name)) { rb.push(f); continue; }   // on its own tab every export goes to Report builder
     if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(csv|xls|xlsx)$/i.test(f.name)) { wk.push(f); continue; }   // and on Weekly commercial, to the weekly presentation
     if (updShown() && !$('wfmUpd').hidden && /\.(msg|eml)$/i.test(f.name)) { up.push(f); continue; }   // an email on the deduction email page: its corrections
-    if (state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf() && /\.(msg|eml|txt|html?|xlsx|xlsm|xlsb|pptx)$/i.test(f.name)) { pr.push(f); continue; }   // the MC performance Review email on Performance Review
+    if (state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf() && /\.(msg|eml|txt|html?|xls|xlsx|xlsm|xlsb|pptx)$/i.test(f.name)) { pr.push(f); continue; }   // the MC performance Review email, the Call history and the KPIs workbook on Performance Review
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     const v = await recogOne(f), K = Recog.KINDS[v.kind] || Recog.KINDS.unknown;
     if (v.kind === 'inter' && canInter()) { importInteractions(f); continue; }

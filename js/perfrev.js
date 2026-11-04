@@ -5,9 +5,13 @@
 // on Weekly commercial; two Complaints Insights slides; a slide for any other table; thank you). The email to the VP comes as an
 // Outlook draft with the deck attached (the Weekly commercial settings: presenter, job title, To and Cc). The MC KPIs workbook the
 // team's charts are linked to adds Rebooking by day, OTP calls and final termination calls; one of the team's decks dropped here
-// gives its logos to both decks (config/decklogos). The email's and the workbook's data stay in this browser; the tool sends nothing.
-Object.assign(state, { prDate: '', prBusy: '', prBuilt: '' });
-const PR = { tables: null, from: '', notes: '', text: '', open: false, kpi: null, kpiFrom: '' };
+// gives its logos to both decks (config/decklogos). The Call history export from Crystal (the raw call reasons) gives the OTP calls and
+// the final termination calls: counted by day (PrDeck.callsOf) and kept for everyone (config/calldays: the counts only), so the slide
+// shows the last two months day by day and the year by month from the exports dropped over the weeks. The email's and the workbook's
+// data stay in this browser; the tool sends nothing.
+Object.assign(state, { prDate: '', prBusy: '', prBuilt: '', callDays: null });
+const PR = { tables: null, from: '', notes: '', text: '', open: false, kpi: null, kpiFrom: '', calls: null, setOpen: false };
+const PR_MAXDAYS = 800;   // the call days kept: a little over two years
 const canPerf = () => canWeekly();
 const prDateNow = () => (wcIsDay(state.prDate) ? state.prDate : wcToday());
 const prRef = () => ({ y: +prDateNow().slice(0, 4), m: +prDateNow().slice(5, 7) });
@@ -52,15 +56,60 @@ async function prLogos(f, u8) {
   if (state.db) { const body = { ...state.deckLogos }; queueWrite('config/decklogos', () => state.db.doc('config/decklogos').set(body)).catch(e => toast(`The logos were not saved (${(e && e.code) || 'error'}).`)); }
   toast(`Logos kept from ${f.name}: ${keys.map(k => DECK_LOGOS[k]).join(', ')}. Both decks use them.`);
 }
-/** the MC KPIs workbook: Rebooking by day, OTP calls, final termination calls */
-async function prKpi(f, buf) {
-  const sheets = /\.xlsb$/i.test(f.name) ? await Core.readXlsb(buf) : await Core.readXlsx(buf), K = PrDeck.kpiOf(sheets);
-  if (!K.byDay && !K.otp && !K.term && !K.byMonth) { PR.notes = `${f.name}: not the MC KPIs workbook (no "Reactivate the Booking code" or "OTP & Termination" sheet with its tables).`; return; }
+/** a spreadsheet: the Call history export (its days go to got) or the MC KPIs workbook (Rebooking by day, OTP calls, final termination calls) */
+async function prSheet(f, buf, got) {
+  let sheets;
+  if (/\.xls$/i.test(f.name)) { await wcBoot(); sheets = window.parseXls(buf); }
+  else sheets = /\.xlsb$/i.test(f.name) ? await Core.readXlsb(buf) : await Core.readXlsx(buf);
+  const C = PrDeck.callsOf(sheets);
+  if (C) { if (C.rows) got.push({ name: f.name, ...C }); else PR.notes = `${f.name}: a Call history export with no calls in it.`; return; }
+  const K = PrDeck.kpiOf(sheets);
+  if (!K.byDay && !K.otp && !K.term && !K.byMonth) {
+    const top = ((sheets[0] && sheets[0].rows) || []).slice(0, 2).map(r => (r || []).join(' ')).join(' ');
+    PR.notes = /tickets\s*report/i.test(top) ? `${f.name} is the Tickets export: the OTP and final termination calls come from the Call history export (Crystal's "Call Center History Report").`
+      : `${f.name}: not the Call history export (Crystal's "Call Center History Report") or the MC KPIs workbook (no "Reactivate the Booking code" or "OTP & Termination" sheet with its tables).`;
+    return;
+  }
   PR.kpi = K; PR.kpiFrom = f.name; state.prBuilt = '';
+}
+/** the call days as kept: whole numbers by day (the latest PR_MAXDAYS days) and what counts; anything else is dropped */
+function callDaysOk(d) {
+  if (!d || typeof d !== 'object') return null;
+  const src = d.days && typeof d.days === 'object' ? d.days : {}, days = {};
+  for (const k of Object.keys(src).filter(wcIsDay).sort().slice(-PR_MAXDAYS)) {
+    const x = src[k]; if (!x || typeof x !== 'object') continue;
+    days[k] = Object.fromEntries(PrDeck.CALL_KEYS.map(f => { const v = +x[f]; return [f, Number.isInteger(v) && v >= 0 && v < 1e7 ? v : 0]; }));
+  }
+  const r = d.rule && typeof d.rule === 'object' ? d.rule : {};
+  return { days, rule: { ch: r.ch === 'call' ? 'call' : 'all', term: r.term === 'done' ? 'done' : 'all' }, from: String(d.from || '').slice(0, 300), at: String(d.at || '').slice(0, 40), by: String(d.by || '').slice(0, 120) };
+}
+const prRule = () => (state.callDays && state.callDays.rule) || { ch: 'all', term: 'all' };
+/** the fields a rule counts: OTP calls, final termination calls */
+const prFields = r => ({ o: r.ch === 'call' ? 'otpCall' : 'otp', t: (r.term === 'done' ? 'done' : 'term') + (r.ch === 'call' ? 'Call' : '') });
+/** a change to the call days: on this page at once, then made again on what the shared data has now (another computer may have added
+    days since this page opened), in turn with the other saves of it, and saved. fn: the days kept (or null) → the days to keep (or null) */
+function prCallsChange(fn) {
+  state.callDays = fn(state.callDays); state.prBuilt = '';
+  if (!state.db) return;
+  const D = () => state.db.doc('config/calldays');
+  queueWrite('config/calldays', async () => {
+    let cur = state.callDays;
+    try { const s = await D().get(); cur = fn(s.exists ? callDaysOk(s.data()) : null); } catch (e) { /* this page's copy */ }
+    state.callDays = cur;
+    await (cur ? D().set({ ...cur }) : D().delete());
+  }).then(() => { if (prOn()) renderPerfWs(); }, e => toast(`The OTP and termination calls were not saved (${(e && e.code) || 'error'}).`));
+}
+const prStamp = () => ({ at: new Date().toISOString(), by: whoNow() });
+/** the Call history exports of one drop: a day in two of them counted once (the fuller one); then kept with the days before */
+function prKeepCalls(got) {
+  let add = {}; for (const g of got) add = PrDeck.callsMerge(add, g.days);
+  const rule = prRule(), from = got.map(g => g.name).join(', '), st = prStamp(), sum = L => { const o = {}; for (const g of got) for (const [k, n] of Object.entries(g.labels[L])) o[k] = (o[k] || 0) + n; return o; };
+  PR.calls = { files: got.map(g => g.name), days: add, rows: got.reduce((a, g) => a + g.rows, 0), labels: { otp: sum('otp'), term: sum('term') } };
+  prCallsChange(cd => callDaysOk({ rule, ...(cd || {}), days: PrDeck.callsMerge(cd ? cd.days : {}, add), from, ...st }));
 }
 async function prFiles(list) {
   if (!canPerf()) return;
-  const F = [...list]; if (!F.length) return;
+  const F = [...list], got = []; if (!F.length) return;
   state.prBusy = 'read'; PR.notes = ''; renderPerfWs();
   for (const f of F) {
     try {
@@ -68,15 +117,26 @@ async function prFiles(list) {
       if (/\.msg$/i.test(f.name)) prRead(msgBodyText(u8), f.name);
       else if (/\.eml$/i.test(f.name)) { const P = UpdParse.emlParts(u8); const a = P.text ? PrDeck.tablesOf(P.text, prRef()) : []; prRead(a.length || !P.html ? P.text : prHtmlText(P.html), f.name); }
       else if (/\.(txt|html?)$/i.test(f.name)) { const t = new TextDecoder().decode(u8); prRead(/\.html?$/i.test(f.name) ? prHtmlText(t) : t, f.name); }
-      else if (/\.(xlsx|xlsm|xlsb)$/i.test(f.name)) await prKpi(f, buf);
+      else if (/\.(xls|xlsx|xlsm|xlsb)$/i.test(f.name)) await prSheet(f, buf, got);
       else if (/\.pptx$/i.test(f.name)) await prLogos(f, u8);
       else if (/\.(png|jpe?g|gif|bmp|webp)$/i.test(f.name)) PR.notes = `${f.name} is a picture, and the tool cannot read pictures: drop the email itself (save it from Outlook as .msg), or copy its text and paste it below.`;
-      else PR.notes = `${f.name}: drop the "MC performance Review" email (.msg or .eml), the MC KPIs workbook (.xlsx) or one of your decks (.pptx, for its logos).`;
+      else PR.notes = `${f.name}: drop the "MC performance Review" email (.msg or .eml), the Call history export (.xls), the MC KPIs workbook (.xlsx) or one of your decks (.pptx, for its logos).`;
     } catch (e) { PR.notes = `${f.name}: ${(e && e.message) || 'could not be read'}.`; }
   }
+  if (got.length) prKeepCalls(got);
   state.prBusy = ''; renderPerfWs();
+  if (got.length) { const c = PR.calls, k = prFields(prRule()), n = f => Object.values(c.days).reduce((a, x) => a + x[f], 0); const w = (v, a) => `${v.toLocaleString('en-US')} ${a}${v === 1 ? '' : 's'}`; toast(`${plural(Object.keys(c.days).length, 'day')} of call history read: ${w(n(k.o), 'OTP call')}, ${w(n(k.t), 'final termination call')}.`); }
   const mail = F.find(f => /\.(msg|eml|txt|html?)$/i.test(f.name));
   if (mail && PR.tables && PR.from === mail.name) toast(`${mail.name}: ${plural(PR.tables.length, 'table')} read.`);
+}
+const prDmy = d => `${+d.slice(8, 10)} ${MON[+d.slice(5, 7) - 1]}`;
+/** days as runs of days: "1–3 Nov", "30 Oct – 2 Nov", "5 Nov" (a long list: its first and last runs) */
+function prRuns(days) {
+  const out = [], lab = (x, y) => (x === y ? prDmy(x) : x.slice(0, 7) === y.slice(0, 7) ? `${+x.slice(8)}–${prDmy(y)}` : `${prDmy(x)} – ${prDmy(y)}`);
+  let a = null, b = null;
+  for (const d of days) { if (b && wcAddDays(b, 1) === d) { b = d; continue; } if (a) out.push(lab(a, b)); a = b = d; }
+  if (a) out.push(lab(a, b));
+  return (out.length > 6 ? out.slice(0, 3).concat('…', out.slice(-2)) : out).join(', ');
 }
 function renderPerfWs() {
   const body = $('wfmBody'); if (!body || state.ws !== 'wfm' || state.wfmTab !== 'perf') return;
@@ -94,13 +154,14 @@ function renderPerfWs() {
   // 1. the email
   const rows = T ? T.map(t => { const a = t.rows[0], z = t.rows[t.rows.length - 1]; return `<tr><td dir="auto">${esc(t.title)}</td><td>${esc(a.label)} → ${esc(z.label)}</td><td class="num">${t.rows.length}</td><td dir="auto">${esc(t.cols.join(' · '))}</td><td class="num">${esc(z.vals.map(v => (v == null ? '–' : v > 0 && v < 1.5 && !Number.isInteger(v) ? Math.round(v * 1000) / 10 + '%' : Math.round(v).toLocaleString('en-US'))).join(' · '))}</td><td>${t.key === 'other' ? '<span class="pill info">its own slide</span>' : ''}</td></tr>`; }).join('') : '';
   const read = T ? `<div class="tablewrap prtab"><table><thead><tr><th>Table</th><th>Months</th><th class="r">Rows</th><th>Columns</th><th class="r">The last row</th><th><span class="sr">Slide</span></th></tr></thead><tbody>${rows}</tbody></table></div><p class="hint">Read from ${esc(PR.from)}.</p>` : '';
-  const K = PR.kpi, dmy = d => `${+d.slice(8, 10)} ${MON[+d.slice(5, 7) - 1]}`, kd = [];
+  const K = PR.kpi, dmy = prDmy, kd = [];
   if (K && K.byDay) kd.push(`Rebooking by day ${dmy(K.byDay[Math.max(0, K.byDay.length - 22)].date)} → ${dmy(K.byDay[K.byDay.length - 1].date)}`);
-  if (K && K.otp) kd.push(`OTP calls ${plural(Math.min(52, K.otp.length), 'day')} to ${dmy(K.otp[K.otp.length - 1].date)}`);
+  if (K && K.otp) kd.push(`OTP calls ${plural(K.otp.length, 'day')} to ${dmy(K.otp[K.otp.length - 1].date)}`);
   if (K && K.term) kd.push(`Final termination calls ${plural(K.term.length, 'month')}`);
-  const kpiLine = K ? `<p class="hint">MC KPIs workbook (${esc(PR.kpiFrom)}): ${esc(kd.join(' · ') || 'Rebooking by month')}.</p>` : '<p class="hint">For Rebooking by day, OTP calls and Final termination calls, also drop the <b>MC KPIs workbook</b> (.xlsx) the team\'s charts are linked to; without it the deck leaves those charts out.</p>';
-  const drop = `<div class="drop rbdrop" data-prdrop role="button" tabindex="0" aria-label="Drop the MC performance Review email and the MC KPIs workbook, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the "MC performance Review" email and the MC KPIs workbook</strong><span>The .msg from Outlook (or a saved .eml) and the .xlsx, or click to choose them. One of your decks (.pptx) dropped here gives its logos to both decks.</span></div><input type="file" hidden multiple accept=".msg,.eml,.txt,.html,.htm,.xlsx,.xlsm,.xlsb,.pptx,.png,.jpg,.jpeg" data-prpick>
-    ${PR.notes ? `<p class="hint warnline">${esc(PR.notes)}</p>` : ''}${read}${kpiLine}
+  const kpiLine = K ? `<p class="hint">MC KPIs workbook (${esc(PR.kpiFrom)}): ${esc(kd.join(' · ') || 'Rebooking by month')}.</p>` : '<p class="hint">For Rebooking by day, also drop the <b>MC KPIs workbook</b> (.xlsx) the team\'s charts are linked to; without it the deck shows Rebooking by month only. The OTP and final termination calls come from the Call history export, in step 3.</p>';
+  const reading = busy === 'read' ? '<p class="hint" role="status"><span class="spin" aria-hidden="true"></span> Reading the files…</p>' : '';
+  const drop = `<div class="drop rbdrop" data-prdrop role="button" tabindex="0" aria-label="Drop the MC performance Review email and the MC KPIs workbook, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the "MC performance Review" email and the MC KPIs workbook</strong><span>The .msg from Outlook (or a saved .eml) and the .xlsx, or click to choose them. The Call history export (.xls) can go here too; one of your decks (.pptx) gives its logos to both decks.</span></div><input type="file" hidden multiple accept=".msg,.eml,.txt,.html,.htm,.xls,.xlsx,.xlsm,.xlsb,.pptx,.png,.jpg,.jpeg" data-prpick>
+    ${reading}${PR.notes ? `<p class="hint warnline">${esc(PR.notes)}</p>` : ''}${read}${kpiLine}
     <details class="wcpaste"${PR.open ? ' open' : ''} data-prpaste><summary>Or paste the email's text</summary><p class="hint">In Outlook, select the email's text with its tables (Ctrl+A), copy it and paste it here.</p><textarea class="cell rbta" rows="5" data-prtext spellcheck="false" placeholder="Rebooking TKTs:&#10;Months&#9;Virgin&#9;FRiENDi&#9;Total&#10;Jan&#9;…"></textarea><div class="acts"><button class="btn sm" data-prread>Read the text</button></div></details>`;
   // 2. the brands' slides
   const ref = m.ref, first = ref.slice(0, 8) + '01', want = []; for (let d = first; d <= ref; d = wcAddDays(d, 1)) want.push(d);
@@ -109,17 +170,36 @@ function renderPerfWs() {
   const pills = `<div class="wchist">${B.map(({ b, n, miss }) => `<span class="pill ${n && !miss.length ? 'good' : n ? 'warn' : 'bad'}" title="${esc(miss.length ? 'Missing: ' + rbShortDays(miss) : 'Every day is in the history')}"><i class="wcdot" style="background:#${b.color}"></i>${esc(b.short)} · ${n}/${want.length} days</span>`).join('')}</div>`;
   const span = want.length ? (want.length === 1 ? R.dayLabel(first) : R.niceRange(first, ref)) : '';
   const brand = `${pills}<p class="hint">The month to date (${esc(span)}) and the months before, from the history the daily brand emails keep. The call reasons and complaints on these slides come from the month's exports when they were dropped on <b>Weekly commercial</b> in this browser; else they show "–".</p>`;
-  // 3. the deck and the email
+  // 3. OTP and final termination calls: the Call history's days kept (and the workbook's)
+  const CD = state.callDays, rule = prRule(), F = prFields(rule), OT = PrDeck.otpTerm(K, CD && CD.days, rule), own = CD ? Object.keys(CD.days).sort() : [];
+  const fmt = v => Math.round(v).toLocaleString('en-US'), C = PR.calls, cd = C ? Object.keys(C.days).sort() : [], tot = f => cd.reduce((a, d) => a + C.days[d][f], 0);
+  const labs = L => Object.entries(L).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt(v)}`).join(', ') || 'none';
+  const nb = (v, one, many) => `<b>${fmt(v)}</b> ${v === 1 ? one : many}`;
+  const readLine = C ? `<p class="hint">Read from ${esc(C.files.join(', '))}: ${esc(prRuns(cd))} · ${fmt(C.rows)} ${C.rows === 1 ? 'contact' : 'contacts'} · ${nb(tot(F.o), 'OTP call', 'OTP calls')} · ${nb(tot(F.t), 'final termination call', 'final termination calls')}.</p><p class="hint">In the export, every channel: ${esc(labs(C.labels.otp))}; ${esc(labs(C.labels.term))}.</p>` : '';
+  const span2 = []; if (OT.otpEnd) for (let d = wcAddDays(PrDeck.monthsBack(OT.otpEnd, 2), 1); d <= OT.otpEnd; d = wcAddDays(d, 1)) span2.push(d);
+  const have = new Set((OT.otp || []).filter(r => r.n != null).map(r => r.date)), miss = span2.filter(d => !have.has(d)), monL = ym => `${MON[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
+  const keptLine = own.length ? `<p class="hint">Kept for the deck, for everyone: the counts of ${plural(own.length, 'day')} (${esc(prRuns(own))})${CD.at ? ` · last added ${esc(ago(CD.at))}${CD.by ? ' by ' + esc(CD.by) : ''}` : ''} <button class="btn sm ghost" data-prcallsrm>Clear</button></p>` : '';
+  const slideLine = OT.otp || OT.term ? `<p class="hint">On the slide: OTP calls ${OT.otp ? `day by day, ${esc(dmy(OT.otp[0].date))} → ${esc(dmy(OT.otpEnd))} (${have.size} of the ${span2.length} days of the two months)` : '–'}; final termination calls ${OT.term ? `by month, ${esc(OT.term.length > 1 ? `${monL(OT.term[0].ym)} → ${monL(OT.term[OT.term.length - 1].ym)}` : monL(OT.term[0].ym))}${OT.termEnd ? `, until ${esc(dmy(OT.termEnd))}` : ''}` : '–'}.</p>${miss.length && have.size ? `<p class="hint warnline">No OTP calls yet for ${esc(prRuns(miss))}: drop those days' Call history to fill the two months.</p>` : ''}`
+    : '<p class="hint">Nothing yet: drop the Call history export (Crystal\'s "Call Center History Report", .xls). Without it, or the MC KPIs workbook, the deck leaves the OTP and final termination slide out.</p>';
+  const opt = (v, cur, t) => `<option value="${v}"${v === cur ? ' selected' : ''}>${esc(t)}</option>`;
+  const setBox = `<details class="wcset" data-prset${PR.setOpen ? ' open' : ''}><summary>What counts</summary><div class="grid2">
+    <label class="wsfield"><span>Channels</span><select class="cell" data-prrule="ch">${opt('all', rule.ch, 'Every channel: calls, WhatsApp, email, social media')}${opt('call', rule.ch, 'Calls only')}</select></label>
+    <label class="wsfield"><span>Final termination calls</span><select class="cell" data-prrule="term">${opt('all', rule.term, 'Every Final Deactivation contact')}${opt('done', rule.term, 'Only the terminations done')}</select></label></div>
+    <p class="hint">OTP calls: the contacts whose Service or Sub Service names OTP ("OTP is not received", "App OTP isn't Received"). Final termination calls: the Virgin and FRiENDi Final Deactivation contacts, or only those with the Sub Service "Termination Done". The days kept hold each way of counting, so a change here needs no new drop; the MC KPIs workbook's days stay as the workbook has them.</p></details>`;
+  const calls = `<div class="drop rbdrop" data-prdrop="calls" role="button" tabindex="0" aria-label="Drop the Call history export, or choose it"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the Call history export</strong><span>Crystal's "Call Center History Report" (.xls), one or more, or click to choose them. Whole days, up to yesterday; a day dropped again keeps its fuller export.</span></div><input type="file" hidden multiple accept=".xls,.xlsx,.xlsb" data-prpick="calls">
+    ${reading}${readLine}${keptLine}${slideLine}${setBox}`;
+  // 4. the deck and the email
   const slides = ['Cover', 'Virgin Mobile', 'FRiENDi Mobile', 'Postpaid', 'Complaints Insights: Web + App, Network, Social media', `Complaints Insights: Rebooking ${K && K.byDay ? 'by day and by month' : 'by month'}`]
-    .concat(K && (K.otp || K.term) ? ['OTP calls and Final termination calls'] : [], T ? T.filter(t => t.key === 'other').map(t => `More Insights: ${t.title}`) : [], ['Thank you']);
+    .concat(OT.otp || OT.term ? ['OTP calls and Final termination calls'] : [], T ? T.filter(t => t.key === 'other').map(t => `More Insights: ${t.title}`) : [], ['Thank you']);
   const G = state.deckLogos, logoLine = G ? `<div class="prlogos"><span class="hint">Logos from ${esc(G.from || 'a deck')}:</span>${Object.keys(DECK_LOGOS).filter(k => G[k]).map(k => `<img src="${esc(G[k].dataUrl)}" alt="${esc(DECK_LOGOS[k])}" title="${esc(DECK_LOGOS[k])}">`).join('')}<button class="btn sm ghost" data-prlogosrm>Remove</button></div>`
     : '<p class="hint">Logos: the tool\'s logo and the brands\' names. Drop one of your decks (.pptx) in step 1 once, and both decks show its Beyond One, Virgin, FRiENDi and FRiENDi Pay logos.</p>';
   const send = `<ol class="prslides">${slides.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${logoLine}
     <p class="hint">The email goes to ${esc(splitAddr(c.to).map(wcName).join(', ') || 'nobody yet')}${splitAddr(c.cc).length ? `, copy to ${esc(splitAddr(c.cc).map(wcName).join(', '))}` : ''}, with ${esc(PrDeck.fileName(date))} attached; it opens in Outlook as a draft to check and send. The presenter, the job title and who gets it are the <b>Weekly commercial</b> settings.</p>`;
-  const sts = stepStates([!!T, histOk, state.prBuilt === date]);
+  const sts = stepStates([!!T, histOk, !!(OT.otp && OT.term), state.prBuilt === date]);
   const L3 = [
     { id: 'prs-mail', title: 'Drop the email', short: 'Email', cap: 'The "MC performance Review" email with its tables: Rebooking, Network issues, Web + App, Social media and Vnet. Read in this browser; nothing is kept.', body: drop },
     { id: 'prs-brand', title: 'The brands\' slides', short: 'Brands', cap: 'Virgin Mobile, FRiENDi Mobile and Postpaid, as on the weekly presentation.', body: brand },
+    { id: 'prs-calls', title: 'OTP and final termination calls', short: 'OTP', cap: 'From the Call history export (the raw call reasons): the OTP calls of the last two months, day by day, and the final termination calls by month. Read in this browser; only the counts by day are kept.', body: calls },
     { id: 'prs-send', title: 'The deck and the email', short: 'Deck', cap: 'The slides, in the weekly presentation\'s look.', body: send, acts: `<button class="btn sm" data-prdeck${busy || !T ? ' disabled' : ''}>Download deck</button><button class="btn sm primary" data-prmail${busy || !T ? ' disabled' : ''}>Email with the deck</button>` },
   ];
   body.innerHTML = `<div class="flow wcflow prflow">${L3.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i] })).join('')}</div>`;
@@ -130,7 +210,7 @@ async function prMake(kind) {
   state.prBusy = kind; renderPerfWs();
   try {
     await wcBoot();
-    const c = wcCfg(), date = prDateNow(), m = wcModel(date), D = PrDeck.deck(m, PR.tables, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo(), logos: wcDeckLogos(), kpi: PR.kpi || undefined });
+    const c = wcCfg(), date = prDateNow(), m = wcModel(date), D = PrDeck.deck(m, PR.tables, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo(), logos: wcDeckLogos(), kpi: PR.kpi || undefined, calls: state.callDays ? state.callDays.days : undefined, callRule: prRule() });
     const bytes = await D.bytes(), name = PrDeck.fileName(date);
     if (kind === 'deck') { if (await save(name, new Blob([bytes], { type: PPTX_TYPE }))) state.prBuilt = date; }
     else {
@@ -147,16 +227,28 @@ const prOn = () => state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf();
 $('wfmBar').addEventListener('change', e => { if (!prOn() || !e.target.matches('[data-prdate]')) return; const v = e.target.value; state.prDate = wcIsDay(v) ? v : ''; if (PR.text) prRead(PR.text, PR.from); state.prBuilt = ''; renderPerfWs(); });
 document.addEventListener('click', e => {
   if (!prOn()) return;
-  const t = e.target.closest && e.target.closest('[data-prdeck], [data-prmail], [data-prdrop], [data-prread], [data-prlogosrm]'); if (!t || !($('wfmBody').contains(t) || $('wfmBar').contains(t))) return;
+  const t = e.target.closest && e.target.closest('[data-prdeck], [data-prmail], [data-prdrop], [data-prread], [data-prlogosrm], [data-prcallsrm]'); if (!t || !($('wfmBody').contains(t) || $('wfmBar').contains(t))) return;
+  if (t.matches('[data-prcallsrm]')) {
+    const old = state.callDays, oc = PR.calls, st = prStamp(); PR.calls = null;
+    prCallsChange(cd => (cd ? { ...cd, days: {}, ...st } : null)); renderPerfWs();
+    toast('The OTP and final termination calls kept are cleared.', { label: 'Undo', fn: () => { PR.calls = oc; prCallsChange(() => old); renderPerfWs(); } });
+    return;
+  }
   if (t.matches('[data-prlogosrm]')) { const old = state.deckLogos; state.deckLogos = null; if (state.db) queueWrite('config/decklogos', () => state.db.doc('config/decklogos').delete()).catch(() => {}); renderPerfWs(); toast('Logos removed: the tool\'s logo and the brands\' names again.', { label: 'Undo', fn: () => { state.deckLogos = old; if (state.db && old) queueWrite('config/decklogos', () => state.db.doc('config/decklogos').set(old)).catch(() => {}); renderPerfWs(); } }); return; }
   if (t.matches('[data-prdeck]')) prMake('deck');
   else if (t.matches('[data-prmail]')) prMake('mail');
-  else if (t.matches('[data-prdrop]')) { const p = $('wfmBody').querySelector('[data-prpick]'); if (p) p.click(); }
+  else if (t.matches('[data-prdrop]')) prPick(t);
   else if (t.matches('[data-prread]')) { const ta = $('wfmBody').querySelector('[data-prtext]'); PR.pasted = ta ? ta.value : ''; if (!normSpace(PR.pasted)) { PR.notes = 'Paste the email\'s text first.'; renderPerfWs(); return; } prRead(PR.pasted, 'the pasted text'); renderPerfWs(); if (PR.tables) toast(`${plural(PR.tables.length, 'table')} read from the pasted text.`); }
 });
-$('wfmBody').addEventListener('change', e => { if (!prOn()) return; const t = e.target; if (t.matches('[data-prpick]')) { if (t.files && t.files.length) prFiles([...t.files]); t.value = ''; } });
-$('wfmBody').addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details[data-prpaste]')) PR.open = d.open; }, true);
+/** a drop zone clicked: its own file picker (the email's, or the Call history's) */
+function prPick(z) { const p = $('wfmBody').querySelector(z.dataset.prdrop === 'calls' ? '[data-prpick="calls"]' : '[data-prpick]:not([data-prpick="calls"])'); if (p) p.click(); }
+$('wfmBody').addEventListener('change', e => {
+  if (!prOn()) return; const t = e.target;
+  if (t.matches('[data-prpick]')) { if (t.files && t.files.length) prFiles([...t.files]); t.value = ''; }
+  else if (t.matches('[data-prrule]')) { const k = t.dataset.prrule, v = t.value, st = prStamp(); prCallsChange(cd => callDaysOk({ days: {}, ...(cd || {}), rule: { ...((cd && cd.rule) || {}), [k]: v }, ...st })); renderPerfWs(); }
+});
+$('wfmBody').addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details[data-prpaste]')) PR.open = d.open; else if (d.matches && d.matches('details[data-prset]')) PR.setOpen = d.open; }, true);
 $('wfmBody').addEventListener('input', e => { if (e.target.matches && e.target.matches('[data-prtext]')) PR.pasted = e.target.value; });
-$('wfmBody').addEventListener('keydown', e => { const z = e.target.closest && e.target.closest('[data-prdrop]'); if (z && prOn() && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const p = $('wfmBody').querySelector('[data-prpick]'); if (p) p.click(); } });
+$('wfmBody').addEventListener('keydown', e => { const z = e.target.closest && e.target.closest('[data-prdrop]'); if (z && prOn() && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); prPick(z); } });
 ['dragenter', 'dragover'].forEach(ev => $('wfmBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-prdrop]'); if (z) { e.preventDefault(); z.classList.add('over'); } }));
 ['dragleave', 'drop'].forEach(ev => $('wfmBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-prdrop]'); if (z) { e.preventDefault(); if (ev === 'drop') e.stopPropagation(); z.classList.remove('over'); if (ev === 'drop' && prOn() && e.dataTransfer && e.dataTransfer.files.length) prFiles([...e.dataTransfer.files]); } }));   // read once: the page's own drop handler does not see it

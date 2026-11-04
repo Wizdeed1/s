@@ -5,7 +5,8 @@
    tab-separated): a title ending with ":", its header, and a row per month ("Jan", "Jun-25", "1-Jan", "Oct-26"); the month to date
    ends with "to N" ("Nov to 3", "11/1/2026 to 3": until the 3rd).
    deck(): cover; Virgin, FRiENDi and Postpaid (WcDeck's slides); Complaints Insights (Web + App, Network, Social media);
-   Complaints Insights (Rebooking by month, Vnet, the month so far); a slide for any other table; thank you. */
+   Complaints Insights (Rebooking by month, Vnet, the month so far); OTP calls and final termination calls (from the Call history
+   export, callsOf(), and the MC KPIs workbook); a slide for any other table; thank you. */
 'use strict';
 const PrDeck = ((P, WD) => {
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -124,6 +125,97 @@ function kpiOf(sheets) {
   }
   return out;
 }
+// ---------------------------------------------------------------- the Call history export: OTP calls and final termination calls by day
+/** a Call history row's day: an Excel date-time number (the day it falls on), a Date, or "03-11-2026 23:59" / "2026-11-03 23:59" */
+function callDay(v) {
+  if (typeof v === 'number') return v > 20000 && v < 80000 ? new Date(Date.UTC(1899, 11, 30) + Math.floor(v + 1e-7) * 86400000).toISOString().slice(0, 10) : null;
+  if (v instanceof Date) return isNaN(v) ? null : `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+  const t = sp(v); let x;
+  if ((x = t.match(/^(\d{4})-(\d{2})-(\d{2})/))) return `${x[1]}-${x[2]}-${x[3]}`;
+  if ((x = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/)) && +x[1] >= 1 && +x[1] <= 31 && +x[2] >= 1 && +x[2] <= 12) return `${x[3]}-${pad(+x[2])}-${pad(+x[1])}`;
+  return null;
+}
+/** a day's counts: its rows; the OTP calls; the final termination calls; of those the terminations done (each: every channel, calls only) */
+const CALL_KEYS = ['calls', 'otp', 'otpCall', 'term', 'termCall', 'done', 'doneCall'];
+const call0 = () => Object.fromEntries(CALL_KEYS.map(k => [k, 0]));
+/**
+ * The Call history export from Crystal ("Call Center History Report": a row a contact, with its Call Date, Type, Service, Sub Service
+ * and Contact Type), counted by day: the OTP calls (a Service or Sub Service that names OTP: "OTP is not received", "App OTP isn't
+ * Received"), the final termination calls (Type "Virgin Final Deactivation", "FRiENDi Final Deactivation") and of those the
+ * terminations done (Sub Service "Termination Done"); each for every channel and for calls only (Contact Type CALL). Only the days the
+ * export has rows on are counted. sheets: [{ name, rows }]. Returns { days, rows, labels: { otp, term } } (what was counted, by
+ * name), or null when it is not a Call history.
+ */
+function callsOf(sheets) {
+  const out = { days: {}, rows: 0, labels: { otp: {}, term: {} } }; let found = false;
+  const add = (L, k) => { L[k] = (L[k] || 0) + 1; };
+  for (const sh of sheets || []) {
+    const R = sh.rows || []; let h = -1, C = null;
+    for (let r = 0; r < Math.min(R.length, 8) && h < 0; r++) {
+      const row = R[r] || [], col = re => row.findIndex(c => re.test(cellText(c)));
+      const c = { date: col(/^call\s*date$/i), type: col(/^type$/i), service: col(/^service$/i), sub: col(/^sub[\s-]*service$/i), contact: col(/^contact\s*type$/i) };
+      if (c.date >= 0 && c.type >= 0 && c.sub >= 0) { h = r; C = c; }
+    }
+    if (h < 0) continue;
+    found = true;
+    for (let r = h + 1; r < R.length; r++) {
+      const q = R[r] || [], d = callDay(q[C.date]), type = cellText(q[C.type]); if (!d || !type) continue;
+      const service = C.service >= 0 ? cellText(q[C.service]) : '', sub = cellText(q[C.sub]), call = C.contact < 0 || /^call$/i.test(cellText(q[C.contact]));
+      const D = out.days[d] || (out.days[d] = call0()); D.calls++; out.rows++;
+      if (/\botp\b/i.test(`${service} ${sub}`)) { D.otp++; if (call) D.otpCall++; add(out.labels.otp, sub || service); }
+      if (/final\s*(deactivation|termination)/i.test(type)) {
+        D.term++; if (call) D.termCall++; add(out.labels.term, type);
+        if (/^termination\s*done$/i.test(sub)) { D.done++; if (call) D.doneCall++; }
+      }
+    }
+  }
+  return found ? out : null;
+}
+/** the days of two Call history exports (or the days kept and a new export): a day in both keeps the one with more rows (the whole day) */
+function callsMerge(a, b) {
+  const out = { ...(a || {}) };
+  for (const [d, x] of Object.entries(b || {})) if (x && (!out[d] || (+x.calls || 0) >= (+out[d].calls || 0))) out[d] = x;
+  return out;
+}
+const isDay = d => /^\d{4}-\d{2}-\d{2}$/.test(d);
+const daysIn = ym => new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7), 0)).getUTCDate();
+const nextDay = d => new Date(Date.parse(d + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
+/** the same day k months before (the 31st of a shorter month: its last day) */
+function monthsBack(d, k) {
+  const m0 = +d.slice(0, 4) * 12 + (+d.slice(5, 7) - 1) - k, ym = `${Math.floor(m0 / 12)}-${pad((m0 % 12) + 1)}`;
+  return `${ym}-${pad(Math.min(+d.slice(8, 10), daysIn(ym)))}`;
+}
+/**
+ * What the OTP and final termination slide shows. K: kpiOf() of the MC KPIs workbook; days: callsOf().days (the days kept); rule:
+ * { ch: 'all' | 'call', term: 'all' | 'done' } (every channel or calls only; every final termination call or the terminations done).
+ * A day of the Call history wins over the workbook's, and so does a month the Call history has whole (every day, to the month's end,
+ * or to the last day for the last month). OTP calls: the two months to the last day, day by day (a day with no data left blank);
+ * final termination calls: by month, from January of the last month's year. Returns { otp, term, otpEnd, termEnd }.
+ */
+function otpTerm(K, days, rule) {
+  K = K || {}; days = days || {}; rule = rule || {};
+  const ch = rule.ch === 'call' ? 'Call' : '', fo = 'otp' + ch, ft = (rule.term === 'done' ? 'done' : 'term') + ch;
+  const own = Object.keys(days).filter(d => isDay(d) && days[d] && typeof days[d] === 'object').sort();
+  const byDay = new Map();
+  for (const r of K.otp || []) if (r && isDay(r.date) && Number.isFinite(r.n)) byDay.set(r.date, r.n);
+  for (const d of own) if (Number.isFinite(+days[d][fo])) byDay.set(d, +days[d][fo]);
+  let otp = null, otpEnd = null;
+  if (byDay.size) {
+    const D = [...byDay.keys()].sort(), from = monthsBack(D[D.length - 1], 2); otpEnd = D[D.length - 1]; otp = [];
+    for (let d = D.find(x => x > from); d <= otpEnd; d = nextDay(d)) otp.push({ date: d, n: byDay.has(d) ? byDay.get(d) : null });
+  }
+  const mon = new Map(), M = new Map(), last = own[own.length - 1];
+  for (const r of K.term || []) if (r && /^\d{4}-\d{2}$/.test(r.ym) && Number.isFinite(r.n)) mon.set(r.ym, { n: r.n, end: null });
+  for (const d of own) { const ym = d.slice(0, 7), x = M.get(ym) || { n: 0, k: 0, end: d }; x.n += +days[d][ft] || 0; x.k++; x.end = d; M.set(ym, x); }
+  for (const [ym, x] of M) if (!mon.has(ym) || x.k === (ym === last.slice(0, 7) ? +last.slice(8) : daysIn(ym))) mon.set(ym, { n: x.n, end: x.end });
+  let term = null, termEnd = null;
+  if (mon.size) {
+    const Y = [...mon.keys()].sort(), ly = Y[Y.length - 1], kd = K.otp && K.otp.length ? K.otp[K.otp.length - 1].date : '';
+    term = Y.filter(ym => ym >= `${ly.slice(0, 4)}-01`).map(ym => ({ ym, n: mon.get(ym).n }));
+    termEnd = mon.get(ly).end || (kd.slice(0, 7) === ly ? kd : null);
+  }
+  return { otp, term, otpEnd, termEnd };
+}
 /** the logos in one of the team's decks: the Beyond One mark (the dark slides), the mark with the name (the other slides) and the
     brands' logos (top right of their slides); by the pictures' own names, else by where they sit. z: a zip ({ names, text, bytes }) */
 async function logosOf(z) {
@@ -201,23 +293,25 @@ function rebooking(D, m, o, t, K, n) {
       bars: [{ name: 'Virgin', values: T.rows.map(r => r.vals[vi >= 0 ? vi : 0]), color: THEME[0], labels: true }, { name: 'FRiENDi', values: T.rows.map(r => r.vals[fi >= 0 ? fi : 1]), color: THEME[1] }] }, { name: 'Rebooking by month' });
   } else missing(s, x, y, w, h, 'Rebooking TKTs');
 }
-function otpSlide(D, m, o, K, n) {
-  const W = WD.parts, s = D.slide({ bg: 'FFFFFF' }), otp = K.otp ? K.otp.slice(-52) : null, term = K.term ? K.term.filter(r => r.ym >= `${K.term[K.term.length - 1].ym.slice(0, 4)}-01`) : null;
-  const end = otp ? otp[otp.length - 1].date : m.ref, frame = { border: W.FRAME, gridColor: 'D9D9D9', axisSize: 900, axisColor: '0E2841', labelSize: 900, labelColor: '000000', legend: false };
+/** OTP calls by day and final termination calls by month: T = otpTerm() */
+function otpSlide(D, m, o, T, n) {
+  const W = WD.parts, s = D.slide({ bg: 'FFFFFF' }), { otp, term } = T, end = T.otpEnd || m.ref, few = L => L.filter(r => r.n != null).length < 3;   // a trend needs a few points
+  const frame = { border: W.FRAME, gridColor: 'D9D9D9', axisSize: 900, axisColor: '0E2841', labelSize: 900, labelColor: '000000', legend: false };
   W.logoTop(s, o); kick(s, m, o);
   title(s, 0.45, 0.83, 'OTP Calls', 24); sub(s, 2.17, 1.03, `Until ${dd(end)}`, 6.67);
   if (otp) s.chart(1.31, 1.34, 10.98, 2.97, { ...frame, cats: otp.map(r => `${dm(r.date)}-${r.date.slice(2, 4)}`), gap: 100, overlap: -24, catRot: -45, catSize: 800,
-    bars: [{ name: 'OTP Count', values: otp.map(r => r.n), color: THEME[0], grad: true, trend: [{ type: 'exp', dash: 'sysDash' }, { type: 'linear', dash: 'sysDash' }] }] }, { name: 'OTP calls' });
+    bars: [{ name: 'OTP Count', values: otp.map(r => r.n), color: THEME[0], grad: true, trend: few(otp) ? [] : [{ type: 'exp', dash: 'sysDash' }, { type: 'linear', dash: 'sysDash' }] }] }, { name: 'OTP calls' });
   else missing(s, 1.31, 1.34, 10.98, 2.97, 'OTP calls');
-  W.tt(s, 0.19, 4.24, 6.67, 0.50, 'Final termination calls', { size: 24, bold: true, font: W.HEAD, color: W.NAVY }); sub(s, 3.94, 4.37, `Until ${dd(end)}`, 6.67);
+  W.tt(s, 0.19, 4.24, 6.67, 0.50, 'Final termination calls', { size: 24, bold: true, font: W.HEAD, color: W.NAVY }); sub(s, 3.94, 4.37, `Until ${dd(T.termEnd || end)}`, 6.67);
   if (term) s.chart(1.31, 4.68, 10.98, 2.55, { ...frame, cats: term.map(r => `${MON[+r.ym.slice(5) - 1]}-${r.ym.slice(2, 4)}`), gap: 150,
-    bars: [{ name: 'Final termination Count', values: term.map(r => r.n), color: THEME[0], labels: true, trend: [{ type: 'exp', dash: 'sysDot' }] }] }, { name: 'Final termination calls' });
+    bars: [{ name: 'Final termination Count', values: term.map(r => r.n), color: THEME[0], labels: true, trend: few(term) ? [] : [{ type: 'exp', dash: 'sysDot' }] }] }, { name: 'Final termination calls' });
   else missing(s, 1.31, 4.68, 10.98, 2.55, 'Final termination calls');
   W.foot(s, o, n);
 }
 /**
  * the Performance Review, as the team's deck: m = WcDeck.model() for the presentation's day (the brands' slides), tables =
- * tablesOf() from the email, o = { presenter, title, org, logo, logos, kpi: kpiOf() of the MC KPIs workbook }
+ * tablesOf() from the email, o = { presenter, title, org, logo, logos, kpi: kpiOf() of the MC KPIs workbook, calls: the Call
+ * history's days (callsOf().days, kept), callRule: what counts (otpTerm()) }
  */
 function deck(m, tables, o0 = {}) {
   const W = WD.parts, o = { ...o0, kicker: 'Weekly Commercial Presentation', coverSub: 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay', monthlyLabel: 'Monthly Trend', ppLabel: false };
@@ -229,7 +323,8 @@ function deck(m, tables, o0 = {}) {
   W.postpaidSlide(D, m, n++, o);
   complaints(D, m, o, by, n++);
   rebooking(D, m, o, by('rebooking'), K, n++);
-  if (K.otp || K.term) otpSlide(D, m, o, K, n++);
+  const OT = otpTerm(K, o0.calls, o0.callRule);
+  if (OT.otp || OT.term) otpSlide(D, m, o, OT, n++);
   // a table the deck does not know (a new one in the email): two a slide
   const other = tables.filter(t => t.key === 'other');
   for (let i = 0; i < other.length; i += 2) {
@@ -242,6 +337,6 @@ function deck(m, tables, o0 = {}) {
   return D;
 }
 const fileName = date => `MC_Performance_Review - ${WD.longDate(date)}.pptx`;
-return { tablesOf, cellsOf, monthOf, chartOf, kpiOf, logosOf, dayOf, deck, fileName };
+return { tablesOf, cellsOf, monthOf, chartOf, kpiOf, logosOf, dayOf, callDay, callsOf, callsMerge, otpTerm, monthsBack, CALL_KEYS, deck, fileName };
 })(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'), typeof WcDeck !== 'undefined' ? WcDeck : require('./wcdeck.js'));
 if (typeof module !== 'undefined') module.exports = PrDeck;

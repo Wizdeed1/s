@@ -2624,6 +2624,8 @@ p.prange { padding-top: 12px; }
 .prtab { max-height: none; margin-top: 10px; }
 .prtab td { white-space: normal; }
 .prtab td:first-child, .prtab td:nth-child(2) { white-space: nowrap; }
+.prlogos { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 8px; }
+.prlogos img { height: 34px; width: auto; max-width: 120px; object-fit: contain; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
 .prslides { margin: 4px 0 8px; padding-left: 20px; display: grid; gap: 2px; font-size: 13.5px; }
 @media (max-width: 720px) {
   .wcout td:first-child { width: auto; }
@@ -13636,7 +13638,7 @@ const lineOf = (c, w = 0.75) => (c ? `<a:ln w="${Math.round(w * 12700)}">${fill(
 /** one run's properties: size in pt, colour, bold, italic, the font (a script font for Arabic and the like too) */
 function rPr(o, tag = 'a:rPr') {
   const f = o.font || 'Calibri';
-  return `<${tag} lang="en-US" sz="${Math.round((o.size || 12) * 100)}" b="${o.bold ? 1 : 0}" i="${o.italic ? 1 : 0}" dirty="0">${fill(o.color || '262626')}<a:latin typeface="${esc(f)}"/><a:cs typeface="Arial"/></${tag}>`;
+  return `<${tag} lang="en-US" sz="${Math.round((o.size || 12) * 100)}" b="${o.bold ? 1 : 0}" i="${o.italic ? 1 : 0}"${o.spc ? ` spc="${Math.round(o.spc * 100)}"` : ''} dirty="0">${fill(o.color || '262626')}<a:latin typeface="${esc(f)}"/><a:cs typeface="Arial"/></${tag}>`;
 }
 /** paragraphs from a string (lines), a list of runs, or a list of paragraphs (each a list of runs) */
 function paras(content, o) {
@@ -13647,7 +13649,16 @@ function paras(content, o) {
     + runs.map(r => `<a:r>${rPr({ ...o, ...r })}<a:t>${esc(r.t)}</a:t></a:r>`).join('') + `${rPr({ ...o, ...(runs[0] || {}) }, 'a:endParaRPr')}</a:p>`).join('');
 }
 
-// ------------------------------------------------------------ the chart: columns, and a line on its own axis (0-120%)
+// ------------------------------------------------------------ the chart: columns (flat or 3-D), and a line on its own axis
+/** a column's fill as Office draws its "gradient" style: lighter at the top, darker at the foot */
+const grad = c => `<a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:srgbClr val="${c}"><a:satMod val="103000"/><a:lumMod val="102000"/><a:tint val="94000"/></a:srgbClr></a:gs><a:gs pos="50000"><a:srgbClr val="${c}"><a:satMod val="110000"/><a:lumMod val="100000"/><a:shade val="100000"/></a:srgbClr></a:gs><a:gs pos="100000"><a:srgbClr val="${c}"><a:lumMod val="99000"/><a:satMod val="120000"/><a:shade val="78000"/></a:srgbClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill>`;
+/**
+ * ch: { cats, bars: [{ name, values, color, grad, labels, labelColor, labelSize, labelBold, trend: [{ type: exp|linear, dash }] }],
+ *   line: { name, values, color, w (pt), fmt, max, min (null: Office decides), labels (false: none), labelSize, labelColor, labelBold,
+ *   smooth (false: straight), marker: { symbol, size, color } }, d3 (3-D clustered columns), gap, overlap, barFmt, catRot, catSize,
+ *   axisSize, axisColor, gridColor, labelSize, labelColor, legend (false: none), legendSize, border (the frame's colour), title,
+ *   titleSize, titleColor, yTitle, y2Title }
+ */
 function chartXml(ch, n) {
   const cats = ch.cats.map(String), N = cats.length, col = i => String.fromCharCode(66 + i);   // B, C, D…
   const strCache = L => `<c:strCache><c:ptCount val="${L.length}"/>${L.map((v, i) => `<c:pt idx="${i}"><c:v>${esc(v)}</c:v></c:pt>`).join('')}</c:strCache>`;
@@ -13656,22 +13667,35 @@ function chartXml(ch, n) {
   const cat = `<c:cat><c:strRef><c:f>Sheet1!$A$2:$A$${N + 1}</c:f>${strCache(cats)}</c:strRef></c:cat>`;
   const val = (L, i, fmt) => `<c:val><c:numRef><c:f>Sheet1!$${col(i)}$2:$${col(i)}$${N + 1}</c:f>${numCache(L, fmt)}</c:numRef></c:val>`;
   const txt = (sz, color = '595959', b = 0, rot) => `<c:txPr><a:bodyPr${rot != null ? ` rot="${rot}" vert="horz"` : ''}/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="${sz}" b="${b}">${fill(color)}<a:latin typeface="Calibri"/></a:defRPr></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>`;
-  const bars = ch.bars.map((s, i) => `<c:ser><c:idx val="${i}"/><c:order val="${i}"/>${tx(s.name, i)}<c:spPr>${fill(s.color)}<a:ln><a:noFill/></a:ln></c:spPr><c:invertIfNegative val="0"/>`
-    + (s.labels ? `<c:dLbls><c:numFmt formatCode="${esc(ch.barFmt || '#,##0')}" sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(700, '404040')}<c:dLblPos val="outEnd"/><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>` : '')
-    + `${cat}${val(s.values, i, ch.barFmt || '#,##0')}</c:ser>`).join('');
+  const lbl = (fmt, sz, color, bold, pos) => `<c:dLbls><c:numFmt formatCode="${esc(fmt)}" sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(sz, color, bold ? 1 : 0)}${pos ? `<c:dLblPos val="${pos}"/>` : ''}<c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>`;
+  const title = (t, sz, color, rot) => `<c:title><c:tx><c:rich><a:bodyPr rot="${rot || 0}" vert="horz"/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="${sz}" b="1">${fill(color)}<a:latin typeface="Calibri"/></a:defRPr></a:pPr><a:r><a:rPr lang="en-US" sz="${sz}" b="1">${fill(color)}<a:latin typeface="Calibri"/></a:rPr><a:t>${esc(t)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>`;
+  const trend = t => `<c:trendline><c:spPr><a:ln w="${Math.round((t.w || 1.5) * 12700)}" cap="rnd">${fill(t.color)}<a:prstDash val="${t.dash || 'sysDot'}"/></a:ln></c:spPr><c:trendlineType val="${t.type || 'linear'}"/><c:dispRSqr val="0"/><c:dispEq val="0"/></c:trendline>`;
+  const axSz = ch.axisSize || 800, axC = ch.axisColor || '595959', d3 = !!ch.d3, tc = ch.titleColor || '0E2841';
+  const bars = ch.bars.map((s, i) => {
+    const pos = s.values.some(v => v != null && +v > 0) && !d3 ? 'outEnd' : null, plus = s.values.every(v => v == null || +v > 0);
+    return `<c:ser><c:idx val="${i}"/><c:order val="${i}"/>${tx(s.name, i)}<c:spPr>${s.grad ? grad(s.color) : fill(s.color)}<a:ln><a:noFill/></a:ln></c:spPr><c:invertIfNegative val="0"/>`
+      + (s.labels ? lbl(ch.barFmt || '#,##0', s.labelSize || ch.labelSize || 700, s.labelColor || ch.labelColor || '404040', s.labelBold, pos) : '')
+      + (s.trend || []).map(t => trend({ color: s.color, ...t, type: t.type === 'exp' && !plus ? 'linear' : t.type })).join('')   // an exponential trend needs every value above nothing
+      + `${cat}${val(s.values, i, ch.barFmt || '#,##0')}</c:ser>`;
+  }).join('');
   const li = ch.bars.length, L = ch.line;
-  const line = L ? `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/><c:ser><c:idx val="${li}"/><c:order val="${li}"/>${tx(L.name, li)}<c:spPr><a:ln w="28575" cap="rnd">${fill(L.color)}<a:round/></a:ln></c:spPr><c:marker><c:symbol val="none"/></c:marker>`
-    + `<c:dLbls><c:numFmt formatCode="${esc(L.fmt || '0%')}" sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(L.labelSize || 800, '262626', 0)}<c:dLblPos val="t"/><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>`
-    + `${cat}${val(L.values, li, L.fmt || '0%')}<c:smooth val="1"/></c:ser><c:marker val="1"/><c:axId val="${n * 10 + 3}"/><c:axId val="${n * 10 + 4}"/></c:lineChart>` : '';
-  const ax = (id, cross, pos, del, extra) => `<c:axId val="${id}"/><c:scaling><c:orientation val="minMax"/>${extra || ''}</c:scaling><c:delete val="${del ? 1 : 0}"/><c:axPos val="${pos}"/>`;
-  const catAx = `<c:catAx>${ax(n * 10 + 1, n * 10 + 2, 'b', false)}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln w="6350">${fill('BFBFBF')}</a:ln></c:spPr>${txt(ch.catSize || 800, '595959', 0, ch.catRot != null ? ch.catRot * 60000 : null)}<c:crossAx val="${n * 10 + 2}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`;
-  const valAx = `<c:valAx>${ax(n * 10 + 2, n * 10 + 1, 'l', false, '<c:min val="0"/>')}<c:majorGridlines><c:spPr><a:ln w="6350">${fill('E7E7E7')}</a:ln></c:spPr></c:majorGridlines><c:numFmt formatCode="${esc(ch.barFmt || '#,##0')}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln><a:noFill/></a:ln></c:spPr>${txt(800)}<c:crossAx val="${n * 10 + 1}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>`;
-  const sec = L ? `<c:catAx>${ax(n * 10 + 3, n * 10 + 4, 'b', true)}<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${n * 10 + 4}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`
-    + `<c:valAx>${ax(n * 10 + 4, n * 10 + 3, 'r', false, `<c:max val="${L.max ?? 1.2}"/><c:min val="${L.min ?? 0}"/>`)}<c:numFmt formatCode="${esc(L.fmt || '0%')}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln><a:noFill/></a:ln></c:spPr>${txt(800)}<c:crossAx val="${n * 10 + 3}"/><c:crosses val="max"/><c:crossBetween val="between"/></c:valAx>` : '';
+  const mk = L && L.marker ? `<c:marker><c:symbol val="${L.marker.symbol || 'circle'}"/><c:size val="${L.marker.size || 6}"/><c:spPr>${grad(L.marker.color || L.color)}<a:ln w="12700">${fill(L.marker.edge || 'E8E8E8')}</a:ln></c:spPr></c:marker>` : '<c:marker><c:symbol val="none"/></c:marker>';
+  const line = L ? `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/><c:ser><c:idx val="${li}"/><c:order val="${li}"/>${tx(L.name, li)}<c:spPr><a:ln w="${Math.round((L.w || 2.25) * 12700)}" cap="rnd">${fill(L.color)}<a:round/></a:ln></c:spPr>${mk}`
+    + (L.labels === false ? '' : lbl(L.fmt || '0%', L.labelSize || 800, L.labelColor || '262626', L.labelBold, 't'))
+    + `${cat}${val(L.values, li, L.fmt || '0%')}<c:smooth val="${L.smooth === false ? 0 : 1}"/></c:ser><c:marker val="1"/><c:axId val="${n * 10 + 3}"/><c:axId val="${n * 10 + 4}"/></c:lineChart>` : '';
+  const ax = (id, pos, del, extra) => `<c:axId val="${id}"/><c:scaling><c:orientation val="minMax"/>${extra || ''}</c:scaling><c:delete val="${del ? 1 : 0}"/><c:axPos val="${pos}"/>`;
+  const catAx = `<c:catAx>${ax(n * 10 + 1, 'b', false)}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln w="6350">${fill('BFBFBF')}</a:ln></c:spPr>${txt(ch.catSize || axSz, axC, 0, ch.catRot != null ? ch.catRot * 60000 : null)}<c:crossAx val="${n * 10 + 2}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`;
+  const valAx = `<c:valAx>${ax(n * 10 + 2, 'l', false, '<c:min val="0"/>')}<c:majorGridlines><c:spPr><a:ln w="6350">${fill(ch.gridColor || 'E7E7E7')}</a:ln></c:spPr></c:majorGridlines>${ch.yTitle ? title(ch.yTitle, 900, tc, -5400000) : ''}<c:numFmt formatCode="${esc(ch.barFmt || '#,##0')}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln><a:noFill/></a:ln></c:spPr>${txt(axSz, axC)}<c:crossAx val="${n * 10 + 1}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>`;
+  const sec = L ? `<c:catAx>${ax(n * 10 + 3, 'b', true)}<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${n * 10 + 4}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`
+    + `<c:valAx>${ax(n * 10 + 4, 'r', false, `${L.max === null ? '' : `<c:max val="${L.max ?? 1.2}"/>`}${L.min === null ? '' : `<c:min val="${L.min ?? 0}"/>`}`)}${ch.y2Title ? title(ch.y2Title, 900, tc, -5400000) : ''}<c:numFmt formatCode="${esc(L.fmt || '0%')}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln><a:noFill/></a:ln></c:spPr>${txt(axSz, axC)}<c:crossAx val="${n * 10 + 3}"/><c:crosses val="max"/><c:crossBetween val="between"/></c:valAx>` : '';
+  const none = '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>', wall = t => `<c:${t}><c:thickness val="0"/>${none}</c:${t}>`;
+  const view = d3 ? `<c:view3D><c:rotX val="15"/><c:rotY val="20"/><c:depthPercent val="100"/><c:rAngAx val="1"/></c:view3D>${wall('floor')}${wall('sideWall')}${wall('backWall')}` : '';
+  const barChart = d3 ? `<c:bar3DChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${bars}<c:gapWidth val="${ch.gap ?? 150}"/><c:shape val="box"/><c:axId val="${n * 10 + 1}"/><c:axId val="${n * 10 + 2}"/><c:axId val="0"/></c:bar3DChart>`
+    : `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${bars}<c:gapWidth val="${ch.gap ?? 60}"/><c:overlap val="${ch.overlap ?? -10}"/><c:axId val="${n * 10 + 1}"/><c:axId val="${n * 10 + 2}"/></c:barChart>`;
   return `${XML}<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${REL}"><c:date1904 val="0"/><c:roundedCorners val="0"/>`
-    + `<c:chart><c:autoTitleDeleted val="1"/><c:plotArea><c:layout/><c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${bars}<c:gapWidth val="${ch.gap ?? 60}"/><c:overlap val="${ch.overlap ?? -10}"/><c:axId val="${n * 10 + 1}"/><c:axId val="${n * 10 + 2}"/></c:barChart>${line}${catAx}${valAx}${sec}<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr></c:plotArea>`
-    + `<c:legend><c:legendPos val="b"/><c:overlay val="0"/>${txt(800)}</c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>`
-    + `<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(800)}<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData></c:chartSpace>`;
+    + `<c:chart>${ch.title ? `${title(ch.title, ch.titleSize || 1600, tc)}<c:autoTitleDeleted val="0"/>` : '<c:autoTitleDeleted val="1"/>'}${view}<c:plotArea><c:layout/>${barChart}${line}${catAx}${valAx}${sec}${none}</c:plotArea>`
+    + `${ch.legend === false ? '' : `<c:legend><c:legendPos val="b"/><c:overlay val="0"/>${txt(ch.legendSize || 800, axC)}</c:legend>`}<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>`
+    + `<c:spPr>${ch.fill ? fill(ch.fill) : '<a:noFill/>'}${ch.border ? `<a:ln w="9525">${fill(ch.border)}</a:ln>` : '<a:ln><a:noFill/></a:ln>'}</c:spPr>${txt(800)}<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData></c:chartSpace>`;
 }
 /** the chart's data as a workbook (Sheet1: the categories in A, a column per series), for Edit Data */
 async function chartBook(ch) {
@@ -13688,15 +13712,23 @@ class Slide {
   /** a rectangle (radius: rounded corners, as a part of the shorter side) */
   rect(x, y, w, h, o = {}) {
     const id = this.nid(), geo = o.radius ? `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val ${Math.round(o.radius * 100000)}"/></a:avLst></a:prstGeom>` : '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>';
-    this.items.push(`<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${esc(o.name || 'Shape ' + id)}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${this.frame(x, y, w, h)}${geo}${fill(o.fill)}${lineOf(o.line, o.lineW)}</p:spPr>`
+    const f = o.fill && o.alpha != null ? `<a:solidFill><a:srgbClr val="${o.fill}"><a:alpha val="${Math.round(o.alpha * 100000)}"/></a:srgbClr></a:solidFill>` : fill(o.fill);   // alpha: how opaque, 0 to 1
+    const fx = o.shadow ? `<a:effectLst><a:outerShdw blurRad="${E(0.08)}" dist="${E(0.03)}" dir="5400000" algn="t" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="28000"/></a:srgbClr></a:outerShdw></a:effectLst>` : '';
+    this.items.push(`<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${esc(o.name || 'Shape ' + id)}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${this.frame(x, y, w, h)}${geo}${f}${lineOf(o.line, o.lineW)}${fx}</p:spPr>`
       + `<p:txBody><a:bodyPr rtlCol="0" anchor="ctr"/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`);
+    return this;
+  }
+  /** a straight line from (x1, y1) to (x2, y2): colour and width in pt */
+  line(x1, y1, x2, y2, o = {}) {
+    const id = this.nid(), x = Math.min(x1, x2), y = Math.min(y1, y2);
+    this.items.push(`<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="${id}" name="${esc(o.name || 'Line ' + id)}"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>${this.frame(x, y, Math.abs(x2 - x1), Math.abs(y2 - y1))}<a:prstGeom prst="line"><a:avLst/></a:prstGeom>${lineOf(o.color || '000000', o.w || 1)}</p:spPr></p:cxnSp>`);
     return this;
   }
   /** text in a box: a string (lines), runs or paragraphs; size, color, bold, italic, font, align, valign (top, middle, bottom) */
   text(x, y, w, h, content, o = {}) {
-    const id = this.nid(), an = { top: 't', middle: 'ctr', bottom: 'b' }[o.valign || 'top'], ins = E(o.inset ?? 0.02);
+    const id = this.nid(), an = { top: 't', middle: 'ctr', bottom: 'b' }[o.valign || 'top'], ix = E(o.insetX ?? o.inset ?? 0.02), iy = E(o.insetY ?? o.inset ?? 0.02);
     this.items.push(`<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${esc(o.name || 'Text ' + id)}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>${this.frame(x, y, w, h)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fill(o.fill)}${lineOf(o.line)}</p:spPr>`
-      + `<p:txBody><a:bodyPr wrap="square" lIns="${ins}" tIns="${ins}" rIns="${ins}" bIns="${ins}" rtlCol="0" anchor="${an}">${o.shrink ? '<a:normAutofit/>' : '<a:noAutofit/>'}</a:bodyPr><a:lstStyle/>${paras(content, o)}</p:txBody></p:sp>`);
+      + `<p:txBody><a:bodyPr wrap="square" lIns="${ix}" tIns="${iy}" rIns="${ix}" bIns="${iy}" rtlCol="0" anchor="${an}">${o.shrink ? '<a:normAutofit/>' : '<a:noAutofit/>'}</a:bodyPr><a:lstStyle/>${paras(content, o)}</p:txBody></p:sp>`);
     return this;
   }
   /** a picture: PNG bytes */
@@ -13713,7 +13745,7 @@ class Slide {
     const tr = (r, i) => `<a:tr h="${E(rh)}">${r.map((c0, j) => {
       const c = c0 && typeof c0 === 'object' ? c0 : { t: c0 }, hd = i === 0 && o.header !== false, al = c.align || (o.align && o.align[j]) || 'left';
       const bg = hd ? head.fill : c.fill || (o.zebra && i % 2 === 0 ? o.zebra : 'FFFFFF');
-      return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/>${paras([[{ t: c.t ?? '' }]], { size: c.size || fs, color: hd ? head.color : c.color || '262626', bold: hd || c.bold, font: o.font, align: al })}</a:txBody>`
+      return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/>${paras([[{ t: c.t ?? '' }]], { size: c.size || fs, color: hd ? head.color : c.color || o.ink || '262626', bold: hd || c.bold, font: o.font, align: al })}</a:txBody>`
         + `<a:tcPr marL="${E(0.06)}" marR="${E(0.06)}" marT="${E(0.02)}" marB="${E(0.02)}" anchor="ctr">${ln('lnL', edge)}${ln('lnR', edge)}${ln('lnT', edge)}${ln('lnB', edge)}${fill(bg)}</a:tcPr></a:tc>`;
     }).join('')}</a:tr>`;
     this.items.push(`<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="${id}" name="${esc(o.name || 'Table ' + id)}"/><p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="${E(x)}" y="${E(y)}"/><a:ext cx="${E(w)}" cy="${E(h)}"/></p:xfrm>`
@@ -13806,12 +13838,13 @@ if (typeof module !== 'undefined') module.exports = Pptx;
 'use strict';
 const WcDeck = ((P) => {
 const BRANDS = [
-  { k: 'virgin', name: 'Virgin Mobile', short: 'Virgin', color: 'C8102E' },
-  { k: 'friendi', name: 'FRiENDi Mobile', short: 'FRiENDi', color: '0FA3A3' },
-  { k: 'fpay', name: 'FRiENDi Pay', short: 'FRiENDi Pay', color: 'C9870A' },
+  { k: 'virgin', name: 'Virgin Mobile', short: 'Virgin', color: 'D0021B', bar: 'C00000' },
+  { k: 'friendi', name: 'FRiENDi Mobile', short: 'FRiENDi', color: '119DA4', bar: '009999' },
+  { k: 'fpay', name: 'FRiENDi Pay', short: 'FRiENDi Pay', color: 'C8860D', bar: 'C8860D' },
 ];
-const POSTPAID = { k: 'postpaid', name: 'Cross-Brand Postpaid', short: 'Postpaid', color: '3D5A8A' };
-const NAVY = '1F2A5C', BAR = 'D9D9D9', INK = '262626', MUTED = '7F7F7F', SOFT = 'F3F4F7', PALE = 'CADCFC';
+const POSTPAID = { k: 'postpaid', name: 'Cross-Brand Postpaid', short: 'Postpaid', color: '3A5A8C', bar: '0070C0' };
+// the template the team's decks are made with: Cambria headings, Calibri text, navy 1E2761
+const NAVY = '1E2761', BAR = 'D9D9D9', INK = '2B2F42', MUTED = '6B7280', SOFT = 'F4F6FB', PALE = 'CADCFC', DIM = '9FB3DE', FOOT = '9AA3B2', RULE = '5470A8', SLINE = '002060', HEAD = 'Cambria', FRAME = 'A6A6A6';
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DASH = '–';
 const pad = n => String(n).padStart(2, '0');
@@ -13823,6 +13856,7 @@ const mLong = ym => `${MON[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;            
 const mApos = ym => `${MON[+ym.slice(5, 7) - 1]} '${ym.slice(2, 4)}`;                  // Sep '26
 const dShort = s => `${+s.slice(8, 10)}-${MON[+s.slice(5, 7) - 1]}`;                   // 6-Aug
 const longDate = s => `${+s.slice(8, 10)} ${MON[+s.slice(5, 7) - 1]} ${s.slice(0, 4)}`; // 25 Oct 2026
+const deckDate = s => `${s.slice(8, 10)} ${MON[+s.slice(5, 7) - 1]} ${s.slice(0, 4)}`;  // 06 Oct 2026, as the slides write it
 const isDay = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
 const numOr = v => (v === null || v === undefined || v === '' || typeof v === 'boolean' || !Number.isFinite(+v) ? null : +v);
 const mean = L => { const v = L.map(numOr).filter(x => x !== null); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null; };
@@ -13943,135 +13977,148 @@ function model(input, E) {
   };
 }
 
-// ---------------------------------------------------------------- the slides
+// ---------------------------------------------------------------- the slides (the team's template: places, sizes and colours as in its decks)
 const BRAND_NAME = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay' };
-/** the logo at the top left: the company's logo when the tool has one, else its name */
-function logoAt(s, o, x, y, dark) {
-  const L = o.logo;
-  if (L && L.png && L.w && L.h) {
-    const h = 0.5, w = Math.min(2.2, h * L.w / L.h);
-    if (dark) s.rect(x - 0.08, y - 0.08, w + 0.16, h + 0.16, { fill: 'FFFFFF', radius: 0.12 });
-    s.image(x, y, w, h, L.png, { descr: o.org || 'Logo', name: 'Logo' });
-  } else s.text(x, y, 3, 0.4, (o.org || 'Beyond One').toUpperCase(), { size: 12, bold: true, font: 'Georgia', color: dark ? 'FFFFFF' : NAVY, valign: 'middle', name: 'Logo' });
+/** text in a box as the template has it: PowerPoint's margins (0.1 in, 0.05 in), in the middle of the box */
+const tt = (s, x, y, w, h, c, o = {}) => s.text(x, y, w, h, c, { insetX: 0.1, insetY: 0.05, valign: 'middle', ...o });
+/** a picture fitted in a box, its proportions kept; a wide one may run wider, up to maxW */
+function pic(s, L, x, y, w, h, o = {}) {
+  if (!L || !L.png || !(L.w > 0) || !(L.h > 0)) return false;
+  let pw = w, ph = w * L.h / L.w;
+  if (ph > h) { ph = h; pw = h * L.w / L.h; }
+  if (o.maxW && L.w / L.h > w / h) { ph = h; pw = Math.min(o.maxW, h * L.w / L.h); ph = pw * L.h / L.w; }
+  s.image(x + (o.center ? (w - pw) / 2 : 0), y + (o.middle ? (h - ph) / 2 : 0), pw, ph, L.png, { descr: o.descr || 'Logo', name: o.name || 'Logo' });
+  return true;
 }
-/** the squares on the dark slides */
-function squares(s, x, y) {
-  [[0.75, 0, 0.35, '2F6B5E'], [0.55, 0.65, 0.8, '1E5BA8'], [1.35, 0.6, 0.55, '1F6F8C'], [0, 1.0, 0.42, '5B3A5E'], [1.2, 1.2, 0.62, '8E7FA6'], [1.85, 0.95, 0.4, '7A6A3E']]
-    .forEach(([dx, dy, w, c]) => s.rect(x + dx, y + dy, w, w, { fill: c }));
+const logos = o => o.logos || {};
+/** the company's logo at the top left: the decks' own (the mark with the name under it), else the tool's logo, else the name */
+function logoTop(s, o) {
+  const G = logos(o);
+  if (pic(s, G.full, 0.45, 0.36, 0.30, 0.46)) return;
+  if (pic(s, G.mark || o.logo, 0.45, 0.36, 0.46, 0.46, { maxW: 1.6 })) return;
+  tt(s, 0.45, 0.36, 3, 0.4, (o.org || 'Beyond One').toUpperCase(), { size: 12, bold: true, font: HEAD, color: NAVY, valign: 'middle', name: 'Logo' });
 }
+const SQ_COVER = [[11.30, 5.60, 0.80, '0976BC'], [12.08, 5.55, 0.55, '047B94'], [11.92, 6.28, 0.62, 'F5ACCC'], [10.75, 6.10, 0.42, '8C3A50'], [12.58, 6.02, 0.40, 'AD8A2E'], [11.45, 4.92, 0.36, '3E7A4E']];
+const SQ_THANKS = [[-0.60, -0.60, 0.80, '0976BC'], [0.18, -0.65, 0.55, '047B94'], [0.02, 0.08, 0.62, 'F5ACCC'], [-1.15, -0.10, 0.42, '8C3A50'], [0.68, -0.18, 0.40, 'AD8A2E'], [-0.45, -1.28, 0.36, '3E7A4E'],
+  [11.50, 5.90, 0.68, '0976BC'], [12.16, 5.86, 0.47, '047B94'], [12.03, 6.48, 0.53, 'F5ACCC'], [11.03, 6.33, 0.36, '8C3A50'], [12.59, 6.26, 0.34, 'AD8A2E'], [11.63, 5.32, 0.31, '3E7A4E']];
+/** the see-through squares of the dark slides */
+const squares = (s, L) => L.forEach(([x, y, w, c]) => s.rect(x, y, w, w, { fill: c, alpha: 0.55 }));
 function head(s, o, m, title, sub) {
-  logoAt(s, o, 0.45, 0.3, false);
-  s.text(8.2, 0.72, 4.65, 0.25, `${o.kicker || 'Weekly Commercial Presentation'}  ·  ${longDate(m.date)}`, { size: 9, color: MUTED, align: 'right' });
-  s.text(0.5, 1.0, 9.5, 0.6, title, { size: 30, bold: true, font: 'Georgia', color: NAVY, name: 'Title' });
-  s.text(0.5, 1.6, 9.5, 0.32, sub, { size: 12, italic: true, color: MUTED });
+  logoTop(s, o);
+  tt(s, 8.30, 0.74, 4.55, 0.22, `${o.kicker || 'Weekly Commercial Presentation'}  ·  ${deckDate(m.date)}`, { size: 9.5, color: MUTED, align: 'right' });
+  tt(s, 0.45, 1.02, 8.10, 0.55, title, { size: 30, bold: true, font: HEAD, color: NAVY, name: 'Title' });
+  tt(s, 0.45, 1.56, 8.10, 0.32, sub, { size: 13.5, italic: true, color: MUTED });
 }
 function foot(s, o, n) {
-  s.text(0.5, 7.12, 5, 0.25, `${o.org || 'Beyond One'}  |  Member Care`, { size: 8, color: 'A6A6A6' });
-  s.text(11.85, 7.12, 1, 0.25, String(n), { size: 8, color: 'A6A6A6', align: 'right' });
+  tt(s, 0.45, 7.14, 4.00, 0.28, `${o.org || 'Beyond One'}  |  Member Care`, { size: 8.5, color: FOOT });
+  tt(s, 12.43, 7.14, 0.45, 0.28, String(n), { size: 8.5, color: FOOT, align: 'right' });
 }
-/** the big number at the top right: the month's service level, in the brand's colour */
+/** the big number at the top right: the month's service level, in the brand's colour, with its shadow */
 function callout(s, x, y, w, h, color, big, small) {
-  s.rect(x, y, w, h, { fill: color, radius: 0.08, name: 'Callout' });
-  s.text(x, y + 0.1, w, h * 0.55, big, { size: 28, bold: true, color: 'FFFFFF', align: 'center', valign: 'middle' });
-  s.text(x, y + h * 0.6, w, h * 0.3, small, { size: 9, color: 'FFFFFF', align: 'center', valign: 'top' });
+  s.rect(x, y, w, h, { fill: color, radius: 0.08, shadow: true, name: 'Callout' });
+  tt(s, x, y + 0.03, w, h - 0.06, [[{ t: big, size: 30, bold: true }], [{ t: small, size: 10 }]], { color: 'FFFFFF', align: 'center', valign: 'middle' });
 }
-function tile(s, x, y, w, h, big, label, color) {
-  s.rect(x, y, w, h, { fill: SOFT, radius: 0.06 });
-  s.text(x, y + 0.12, w, 0.42, big, { size: 18, bold: true, color, align: 'center', valign: 'middle' });
-  s.text(x + 0.05, y + 0.55, w - 0.1, h - 0.6, label, { size: 8, color: '595959', align: 'center', valign: 'top' });
+function tile(s, x, y, big, lab, color) {
+  s.rect(x, y, 1.37, 0.92, { fill: SOFT, radius: 0.06 });
+  s.rect(x, y, 0.06, 0.92, { fill: 'FFFFFF', radius: 0.5 });
+  tt(s, x, y + 0.08, 1.37, 0.51, big, { size: 19, bold: true, font: HEAD, color, align: 'center', valign: 'middle' });
+  tt(s, x + 0.05, y + 0.55, 1.27, 0.35, lab, { size: 8.5, color: MUTED, align: 'center', valign: 'top', insetY: 0.02 });
 }
-function label(s, x, y, w, t) { s.text(x, y, w, 0.25, t, { size: 11, bold: true, color: NAVY }); }
-/** a table of the top lines: label, count and share (or label and share) */
+/** a chart's heading (12.5pt) and a table's (11.5pt), navy */
+function label(s, x, y, w, t, size = 12.5) { tt(s, x, y, w, 0.28, t, { size, bold: true, color: NAVY }); }
+/** a table of the top lines: label, count and share (or label and share), in the template's table style */
 function topTable(s, x, y, w, head0, top, withCount, o = {}) {
   const L = top && top.list && top.list.length ? top.list : null;
-  const cols = withCount ? [w - 1.3, 0.65, 0.65] : [w - 0.7, 0.7];
-  const rows = [withCount ? [head0, { t: 'Vol.', align: 'right' }, { t: '%', align: 'right' }] : [head0, { t: '%', align: 'right' }]];
-  (L || [{ label: DASH, count: null, pct: null }]).forEach(r => rows.push(withCount ? [fit(r.label, cols[0]), { t: int(r.count), align: 'right' }, { t: pct(r.pct), align: 'right' }] : [fit(r.label, cols[0]), { t: pct(r.pct), align: 'right' }]));
-  s.table(x, y, rows, { cols, rowH: o.rowH || 0.25, size: 8, head: { fill: NAVY, color: 'FFFFFF' }, border: 'D9D9D9' });
+  const cols = withCount ? [w - 1.40, 0.75, 0.65] : [w - 0.75, 0.75];
+  const rows = [withCount ? [head0, { t: 'Vol.', align: 'center' }, { t: '%', align: 'center' }] : [head0, { t: '%', align: 'center' }]];
+  (L || [{ label: DASH, count: null, pct: null }]).forEach(r => rows.push(withCount ? [fit(r.label, cols[0] * 1.1), int(r.count), pct(r.pct)] : [fit(r.label, cols[0] * 1.1), pct(r.pct)]));
+  s.table(x, y, rows, { cols, rowH: o.rowH || 0.27, size: 9, head: { fill: NAVY, color: 'FFFFFF' }, border: 'E2E6EF', ink: INK });
 }
-/** columns of calls presented and handled, and the service level as a line on its own axis */
+/** columns of calls presented and handled, and the service level as a line on its own axis (0–120%), framed */
 function trendChart(s, x, y, w, h, cats, rows, color, o = {}) {
   s.chart(x, y, w, h, {
-    cats, gap: o.gap ?? 60, overlap: -10, catRot: o.catRot, catSize: o.catSize || 800,
+    cats, gap: 219, overlap: 0, catRot: cats.length > 12 ? -45 : undefined, catSize: cats.length > 12 ? 800 : 900, axisSize: 900, border: 'BFBFBF', fill: 'FFFFFF', gridColor: 'D9D9D9', legendSize: 900,
     bars: [{ name: 'Calls Presented', values: rows.map(r => (r ? r.presented : null)), color: BAR }, { name: 'Calls Handled', values: rows.map(r => (r ? r.handled : null)), color }],
-    line: { name: 'Service Level', values: rows.map(r => (r ? r.sl : null)), color: NAVY, fmt: '0%', max: 1.2, min: 0, labelSize: o.labelSize || 800 },
+    line: { name: 'Service Level', values: rows.map(r => (r ? r.sl : null)), color: SLINE, w: 2.25, fmt: '0%', max: null, min: null, labelSize: 900, labelBold: true, labelColor: '404040' },
   }, { name: o.name || 'Chart' });
 }
 function brandSlide(D, m, B, n, o) {
   const s = D.slide({ bg: 'FFFFFF' }), v = B.v, t = B.tickets;
   head(s, o, m, 'Performance Insights', `${B.name} — Contact Centre Voice Channel`);
-  s.text(10.6, 0.3, 2.25, 0.32, B.name, { size: 11, bold: true, color: B.color, align: 'right', name: 'Brand' });
-  callout(s, 10.6, 1.0, 2.25, 1.05, B.color, pct(v.mtd && v.mtd.sl), `Service Level · ${m.month}`);
-  label(s, 0.5, 2.15, 7.8, `Daily Trend — ${m.month}`);
-  trendChart(s, 0.45, 2.38, 7.9, 2.25, v.daily.map(r => dShort(r.date)), v.daily, B.color, { catRot: -45, catSize: 700, labelSize: 700, gap: 50, name: 'Daily trend' });
-  label(s, 0.5, 4.72, 7.8, `Monthly Trend — ${(v.trend[0] || { m: m.ym }).m.slice(0, 4)} to Date`);
-  trendChart(s, 0.45, 4.95, 7.9, 2.12, v.trend.map(x => x.label), v.trend.map(x => x.v), B.color, { name: 'Monthly trend' });
+  foot(s, o, n);   // under the charts, as in the template
+  if (!pic(s, logos(o)[B.k], 12.45, 0.30, 0.40, 0.40, { center: true, middle: true, descr: B.name, name: 'Brand' })) tt(s, 10.6, 0.3, 2.25, 0.32, B.name, { size: 11, bold: true, color: B.color, align: 'right', name: 'Brand' });
+  callout(s, 10.85, 0.95, 2.03, 1.12, B.color, pct(v.mtd && v.mtd.sl), `Service Level · ${m.month}`);
+  label(s, 0.45, 2.10, 7.85, `Daily Trend — ${m.month}`);
+  trendChart(s, 0.43, 2.42, 7.35, 2.27, v.daily.map(r => dShort(r.date)), v.daily, B.bar, { name: 'Daily trend' });
+  label(s, 0.45, 4.66, 7.85, o.monthlyLabel || `Monthly Trend — ${(v.trend[0] || { m: m.ym }).m.slice(0, 4)} to Date`);
+  trendChart(s, 0.43, 4.91, 7.35, 2.51, v.trend.map(x => x.label), v.trend.map(x => x.v), B.bar, { name: 'Monthly trend' });
   const tiles = B.k === 'fpay'
     ? [[int(t && t.total), 'Complaints logged'], [int(t && t.open), 'Tickets still open'], [pct(v.prev && v.prev.sl), `Service level — ${m.prev}`]]
     : [[int(t && t.total), 'Complaints logged'], [pct(t && t.onTime), 'Closed tickets resolved on time'], [int(t && t.open), 'Tickets still open']];
-  tiles.forEach(([big, lab], i) => tile(s, 8.65 + i * 1.42, 2.2, 1.32, 0.98, big, lab, B.color));
-  label(s, 8.65, 3.38, 4.2, 'Top Call Reasons');
-  topTable(s, 8.65, 3.62, 4.2, 'Reason', B.reasons, true, { rowH: 0.24 });
-  label(s, 8.65, 5.2, 4.2, 'Top Complaint Drivers');
-  topTable(s, 8.65, 5.44, 4.2, 'Complaint Type', t && t.drivers, false, { rowH: 0.24 });
-  foot(s, o, n);
+  tiles.forEach(([big, lab], i) => tile(s, [8.62, 10.07, 11.53][i], 2.10, big, lab, B.color));
+  label(s, 8.62, 3.27, 4.28, 'Top Call Reasons', 11.5);
+  topTable(s, 8.62, 3.55, 4.28, 'Reason', B.reasons, true);
+  label(s, 8.62, 5.37, 4.28, 'Top Complaint Drivers', 11.5);
+  topTable(s, 8.62, 5.65, 4.28, 'Complaint Type', t && t.drivers, false);
 }
 function postpaidSlide(D, m, n, o) {
   const s = D.slide({ bg: 'FFFFFF' }), B = m.postpaid, v = B.v;
   head(s, o, m, 'Postpaid Insights', `${B.name} — Contact Centre Voice Channel`);
-  callout(s, 10.6, 1.0, 2.25, 1.05, B.color, pct(v.mtd && v.mtd.sl), `Service Level · ${m.month}`);
-  label(s, 0.5, 2.15, 12.3, `Daily Trend — ${m.month}`);
-  trendChart(s, 0.45, 2.38, 12.4, 2.95, v.daily.map(r => dShort(r.date)), v.daily, B.color, { catSize: 750, name: 'Daily trend' });
-  label(s, 0.5, 5.48, 6, 'Top 5 Call Reasons');
-  topTable(s, 0.5, 5.72, 6.0, 'Reason', B.reasons, true);
-  label(s, 6.85, 5.48, 6, 'Top 5 Tickets');
-  topTable(s, 6.85, 5.72, 6.0, 'Ticket Type', B.tickets, true);
   foot(s, o, n);
+  callout(s, 10.85, 0.95, 2.03, 1.12, B.color, pct(v.mtd && v.mtd.sl), `Service Level · ${m.month}`);
+  if (o.ppLabel === false) trendChart(s, 0.45, 2.18, 12.40, 3.26, v.daily.map(r => dShort(r.date)), v.daily, B.bar, { name: 'Daily trend' });   // the review's: the chart without its heading
+  else { label(s, 0.45, 1.93, 12.43, `Daily Trend — ${m.month}`); trendChart(s, 0.45, 2.21, 12.40, 3.18, v.daily.map(r => dShort(r.date)), v.daily, B.bar, { name: 'Daily trend' }); }
+  label(s, 0.45, 5.44, 6.05, 'Top 5 Call Reasons', 11.5);
+  topTable(s, 0.45, 5.72, 6.05, 'Reason', B.reasons, true, { rowH: 0.225 });
+  label(s, 6.83, 5.44, 6.05, 'Top 5 Tickets', 11.5);
+  topTable(s, 6.83, 5.72, 6.05, 'Top 5 TKT', B.tickets, true, { rowH: 0.225 });
 }
 const OUT_ROWS = 17;
 function outageSlides(D, m, n0, o) {
   const O = m.outages, L = O.list, pages = Math.max(1, Math.ceil(L.length / OUT_ROWS));
   for (let p = 0; p < pages; p++) {
     const s = D.slide({ bg: 'FFFFFF' });
-    logoAt(s, o, 0.45, 0.3, false);
-    s.text(8.2, 0.72, 4.65, 0.25, longDate(m.date), { size: 9, color: MUTED, align: 'right' });
-    s.text(0.5, 1.0, 9.5, 0.6, p ? 'Outages Insights (continued)' : 'Outages Insights', { size: 30, bold: true, font: 'Georgia', color: NAVY, name: 'Title' });
-    s.text(0.5, 1.6, 9.5, 0.32, `Service Incidents Logged — Last 3 Months (${O.span})`, { size: 12, italic: true, color: MUTED });
-    callout(s, 10.6, 1.0, 2.25, 1.05, NAVY, String(L.length), `Incidents logged, ${O.brands === 1 ? '1 brand' : O.brands + ' brands'}`);
+    logoTop(s, o);
+    tt(s, 8.30, 0.74, 4.55, 0.22, deckDate(m.date), { size: 9.5, color: MUTED, align: 'right' });
+    tt(s, 0.45, 1.02, 8.10, 0.55, p ? 'Outages Insights (continued)' : 'Outages Insights', { size: 30, bold: true, font: HEAD, color: NAVY, name: 'Title' });
+    tt(s, 0.45, 1.56, 8.10, 0.32, `Service Incidents Logged — Last 3 Months (${O.span})`, { size: 13.5, italic: true, color: MUTED });
+    callout(s, 10.85, 0.95, 2.03, 1.12, NAVY, String(L.length), `Incidents logged, ${O.brands === 1 ? '1 brand' : O.brands + ' brands'}`);
     const part = L.slice(p * OUT_ROWS, (p + 1) * OUT_ROWS);
-    if (!part.length) s.text(0.5, 2.6, 12.3, 0.4, `No outages logged in ${O.span}.`, { size: 12, color: MUTED, italic: true });
+    if (!part.length) tt(s, 0.45, 2.6, 12.3, 0.4, `No outages logged in ${O.span}.`, { size: 12, color: MUTED, italic: true });
     else {
       const rows = [['Date', 'Outage and Issue', 'Affected Brand', 'Description']]
         .concat(part.map(x => [dShort(x.date), fit(x.title, 2.7), fit((Array.isArray(x.brands) ? x.brands : []).map(k => BRAND_NAME[k] || k).join(', '), 1.95), fit(x.desc, 6.8)]));
-      s.table(0.5, 2.35, rows, { cols: [0.9, 2.7, 1.95, 6.8], rowH: 0.25, size: 8, align: ['center', 'center', 'center', 'center'], head: { fill: NAVY, color: 'FFFFFF' }, border: 'D9D9D9' });
+      s.table(0.45, 2.35, rows, { cols: [0.9, 2.7, 1.95, 6.85], rowH: 0.25, size: 8.5, align: ['center', 'center', 'center', 'center'], head: { fill: NAVY, color: 'FFFFFF' }, border: 'E2E6EF', ink: INK });
     }
     foot(s, o, n0 + p);
   }
   return pages;
 }
 function cover(D, m, o) {
-  const s = D.slide({ bg: NAVY });
-  logoAt(s, o, 0.55, 0.45, true);
-  s.text(0.55, 2.7, 11, 0.75, 'Member Care Performance Review', { size: 36, bold: true, font: 'Georgia', color: 'FFFFFF', name: 'Title' });
-  s.text(0.55, 3.5, 11, 0.35, o.coverSub || 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay  —  Weekly Commercial Presentation', { size: 13, color: PALE });
-  s.rect(0.55, 4.22, 2.2, 0.02, { fill: '5B6BA8' });
-  s.text(0.55, 4.45, 4, 0.3, longDate(m.date), { size: 10, color: PALE });
-  if (o.presenter) s.text(0.55, 6.62, 7, 0.28, o.presenter, { size: 10, bold: true, color: 'FFFFFF' });
-  if (o.title || o.org) s.text(0.55, 6.88, 7, 0.28, [o.title, o.org].filter(Boolean).join(' — '), { size: 9, color: PALE });
-  squares(s, 10.7, 4.95);
+  const s = D.slide({ bg: NAVY }), G = logos(o);
+  squares(s, SQ_COVER);
+  const mark = pic(s, G.mark || o.logo, 0.55, 0.50, 0.48, 0.48, { maxW: 1.5 });
+  tt(s, mark ? 1.13 : 0.55, 0.63, 3.00, 0.40, (o.org || 'Beyond One').toUpperCase(), { size: 17, bold: true, font: HEAD, color: 'FFFFFF', spc: 2 });
+  tt(s, 0.55, 2.65, 11.50, 0.90, 'Member Care Performance Review', { size: 40, bold: true, font: HEAD, color: 'FFFFFF', name: 'Title' });
+  tt(s, 0.55, 3.55, 10.50, 0.45, o.coverSub || 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay  —  Weekly Commercial Presentation', { size: 16, color: PALE });
+  s.line(0.58, 4.25, 2.78, 4.25, { color: RULE, w: 1 });
+  tt(s, 0.55, 4.42, 4.00, 0.35, deckDate(m.date), { size: 13, color: DIM });
+  const who = [o.presenter ? [{ t: o.presenter, size: 12.5, bold: true, color: 'FFFFFF' }] : null, o.title || o.org ? [{ t: [o.title, o.org].filter(Boolean).join(' — '), size: 11.5, color: DIM }] : null].filter(Boolean);
+  if (who.length) tt(s, 0.55, 6.55, 6.00, 0.60, who, {});
 }
 function thanks(D, o) {
-  const s = D.slide({ bg: NAVY });
-  logoAt(s, o, 0.55, 0.45, true);
-  s.text(0.5, 3.0, 12.33, 0.8, 'Thank You', { size: 40, bold: true, font: 'Georgia', color: 'FFFFFF', align: 'center', name: 'Title' });
-  s.text(0.5, 3.85, 12.33, 0.35, o.thanksSub || 'Member Care Performance Review  —  Weekly Commercial Presentation', { size: 13, color: PALE, align: 'center' });
+  const s = D.slide({ bg: NAVY }), G = logos(o);
+  squares(s, SQ_THANKS);
+  pic(s, G.mark || o.logo, 6.39, 2.15, 0.56, 0.56, { center: true, middle: true, maxW: 1.5 });
+  tt(s, 0, 3.05, 13.33, 1.00, 'Thank You', { size: 44, bold: true, font: HEAD, color: 'FFFFFF', align: 'center', name: 'Title' });
+  tt(s, 0, 3.95, 13.33, 0.40, o.thanksSub || 'Member Care Performance Review  —  Weekly Commercial Presentation', { size: 14, color: PALE, align: 'center' });
   const who = [o.presenter, o.title, o.org].filter(Boolean).join('  ·  ');
-  if (who) s.text(0.5, 6.85, 12.33, 0.3, who, { size: 9, color: PALE, align: 'center' });
-  squares(s, 10.7, 4.95);
+  if (who) tt(s, 0, 6.85, 13.33, 0.35, who, { size: 11, color: DIM, align: 'center' });
 }
-/** the PowerPoint: o = { presenter, title (their job title), org (the company), logo: { png, w, h } } */
+/** the PowerPoint: o = { presenter, title (their job title), org (the company), logo (the tool's: { png, w, h }), logos (the decks'
+    own pictures: mark, full, virgin, friendi, fpay) } */
 function deck(m, o = {}) {
-  const D = P.create({ headFont: 'Georgia', bodyFont: 'Calibri' });
+  const D = P.create({ headFont: HEAD, bodyFont: 'Calibri' });
   cover(D, m, o);
   m.brands.forEach((B, i) => brandSlide(D, m, B, i + 2, o));
   postpaidSlide(D, m, 5, o);
@@ -14081,7 +14128,7 @@ function deck(m, o = {}) {
 }
 const fileName = date => `Beyond_One_Member_Care_Review - ${longDate(date)}.pptx`;
 return { model, deck, fileName, brandVoice, ticketBrand, longDate, dShort, BRANDS, POSTPAID,
-  parts: { cover, thanks, brandSlide, postpaidSlide, logoAt, foot, callout, label, fit, int, pct, NAVY, MUTED, MON } };   // for the Performance Review deck (prdeck.js)
+  parts: { cover, thanks, brandSlide, postpaidSlide, logoTop, pic, tt, foot, callout, label, fit, int, pct, deckDate, logos, NAVY, MUTED, INK, HEAD, FRAME, MON } };   // for the Performance Review deck (prdeck.js)
 })(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'));
 if (typeof module !== 'undefined') module.exports = WcDeck;
 
@@ -14403,6 +14450,7 @@ function cellsOf(text) {
 function monthOf(c) {
   let t = sp(c).toLowerCase(), until = null, x;
   if ((x = t.match(/^(.*\S)\s+(?:to|till|until|-|–)\s+(\d{1,2})(?:st|nd|rd|th)?$/))) { t = x[1]; until = +x[2]; }
+  if ((x = t.match(/^until\s+(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?$/)) && monOf(x[2])) return { m: monOf(x[2]), y: null, until: +x[1] };   // Until 05 Oct
   if ((x = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/))) { const a = +x[1], b = +x[2], m = b === 1 ? a : a === 1 && b > 12 ? b : a; return m >= 1 && m <= 12 ? { m, y: yy(x[3]), until } : null; }   // 11/1/2026: the month's first day, as Outlook writes it
   if ((x = t.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/))) { const m = +x[2]; return m >= 1 && m <= 12 ? { m, y: +x[1], until } : null; }
   if ((x = t.match(/^(\d{1,2})[-\s]([a-z]{3,9})\.?(?:[-\s](\d{2,4}))?$/)) && monOf(x[2])) return { m: monOf(x[2]), y: x[3] ? yy(x[3]) : +x[1] > 1 ? yy(x[1]) : null, until };   // 1-Jan (its first day), 26-Jan (the year first)
@@ -14441,99 +14489,184 @@ function tablesOf(text, ref) {
     while (cols.length < n) cols.unshift(`Value ${n - cols.length}`);
     const rows = t.rows.map(r => {
       const y = r.y || (r.m > R.m ? R.y - 1 : R.y), ym = `${y}-${pad(r.m)}`;
-      return { ym, until: r.until, label: r.until ? `Until ${pad(r.until)} ${MON[r.m - 1]}` : `${MON[r.m - 1]}-${String(y).slice(2)}`, vals: Array.from({ length: n }, (_, k) => r.vals[k] ?? null) };
+      const until = r.until ? `Until ${pad(r.until)} ${MON[r.m - 1]}` : '';
+      return { ym, until: r.until, label: until || `${MON[r.m - 1]}-${String(y).slice(2)}`, label2: until || `${String(y).slice(2)}-${MON[r.m - 1]}`, vals: Array.from({ length: n }, (_, k) => r.vals[k] ?? null) };
     });
     return { key: (KEYS.find(([re]) => re.test(t.title)) || [, 'other'])[1], title: t.title, first: tidy(head.join(' ')) || 'Month', cols, rows };
   });
 }
 
-// ---------------------------------------------------------------- the slides
-const COLORS = ['1F5F8B', 'ED7D31', '2E8B57', '35A7DC', 'A23B9C', '7F7F7F', 'C9870A'];
+// ---------------------------------------------------------------- the MC KPIs workbook and the decks' own logos
+const SERIAL = v => (typeof v === 'number' && v > 20000 && v < 80000 ? new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000).toISOString().slice(0, 10) : null);
+/** a cell that is a day: an Excel date number, a Date, or 2026-10-05 / 5/10/2026 / 5-Oct-26 */
+function dayOf(v) {
+  if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0, 10);
+  const d = SERIAL(v); if (d) return d;
+  const t = sp(v).toLowerCase(); let x;
+  if ((x = t.match(/^(\d{4})-(\d{2})-(\d{2})/))) return `${x[1]}-${x[2]}-${x[3]}`;
+  if ((x = t.match(/^(\d{1,2})[-\s]([a-z]{3,9})[-\s](\d{2,4})$/)) && monOf(x[2])) return `${yy(x[3])}-${pad(monOf(x[2]))}-${pad(+x[1])}`;
+  if ((x = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) return `${x[3]}-${pad(+x[2])}-${pad(+x[1])}`;
+  return null;
+}
+const num = v => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && /^-?[\d,.]+$/.test(v.trim()) ? parseFloat(v.replace(/,/g, '')) : null);
+const cellText = v => sp(v == null ? '' : v instanceof Date ? '' : String(v));
+/**
+ * The MC KPIs workbook the team's charts are linked to: its "Reactivate the Booking code" sheet (the requests by day, Virgin and
+ * Friendi, with the average time to close; and by month) and its "OTP & Termination" sheet (OTP calls by day; final termination
+ * calls by month). sheets: [{ name, rows }] (rows of cells, dates as Excel numbers). Each part is found by its heading.
+ */
+function kpiOf(sheets) {
+  const out = {};
+  const rb = (sheets || []).find(x => /reactivat|booking\s*code|rebook/i.test(x.name));
+  if (rb) {
+    const R = rb.rows || [];
+    for (let r = 0; r < R.length; r++) {
+      const row = R[r] || [], vi = row.findIndex(c => /^virgin$/i.test(cellText(c))), fi = row.findIndex(c => /^friendi$/i.test(cellText(c)));
+      if (vi < 0 || fi < 0) continue;
+      const dc = Math.min(vi, fi) - 1, ac = row.findIndex(c => /avg|time to close/i.test(cellText(c))), first = (R[r + 1] || [])[dc];
+      if (dc < 0) continue;
+      if (dayOf(first) && !out.byDay) {
+        out.byDay = [];
+        for (let k = r + 1; k < R.length; k++) { const q = R[k] || [], d = dayOf(q[dc]); if (!d) break; out.byDay.push({ date: d, virgin: num(q[vi]), friendi: num(q[fi]), avg: ac >= 0 ? num(q[ac]) : null }); }
+      } else if (monthOf(cellText(first)) && !out.byMonth) {
+        const L = [];
+        for (let k = r + 1; k < R.length; k++) { const q = R[k] || [], c = cellText(q[dc]); if (!monthOf(c)) break; L.push([c, num(q[vi]), num(q[fi])]); }
+        if (L.length) out.byMonth = L;
+      }
+    }
+  }
+  const ot = (sheets || []).find(x => /otp|terminat/i.test(x.name));
+  if (ot) {
+    const R = ot.rows || [], at = re => { for (let r = 0; r < R.length; r++) { const c = (R[r] || []).findIndex(v => re.test(cellText(v))); if (c >= 0) return [r, c]; } return null; };
+    const series = (pos, asMonth) => {
+      if (!pos || pos[1] < 1) return null; const [r0, c] = pos, L = [];
+      for (let k = r0 + 1; k < R.length; k++) { const q = R[k] || [], d = dayOf(q[c - 1]), v = num(q[c]); if (d && v != null) L.push(asMonth ? { ym: d.slice(0, 7), n: v } : { date: d, n: v }); }
+      return L.length ? L : null;
+    };
+    out.otp = series(at(/^otp\s*count/i), false);
+    out.term = series(at(/termination\s*count|^final\s*termination/i), true);
+  }
+  return out;
+}
+/** the logos in one of the team's decks: the Beyond One mark (the dark slides), the mark with the name (the other slides) and the
+    brands' logos (top right of their slides); by the pictures' own names, else by where they sit. z: a zip ({ names, text, bytes }) */
+async function logosOf(z) {
+  const out = {}, slides = z.names().filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a, b) => +a.match(/(\d+)\.xml$/)[1] - +b.match(/(\d+)\.xml$/)[1]);
+  for (const sn of slides) {
+    const xml = (await z.text(sn)) || '', rels = (await z.text(sn.replace('slides/', 'slides/_rels/') + '.rels')) || '';
+    const rel = {}; for (const m of rels.matchAll(/<Relationship\b[^>]*>/g)) { const id = (m[0].match(/Id="([^"]+)"/) || [])[1], t = (m[0].match(/Target="([^"]+)"/) || [])[1]; if (id && t) rel[id] = t; }
+    const text = [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(m => m[1]).join(' '), dark = /<p:bg>[\s\S]*?srgbClr val="1E2761"/i.test(xml) || /Thank You/.test(text);
+    const brand = /FRiENDi Pay\s+—/.test(text) ? 'fpay' : /FRiENDi Mobile\s+—/.test(text) ? 'friendi' : /Virgin Mobile\s+—/.test(text) ? 'virgin' : null;
+    for (const m of xml.matchAll(/<p:pic>([\s\S]*?)<\/p:pic>/g)) {
+      const b = m[1], descr = ((b.match(/descr="([^"]*)"/) || [])[1] || '').toLowerCase(), id = (b.match(/r:embed="([^"]+)"/) || [])[1], off = b.match(/<a:off x="(-?\d+)" y="(-?\d+)"/);
+      const t = id && rel[id]; if (!t || !/\.(png|jpe?g|gif)$/i.test(t)) continue;
+      const x = off ? +off[1] / 914400 : 0, y = off ? +off[2] / 914400 : 0;
+      const key = /mark/.test(descr) ? 'mark' : /full|beyond/.test(descr) ? 'full' : /friendi.?pay|fpay/.test(descr) ? 'fpay' : /friendi/.test(descr) ? 'friendi' : /virgin/.test(descr) ? 'virgin'
+        : x > 11 && y < 1 && brand ? brand : x < 1.2 && y < 1.2 ? (dark ? 'mark' : 'full') : dark && y < 3 ? 'mark' : null;
+      if (!key || out[key]) continue;
+      const path = 'ppt/' + t.replace(/^\.\.\//, '').replace(/^\/?ppt\//, ''), bytes = await z.bytes(path);
+      if (bytes && bytes.length) out[key] = { bytes, type: /\.png$/i.test(t) ? 'image/png' : /\.gif$/i.test(t) ? 'image/gif' : 'image/jpeg' };
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- the slides (as the team's deck has them)
+const THEME = ['156082', 'E97132', '196B24', '0F9ED5', 'A02B93', '4EA72E'];   // the deck's chart colours
 const isTotal = c => /^total$/i.test(c.trim());
 const lastRow = t => t.rows[t.rows.length - 1];
-/** a chart of a table: a column per series (the Total left out when there are others), a share (%) as a line on its own axis */
+/** a chart of a table: a column per series (the Total and any share left out); labels on all, or on the biggest series */
 function chartOf(t, o = {}) {
-  const rows = o.rows || t.rows, idx = t.cols.map((c, i) => i), pcs = idx.filter(i => rows.some(r => r.vals[i] != null && r.vals[i] <= 1.5) && /%|share|rate/i.test(t.cols[i]));
-  let bars = idx.filter(i => !pcs.includes(i)); if (bars.length > 1) bars = bars.filter(i => !isTotal(t.cols[i]));
+  const rows = o.rows || t.rows, idx = t.cols.map((c, i) => i).filter(i => !/%|share|rate/i.test(t.cols[i]));
+  let bars = idx; if (bars.length > 1) bars = bars.filter(i => !isTotal(t.cols[i]));
   const sums = bars.map(i => rows.reduce((a, r) => a + (r.vals[i] || 0), 0)), big = bars[sums.indexOf(Math.max(...sums))];
   const lab = o.labels || (bars.length <= 2 ? 'all' : 'big');
   return {
-    cats: rows.map(r => r.label), gap: bars.length > 3 ? 40 : 60, overlap: -10, catRot: rows.length > 12 ? -45 : undefined, catSize: rows.length > 12 ? 700 : 800, barFmt: '#,##0',
-    bars: bars.map((i, k) => ({ name: t.cols[i], values: rows.map(r => r.vals[i]), color: COLORS[k % COLORS.length], labels: lab === 'all' || (lab === 'big' && i === big) })),
-    // the share's axis runs to about twice its highest value, so its line sits between the short and the tall columns
-    line: pcs.length ? { name: o.lineName || t.cols[pcs[0]], values: rows.map(r => r.vals[pcs[0]]), color: '1F2A5C', fmt: '0%', max: Math.min(1, Math.max(0.5, Math.ceil(Math.max(...rows.map(r => r.vals[pcs[0]] || 0)) * 22) / 10)), min: 0, labelSize: 700 } : undefined,
+    cats: rows.map(r => (o.yearFirst ? r.label2 || r.label : r.label)), d3: !!o.d3, gap: o.gap ?? 150, overlap: o.overlap, catRot: rows.length > 12 ? -45 : undefined, catSize: 900, axisSize: 900, axisColor: '0E2841',
+    border: WD.parts.FRAME, gridColor: 'D9D9D9', legendSize: 900, labelSize: 900, labelColor: '0E2841', barFmt: '#,##0',
+    bars: bars.map((i, k) => ({ name: t.cols[i], values: rows.map(r => r.vals[i]), color: THEME[k % THEME.length], grad: o.grad !== false, labels: lab === 'all' || (lab === 'first' && k === 0) || (lab === 'big' && i === big) })),
   };
 }
-const since = t => { const r = lastRow(t); return r.until ? r.label : r.label.replace('-', ' 20'); };
-function slideHead(D, m, o, title) {
+const since = t => lastRow(t).until ? lastRow(t).label : `To ${lastRow(t).label}`;
+const kick = (s, m, o) => WD.parts.tt(s, 8.42, 0.11, 4.55, 0.22, `MC Service Level Stabilization  ·  ${WD.parts.deckDate(m.date)}`, { size: 9.5, color: WD.parts.MUTED, align: 'right' });
+const title = (s, x, y, t, size = 30) => WD.parts.tt(s, x, y, 8.10, 0.55, t, { size, bold: true, font: WD.parts.HEAD, color: WD.parts.NAVY, name: 'Title' });
+const sub = (s, x, y, t, w = 7.85) => WD.parts.tt(s, x, y, w, 0.28, t, { size: 12.5, bold: true, color: WD.parts.NAVY });
+/** a place a table the email lacks */
+function missing(s, x, y, w, h, name) {
+  s.rect(x, y, w, h, { fill: 'F7F8FA', line: 'E3E5EA', radius: 0.03 });
+  s.text(x, y, w, h, `${name}: not in the email`, { size: 11, italic: true, color: WD.parts.MUTED, align: 'center', valign: 'middle' });
+}
+function complaints(D, m, o, by, n) {
   const W = WD.parts, s = D.slide({ bg: 'FFFFFF' });
-  W.logoAt(s, o, 0.45, 0.3, false);
-  s.text(8.2, 0.72, 4.65, 0.25, `${o.kicker}  ·  ${WD.longDate(m.date)}`, { size: 9, color: W.MUTED, align: 'right' });
-  s.text(0.5, 0.95, 9.5, 0.6, title, { size: 30, bold: true, font: 'Georgia', color: W.NAVY, name: 'Title' });
-  return s;
+  W.logoTop(s, o); kick(s, m, o); title(s, 0.45, 1.02, 'Complaints Insights');
+  const at = (t, name, lx, ly, x, y, w, h, c) => { if (!t) { sub(s, lx, ly, name); missing(s, x, y, w, h, name); return; } sub(s, lx, ly, `${name} – ${since(t)}`); s.chart(x, y, w, h, chartOf(t, { d3: true, ...c }), { name }); };
+  const net = by('network'), netRows = net ? (r => (r.length >= 6 ? r : net.rows.slice(-13)))(net.rows.filter(r => r.ym >= `${lastRow(net).ym.slice(0, 4)}-01`)) : null;
+  at(by('webapp'), 'Web + App TKTs', 5.12, 1.51, 0.43, 1.88, 12.45, 2.63, { labels: 'all' });
+  at(net, 'Network TKT', 0.45, 4.56, 0.43, 4.85, 6.04, 2.54, { rows: netRows || undefined, labels: 'big', yearFirst: true });
+  at(by('social'), 'Social Media issue TKTs', 7.16, 4.57, 6.67, 4.84, 6.22, 2.53, { labels: 'all', yearFirst: true });
+  W.foot(s, o, n);
 }
-/** a table's chart in a place on a slide, with its title over it; "not in the email" when the email has no such table */
-function place(s, t, x, y, w, h, name, o = {}) {
-  const W = WD.parts;
-  if (!t) { W.label(s, x + 0.05, y, w, `${name}`); s.rect(x, y + 0.27, w, h - 0.27, { fill: 'F7F8FA', line: 'E3E5EA', radius: 0.04 }); s.text(x, y + 0.27, w, h - 0.27, 'Not in the email', { size: 11, italic: true, color: W.MUTED, align: 'center', valign: 'middle' }); return; }
-  W.label(s, x + 0.05, y, w, `${o.title || t.title} – ${since(t)}`);
-  s.rect(x, y + 0.27, w, h - 0.27, { fill: 'FFFFFF', line: 'E3E5EA', radius: 0.03 });
-  s.chart(x + 0.05, y + 0.32, w - 0.1, h - 0.37, chartOf(t, o), { name });
-}
-/** the month so far against the month before, for each table */
-function soFar(s, tables, x, y, w, h) {
-  const W = WD.parts, rows = [];
-  const add = (name, t, i) => { const L = t.rows, a = L[L.length - 1], b = L.length > 1 ? L[L.length - 2] : null; rows.push([W.fit(name, w - 2.5), { t: W.int(a.vals[i]), align: 'right' }, { t: b ? W.int(b.vals[i]) : '–', align: 'right' }]); };
-  const total = t => { const i = t.cols.findIndex(isTotal); return i >= 0 ? i : 0; };
-  for (const t of tables) {
-    if (t.key === 'rebooking') { t.cols.forEach((c, i) => { if (!isTotal(c)) add(`Rebooking · ${c}`, t, i); }); }
-    else if (t.key === 'webapp') { t.cols.forEach((c, i) => { if (!/%/.test(c)) add(i ? 'All complaints' : 'Web + App TKTs', t, i); }); }
-    else add(t.key === 'network' ? 'Network TKTs' : t.key === 'social' ? 'Social media TKTs' : t.key === 'vnet' ? 'Vnet complaints' : t.title, t, total(t));
+const dd = d => `${d.slice(8, 10)} ${MON[+d.slice(5, 7) - 1]}`, dm = d => `${+d.slice(8, 10)}-${MON[+d.slice(5, 7) - 1]}`;
+function rebooking(D, m, o, t, K, n) {
+  const W = WD.parts, s = D.slide({ bg: 'FFFFFF' }), day = K.byDay && K.byDay.length ? K.byDay.slice(-22) : null;
+  title(s, 0.43, 0.47, 'Complaints Insights');
+  sub(s, 0.43, 1.16, day ? `Rebooking TKTs – From ${dm(day[0].date)} To ${dd(day[day.length - 1].date)}` : t ? `Rebooking TKTs – ${since(t)}` : 'Rebooking TKTs');
+  const frame = { border: W.FRAME, gridColor: 'D9D9D9', axisSize: 900, axisColor: '0E2841', legendSize: 900, labelSize: 900, labelColor: '0E2841', titleSize: 1600 };
+  if (day) {
+    s.chart(2.16, 1.58, 9.79, 2.74, { ...frame, title: 'Booking Code Reactivations by Day', yTitle: 'Requests', y2Title: 'Avg Time to Close (hh:mm)', cats: day.map(r => dm(r.date)), gap: 219, overlap: -27, catSize: 800,
+      bars: [{ name: 'Virgin', values: day.map(r => r.virgin), color: THEME[0], grad: true, labels: true }, { name: 'Friendi', values: day.map(r => r.friendi), color: THEME[1], grad: true }],
+      line: day.some(r => r.avg != null) ? { name: 'Avg Time to Close', values: day.map(r => r.avg), color: THEME[2], w: 2.5, fmt: '[h]:mm', max: null, min: 0, labels: false, smooth: false, marker: { symbol: 'circle', size: 6, color: THEME[2] } } : undefined }, { name: 'Rebooking by day' });
   }
-  const last = tables.length ? lastRow(tables[0]) : null, prev = tables.length && tables[0].rows.length > 1 ? tables[0].rows[tables[0].rows.length - 2] : null;
-  W.label(s, x + 0.05, y, w, 'This Month So Far');
-  const head = ['Tickets', { t: last ? last.label : 'This month', align: 'right' }, { t: prev ? prev.label : 'Before', align: 'right' }];
-  const rh = Math.min(0.26, (h - 0.35) / Math.max(rows.length + 1, 1));
-  s.table(x, y + 0.32, [head, ...rows.slice(0, 12)], { cols: [w - 2.4, 1.2, 1.2], rowH: rh, size: 8.5, head: { fill: W.NAVY, color: 'FFFFFF' }, border: 'D9D9D9' });
+  const T = t || (K.byMonth ? { cols: ['Virgin', 'FRiENDi'], rows: K.byMonth.map(([c, v, f]) => { const L = monthOf(c); return { label: c, label2: c, vals: [v, f], until: L && L.until }; }) } : null);
+  const [x, y, w, h] = day ? [2.11, 4.42, 9.84, 2.99] : [1.75, 1.62, 9.84, 5.45];
+  if (T) {
+    const vi = T.cols.findIndex(c => /virgin/i.test(c)), fi = T.cols.findIndex(c => /friendi/i.test(c));
+    s.chart(x, y, w, h, { ...frame, title: 'Booking Code Reactivations by Month', cats: T.rows.map(r => r.label2 || r.label), gap: 219, overlap: -27,
+      bars: [{ name: 'Virgin', values: T.rows.map(r => r.vals[vi >= 0 ? vi : 0]), color: THEME[0], labels: true }, { name: 'FRiENDi', values: T.rows.map(r => r.vals[fi >= 0 ? fi : 1]), color: THEME[1] }] }, { name: 'Rebooking by month' });
+  } else missing(s, x, y, w, h, 'Rebooking TKTs');
+}
+function otpSlide(D, m, o, K, n) {
+  const W = WD.parts, s = D.slide({ bg: 'FFFFFF' }), otp = K.otp ? K.otp.slice(-52) : null, term = K.term ? K.term.filter(r => r.ym >= `${K.term[K.term.length - 1].ym.slice(0, 4)}-01`) : null;
+  const end = otp ? otp[otp.length - 1].date : m.ref, frame = { border: W.FRAME, gridColor: 'D9D9D9', axisSize: 900, axisColor: '0E2841', labelSize: 900, labelColor: '000000', legend: false };
+  W.logoTop(s, o); kick(s, m, o);
+  title(s, 0.45, 0.83, 'OTP Calls', 24); sub(s, 2.17, 1.03, `Until ${dd(end)}`, 6.67);
+  if (otp) s.chart(1.31, 1.34, 10.98, 2.97, { ...frame, cats: otp.map(r => `${dm(r.date)}-${r.date.slice(2, 4)}`), gap: 100, overlap: -24, catRot: -45, catSize: 800,
+    bars: [{ name: 'OTP Count', values: otp.map(r => r.n), color: THEME[0], grad: true, trend: [{ type: 'exp', dash: 'sysDash' }, { type: 'linear', dash: 'sysDash' }] }] }, { name: 'OTP calls' });
+  else missing(s, 1.31, 1.34, 10.98, 2.97, 'OTP calls');
+  W.tt(s, 0.19, 4.24, 6.67, 0.50, 'Final termination calls', { size: 24, bold: true, font: W.HEAD, color: W.NAVY }); sub(s, 3.94, 4.37, `Until ${dd(end)}`, 6.67);
+  if (term) s.chart(1.31, 4.68, 10.98, 2.55, { ...frame, cats: term.map(r => `${MON[+r.ym.slice(5) - 1]}-${r.ym.slice(2, 4)}`), gap: 150,
+    bars: [{ name: 'Final termination Count', values: term.map(r => r.n), color: THEME[0], labels: true, trend: [{ type: 'exp', dash: 'sysDot' }] }] }, { name: 'Final termination calls' });
+  else missing(s, 1.31, 4.68, 10.98, 2.55, 'Final termination calls');
+  W.foot(s, o, n);
 }
 /**
- * the Performance Review: m = WcDeck.model() for the presentation's day (the brands' slides), tables = tablesOf() from the email,
- * o = { presenter, title, org, logo }
+ * the Performance Review, as the team's deck: m = WcDeck.model() for the presentation's day (the brands' slides), tables =
+ * tablesOf() from the email, o = { presenter, title, org, logo, logos, kpi: kpiOf() of the MC KPIs workbook }
  */
 function deck(m, tables, o0 = {}) {
-  const W = WD.parts, o = { ...o0, kicker: 'Member Care Performance Review', coverSub: 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay', thanksSub: 'Member Care Performance Review' };
-  const D = P.create({ headFont: 'Georgia', bodyFont: 'Calibri' }), by = k => tables.find(t => t.key === k) || null;
+  const W = WD.parts, o = { ...o0, kicker: 'Weekly Commercial Presentation', coverSub: 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay', monthlyLabel: 'Monthly Trend', ppLabel: false };
+  const D = P.create({ headFont: W.HEAD, bodyFont: 'Calibri' }), by = k => tables.find(t => t.key === k) || null, K = o0.kpi || {};
   let n = 2;
   W.cover(D, m, o);
   W.brandSlide(D, m, m.brands[0], n++, o);   // Virgin Mobile
   W.brandSlide(D, m, m.brands[1], n++, o);   // FRiENDi Mobile
   W.postpaidSlide(D, m, n++, o);
-  // Complaints Insights: Web + App over the whole width, Network and Social media under it
-  let s = slideHead(D, m, o, 'Complaints Insights');
-  place(s, by('webapp'), 0.45, 1.62, 12.45, 2.7, 'Web + App TKTs', { lineName: 'Web + App share of all complaints', labels: 'all' });
-  const net = by('network'), netRows = net ? (r => (r.length >= 6 ? r : net.rows.slice(-13)))(net.rows.filter(r => r.ym >= `${lastRow(net).ym.slice(0, 4)}-01`)) : null;
-  place(s, net, 0.45, 4.45, 6.15, 2.62, 'Network TKTs', { rows: netRows || undefined, labels: 'big' });
-  place(s, by('social'), 6.75, 4.45, 6.15, 2.62, 'Social Media issue TKTs', { labels: 'all' });
-  W.foot(s, o, n++);
-  // Complaints Insights: Rebooking by month over the whole width, Vnet and the month so far under it
-  s = slideHead(D, m, o, 'Complaints Insights');
-  place(s, by('rebooking'), 0.45, 1.62, 12.45, 2.7, 'Rebooking TKTs', { title: `${(by('rebooking') || {}).title || 'Rebooking TKTs'} (booking code reactivations)`, labels: 'all' });
-  place(s, by('vnet'), 0.45, 4.45, 6.15, 2.62, 'Vnet Complaints', { labels: 'all' });
-  soFar(s, ['rebooking', 'network', 'webapp', 'social', 'vnet'].map(by).filter(Boolean), 6.75, 4.45, 6.15, 2.62);
-  W.foot(s, o, n++);
-  // any other table in the email: two a slide
+  complaints(D, m, o, by, n++);
+  rebooking(D, m, o, by('rebooking'), K, n++);
+  if (K.otp || K.term) otpSlide(D, m, o, K, n++);
+  // a table the deck does not know (a new one in the email): two a slide
   const other = tables.filter(t => t.key === 'other');
   for (let i = 0; i < other.length; i += 2) {
-    s = slideHead(D, m, o, 'More Insights');
-    place(s, other[i], 0.45, 1.62, 12.45, 2.7, other[i].title, { rows: other[i].rows.slice(-14) });
-    if (other[i + 1]) place(s, other[i + 1], 0.45, 4.45, 12.45, 2.62, other[i + 1].title, { rows: other[i + 1].rows.slice(-14) });
+    const s = D.slide({ bg: 'FFFFFF' });
+    W.logoTop(s, o); kick(s, m, o); title(s, 0.45, 1.02, 'More Insights');
+    [[other[i], 1.51, 1.88, 2.63], [other[i + 1], 4.56, 4.85, 2.54]].forEach(([t, ly, y, h]) => { if (!t) return; sub(s, 0.45, ly, `${t.title} – ${since(t)}`); s.chart(0.43, y, 12.45, h, chartOf(t, { rows: t.rows.slice(-14) }), { name: t.title }); });
     W.foot(s, o, n++);
   }
   W.thanks(D, o);
   return D;
 }
 const fileName = date => `MC_Performance_Review - ${WD.longDate(date)}.pptx`;
-return { tablesOf, cellsOf, monthOf, chartOf, deck, fileName };
+return { tablesOf, cellsOf, monthOf, chartOf, kpiOf, logosOf, dayOf, deck, fileName };
 })(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'), typeof WcDeck !== 'undefined' ? WcDeck : require('./wcdeck.js'));
 if (typeof module !== 'undefined') module.exports = PrDeck;
 </script>
@@ -24987,7 +25120,7 @@ for (const page of [$('wfmDm'), $('wfmRb')]) {
 // daily brand emails keep; the call reasons, complaints and tickets from the month-to-date Call history and Tickets exports dropped
 // here (read in this browser, not kept); the outages from a list the team keeps here (config/outages). The deck is made here
 // (WcDeck) and the email to the VP comes as an Outlook draft with the deck attached; the tool never sends anything itself.
-Object.assign(state, { wcDate: '', wcCfg: null, outages: null, wcBusy: '', wcBuilt: '' });
+Object.assign(state, { wcDate: '', wcCfg: null, outages: null, wcBusy: '', wcBuilt: '', deckLogos: null });
 const WC = { calls: {}, tickets: {}, comb: {}, fpay: null, files: [], loaded: null, boot: null, ready: false, saveT: 0, open: { paste: false, set: false }, pasteText: '' };
 const WC0 = { presenter: '', title: '', to: '', cc: '', onTimeH: 72 };
 const WC_BRAND = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay' };
@@ -25025,6 +25158,7 @@ function wcLoad() {
     if (!state.db) return;
     try { const s = await state.db.doc('config/weekly').get(); if (s.exists) { const d = s.data() || {}; state.wcCfg = { presenter: String(d.presenter || '').slice(0, 120), title: String(d.title || '').slice(0, 160), to: String(d.to || '').slice(0, 600), cc: String(d.cc || '').slice(0, 600), onTimeH: +d.onTimeH || WC0.onTimeH }; } } catch (e) { /* the defaults */ }
     try { const s = await state.db.doc('config/outages').get(); if (s.exists) { const d = s.data() || {}; if (Array.isArray(d.list)) state.outages = d.list.map(wcOutageOk).filter(Boolean); } } catch (e) { /* none yet */ }
+    try { const s = await state.db.doc('config/decklogos').get(); if (s.exists) state.deckLogos = deckLogosOk(s.data()); } catch (e) { /* the tool's logo */ }
   })();
   return WC.loaded;
 }
@@ -25041,6 +25175,21 @@ function wcSaveOutages(now) {
     queueWrite('config/outages', () => state.db.doc('config/outages').set(body)).catch(e => toast(`The outages were not saved (${(e && e.code) || 'error'}).`));
   };
   if (now) go(); else WC.saveT = setTimeout(go, 600);
+}
+/** the logos taken from one of the team's decks (config/decklogos): PNG pictures the tool made itself, nothing else is kept */
+const DECK_LOGOS = { mark: 'Beyond One mark', full: 'Beyond One', virgin: 'Virgin Mobile', friendi: 'FRiENDi Mobile', fpay: 'FRiENDi Pay' };
+function deckLogosOk(d) {
+  if (!d || typeof d !== 'object') return null; const out = {};
+  for (const k of Object.keys(DECK_LOGOS)) { const x = d[k]; if (x && typeof x.dataUrl === 'string' && /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(x.dataUrl) && x.dataUrl.length < 400000 && +x.w > 0 && +x.h > 0) out[k] = { dataUrl: x.dataUrl, w: +x.w, h: +x.h }; }
+  if (!Object.keys(out).length) return null;
+  out.from = String(d.from || '').slice(0, 200); out.at = String(d.at || '').slice(0, 40); out.by = String(d.by || '').slice(0, 120);
+  return out;
+}
+/** the decks' logos as pictures for the PowerPoint */
+function wcDeckLogos() {
+  const L = state.deckLogos, out = {}; if (!L) return out;
+  for (const k of Object.keys(DECK_LOGOS)) if (L[k]) { const b = atob(L[k].dataUrl.split(',')[1]); out[k] = { png: Uint8Array.from(b, c => c.charCodeAt(0)), w: L[k].w, h: L[k].h }; }
+  return out;
 }
 /** the report builder's modules and the brands' history (the shared copy first), once */
 function wcBoot() {
@@ -25201,7 +25350,7 @@ async function wcLogo() {
 }
 async function wcDeckBytes() {
   await wcBoot();
-  const c = wcCfg(), m = wcModel(), D = WcDeck.deck(m, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo() });
+  const c = wcCfg(), m = wcModel(), D = WcDeck.deck(m, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo(), logos: wcDeckLogos() });
   return { m, bytes: await D.bytes(), name: WcDeck.fileName(m.date) };
 }
 async function wcMake(kind) {
@@ -25276,10 +25425,11 @@ $('wfmBody').addEventListener('keydown', e => { const z = e.target.closest && e.
 // Web + App TKTs, Social Media issue TKTs, Vnet Complaints). Drop the email (.msg, or a saved .eml, or paste its text): PrDeck reads
 // the tables and makes the deck in the weekly presentation's look (cover; Virgin, FRiENDi and Postpaid from the brands' history, as
 // on Weekly commercial; two Complaints Insights slides; a slide for any other table; thank you). The email to the VP comes as an
-// Outlook draft with the deck attached (the Weekly commercial settings: presenter, job title, To and Cc). The email's data stays
-// in this browser; the tool sends nothing itself.
+// Outlook draft with the deck attached (the Weekly commercial settings: presenter, job title, To and Cc). The MC KPIs workbook the
+// team's charts are linked to adds Rebooking by day, OTP calls and final termination calls; one of the team's decks dropped here
+// gives its logos to both decks (config/decklogos). The email's and the workbook's data stay in this browser; the tool sends nothing.
 Object.assign(state, { prDate: '', prBusy: '', prBuilt: '' });
-const PR = { tables: null, from: '', notes: '', text: '', open: false };
+const PR = { tables: null, from: '', notes: '', text: '', open: false, kpi: null, kpiFrom: '' };
 const canPerf = () => canWeekly();
 const prDateNow = () => (wcIsDay(state.prDate) ? state.prDate : wcToday());
 const prRef = () => ({ y: +prDateNow().slice(0, 4), m: +prDateNow().slice(5, 7) });
@@ -25307,20 +25457,48 @@ function prRead(text, from) {
   PR.notes = !T.length ? `No tables found in ${from}: drop the "MC performance Review" email (.msg), or paste its text with the tables.` : miss.length ? `Not in the email: ${miss.map(k => PR_NAMES[k]).join(', ')}. Their places say so on the slides.` : '';
   state.prBuilt = '';
 }
+/** one of the team's decks: its logos kept (as PNG pictures) for both decks, for everyone */
+async function prLogos(f, u8) {
+  const L = await PrDeck.logosOf(await Core.readZip(u8)), out = {};
+  for (const [k, v] of Object.entries(L)) {
+    try {
+      let b = ''; for (let i = 0; i < v.bytes.length; i += 32768) b += String.fromCharCode.apply(null, v.bytes.subarray(i, i + 32768));
+      const img = await loadImg(`data:${v.type};base64,${btoa(b)}`), w = img.naturalWidth, h = img.naturalHeight; if (!w || !h || w > 2000 || h > 2000) continue;
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0);
+      out[k] = { dataUrl: cv.toDataURL('image/png'), w, h };
+    } catch (e) { /* a picture the browser cannot draw: left out */ }
+  }
+  const keys = Object.keys(out);
+  if (!keys.length) { PR.notes = `${f.name}: no logos found in it (the Beyond One logo top left, the brands' logos top right).`; return; }
+  state.deckLogos = deckLogosOk({ ...(state.deckLogos || {}), ...out, from: f.name, at: new Date().toISOString(), by: whoNow() });
+  if (state.db) { const body = { ...state.deckLogos }; queueWrite('config/decklogos', () => state.db.doc('config/decklogos').set(body)).catch(e => toast(`The logos were not saved (${(e && e.code) || 'error'}).`)); }
+  toast(`Logos kept from ${f.name}: ${keys.map(k => DECK_LOGOS[k]).join(', ')}. Both decks use them.`);
+}
+/** the MC KPIs workbook: Rebooking by day, OTP calls, final termination calls */
+async function prKpi(f, buf) {
+  const sheets = /\.xlsb$/i.test(f.name) ? await Core.readXlsb(buf) : await Core.readXlsx(buf), K = PrDeck.kpiOf(sheets);
+  if (!K.byDay && !K.otp && !K.term && !K.byMonth) { PR.notes = `${f.name}: not the MC KPIs workbook (no "Reactivate the Booking code" or "OTP & Termination" sheet with its tables).`; return; }
+  PR.kpi = K; PR.kpiFrom = f.name; state.prBuilt = '';
+}
 async function prFiles(list) {
   if (!canPerf()) return;
-  const f = [...list][0]; if (!f) return;
-  state.prBusy = 'read'; renderPerfWs();
-  try {
-    const u8 = new Uint8Array(await f.arrayBuffer());
-    if (/\.msg$/i.test(f.name)) prRead(msgBodyText(u8), f.name);
-    else if (/\.eml$/i.test(f.name)) { const P = UpdParse.emlParts(u8); const a = P.text ? PrDeck.tablesOf(P.text, prRef()) : []; prRead(a.length || !P.html ? P.text : prHtmlText(P.html), f.name); }
-    else if (/\.(txt|html?)$/i.test(f.name)) { const t = new TextDecoder().decode(u8); prRead(/\.html?$/i.test(f.name) ? prHtmlText(t) : t, f.name); }
-    else if (/\.(png|jpe?g|gif|bmp|webp)$/i.test(f.name)) { PR.notes = `${f.name} is a picture, and the tool cannot read pictures: drop the email itself (save it from Outlook as .msg), or copy its text and paste it below.`; }
-    else PR.notes = `${f.name}: drop the "MC performance Review" email (.msg or .eml), or paste its text below.`;
-  } catch (e) { PR.notes = `${f.name}: ${(e && e.message) || 'could not be read'}.`; }
+  const F = [...list]; if (!F.length) return;
+  state.prBusy = 'read'; PR.notes = ''; renderPerfWs();
+  for (const f of F) {
+    try {
+      const buf = await f.arrayBuffer(), u8 = new Uint8Array(buf);
+      if (/\.msg$/i.test(f.name)) prRead(msgBodyText(u8), f.name);
+      else if (/\.eml$/i.test(f.name)) { const P = UpdParse.emlParts(u8); const a = P.text ? PrDeck.tablesOf(P.text, prRef()) : []; prRead(a.length || !P.html ? P.text : prHtmlText(P.html), f.name); }
+      else if (/\.(txt|html?)$/i.test(f.name)) { const t = new TextDecoder().decode(u8); prRead(/\.html?$/i.test(f.name) ? prHtmlText(t) : t, f.name); }
+      else if (/\.(xlsx|xlsm|xlsb)$/i.test(f.name)) await prKpi(f, buf);
+      else if (/\.pptx$/i.test(f.name)) await prLogos(f, u8);
+      else if (/\.(png|jpe?g|gif|bmp|webp)$/i.test(f.name)) PR.notes = `${f.name} is a picture, and the tool cannot read pictures: drop the email itself (save it from Outlook as .msg), or copy its text and paste it below.`;
+      else PR.notes = `${f.name}: drop the "MC performance Review" email (.msg or .eml), the MC KPIs workbook (.xlsx) or one of your decks (.pptx, for its logos).`;
+    } catch (e) { PR.notes = `${f.name}: ${(e && e.message) || 'could not be read'}.`; }
+  }
   state.prBusy = ''; renderPerfWs();
-  if (PR.tables && PR.from === f.name) toast(`${f.name}: ${plural(PR.tables.length, 'table')} read.`);
+  const mail = F.find(f => /\.(msg|eml|txt|html?)$/i.test(f.name));
+  if (mail && PR.tables && PR.from === mail.name) toast(`${mail.name}: ${plural(PR.tables.length, 'table')} read.`);
 }
 function renderPerfWs() {
   const body = $('wfmBody'); if (!body || state.ws !== 'wfm' || state.wfmTab !== 'perf') return;
@@ -25338,8 +25516,13 @@ function renderPerfWs() {
   // 1. the email
   const rows = T ? T.map(t => { const a = t.rows[0], z = t.rows[t.rows.length - 1]; return `<tr><td dir="auto">${esc(t.title)}</td><td>${esc(a.label)} → ${esc(z.label)}</td><td class="num">${t.rows.length}</td><td dir="auto">${esc(t.cols.join(' · '))}</td><td class="num">${esc(z.vals.map(v => (v == null ? '–' : v > 0 && v < 1.5 && !Number.isInteger(v) ? Math.round(v * 1000) / 10 + '%' : Math.round(v).toLocaleString('en-US'))).join(' · '))}</td><td>${t.key === 'other' ? '<span class="pill info">its own slide</span>' : ''}</td></tr>`; }).join('') : '';
   const read = T ? `<div class="tablewrap prtab"><table><thead><tr><th>Table</th><th>Months</th><th class="r">Rows</th><th>Columns</th><th class="r">The last row</th><th><span class="sr">Slide</span></th></tr></thead><tbody>${rows}</tbody></table></div><p class="hint">Read from ${esc(PR.from)}.</p>` : '';
-  const drop = `<div class="drop rbdrop" data-prdrop role="button" tabindex="0" aria-label="Drop the MC performance Review email, or choose it"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the "MC performance Review" email</strong><span>The .msg from Outlook (or a saved .eml), or click to choose it</span></div><input type="file" hidden accept=".msg,.eml,.txt,.html,.htm,.png,.jpg,.jpeg" data-prpick>
-    ${PR.notes ? `<p class="hint warnline">${esc(PR.notes)}</p>` : ''}${read}
+  const K = PR.kpi, dmy = d => `${+d.slice(8, 10)} ${MON[+d.slice(5, 7) - 1]}`, kd = [];
+  if (K && K.byDay) kd.push(`Rebooking by day ${dmy(K.byDay[Math.max(0, K.byDay.length - 22)].date)} → ${dmy(K.byDay[K.byDay.length - 1].date)}`);
+  if (K && K.otp) kd.push(`OTP calls ${plural(Math.min(52, K.otp.length), 'day')} to ${dmy(K.otp[K.otp.length - 1].date)}`);
+  if (K && K.term) kd.push(`Final termination calls ${plural(K.term.length, 'month')}`);
+  const kpiLine = K ? `<p class="hint">MC KPIs workbook (${esc(PR.kpiFrom)}): ${esc(kd.join(' · ') || 'Rebooking by month')}.</p>` : '<p class="hint">For Rebooking by day, OTP calls and Final termination calls, also drop the <b>MC KPIs workbook</b> (.xlsx) the team\'s charts are linked to; without it the deck leaves those charts out.</p>';
+  const drop = `<div class="drop rbdrop" data-prdrop role="button" tabindex="0" aria-label="Drop the MC performance Review email and the MC KPIs workbook, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the "MC performance Review" email and the MC KPIs workbook</strong><span>The .msg from Outlook (or a saved .eml) and the .xlsx, or click to choose them. One of your decks (.pptx) dropped here gives its logos to both decks.</span></div><input type="file" hidden multiple accept=".msg,.eml,.txt,.html,.htm,.xlsx,.xlsm,.xlsb,.pptx,.png,.jpg,.jpeg" data-prpick>
+    ${PR.notes ? `<p class="hint warnline">${esc(PR.notes)}</p>` : ''}${read}${kpiLine}
     <details class="wcpaste"${PR.open ? ' open' : ''} data-prpaste><summary>Or paste the email's text</summary><p class="hint">In Outlook, select the email's text with its tables (Ctrl+A), copy it and paste it here.</p><textarea class="cell rbta" rows="5" data-prtext spellcheck="false" placeholder="Rebooking TKTs:&#10;Months&#9;Virgin&#9;FRiENDi&#9;Total&#10;Jan&#9;…"></textarea><div class="acts"><button class="btn sm" data-prread>Read the text</button></div></details>`;
   // 2. the brands' slides
   const ref = m.ref, first = ref.slice(0, 8) + '01', want = []; for (let d = first; d <= ref; d = wcAddDays(d, 1)) want.push(d);
@@ -25349,8 +25532,11 @@ function renderPerfWs() {
   const span = want.length ? (want.length === 1 ? R.dayLabel(first) : R.niceRange(first, ref)) : '';
   const brand = `${pills}<p class="hint">The month to date (${esc(span)}) and the months before, from the history the daily brand emails keep. The call reasons and complaints on these slides come from the month's exports when they were dropped on <b>Weekly commercial</b> in this browser; else they show "–".</p>`;
   // 3. the deck and the email
-  const slides = ['Cover', 'Virgin Mobile', 'FRiENDi Mobile', 'Postpaid', 'Complaints Insights: Web + App, Network, Social media', 'Complaints Insights: Rebooking, Vnet, the month so far'].concat(T ? T.filter(t => t.key === 'other').map(t => `More Insights: ${t.title}`) : [], ['Thank you']);
-  const send = `<ol class="prslides">${slides.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+  const slides = ['Cover', 'Virgin Mobile', 'FRiENDi Mobile', 'Postpaid', 'Complaints Insights: Web + App, Network, Social media', `Complaints Insights: Rebooking ${K && K.byDay ? 'by day and by month' : 'by month'}`]
+    .concat(K && (K.otp || K.term) ? ['OTP calls and Final termination calls'] : [], T ? T.filter(t => t.key === 'other').map(t => `More Insights: ${t.title}`) : [], ['Thank you']);
+  const G = state.deckLogos, logoLine = G ? `<div class="prlogos"><span class="hint">Logos from ${esc(G.from || 'a deck')}:</span>${Object.keys(DECK_LOGOS).filter(k => G[k]).map(k => `<img src="${esc(G[k].dataUrl)}" alt="${esc(DECK_LOGOS[k])}" title="${esc(DECK_LOGOS[k])}">`).join('')}<button class="btn sm ghost" data-prlogosrm>Remove</button></div>`
+    : '<p class="hint">Logos: the tool\'s logo and the brands\' names. Drop one of your decks (.pptx) in step 1 once, and both decks show its Beyond One, Virgin, FRiENDi and FRiENDi Pay logos.</p>';
+  const send = `<ol class="prslides">${slides.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${logoLine}
     <p class="hint">The email goes to ${esc(splitAddr(c.to).map(wcName).join(', ') || 'nobody yet')}${splitAddr(c.cc).length ? `, copy to ${esc(splitAddr(c.cc).map(wcName).join(', '))}` : ''}, with ${esc(PrDeck.fileName(date))} attached; it opens in Outlook as a draft to check and send. The presenter, the job title and who gets it are the <b>Weekly commercial</b> settings.</p>`;
   const sts = stepStates([!!T, histOk, state.prBuilt === date]);
   const L3 = [
@@ -25366,7 +25552,7 @@ async function prMake(kind) {
   state.prBusy = kind; renderPerfWs();
   try {
     await wcBoot();
-    const c = wcCfg(), date = prDateNow(), m = wcModel(date), D = PrDeck.deck(m, PR.tables, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo() });
+    const c = wcCfg(), date = prDateNow(), m = wcModel(date), D = PrDeck.deck(m, PR.tables, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo(), logos: wcDeckLogos(), kpi: PR.kpi || undefined });
     const bytes = await D.bytes(), name = PrDeck.fileName(date);
     if (kind === 'deck') { if (await save(name, new Blob([bytes], { type: PPTX_TYPE }))) state.prBuilt = date; }
     else {
@@ -25383,13 +25569,14 @@ const prOn = () => state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf();
 $('wfmBar').addEventListener('change', e => { if (!prOn() || !e.target.matches('[data-prdate]')) return; const v = e.target.value; state.prDate = wcIsDay(v) ? v : ''; if (PR.text) prRead(PR.text, PR.from); state.prBuilt = ''; renderPerfWs(); });
 document.addEventListener('click', e => {
   if (!prOn()) return;
-  const t = e.target.closest && e.target.closest('[data-prdeck], [data-prmail], [data-prdrop], [data-prread]'); if (!t || !($('wfmBody').contains(t) || $('wfmBar').contains(t))) return;
+  const t = e.target.closest && e.target.closest('[data-prdeck], [data-prmail], [data-prdrop], [data-prread], [data-prlogosrm]'); if (!t || !($('wfmBody').contains(t) || $('wfmBar').contains(t))) return;
+  if (t.matches('[data-prlogosrm]')) { const old = state.deckLogos; state.deckLogos = null; if (state.db) queueWrite('config/decklogos', () => state.db.doc('config/decklogos').delete()).catch(() => {}); renderPerfWs(); toast('Logos removed: the tool\'s logo and the brands\' names again.', { label: 'Undo', fn: () => { state.deckLogos = old; if (state.db && old) queueWrite('config/decklogos', () => state.db.doc('config/decklogos').set(old)).catch(() => {}); renderPerfWs(); } }); return; }
   if (t.matches('[data-prdeck]')) prMake('deck');
   else if (t.matches('[data-prmail]')) prMake('mail');
   else if (t.matches('[data-prdrop]')) { const p = $('wfmBody').querySelector('[data-prpick]'); if (p) p.click(); }
   else if (t.matches('[data-prread]')) { const ta = $('wfmBody').querySelector('[data-prtext]'); PR.pasted = ta ? ta.value : ''; if (!normSpace(PR.pasted)) { PR.notes = 'Paste the email\'s text first.'; renderPerfWs(); return; } prRead(PR.pasted, 'the pasted text'); renderPerfWs(); if (PR.tables) toast(`${plural(PR.tables.length, 'table')} read from the pasted text.`); }
 });
-$('wfmBody').addEventListener('change', e => { if (!prOn()) return; const t = e.target; if (t.matches('[data-prpick]')) { if (t.files && t.files.length) prFiles(t.files); t.value = ''; } });
+$('wfmBody').addEventListener('change', e => { if (!prOn()) return; const t = e.target; if (t.matches('[data-prpick]')) { if (t.files && t.files.length) prFiles([...t.files]); t.value = ''; } });
 $('wfmBody').addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details[data-prpaste]')) PR.open = d.open; }, true);
 $('wfmBody').addEventListener('input', e => { if (e.target.matches && e.target.matches('[data-prtext]')) PR.pasted = e.target.value; });
 $('wfmBody').addEventListener('keydown', e => { const z = e.target.closest && e.target.closest('[data-prdrop]'); if (z && prOn() && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const p = $('wfmBody').querySelector('[data-prpick]'); if (p) p.click(); } });
@@ -25865,7 +26052,7 @@ async function wsDrop(files) {
     if (state.ws === 'wfm' && state.wfmTab === 'builder' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name)) { rb.push(f); continue; }   // on its own tab every export goes to Report builder
     if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(csv|xls|xlsx)$/i.test(f.name)) { wk.push(f); continue; }   // and on Weekly commercial, to the weekly presentation
     if (updShown() && !$('wfmUpd').hidden && /\.(msg|eml)$/i.test(f.name)) { up.push(f); continue; }   // an email on the deduction email page: its corrections
-    if (state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf() && /\.(msg|eml|txt|html?)$/i.test(f.name)) { pr.push(f); continue; }   // the MC performance Review email on Performance Review
+    if (state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf() && /\.(msg|eml|txt|html?|xlsx|xlsm|xlsb|pptx)$/i.test(f.name)) { pr.push(f); continue; }   // the MC performance Review email on Performance Review
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     const v = await recogOne(f), K = Recog.KINDS[v.kind] || Recog.KINDS.unknown;
     if (v.kind === 'inter' && canInter()) { importInteractions(f); continue; }
@@ -28912,7 +29099,7 @@ const DEPT = [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
     'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
-    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables, and <b>Download deck</b> makes the Member Care Performance Review in the weekly presentation\'s look (the brands\' slides, two Complaints Insights slides, any other table on its own slide); <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
+    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables, and Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, OTP calls and Final termination calls, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     'At month end, the numbered tabs are the month\'s steps, in order: <b>1 Import</b>, <b>2 Review</b>, <b>3 Export</b>, <b>4 Emails</b>. On <b>Import</b>, drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
@@ -28931,7 +29118,7 @@ const DEPT = [
   ['wfm', 'WFM manager', [
     'Every morning, <b>WFM team › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them.',
     'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
-    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables, and <b>Download deck</b> makes the Member Care Performance Review in the weekly presentation\'s look (the brands\' slides, two Complaints Insights slides, any other table on its own slide); <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
+    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables, and Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, OTP calls and Final termination calls, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',

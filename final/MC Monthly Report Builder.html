@@ -2626,6 +2626,33 @@ p.prange { padding-top: 12px; }
   .wcout td.wcbr { white-space: normal; }
 }
 
+/* ------------------------------------------------------------------------------------------------------------- Emails › Deduction: corrections after the review */
+#wfmUpd { margin-bottom: var(--s4); }
+.updhd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.updhd h2 { margin: 0; }
+.upddrop { display: grid; gap: 8px; margin-top: 10px; padding: 10px; border: 1.5px dashed var(--line-3); border-radius: 12px; transition: border-color var(--t-fast) ease, background-color var(--t-fast) ease; }
+.upddrop.over { border-color: var(--brand); border-style: solid; background: var(--brand-soft); }
+.upddrop textarea { display: block; width: 100%; min-height: 92px; resize: vertical; font-family: var(--text); }
+.updacts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.updprev { display: grid; gap: 12px; margin-top: 14px; }
+.updgrp { display: grid; gap: 6px; }
+.updwho { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.updwho .sg { color: var(--muted); font-size: 12.5px; }
+.updwho .sg.bad { color: var(--bad); }
+.updpick select { min-width: 260px; max-width: 100%; }
+.updtab { max-height: none; width: fit-content; max-width: 100%; }
+.updtab table { width: auto; min-width: min(460px, 100%); }
+.updtab td { white-space: nowrap; }
+.updtab tr.off td { color: var(--muted); }
+.updtab tr.off td b { font-weight: 500; }
+.updtab td.updarrow { padding-inline: 2px; color: var(--muted); }
+.updbad summary { cursor: pointer; width: fit-content; font: 600 13px/20px var(--text); color: var(--warn); }
+.updbad ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.updgo { margin: 0; }
+.upddone { margin-top: 16px; }
+.upddone h3 { margin: 0 0 6px; font: 600 13px/18px var(--text); color: var(--ink-2); }
+.upddone .ilist li { align-items: center; }
+
 /* ------------------------------------------------------------------------------------------------------------- motion (Apple HIG, motion.md)
    Brief, purposeful, never on an interaction that happens many times a day: typing, filtering, sorting and paging act at once.
    The moments: the dashboard's first load of a visit (72_dash.css), every other page and tab the first time it is shown in a
@@ -3493,6 +3520,7 @@ input.cell, select.cell, textarea.cell, .rbta { background: color-mix(in srgb, v
     <div id="wfmBody"></div>
     <div id="wfmRb" class="rb" hidden></div>
     <div id="wfmDm" class="rb dm" hidden></div>
+    <div id="wfmUpd" hidden></div>
     <div id="wfmMail"></div>
   </section>
   <section class="view ws" id="v-cycle" aria-labelledby="h-cycle" hidden>
@@ -14051,6 +14079,296 @@ const fileName = date => `Beyond_One_Member_Care_Review - ${longDate(date)}.pptx
 return { model, deck, fileName, brandVoice, ticketBrand, longDate, dShort, BRANDS, POSTPAID };
 })(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'));
 if (typeof module !== 'undefined') module.exports = WcDeck;
+
+/* MC Monthly Report Builder - the corrections the WFM team receives after the deduction email, read into days per person:
+   - a table, as it comes in the email or a sheet: Name (Team, Dep, ID) and a column per day ("27-Oct" … with "SL leaves",
+     "Absent" …), or a Date (or From and To) column with a Type column; tab-separated as pasted from Outlook or Excel, one cell a
+     line as an email's text has it, or the rows of a sheet;
+   - lines typed in plain words: "set Nawaf as absent on 10 Oct", "Sara K. SL 27-29 Oct", "Omar late 20 min on 3 Oct",
+     "clear Nawaf 10 Oct" (the correction taken away).
+   parse() gives each person's days (matched to the people of the month by ID or name, or the names to choose from when it is not
+   clear) and what it could not read, with why. Nothing here changes anything: the page shows it first. */
+'use strict';
+const UpdParse = ((C) => {
+const MONS = { jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4, may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12 };
+const MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const pad = n => String(n).padStart(2, '0');
+const sp = s => String(s ?? '').replace(/[​-‏‪-‮﻿]/g, '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const daysIn = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+const ymd = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+
+// ---------------------------------------------------------------- what a day becomes
+// the month's own codes: Attend, OFF, AL, SL, Absent, the other leaves by name, or the late minutes of a day
+const PHRASES = [
+  ['sick leaves', 'SL'], ['sick leave', 'SL'], ['sl leaves', 'SL'], ['sl leave', 'SL'], ['annual leaves', 'AL'], ['annual leave', 'AL'], ['al leaves', 'AL'], ['al leave', 'AL'],
+  ['unpaid leave', 'Unpaid'], ['exam leave', 'Exam'], ['marriage leave', 'Marriage'], ['maternity leave', 'ML'], ['paternity leave', 'Paternity'],
+  ['compassionate leave', 'Compassionate Leave'], ['bereavement leave', 'Compassionate Leave'], ['national day', 'National Day'], ['founding day', 'Founding Day'],
+  ['day off', 'OFF'], ['no show', 'Absent'], ['eid holiday', 'Eid'],
+  ['sick', 'SL'], ['sl', 'SL'], ['annual', 'AL'], ['al', 'AL'], ['vacation', 'AL'], ['absent', 'Absent'], ['absence', 'Absent'], ['absents', 'Absent'],
+  ['off', 'OFF'], ['attend', 'Attend'], ['attended', 'Attend'], ['attendance', 'Attend'], ['present', 'Attend'], ['worked', 'Attend'],
+  ['unpaid', 'Unpaid'], ['exam', 'Exam'], ['marriage', 'Marriage'], ['maternity', 'ML'], ['ml', 'ML'], ['paternity', 'Paternity'],
+  ['compassionate', 'Compassionate Leave'], ['bereavement', 'Compassionate Leave'],
+];
+// in a table cell only: a single letter, and Eid (a family name too, so a typed line says "Eid holiday")
+const CELL = { a: 'Absent', o: 'OFF', p: 'Attend', x: 'Absent', eid: 'Eid' };
+const CLEAR = /^(?:clear|reset|undo|original)$/i;
+/** a cell's value (in a table a single letter counts too: A, O, P, and a bare number is the late minutes) */
+function valueOf(s, inTable) {
+  const t = sp(s).replace(/[.:;,]+$/, '').toLowerCase(); if (!t || /^[-–—]+$/.test(t)) return null;
+  if (CLEAR.test(t)) return { v: null, clear: true };
+  const m = t.match(/^(?:late|tardy)\s*(\d{1,3})\s*(?:m|mins?|minutes?)?$/) || t.match(/^(\d{1,3})\s*(?:m|mins?|minutes?)(?:\s+late)?$/);
+  if (m && +m[1] > 0 && +m[1] <= 720) return { v: +m[1] };
+  if (inTable) {
+    if (/^\d{1,3}$/.test(t) && +t > 0 && +t <= 720) return { v: +t };
+    const one = CELL[t]; if (one) return { v: one };
+  }
+  const p = PHRASES.find(([w]) => w === t); if (p) return { v: p[1] };
+  if (inTable && /\bleaves?\b/.test(t)) return { v: sp(s).replace(/\s*\bleaves?\b\s*/i, ' ').trim().replace(/^./, c => c.toUpperCase()) || 'Other leave' };   // another leave, as written
+  return null;
+}
+/** the label a value shows with (as the Attendance Report writes it) */
+const label = v => (v === undefined ? '?' : v === null ? 'empty' : typeof v === 'number' ? `Late ${v} min` : { AL: 'AL leave', SL: 'SL leave', ML: 'Maternity leave', Exam: 'Exam leave', Unpaid: 'Unpaid leave', Marriage: 'Marriage leave', Paternity: 'Paternity leave' }[v] || v);
+
+// ---------------------------------------------------------------- days
+/** the year of a day given without one: the one nearest the month the corrections are for */
+function yearFor(m, ctx) { const d = m - ctx.m; return d > 6 ? ctx.y - 1 : d < -6 ? ctx.y + 1 : ctx.y; }
+function dayOk(y, m, d) { return y > 1990 && y < 2200 && m >= 1 && m <= 12 && d >= 1 && d <= daysIn(y, m) ? ymd(y, m, d) : null; }
+const monOf = w => MONS[String(w || '').toLowerCase().replace(/\.$/, '')] || 0;
+const span = (a, b) => { const out = []; for (let t = Date.parse(a + 'T00:00:00Z'), e = Date.parse(b + 'T00:00:00Z'); t <= e && out.length < 62; t += 86400000) out.push(new Date(t).toISOString().slice(0, 10)); return out; };
+const ORD = '(?:st|nd|rd|th)?';
+/** one cell that is a day: 27-Oct, 27 Oct 2026, Oct 27, 27/10/2026 (day first), 2026-10-27, or an Excel date number */
+function oneDay(s, ctx) {
+  const t = sp(s).toLowerCase(); let m;
+  if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ t].*)?$/))) return dayOk(+m[1], +m[2], +m[3]);
+  if ((m = t.match(/^(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?$/))) { const mo = +m[2]; return dayOk(m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : yearFor(mo, ctx), mo, +m[1]); }
+  if ((m = t.match(new RegExp(`^(\\d{1,2})${ORD}[\\s-]*(?:of\\s+)?([a-z]{3,9})\\.?(?:[\\s,-]+(\\d{2,4}))?$`))) && monOf(m[2])) { const mo = monOf(m[2]); return dayOk(m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : yearFor(mo, ctx), mo, +m[1]); }
+  if ((m = t.match(new RegExp(`^([a-z]{3,9})\\.?[\\s-]+(\\d{1,2})${ORD}(?:,?\\s+(\\d{4}))?$`))) && monOf(m[1])) { const mo = monOf(m[1]); return dayOk(m[3] ? +m[3] : yearFor(mo, ctx), mo, +m[2]); }
+  if (/^\d{5}(?:\.\d+)?$/.test(t) && +t > 20000 && +t < 80000) return new Date(Date.UTC(1899, 11, 30) + Math.floor(+t) * 86400000).toISOString().slice(0, 10);
+  return null;
+}
+/** the days named in a typed line, and the line without them. A range covers every day in it (wide: the page leaves its days off
+    unticked); a day with no month is in the month the corrections are for */
+function daysOf(line, ctx) {
+  let s = ' ' + line.toLowerCase().replace(/[–—]/g, '-') + ' ';
+  const out = []; let wide = false;
+  const take = (re, fn) => { s = s.replace(re, (...a) => { const r = fn(a); if (!r) return a[0]; out.push(...r.days); if (r.wide) wide = true; return ' '; }); };
+  const Y = (mo, y) => (y ? (+y < 100 ? 2000 + +y : +y) : yearFor(mo, ctx));
+  take(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g, a => { const d = dayOk(+a[1], +a[2], +a[3]); return d && { days: [d] }; });
+  take(/\b(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?\b/g, a => { const d = dayOk(Y(+a[2], a[3]), +a[2], +a[1]); return d && { days: [d] }; });
+  // 27 Oct - 2 Nov, from 27 Oct to 2 Nov
+  take(new RegExp(`\\b(?:from\\s+)?(\\d{1,2})${ORD}\\s*(?:of\\s+)?([a-z]{3,9})\\.?\\s*(?:-|to|till|until|through|thru)\\s*(\\d{1,2})${ORD}\\s*(?:of\\s+)?([a-z]{3,9})\\b`, 'g'), a => {
+    const m1 = monOf(a[2]), m2 = monOf(a[4]); if (!m1 || !m2) return null;
+    const d1 = dayOk(Y(m1), m1, +a[1]), d2 = dayOk(Y(m2), m2, +a[3]); return d1 && d2 && d1 <= d2 && { days: span(d1, d2), wide: true };
+  });
+  // 27-29 Oct, from 27 to 29 Oct, Oct 27-29
+  take(new RegExp(`\\b(?:from\\s+)?(\\d{1,2})${ORD}\\s*(?:-|to|till|until|through|thru)\\s*(\\d{1,2})${ORD}\\s*(?:of\\s+)?([a-z]{3,9})\\b`, 'g'), a => {
+    const mo = monOf(a[3]); if (!mo || +a[1] > +a[2]) return null; const y = Y(mo), d1 = dayOk(y, mo, +a[1]), d2 = dayOk(y, mo, +a[2]); return d1 && d2 && { days: span(d1, d2), wide: true };
+  });
+  take(/\b([a-z]{3,9})\.?\s+(\d{1,2})\s*(?:-|to|till|until|through|thru)\s*(\d{1,2})\b/g, a => {
+    const mo = monOf(a[1]); if (!mo || +a[2] > +a[3]) return null; const y = Y(mo), d1 = dayOk(y, mo, +a[2]), d2 = dayOk(y, mo, +a[3]); return d1 && d2 && { days: span(d1, d2), wide: true };
+  });
+  // 27, 28 and 31 Oct
+  take(new RegExp(`\\b(\\d{1,2})${ORD}((?:\\s*(?:,|&|and)\\s*\\d{1,2}${ORD})+)\\s*(?:of\\s+)?([a-z]{3,9})\\b`, 'g'), a => {
+    const mo = monOf(a[3]); if (!mo) return null; const y = Y(mo), L = [a[1], ...a[2].match(/\d{1,2}/g)].map(d => dayOk(y, mo, +d));
+    return L.every(Boolean) && { days: L };
+  });
+  // 27 Oct, 27th of October 2026, Oct 27
+  take(new RegExp(`\\b(\\d{1,2})${ORD}[\\s-]*(?:of\\s+)?([a-z]{3,9})\\.?(?:[\\s,-]+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[2]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[1]); return d && { days: [d] }; });
+  take(new RegExp(`\\b([a-z]{3,9})\\.?\\s+(\\d{1,2})${ORD}(?:,?\\s+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[1]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[2]); return d && { days: [d] }; });
+  // no month: "from 27 to 29", "on 27, 28 and 31", "on the 10th", "10th"
+  const here = n => dayOk(ctx.y, ctx.m, +n);
+  take(new RegExp(`\\bfrom\\s+(?:the\\s+)?(\\d{1,2})${ORD}\\s*(?:-|to|till|until|through)\\s*(?:the\\s+)?(\\d{1,2})${ORD}\\b`, 'g'), a => { const d1 = here(a[1]), d2 = here(a[2]); return d1 && d2 && d1 <= d2 && { days: span(d1, d2), wide: true }; });
+  take(new RegExp(`\\bon\\s+(?:the\\s+)?(\\d{1,2})${ORD}((?:\\s*(?:,|&|and)\\s*(?:the\\s+)?\\d{1,2}${ORD})*)\\b`, 'g'), a => { const L = [a[1], ...((a[2] || '').match(/\d{1,2}/g) || [])].map(here); return L.every(Boolean) && { days: L }; });
+  take(/\b(\d{1,2})(?:st|nd|rd|th)\b/g, a => { const d = here(a[1]); return d && { days: [d] }; });
+  return { days: [...new Set(out)].sort(), wide, rest: s };
+}
+
+// ---------------------------------------------------------------- tables
+const H_NAME = /^(?:name|full name|agent(?: name)?|employee(?: name)?|staff(?: name)?)$/i, H_TEAM = /^(?:team|brand)$/i, H_DEP = /^(?:dep|dept|department)$/i;
+const H_ID = /^(?:id|national id|nid|iqama|iqama no\.?|employee id|emp\.? ?id|staff id)$/i, H_DATE = /^(?:date|day)$/i, H_FROM = /^(?:from|start(?: date)?)$/i, H_TO = /^(?:to|end(?: date)?|until)$/i;
+const H_TYPE = /^(?:type|leave(?: type)?|status|code|attendance|reason|update|correction|change(?: to)?|new(?: status)?)$/i;
+const headerish = (c, ctx) => H_NAME.test(c) || H_TEAM.test(c) || H_DEP.test(c) || H_ID.test(c) || H_DATE.test(c) || H_FROM.test(c) || H_TO.test(c) || H_TYPE.test(c) || !!oneDay(c, ctx);
+/** the rows of pasted text: tab-separated lines, or (an email's text) one cell a line after a header row; null when it is neither */
+function rowsOfText(text, ctx) {
+  const lines = String(text || '').split(/\r?\n/).map(l => l.replace(/[​-‍﻿]/g, ''));
+  const tabbed = lines.filter(l => l.includes('\t'));
+  if (tabbed.length >= 2) return lines.filter(l => l.trim()).map(l => l.split('\t').map(sp));
+  // blank lines are kept: inside the table an empty cell is a blank line, so the next value stays in its own day
+  const L = lines.map(sp), i0 = L.findIndex(l => H_NAME.test(l));
+  if (i0 < 0) return null;
+  let n = 1; while (i0 + n < L.length && L[i0 + n] && headerish(L[i0 + n], ctx) && !H_NAME.test(L[i0 + n])) n++;
+  if (n < 2) return null;
+  const rows = [L.slice(i0, i0 + n)];
+  for (let i = i0 + n; i < L.length;) {
+    while (i < L.length && !L[i]) i++;   // the blank lines between rows
+    if (i + n > L.length) { const r = L.slice(i); if (r.length > 1 && r.slice(1).some(Boolean) && !/^(?:regards|best|thanks|thank you|kind regards|sincerely|br)\b/i.test(r[0])) rows.push(r.concat(Array(n - r.length).fill(''))); break; }
+    const r = L.slice(i, i + n);
+    if (/^(?:regards|best|thanks|thank you|kind regards|sincerely|br)\b/i.test(r[0]) || r[0].length > 80) break;
+    rows.push(r); i += n;
+  }
+  return rows.length > 1 ? rows : null;
+}
+/** the corrections in a table's rows: who, and each day's new value. null when there is no header row with a name and days */
+function fromRows(rows, ctx) {
+  const R = (rows || []).map(r => (Array.isArray(r) ? r : []).map(v => (v instanceof Date ? v.toISOString().slice(0, 10) : sp(v))));
+  const hi = R.findIndex(r => r.some(c => H_NAME.test(c)) && (r.some(c => oneDay(c, ctx)) || r.some(c => H_DATE.test(c) || H_FROM.test(c))));
+  if (hi < 0) return null;
+  const H = R[hi], col = re => H.findIndex(c => re.test(c)), ni = col(H_NAME), ti = col(H_TEAM), di = col(H_DEP), ii = col(H_ID);
+  const dateCols = H.map((c, j) => [j, j === ni ? null : oneDay(c, ctx)]).filter(x => x[1]);
+  const dc = col(H_DATE), fc = col(H_FROM), tc = col(H_TO), yc = col(H_TYPE);
+  const groups = [], bad = [];
+  for (const r of R.slice(hi + 1)) {
+    const name = r[ni] || '', who = { name, team: ti >= 0 ? r[ti] || '' : '', dep: di >= 0 ? r[di] || '' : '', id: ii >= 0 ? r[ii] || '' : '' };
+    if (!name && !who.id) continue;
+    if (/^(?:total|grand total)$/i.test(name)) continue;
+    const changes = [];
+    if (dateCols.length) {
+      for (const [j, date] of dateCols) {
+        const cell = r[j] || ''; if (!cell) continue;
+        const v = valueOf(cell, true);
+        if (v) changes.push({ date, v: v.v, clear: !!v.clear, raw: cell }); else bad.push({ text: `${name}, ${date.slice(8)} ${MON3[+date.slice(5, 7) - 1]}: "${cell}"`, why: 'not a day value the tool knows (Absent, Attend, OFF, AL, SL, a leave, or late minutes)' });
+      }
+    } else {
+      const v = valueOf(yc >= 0 ? r[yc] : '', true), d1 = oneDay(dc >= 0 ? r[dc] : fc >= 0 ? r[fc] : '', ctx), d2 = tc >= 0 ? oneDay(r[tc], ctx) : null;
+      if (!d1 || !v) { bad.push({ text: r.filter(Boolean).join(' · '), why: !d1 ? 'no day the tool can read' : 'no value the tool knows' }); continue; }
+      for (const date of d2 && d2 >= d1 ? span(d1, d2) : [d1]) changes.push({ date, v: v.v, clear: !!v.clear, raw: yc >= 0 ? r[yc] : '', wide: !!(d2 && d2 > d1) });
+    }
+    if (changes.length) groups.push({ who, changes, src: 'table', text: [name, who.team, who.dep].filter(Boolean).join(' · ') });
+  }
+  return { groups, bad };
+}
+
+// ---------------------------------------------------------------- typed lines
+const FILL = new Set(['set', 'mark', 'make', 'change', 'changed', 'update', 'put', 'record', 'register', 'as', 'an', 'a', 'on', 'the', 'to', 'for', 'is', 'was', 'be', 'been', 'should', 'marked',
+  'day', 'days', 'from', 'and', 'of', 'in', 'at', 'please', 'kindly', 'pls', 'plz', 'with', 'he', 'she', 'his', 'her', 'him', 'agent', 'employee', 'it', 'by', 'not', 'but', 'leave', 'leaves', 'until', 'till', 'through', 'min', 'mins', 'minutes', 'late', 'tardy', 'also', 'both', 'all', 'whole']);
+const BRAND = [[/\bfriendi\s*pay\b|\bfpay\b/i, 'Friendi Pay'], [/\bfriendi\b/i, 'Friendi'], [/\bvirgin\b/i, 'Virgin']];
+const TEAMS = new Set(['cc', 'sm', 'ct', 'qa', 'ts', 'mg', 'de', 'wf', 'op']);
+/** one typed line: who, the value and the days. A line with neither a day nor a value (a greeting, a signature) is left out */
+function command(line, ctx) {
+  const raw = sp(line); if (!raw) return null;
+  const D = daysOf(raw, ctx);
+  let s = ' ' + D.rest.replace(/[.,;:!?()"']/g, ' ').replace(/\s+/g, ' ') + ' ';
+  let val = null, two = false;
+  const late = s.match(/\b(?:late|tardy)\s+(?:by\s+|for\s+)?(\d{1,3})\s*(?:m|mins?|minutes?)?\b/) || s.match(/\b(\d{1,3})\s*(?:m|mins?|minutes?)\s+late\b/);
+  if (late && +late[1] > 0 && +late[1] <= 720) { val = { v: +late[1] }; s = s.replace(late[0], ' '); }
+  for (const [w, v] of PHRASES) {
+    if (w === 'al' && !/(?:^|[^A-Za-z])AL(?:[^A-Za-z]|$)/.test(raw)) continue;   // "Al" in a name (Al Qahtani); annual leave typed as AL
+    const re = new RegExp(`\\s${w.replace(/ /g, '\\s+')}\\s`);
+    if (!re.test(s)) continue;
+    if (val && val.v !== v) two = true; else val = { v };
+    s = s.replace(re, ' ');
+  }
+  const clear = /\s(?:clear|reset|undo|original|remove the correction|take back)\s/.test(s);
+  if (clear) { if (val) two = true; else val = { v: null, clear: true }; s = s.replace(/\s(?:clear|reset|undo|original|remove the correction|take back)\s/g, ' '); }
+  if (!D.days.length && !val) return null;
+  let brand = '', team = '';
+  for (const [re, b] of BRAND) if (re.test(s)) { brand = b; s = s.replace(re, ' '); break; }
+  const words = s.split(/\s+/).filter(Boolean).filter(w => !FILL.has(w) && !/^\d+$/.test(w));
+  const tw = words.filter(w => TEAMS.has(w)); if (tw.length === 1 && words.length > 1) team = tw[0].toUpperCase();
+  const name = words.filter(w => !(team && w === team.toLowerCase())).join(' ');
+  const why = two ? 'two different values: say one (absent, attend, SL, AL, off, a leave, late minutes, or clear)'
+    : !val ? 'no value: say what the day becomes (absent, attend, SL, AL, off, a leave, late minutes, or clear)'
+    : !D.days.length ? 'no day: name the day, like 10 Oct, 27-29 Oct or 27, 28 and 31 Oct' : !name ? 'no name: who is it for?' : '';
+  if (why) return { bad: { text: raw, why } };
+  return { group: { who: { name, team, brand, dep: team, id: '' }, changes: D.days.map(date => ({ date, v: val.v, clear: !!val.clear, raw, wide: D.wide })), src: 'typed', text: raw } };
+}
+
+// ---------------------------------------------------------------- who
+const toks = s => sp(s).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z؀-ۿ\s]/g, ' ').split(/\s+/).filter(Boolean)
+  .reduce((o, w, i, L) => { if (['bin', 'ibn', 'bint'].includes(w)) return o; if (['al', 'el'].includes(w) && L[i + 1]) { L[i + 1] = w + L[i + 1]; return o; } o.push(w); return o; }, []);
+const skel = w => w.replace(/gh/g, 'g').replace(/q/g, 'g').replace(/ph/g, 'f').replace(/[aeiouy]/g, '').replace(/(.)\1+/g, '$1');
+const same = (x, y) => x === y || (x.length >= 3 && y.startsWith(x)) || (skel(x).length >= 2 && skel(x) === skel(y));
+/** how well a name someone wrote fits a person's name: 1 the same, 0.95 every word found, 0.9 first and family name (a short name
+    against a long one), 0.86+ the engine's own score, 0.6 one word found (a first name: only taken when nobody else fits) */
+function fit(a, b) {
+  const A = toks(a), B = toks(b); if (!A.length || !B.length) return 0;
+  if (A.join(' ') === B.join(' ')) return 1;
+  const all = (P, Q) => P.every(x => Q.some(y => same(x, y)));
+  if (A.length >= 2 && all(A, B)) return 0.95;
+  if (A.length >= 2 && B.length >= 2 && same(A[0], B[0]) && (same(A[A.length - 1], B[B.length - 1]) || all(B, A))) return 0.9;
+  const ns = C && C.nameScore ? C.nameScore(a, b) : 0; if (ns >= 0.86) return ns;
+  if (A.length === 1 && B.some(y => same(A[0], y))) return 0.6;
+  return 0;
+}
+const cid = s => (C && C.cleanId ? C.cleanId(s) : String(s || '').replace(/\D/g, ''));
+const brandKey = s => String(s || '').toLowerCase().replace(/\s+/g, '');
+/** the person a group is for: by ID, else the best name among the month's people (filtered by brand and team when given) */
+function match(who, people) {
+  const id = cid(who.id); if (id) { const p = people.find(x => x.nid && cid(x.nid) === id); if (p) return { pid: p.pid, cands: [p.pid], score: 1 }; }
+  if (!who.name) return { pid: null, cands: [], why: 'no name' };
+  let L = people.map(p => ({ p, s: Math.max(fit(who.name, p.name), p.sys ? fit(who.name, p.sys) : 0) })).filter(x => x.s >= 0.6);
+  const b = brandKey(who.team && /virgin|friendi|pay/i.test(who.team) ? who.team : who.brand), t = String(who.dep || '').toUpperCase();
+  const narrow = f => { const N = L.filter(f); if (N.length) L = N; };
+  if (b) narrow(x => brandKey(x.p.brand) === b);
+  if (t && /^[A-Z]{2}$/.test(t)) narrow(x => String(x.p.team || '').toUpperCase() === t);
+  narrow(x => x.p.inMonth);
+  L.sort((x, y) => y.s - x.s || x.p.name.localeCompare(y.p.name));
+  if (!L.length) return { pid: null, cands: [], why: `nobody called "${who.name}" in the month` };
+  const top = L[0].s, best = L.filter(x => x.s === top);
+  if (best.length === 1 && (top >= 0.86 || L.length === 1)) return { pid: best[0].p.pid, cands: L.slice(0, 8).map(x => x.p.pid), score: top };
+  return { pid: null, cands: L.slice(0, 8).map(x => x.p.pid), why: `more than one person fits "${who.name}": choose` };
+}
+
+// ---------------------------------------------------------------- all of it
+/**
+ * input: { text } (pasted or typed; an email's text) or { rows } (a sheet). ctx: { y, m } the month the corrections are for (days
+ * without a month or a year take it), people: [{ pid, name, sys, team, brand, nid, inMonth }].
+ * Returns { groups: [{ who, pid, cands, why, changes: [{ date, v, clear, raw, wide }], src, text }], bad: [{ text, why }], table }.
+ */
+function parse(input, ctx) {
+  const people = ctx.people || [], out = { groups: [], bad: [], table: false };
+  const rows = input.rows || rowsOfText(input.text, ctx), T = rows ? fromRows(rows, ctx) : null;
+  if (T && (T.groups.length || T.bad.length)) { out.table = true; out.groups = T.groups; out.bad = T.bad; }
+  else if (input.text != null) {
+    for (const line of String(input.text).split(/\r?\n|;/)) { const r = command(line, ctx); if (!r) continue; if (r.bad) out.bad.push(r.bad); else out.groups.push(r.group); }
+  }
+  for (const g of out.groups) Object.assign(g, match(g.who, people));
+  // the same person twice (two lines, or a row and a line): one group, the later value of a day wins
+  const by = new Map(), merged = [];
+  for (const g of out.groups) {
+    const key = g.pid ? 'p:' + g.pid : null;
+    if (key && by.has(key)) { const h = by.get(key); for (const c of g.changes) { const i = h.changes.findIndex(x => x.date === c.date); if (i >= 0) h.changes[i] = c; else h.changes.push(c); } h.text += ' · ' + g.text; continue; }
+    if (key) by.set(key, g); merged.push(g);
+  }
+  merged.forEach(g => g.changes.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)));
+  out.groups = merged;
+  return out;
+}
+/** the cells of the tables in an email's HTML (DOMParser: nothing in it runs or loads) */
+function htmlRows(html, DP) {
+  const P = DP || (typeof DOMParser !== 'undefined' ? DOMParser : null); if (!P) return null;
+  const doc = new P().parseFromString(String(html || ''), 'text/html'), all = [];
+  for (const t of doc.querySelectorAll('table')) {
+    if (t.querySelector('table')) continue;   // a layout table around the real one
+    for (const tr of t.querySelectorAll('tr')) { const r = []; for (const td of tr.children) { if (!/^t[dh]$/i.test(td.tagName)) continue; const n = Math.min(+td.getAttribute('colspan') || 1, 40); for (let i = 0; i < n; i++) r.push(sp(td.textContent)); } if (r.some(Boolean)) all.push(r); }
+  }
+  return all.length ? all : null;
+}
+/** the text and the HTML of a saved email (.eml): its parts decoded (base64, quoted-printable), the charset kept */
+function emlParts(bytes) {
+  const latin = new TextDecoder('latin1').decode(bytes), out = { text: '', html: '' };
+  const walk = (raw, depth) => {
+    if (depth > 6) return;
+    const cut = raw.search(/\r?\n\r?\n/); if (cut < 0) return;
+    const head = raw.slice(0, cut).replace(/\r?\n[ \t]+/g, ' '), body = raw.slice(cut).replace(/^\r?\n\r?\n/, '');
+    const h = n => { const m = head.match(new RegExp(`^${n}:\\s*(.*)$`, 'im')); return m ? m[1] : ''; };
+    const type = h('Content-Type').toLowerCase(), enc = h('Content-Transfer-Encoding').toLowerCase().trim(), cs = (type.match(/charset="?([^";\s]+)/) || [])[1] || 'utf-8';
+    const bnd = (h('Content-Type').match(/boundary="?([^";]+)"?/i) || [])[1];
+    if (/^multipart\//.test(type) && bnd) { for (const part of body.split('--' + bnd).slice(1)) { if (/^--/.test(part)) break; walk(part.replace(/^\r?\n/, ''), depth + 1); } return; }
+    if (!/^text\/(plain|html)/.test(type || 'text/plain') || /attachment/i.test(h('Content-Disposition'))) return;
+    let b;
+    if (enc === 'base64') { const s = atob(body.replace(/[^A-Za-z0-9+/=]/g, '')); b = Uint8Array.from(s, c => c.charCodeAt(0)); }
+    else if (enc === 'quoted-printable') { const s = body.replace(/=\r?\n/g, ''), a = []; for (let i = 0; i < s.length; i++) { if (s[i] === '=' && /^[0-9A-F]{2}$/i.test(s.slice(i + 1, i + 3))) { a.push(parseInt(s.slice(i + 1, i + 3), 16)); i += 2; } else a.push(s.charCodeAt(i) & 255); } b = Uint8Array.from(a); }
+    else b = Uint8Array.from(body, c => c.charCodeAt(0) & 255);
+    let t; try { t = new TextDecoder(cs).decode(b); } catch (e) { t = new TextDecoder('utf-8').decode(b); }
+    if (/html/.test(type)) out.html = out.html || t; else out.text = out.text || t;
+  };
+  walk(latin, 0);
+  return out;
+}
+return { parse, valueOf, oneDay, daysOf, rowsOfText, fromRows, command, match, fit, htmlRows, emlParts, label, MON3 };
+})(typeof Core !== 'undefined' ? Core : (typeof require !== 'undefined' ? require('./core.js') : null));
+if (typeof module !== 'undefined') module.exports = UpdParse;
 </script>
 <script id="vendor-motion">
 /*!
@@ -25111,6 +25429,7 @@ function renderWfmWs() {
   if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'weekly') renderWeeklyWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
   else if (builder) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; rbShow(); }
   else if (dm) { $('wfmBar').innerHTML = mailSubHtml(unsent) + '<div class="wsacts"></div>'; dmShow(); }
+  renderUpd();   // Emails › Deduction and absences: the corrections that come back after the review
 }
 /** the two kinds of email on the Emails page */
 function mailSubHtml(unsent) {
@@ -25247,10 +25566,11 @@ $('wfmBody').addEventListener('click', e => {
 /** files dropped on a workspace page (not Build): the page that wants them takes them (the Report builder tab every daily export,
     Results the old Excel, Quality the Final EVAL); anything else is recognised and the Recognise files panel says where it goes */
 async function wsDrop(files) {
-  const L = [...files], rb = [], old = [], what = [], wk = [];
+  const L = [...files], rb = [], old = [], what = [], wk = [], up = [];
   for (const f of L) {
     if (state.ws === 'wfm' && state.wfmTab === 'builder' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name)) { rb.push(f); continue; }   // on its own tab every export goes to Report builder
     if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(csv|xls|xlsx)$/i.test(f.name)) { wk.push(f); continue; }   // and on Weekly commercial, to the weekly presentation
+    if (updShown() && !$('wfmUpd').hidden && /\.(msg|eml)$/i.test(f.name)) { up.push(f); continue; }   // an email on the deduction email page: its corrections
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     const v = await recogOne(f), K = Recog.KINDS[v.kind] || Recog.KINDS.unknown;
     if (v.kind === 'inter' && canInter()) { importInteractions(f); continue; }
@@ -25261,9 +25581,205 @@ async function wsDrop(files) {
   }
   if (rb.length) { if (state.wfmTab !== 'builder') { state.wfmTab = 'builder'; renderWs(); } rbAddFiles(rb); }
   if (wk.length) wcAddFiles(wk);
+  if (up.length) updFiles(up);
   if (old.length) cmpFiles(old);   // the old Excel files of a month together, on Results › Reconcile
   if (what.length) recogOpen(what, 'drop');
 }
+
+// ================================================================ CORRECTIONS AFTER THE REVIEW: what comes back after the deduction email
+// WFM team › Emails › Deduction and absences. After the review email, champions and supervisors send corrections ("kindly update
+// the leave records below": a table with Name, Team, Dep and the days, or a line). The WFM team pastes the table, drops the email
+// (.msg, .eml) or a sheet, or types them in plain words; UpdParse reads them; the box shows each day (now → new) for the person it
+// matched, or the names to choose from. Apply makes them the month's attendance corrections (att/<k>/edits, as a supervisor's, marked
+// as an update), so the workbook, the final email (its list of what changed) and the agent's page follow. Undo takes them back.
+Object.assign(state, { updText: '', updRes: null, updFrom: '', updPick: {}, updOn: {}, updNote: '', updBusy: false });
+const canUpd = () => canWfmMail();
+const updShown = () => state.ws === 'wfm' && state.wfmTab === 'emails' && state.mailSub !== 'daily' && canUpd();
+/** the month the corrections are for: the deduction email's */
+function updMonth() { const { y, m } = mailMonth(); return { y, m, k: ymKey(y, m) }; }
+/** everyone in the roster, marked when they are in the month (a row in the shared month, or days in the month being built) */
+function updPeople(k) {
+  const inM = new Set(monthData(k) ? rowsByPid(k).keys() : []);
+  if (state.ctx && monthKey() === k && state.ctx.attendance) for (const pid of state.ctx.attendance.keys()) inM.add(pid);
+  return rosterRows().map(p => { const e = effP(p._id) || p; return { pid: p._id, name: p.name, sys: normSpace(p.sys), team: normSpace(p.team), brand: normSpace(p.brand), nid: Core.cleanId(e.nid) || '', inMonth: inM.has(p._id) }; });
+}
+const updCtx = () => { const M = updMonth(); return { y: M.y, m: M.m, people: updPeople(M.k) }; };
+/** a day as the month has it now, with the corrections already made (undefined: the tool has no days for the person that month) */
+function updNow(pid, k, day) {
+  const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5)), r = monthData(k) ? rowOf(pid, k) : null;
+  if (r) return daysOfRow(r, ND)[day - 1] ?? null;
+  if (state.ctx && monthKey() === k && state.ctx.attendance) { const a = state.ctx.attendance.get(pid); if (a) return a.days[day - 1] ?? null; }
+  return undefined;
+}
+/** every change with its state: on (ticked), and why one is not (no person, a final month, already so, an OFF day in a range) */
+function updRowsOf(R) {
+  return R.groups.map((g, gi) => {
+    const pid = state.updPick[gi] || g.pid || '';
+    return { g, gi, pid, rows: g.changes.map((c, ci) => {
+      const k = c.date.slice(0, 7), day = +c.date.slice(8), lock = monthLocked(k), now = pid ? updNow(pid, k, day) : undefined;
+      const same = !c.clear && now !== undefined && now === c.v, offDay = c.wide && (now === 'OFF' || now === null);
+      const key = `${gi}:${ci}`, can = !!pid && !lock, def = can && !same && !offDay;
+      return { c, key, k, day, now, lock, same, offDay, can, on: can && (key in state.updOn ? state.updOn[key] : def) };
+    }) };
+  });
+}
+function updLabelNow(v) { return v === undefined ? 'not in the month' : UpdParse.label(v); }
+function renderUpd() {
+  const host = $('wfmUpd'); if (!host) return;
+  const show = updShown() && !(mailShared() && !wsMonthNow()); host.hidden = !show; if (!show) return;
+  const M = updMonth(), R = state.updRes, lock = monthLocked(M.k);
+  const focus = document.activeElement && host.contains(document.activeElement) ? document.activeElement : null;
+  const fsel = focus ? ['data-updon', 'data-updwho', 'data-updtext'].map(a => (focus.hasAttribute(a) ? `[${a}="${focus.getAttribute(a)}"]` : '')).find(Boolean) : '';
+  let prev = '';
+  if (R) {
+    const G = updRowsOf(R), n = G.reduce((a, x) => a + x.rows.filter(r => r.on).length, 0), people = G.filter(x => x.rows.some(r => r.on)).length;
+    const grp = G.map(({ g, gi, pid, rows }) => {
+      const p = pid ? state.roster.find(x => x._id === pid) : null;
+      const who = p ? `<b dir="auto">${esc(supName(pid) || p.name)}</b><span class="sg">${esc([p.brand, p.team].filter(Boolean).join(' · '))}</span>${g.who.name && normName(g.who.name) !== normName(p.name) ? `<span class="sg" dir="auto">from “${esc(g.who.name)}”</span>` : ''}`
+        : g.cands && g.cands.length ? `<label class="updpick"><span class="sr">Who is “${esc(g.who.name)}”?</span><select class="cell" data-updwho="${gi}"><option value="">Choose who “${esc(g.who.name)}” is</option>${g.cands.map(c => { const q = state.roster.find(x => x._id === c); return q ? `<option value="${esc(c)}">${esc(supName(c) || q.name)} · ${esc([q.brand, q.team].filter(Boolean).join(' '))}</option>` : ''; }).join('')}</select></label>`
+        : `<b dir="auto">${esc(g.who.name || g.who.id || '?')}</b><span class="sg bad">${esc(g.why || 'not found in the roster')}</span>`;
+      const tr = rows.map(r => {
+        const note = r.lock ? `${ymLabel(r.k)} is final` : !pid ? '' : r.same ? 'already so' : r.offDay ? 'OFF that day: tick it to change' : r.now === undefined ? 'no days for them that month' : '';
+        return `<tr class="${r.on ? '' : 'off'}"><td class="chk"><input type="checkbox" data-updon="${r.key}"${r.on ? ' checked' : ''}${r.can ? '' : ' disabled'} aria-label="${esc(`${r.day} ${MON[+r.k.slice(5) - 1]}`)}"></td><td>${r.day} ${MON[+r.k.slice(5) - 1]}</td><td>${esc(updLabelNow(r.now))}</td><td class="updarrow" aria-hidden="true">→</td><td><b>${esc(r.c.clear ? 'as before the corrections' : UpdParse.label(r.c.v))}</b></td><td class="subtle">${esc(note)}</td></tr>`;
+      }).join('');
+      return `<div class="updgrp"><div class="updwho">${who}</div><div class="tablewrap updtab"><table><thead><tr><th class="chk"><span class="sr">Change</span></th><th>Day</th><th>Now</th><th aria-hidden="true"></th><th>New</th><th><span class="sr">Note</span></th></tr></thead><tbody>${tr}</tbody></table></div></div>`;
+    }).join('');
+    const bad = R.bad.length ? `<details class="updbad" open><summary>${plural(R.bad.length, 'line')} not read</summary><ul>${R.bad.slice(0, 30).map(b => `<li><span dir="auto">${esc(b.text)}</span> <span class="subtle">${esc(b.why)}</span></li>`).join('')}</ul></details>` : '';
+    const none = !R.groups.length && !R.bad.length ? '<p class="hint">Nothing to change was found. Paste the table with its header row (Name and the days, like 27-Oct), or type a line like: set Nawaf as absent on 10 Oct.</p>' : '';
+    prev = `<div class="updprev" aria-live="polite"><p class="hint">Read from ${esc(state.updFrom || 'the box')}: ${plural(R.groups.length, 'person', 'people')}${R.table ? ' from a table' : ''}. Untick a day to leave it as it is.</p>${grp}${bad}${none}
+      <div class="acts updgo"><button class="btn primary" data-updapply${n && !lock ? '' : ' disabled'}>${n ? `Apply ${plural(n, 'change')}${people > 1 ? ` for ${people} people` : ''}` : 'Nothing to apply'}</button><button class="btn ghost" data-updclear>Clear</button></div></div>`;
+  }
+  // what was applied this month from here
+  const E = attEditsOf(M.k), done = [];
+  if (E) for (const [pid, body] of E) {
+    const ds = Object.entries((body && body.days) || {}).filter(([, e]) => e && e.src === 'update').map(([d, e]) => ({ d: +d, ...e })).sort((a, b) => a.d - b.d);
+    if (!ds.length) continue;
+    const byV = new Map(); ds.forEach(x => { const l = UpdParse.label(x.v); byV.set(l, (byV.get(l) || []).concat(x.d)); });
+    const last = ds.reduce((a, x) => (x.at > a.at ? x : a), ds[0]);
+    done.push(`<li><span class="nm" dir="auto">${esc(supName(pid) || body.n || pid)}</span><span class="sg">${[...byV].map(([l, D]) => `${esc(D.join(', '))} ${MON[M.m - 1]}: ${esc(l)}`).join(' · ')} · ${esc(last.by || '')}${last.at ? `, ${esc(fmtWhen(last.at))}` : ''}</span>${lock ? '' : `<button class="btn sm ghost" data-updrm="${esc(pid)}">Remove</button>`}</li>`);
+  }
+  const src = !mailShared() && state.wb ? `<p class="hint warnline">The email takes its numbers from ${esc(state.wb.name)}: the corrections go to the month, not into that file. Choose <b>Shared month</b> above the email to see them in it.</p>` : '';
+  host.innerHTML = `<section class="card updcard" aria-labelledby="updH">
+    <div class="updhd"><h2 id="updH">Corrections after the review</h2><span class="pill info">${esc(ymLabel(M.k))}</span></div>
+    <p class="cap">When corrections come back after the deduction email, put them here: paste the table from the email, drop the email (.msg or .eml) or a sheet, or type them, one a line, like <i>set Nawaf as absent on 10 Oct</i> or <i>Sara K. SL 27-29 Oct</i>. You see each day first; <b>Apply</b> makes them the month's attendance corrections, so the workbook and the final email have them.</p>
+    ${lock ? `<p class="hint warnline">${esc(ymLabel(M.k))} is final: its attendance can no longer change.</p>` : ''}${src}
+    <div class="upddrop" data-upddrop><textarea class="cell" data-updtext rows="4" spellcheck="false" placeholder="Paste the table from the email here, or type: set Nawaf as absent on 10 Oct">${esc(state.updText)}</textarea>
+      <div class="acts updacts"><button class="btn" data-updread${state.updBusy ? ' disabled' : ''}>${state.updBusy ? '<span class="spin" aria-hidden="true"></span>Reading…' : 'Read'}</button><button class="btn ghost" data-updfile>Choose a file</button><span class="hint">or drop the email or the sheet here</span>
+      <input type="file" hidden multiple data-updpick accept=".msg,.eml,.xlsx,.xlsm,.xls,.csv,.txt,.png,.jpg,.jpeg"></div></div>
+    ${state.updNote ? `<p class="hint warnline">${esc(state.updNote)}</p>` : ''}${prev}
+    ${done.length ? `<div class="upddone"><h3>Applied from here this month</h3><ul class="ilist">${done.join('')}</ul></div>` : ''}</section>`;
+  if (fsel) { const f = host.querySelector(fsel); if (f) f.focus(); }
+}
+/** read what is in the box */
+function updRead() {
+  const t = String(state.updText || '');
+  state.updPick = {}; state.updOn = {}; state.updNote = '';
+  if (!normSpace(t)) { state.updRes = null; state.updNote = 'Paste the table from the email, or type a line like: set Nawaf as absent on 10 Oct.'; renderUpd(); return; }
+  state.updRes = UpdParse.parse({ text: t }, updCtx()); state.updFrom = 'the box';
+  renderUpd();
+}
+/** files: the email (.msg, .eml), a sheet, a text file; a picture cannot be read */
+async function updFiles(list) {
+  if (!canUpd()) return;
+  const F = [...list]; if (!F.length) return;
+  state.updBusy = true; state.updNote = ''; renderUpd();
+  const ctx = updCtx(), res = { groups: [], bad: [], table: false }, names = [], notes = [];
+  for (const f of F) {
+    try {
+      const buf = await f.arrayBuffer(), u8 = new Uint8Array(buf); let r = null;
+      if (/\.msg$/i.test(f.name)) r = UpdParse.parse({ text: msgBodyText(u8) }, ctx);
+      else if (/\.eml$/i.test(f.name)) { const P = UpdParse.emlParts(u8), rows = UpdParse.htmlRows(P.html); r = rows ? UpdParse.parse({ rows }, ctx) : null; if (!r || !r.groups.length) r = UpdParse.parse({ text: P.text || htmlText(P.html) }, ctx); }
+      else if (/\.(xlsx|xlsm|xls|csv)$/i.test(f.name)) {
+        const sheets = /\.xls$/i.test(f.name) ? (window.parseXls ? window.parseXls(buf) : []) : /\.csv$/i.test(f.name) ? [{ rows: Core.parseCSV(new TextDecoder().decode(u8)) }] : await Core.readXlsx(buf);
+        for (const sh of sheets || []) { const x = UpdParse.parse({ rows: sh.rows || [] }, ctx); if (x.groups.length || x.bad.length) { r = x; break; } }
+      } else if (/\.txt$/i.test(f.name)) r = UpdParse.parse({ text: new TextDecoder().decode(u8) }, ctx);
+      else if (/\.(png|jpe?g|gif|bmp|webp)$/i.test(f.name)) { notes.push(`${f.name} is a picture, and the tool cannot read pictures. In the email, select the table, copy it (Ctrl+C) and paste it in the box, or save the email (.msg) and drop it here.`); continue; }
+      else { notes.push(`${f.name}: drop the email (.msg or .eml), a sheet (.xlsx, .csv) or paste the table.`); continue; }
+      if (!r || (!r.groups.length && !r.bad.length)) { notes.push(`${f.name}: no table of corrections in it (a Name column and the days, like 27-Oct).`); continue; }
+      names.push(f.name); res.groups.push(...r.groups); res.bad.push(...r.bad); res.table = res.table || r.table;
+    } catch (e) { notes.push(`${f.name}: ${(e && e.message) || 'could not be read'}.`); }
+  }
+  // the same person in two files: one group
+  const by = new Map(); res.groups = res.groups.filter(g => { if (!g.pid) return true; const h = by.get(g.pid); if (!h) { by.set(g.pid, g); return true; } for (const c of g.changes) { const i = h.changes.findIndex(x => x.date === c.date); if (i >= 0) h.changes[i] = c; else h.changes.push(c); } h.changes.sort((a, b) => (a.date < b.date ? -1 : 1)); return false; });
+  state.updBusy = false; state.updPick = {}; state.updOn = {}; state.updNote = notes.join(' ');
+  if (names.length) { state.updRes = res; state.updFrom = names.join(', '); }
+  renderUpd();
+}
+/** the ticked changes, ready to write */
+function updSelected() {
+  const R = state.updRes; if (!R) return [];
+  return updRowsOf(R).flatMap(({ g, pid, rows }) => rows.filter(r => r.on).map(r => ({ pid, k: r.k, day: r.day, v: r.c.v, clear: r.c.clear, note: (g.src === 'typed' ? g.text : `${g.text} · from ${state.updFrom || 'an update'}`).slice(0, 200) })));
+}
+function updApply() {
+  if (!canUpd() || !state.updRes) return;
+  const sel = updSelected(); if (!sel.length) return;
+  const by = new Map(); for (const c of sel) { const key = `${c.pid}|${c.k}`; if (!by.has(key)) by.set(key, []); by.get(key).push(c); }
+  const undo = [], at = new Date().toISOString(), who = whoNow(), ks = new Set(), names = new Set(); let n = 0;
+  for (const [key, L] of by) {
+    const [pid, k] = key.split('|'); if (monthLocked(k)) continue;
+    watchAttEdits(k); if (!state.attEditsBy[k]) state.attEditsBy[k] = new Map();
+    const E = state.attEditsBy[k], cur = E.get(pid), prev = cur ? JSON.parse(JSON.stringify(cur)) : null, days = { ...((cur && cur.days) || {}) };
+    for (const c of L) { if (c.clear) delete days[c.day]; else days[c.day] = { v: c.v, note: c.note, by: who, at, src: 'update' }; n++; }
+    const p = state.roster.find(x => x._id === pid), body = { days, n: supName(pid) || (p && p.name) || '' };
+    E.set(pid, body); undo.push({ pid, k, prev }); ks.add(k); names.add(body.n);
+    if (state.db) queueWrite(`att/${k}/edits/${pid}`, () => state.db.doc(`att/${k}/edits/${pid}`).set(body)).catch(e => toast(`Not saved (${(e && e.code) || 'error'}).`));
+    if (agentHasAccount(pid)) setTimeout(() => publishAgent(pid, k, { quiet: true }), 900);   // the agent's own page follows
+  }
+  if (!undo.length) return;
+  state.attEditsVer++;
+  markFresh('attendance', `${[...names].slice(0, 2).join(', ')}${names.size > 2 ? ` and ${names.size - 2} more` : ''}: ${plural(n, 'day')}`);
+  state.updRes = null; state.updText = ''; state.updPick = {}; state.updOn = {}; state.updNote = '';
+  updAfter(ks);
+  toast(`Applied: ${plural(n, 'day')} for ${plural(names.size, 'person', 'people')}. The workbook and the final email have them.`, { label: 'Undo', fn: () => updRestore(undo, 'Undone: the days are as they were.') });
+}
+/** the corrections as they were before (Undo), or without the ones made from here (Remove) */
+function updRestore(L, msg) {
+  const ks = new Set();
+  for (const { pid, k, prev } of L) {
+    if (monthLocked(k)) continue;
+    if (!state.attEditsBy[k]) state.attEditsBy[k] = new Map();
+    const E = state.attEditsBy[k], gone = !prev || !Object.keys(prev.days || {}).length;
+    if (gone) E.delete(pid); else E.set(pid, prev);
+    if (state.db) queueWrite(`att/${k}/edits/${pid}`, () => (gone ? state.db.doc(`att/${k}/edits/${pid}`).delete() : state.db.doc(`att/${k}/edits/${pid}`).set(prev))).catch(e => toast(`Not saved (${(e && e.code) || 'error'}).`));
+    if (agentHasAccount(pid)) setTimeout(() => publishAgent(pid, k, { quiet: true }), 900);
+    ks.add(k);
+  }
+  state.attEditsVer++; updAfter(ks); if (msg) toast(msg);
+}
+function updRemove(pid) {
+  const { k } = updMonth(), E = attEditsOf(k), cur = E && E.get(pid); if (!cur || monthLocked(k)) return;
+  const keep = Object.fromEntries(Object.entries(cur.days || {}).filter(([, e]) => !(e && e.src === 'update'))), before = JSON.parse(JSON.stringify(cur));
+  updRestore([{ pid, k, prev: { ...cur, days: keep } }]);
+  toast(`Removed the corrections made from here for ${supName(pid) || cur.n || 'them'}.`, { label: 'Undo', fn: () => updRestore([{ pid, k, prev: before }], 'Back.') });
+}
+/** the month being built is counted again; everything else is drawn again (the email, its workbook and the list follow) */
+function updAfter(ks) { if (state.ctx && ks.has(monthKey())) refresh(); renderWs(); }
+
+$('wfmUpd').addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t || !canUpd()) return;
+  if (t.matches('[data-updread]')) updRead();
+  else if (t.matches('[data-updfile]')) $('wfmUpd').querySelector('[data-updpick]').click();
+  else if (t.matches('[data-updclear]')) { state.updRes = null; state.updText = ''; state.updNote = ''; state.updPick = {}; state.updOn = {}; renderUpd(); }
+  else if (t.matches('[data-updapply]')) updApply();
+  else if (t.matches('[data-updrm]')) updRemove(t.dataset.updrm);
+});
+$('wfmUpd').addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('[data-updpick]')) { if (t.files && t.files.length) updFiles(t.files); t.value = ''; return; }
+  if (t.matches('[data-updon]')) { state.updOn[t.dataset.updon] = t.checked; renderUpd(); return; }
+  if (t.matches('[data-updwho]')) { state.updPick[+t.dataset.updwho] = t.value; Object.keys(state.updOn).filter(k => k.startsWith(t.dataset.updwho + ':')).forEach(k => delete state.updOn[k]); renderUpd(); }
+});
+$('wfmUpd').addEventListener('input', e => { if (e.target.matches('[data-updtext]')) state.updText = e.target.value; });
+$('wfmUpd').addEventListener('keydown', e => { if (e.target.matches('[data-updtext]') && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); state.updText = e.target.value; updRead(); } });
+// a table copied from Outlook or Excel is read at once (its HTML when there is some: the cells stay apart)
+$('wfmUpd').addEventListener('paste', e => {
+  const ta = e.target; if (!ta.matches || !ta.matches('[data-updtext]')) return;
+  const h = e.clipboardData && e.clipboardData.getData('text/html'), rows = h && /<table/i.test(h) ? UpdParse.htmlRows(h) : null;
+  if (rows) { e.preventDefault(); const tsv = rows.map(r => r.join('\t')).join('\n'), a = ta.selectionStart, b = ta.selectionEnd; ta.value = ta.value.slice(0, a) + tsv + ta.value.slice(b); state.updText = ta.value; updRead(); return; }
+  setTimeout(() => { state.updText = ta.value; if (/\t/.test(ta.value)) updRead(); }, 0);
+});
+['dragenter', 'dragover'].forEach(ev => $('wfmUpd').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-upddrop]'); if (z && e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); z.classList.add('over'); } }));
+['dragleave', 'drop'].forEach(ev => $('wfmUpd').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-upddrop]'); if (!z) return; z.classList.remove('over'); if (ev === 'drop' && e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); e.stopPropagation(); updFiles(e.dataTransfer.files); } }));   // read once: the page's own drop handler does not see it
 
 // ================================================================ VACATION COVER: the WFM manager and the WFM analysts stand in for each other
 // While a WFM analyst is on vacation, the WFM manager ticks it on the WFM team page and has the analysts' tabs too (Import,
@@ -28111,6 +28627,7 @@ const DEPT = [
     '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one.',
     '<b>Export › Smart-Link attendance</b>: first, <b>Set Smart-Link\'s list from its file</b> once (any of Smart-Link\'s attendance files: its ID and Name columns), so the file holds exactly Smart-Link\'s agents, the SM agents and those on Virgin too. Then the month\'s attendance of those agents in Smart-Link\'s own file (Smart-Link Attendance -Sep 2026.xlsx): each day\'s code, the late minutes and the counts with Smart-Link\'s formulas, and the National IDs, as Smart-Link\'s file has them. It is made from the shared month, with the supervisors\' corrections, and kept in Saved workbooks; send it to Smart-Link yourself.',
     '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs.',
+    '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s attendance corrections, so the workbook and the final email have them. Undo, or Remove in the list, takes them back.',
     '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
@@ -28120,6 +28637,7 @@ const DEPT = [
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
+    '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s attendance corrections, so the workbook and the final email have them. Undo, or Remove in the list, takes them back.',
     'When a WFM analyst is on vacation, tick their name under <b>Vacation cover</b> on the WFM team page: you then have their tabs (Import, Review, Export, Report builder) until you untick it.',
     '<b>WFM team › Data</b>: export all the data to one file locked with a password, or import such a file. Accounts and passwords are never in it.',
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
@@ -29583,7 +30101,7 @@ renderBrand();
 render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
-window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }) };   // for testing
+window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }), upd: () => ({ ctx: updCtx, read: updRead, files: updFiles, apply: updApply, now: updNow }) };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
 Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing

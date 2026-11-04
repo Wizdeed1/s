@@ -9,6 +9,8 @@
 //    (a day dropped again keeps its fuller export),
 //    the team's old deck (made up) dropped: its numbers kept as they are and the Call history after them (October completed, the
 //    days still missing named), what counts changed without a new drop, the deck's OTP slide from them, Clear and Undo.
+//    The month's Call history and Tickets exports dropped on the brands' step: what was dropped, what is missing (another day's
+//    Call history said so), the Virgin slide's Top Call Reasons and Top Complaint Drivers from them.
 // 5. An email dropped on the drop zone is read once; a pasted text with two tables says which are not in it; a picture is refused
 //    with what to do instead.
 // 6. The senior manager has no tab; at phone width nothing runs off the page; no errors.
@@ -59,7 +61,8 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   const txt = (eml.match(/Content-Type: text\/plain; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+?)\r\n\r\n/) || [])[1] || '';
   ok(em.suggestedFilename() === 'MC Performance Review - 4 Nov 2026.eml' && /\r\nTo: "Huda S\." <huda\.s@example\.com>/.test(eml) && /\r\nCc: "Omar T\." <omar\.t@example\.com>/.test(eml) && /\r\nSubject: MC Performance Review\r\n/.test(eml), 'Email with the deck: to the VP, the contact in copy, "MC Performance Review"');
   ok(/name="MC_Performance_Review - 4 Nov 2026\.pptx"/.test(part) && att && att.has('ppt/presentation.xml') && Buffer.from(txt.replace(/\s+/g, ''), 'base64').toString('utf8') === 'Hi Huda,\r\nKindly find the MC Performance Review as attached.\r\nSincerely.', 'the deck attached; "Hi Huda, Kindly find the MC Performance Review as attached. Sincerely."');
-  ok(await p.evaluate(() => [...document.querySelectorAll('#wfmBody .flowstep')].map(s => s.classList.contains('done')).join()) === 'true,true,false,true', 'every step done but the OTP and final termination calls (no Call history yet)');
+  const st3 = await p.evaluate(() => ({ done: [...document.querySelectorAll('#wfmBody .flowstep')].map(s => s.classList.contains('done')).join(), brand: document.querySelector('#prs-brand').textContent }));
+  ok(st3.done === 'true,false,false,true' && /No Call history for the month yet: the Top Call Reasons show "–"\./.test(st3.brand) && /No Tickets export for the month yet: Complaints logged/.test(st3.brand), 'every step done but the brands\' slides (no Call history or Tickets export for the month: said so) and the OTP and final termination calls');
   // ---- the MC KPIs workbook and one of the team's decks (both made up): the three charts the email lacks, and the logos
   const W2 = require('../js/writer2.js'), Pptx = require('../js/pptx.js'), S2 = new W2.Styles(), rbS = new W2.Sheet('Reactivate the Booking code '), otS = new W2.Sheet('OTP & Termination');
   const ser = iso => Math.round((Date.parse(iso + 'T00:00:00Z') - Date.UTC(1899, 11, 30)) / 86400000), iso = (m, d) => new Date(Date.UTC(2026, m - 1, d)).toISOString().slice(0, 10);
@@ -134,6 +137,25 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
     return { t: document.querySelector('#prs-calls').textContent, days: Object.keys(window.__store['config/calldays'].days).join(), recog: !!document.querySelector('#recogPanel:not([hidden])') };
   });
   ok(/Read from Call history \(6\)\.xls: 4 Nov · 2 contacts · 1 OTP call · 1 final termination call\./.test(x4.t) && /2026-11-04$/.test(x4.days) && !x4.recog, `a Crystal .xls dropped on the box: read, 4 Nov added (${x4.days.split(',').length} days)`);
+  ok(await p.evaluate(() => /The Call history dropped has no calls in 1–3 Nov/.test(document.querySelector('#prs-brand').textContent)), 'a Call history of another day than the month to date: the brands\' slides say it has no calls for them');
+  // the month's Call history and Tickets exports (made up, as Crystal's .xls, read by the report builder's reader) for the brands' slides
+  const mx = await p.evaluate(async () => {
+    const old = window.parseXls, ser = d => Date.UTC(2026, 10, d) / 86400000 + 25569, H = ['Ser.', 'Caller ID', 'Agent ID', 'Call Date', 'Type', 'Service', 'Sub Service', 'Notes', 'Language', 'Contact Type', 'App User'];
+    const calls = [['User :', 'A.TEST', 'Call Center History Report'], H], tks = [['User :', 'A.TEST', 'Tickets Report'], ['Ser.', '', '', 'Date', 'Type', 'Category', 'Sub Category', 'Status', '', 'Ticket ID', 'Life Cycle', 'Group']];
+    for (const d of [1, 2, 3]) { for (let i = 0; i < 5; i++) calls.push([i, '0500000000', 'AGENT.A', ser(d) + 0.4, 'Virgin Inquiry', 'Prepaid', 'Renew Now', '', 'Arabic', 'CALL', 'NA']); calls.push([9, '0500000000', 'AGENT.A', ser(d) + 0.5, 'Virgin Inquiry', 'Bundles/Plans', 'Data Bundles', '', 'Arabic', 'CALL', 'NA']); }
+    [['SM is not working', 'Closed', '0 Day(s) 5:00:00 Hours'], ['SM is not working', 'Closed', '1 Day(s) 2:00:00 Hours'], ['Weak Coverage', 'Open', '']].forEach(([sub, st, life], i) => tks.push([null, null, null, `0${i + 1}/11/2026 09:30`, 'Virgin Complaint', 'Network', sub, st, null, 'T' + i, life, 'Member Care']));
+    window.parseXls = buf => [{ name: 'Sheet1', rows: new Uint8Array(buf)[0] === 2 ? tks : calls }];
+    const dt = new DataTransfer(); dt.items.add(new File([new Uint8Array([1, 0, 0, 0])], 'Call history Nov.xls')); dt.items.add(new File([new Uint8Array([2, 0, 0, 0])], 'Tickets Nov.xls'));
+    document.querySelector('#wfmBody [data-prdrop="month"]').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    await new Promise(r => setTimeout(r, 900)); window.parseXls = old;
+    const b = document.querySelector('#prs-brand');
+    return { files: [...b.querySelectorAll('.rbfile')].map(x => x.textContent).join(' | '), warn: [...b.querySelectorAll('.warnline')].map(x => x.textContent).join(' | '), done: b.classList.contains('done'), weekly: window.__mc.wc().WC.files.map(f => f.name).join() };
+  });
+  ok(/Call history Nov\.xls.*Call history · 18 rows/.test(mx.files) && /Tickets Nov\.xls.*Tickets · 3 rows/.test(mx.files) && !mx.warn && mx.done && /Tickets Nov\.xls/.test(mx.weekly), `the month's Call history and Tickets dropped on the brands' step: listed (they count on Weekly commercial too), nothing missing: ${mx.files}`);
+  const [dl4] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#wfmBar [data-prdeck]')]);
+  const d4 = path.join(out, 'with-month.pptx'); await dl4.saveAs(d4);
+  const z4 = await Core.readZip(fs.readFileSync(d4)), v4 = [...((await z4.text('ppt/slides/slide2.xml')) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]);
+  ok(v4.includes('Renew Now') && v4.includes('SM is not working') && v4.includes('Top Call Reasons') && v4.includes('Top Complaint Drivers'), 'the Virgin slide: its Top Call Reasons (Renew Now) and Top Complaint Drivers (SM is not working) from the month\'s exports');
   await p.evaluate(() => { window.__mc.state.db = null; });
   // ---- 5. a drop, a paste, a picture
   const dt = await p.evaluateHandle(b64 => { const d = new DataTransfer(); d.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'Review 2.msg', { type: 'application/vnd.ms-outlook' })); return d; }, msgFile(sampleBody({ vnet: false })).toString('base64'));

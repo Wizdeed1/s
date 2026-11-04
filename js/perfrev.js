@@ -62,11 +62,18 @@ async function prDeckFile(f, u8) {
   if (!kept.length) { PR.notes = `${f.name}: no logos (the Beyond One logo top left, the brands' logos top right)${DC.own ? '' : ' and no OTP Count or Final termination Count chart'} found in it.`; return; }
   toast(`Kept from ${f.name}: ${kept.join('; ')}.`);
 }
-/** a spreadsheet: the Call history export (its days go to got) or the MC KPIs workbook (Rebooking by day, OTP calls, final termination calls) */
-async function prSheet(f, buf, got) {
+/** an export for the brands' slides (the month's Call history or Tickets), as on Weekly commercial: read in this browser, not kept */
+function prMonthFile(name, label, month) { WC.files = WC.files.filter(x => x.name !== name).concat({ name, label }); WC.comb = {}; state.wcBuilt = ''; state.prBuilt = ''; month.push(label); }
+/** a spreadsheet: the Call history export (its days go to got; its rows to the brands' slides), the Tickets export (the brands' slides)
+    or the MC KPIs workbook (Rebooking by day, OTP calls, final termination calls) */
+async function prSheet(f, buf, got, month) {
   let sheets;
-  if (/\.xls$/i.test(f.name)) { await wcBoot(); sheets = window.parseXls(buf); }
-  else sheets = /\.xlsb$/i.test(f.name) ? await Core.readXlsb(buf) : await Core.readXlsx(buf);
+  if (/\.xls$/i.test(f.name)) {
+    await wcBoot(); sheets = window.parseXls(buf);
+    const E = rbE(), rows = (sheets[0] && sheets[0].rows) || [], c = E.classify(f.name, 'xls', { rows });
+    if (c.type === 'tickets') { const t = E.ticketRows(rows); WC.tickets[f.name] = t; prMonthFile(f.name, `Tickets · ${E.fmtInt(t.length)} rows${wcSpan(t.map(r => E.ticketDate(r[E.TCOL.date]) || E.rowDate(r[E.TCOL.date])))}`, month); return; }
+    if (c.type === 'history') { const h = E.historyRows(rows); WC.calls[f.name] = h; prMonthFile(f.name, `Call history · ${E.fmtInt(h.length)} rows${wcSpan(h.map(r => E.rowDate(r[E.COL.date])))}`, month); }
+  } else sheets = /\.xlsb$/i.test(f.name) ? await Core.readXlsb(buf) : await Core.readXlsx(buf);
   const C = PrDeck.callsOf(sheets);
   if (C) { if (C.rows) got.push({ name: f.name, ...C }); else PR.notes = `${f.name}: a Call history export with no calls in it.`; return; }
   const K = PrDeck.kpiOf(sheets);
@@ -140,7 +147,7 @@ function prKeepCalls(got) {
 }
 async function prFiles(list) {
   if (!canPerf()) return;
-  const F = [...list], got = []; if (!F.length) return;
+  const F = [...list], got = [], month = []; if (!F.length) return;
   state.prBusy = 'read'; PR.notes = ''; renderPerfWs();
   for (const f of F) {
     try {
@@ -148,7 +155,7 @@ async function prFiles(list) {
       if (/\.msg$/i.test(f.name)) prRead(msgBodyText(u8), f.name);
       else if (/\.eml$/i.test(f.name)) { const P = UpdParse.emlParts(u8); const a = P.text ? PrDeck.tablesOf(P.text, prRef()) : []; prRead(a.length || !P.html ? P.text : prHtmlText(P.html), f.name); }
       else if (/\.(txt|html?)$/i.test(f.name)) { const t = new TextDecoder().decode(u8); prRead(/\.html?$/i.test(f.name) ? prHtmlText(t) : t, f.name); }
-      else if (/\.(xls|xlsx|xlsm|xlsb)$/i.test(f.name)) await prSheet(f, buf, got);
+      else if (/\.(xls|xlsx|xlsm|xlsb)$/i.test(f.name)) await prSheet(f, buf, got, month);
       else if (/\.pptx$/i.test(f.name)) await prDeckFile(f, u8);
       else if (/\.(png|jpe?g|gif|bmp|webp)$/i.test(f.name)) PR.notes = `${f.name} is a picture, and the tool cannot read pictures: drop the email itself (save it from Outlook as .msg), or copy its text and paste it below.`;
       else PR.notes = `${f.name}: drop the "MC performance Review" email (.msg or .eml), the Call history export (.xls), the MC KPIs workbook (.xlsx) or one of your decks (.pptx, for its logos and its OTP and final termination calls).`;
@@ -156,7 +163,10 @@ async function prFiles(list) {
   }
   if (got.length) prKeepCalls(got);
   state.prBusy = ''; renderPerfWs();
-  if (got.length) { const c = PR.calls, k = prFields(prRule()), n = f => Object.values(c.days).reduce((a, x) => a + x[f], 0); const w = (v, a) => `${v.toLocaleString('en-US')} ${a}${v === 1 ? '' : 's'}`; toast(`${plural(Object.keys(c.days).length, 'day')} of call history read: ${w(n(k.o), 'OTP call')}, ${w(n(k.t), 'final termination call')}.`); }
+  const msg = [], ch = month.some(l => /^Call history/.test(l)), tk = month.some(l => /^Tickets/.test(l));
+  if (got.length) { const c = PR.calls, k = prFields(prRule()), n = f => Object.values(c.days).reduce((a, x) => a + x[f], 0), w = (v, a) => `${v.toLocaleString('en-US')} ${a}${v === 1 ? '' : 's'}`; msg.push(`${plural(Object.keys(c.days).length, 'day')} of call history read: ${w(n(k.o), 'OTP call')}, ${w(n(k.t), 'final termination call')}`); }
+  if (ch || tk) msg.push(`for the brands' slides: ${[ch ? 'the call reasons' : '', tk ? 'the complaints and tickets' : ''].filter(Boolean).join(' and ')}`);
+  if (msg.length) toast(msg.join('; ') + '.');
   const mail = F.find(f => /\.(msg|eml|txt|html?)$/i.test(f.name));
   if (mail && PR.tables && PR.from === mail.name) toast(`${mail.name}: ${plural(PR.tables.length, 'table')} read.`);
 }
@@ -198,10 +208,17 @@ function renderPerfWs() {
   // 2. the brands' slides
   const ref = m.ref, first = ref.slice(0, 8) + '01', want = []; for (let d = first; d <= ref; d = wcAddDays(d, 1)) want.push(d);
   const B = [m.brands[0], m.brands[1], m.postpaid].map(b => { const have = new Set(b.v.daily.map(r => r.date)); return { b, n: have.size, miss: want.filter(d => !have.has(d)) }; });
-  const histOk = B.every(x => x.n && !x.miss.length);
+  const histOk = B.every(x => x.n && !x.miss.length), E2 = rbE(), inMtd = (L, dOf) => (L || []).filter(r => { const d = dOf(r); return d && d.slice(0, 7) === m.ym && d <= m.ref; }).length;
+  const nC = inMtd(wcCalls(), r => E2.rowDate(r[E2.COL.date])), nT = inMtd(wcTickets(), r => E2.ticketDate(r[E2.TCOL.date]) || E2.rowDate(r[E2.TCOL.date])), hasC = Object.keys(WC.calls).length > 0, hasT = Object.keys(WC.tickets).length > 0;
   const pills = `<div class="wchist">${B.map(({ b, n, miss }) => `<span class="pill ${n && !miss.length ? 'good' : n ? 'warn' : 'bad'}" title="${esc(miss.length ? 'Missing: ' + rbShortDays(miss) : 'Every day is in the history')}"><i class="wcdot" style="background:#${b.color}"></i>${esc(b.short)} · ${n}/${want.length} days</span>`).join('')}</div>`;
   const span = want.length ? (want.length === 1 ? R.dayLabel(first) : R.niceRange(first, ref)) : '';
-  const brand = `${pills}<p class="hint">The month to date (${esc(span)}) and the months before, from the history the daily brand emails keep. The call reasons and complaints on these slides come from the month's exports when they were dropped on <b>Weekly commercial</b> in this browser; else they show "–".</p>`;
+  const mFiles = WC.files.filter(x => !x.bad), mWarn = [];
+  if (!hasC) mWarn.push('No Call history for the month yet: the Top Call Reasons show "–".'); else if (!nC) mWarn.push(`The Call history dropped has no calls in ${span}: the Top Call Reasons show "–". Drop this month's.`);
+  if (!hasT) mWarn.push('No Tickets export for the month yet: Complaints logged, Closed tickets resolved on time, Tickets still open and the Top Complaint Drivers show "–".'); else if (!nT) mWarn.push(`The Tickets export dropped has no tickets in ${span}: the complaints and tickets show "–". Drop this month's.`);
+  const brand = `${pills}<p class="hint">The service level and the trends: the month to date (${esc(span)}) and the months before, from the history the daily brand emails keep.</p>
+    <div class="drop rbdrop" data-prdrop="month" role="button" tabindex="0" aria-label="Drop the month's Call history and Tickets exports, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month's Call history and Tickets exports</strong><span>From Crystal (.xls), the month to date, or click to choose them: the Top Call Reasons, the complaints, the tickets and the Top Complaint Drivers. Read in this browser and not kept, so drop them again another day; they count on Weekly commercial too.</span></div><input type="file" hidden multiple accept=".xls" data-prpick="month">
+    ${reading}${mFiles.length ? `<div class="rbfiles">${mFiles.map(x => `<div class="rbfile"><span class="fname" title="${esc(x.name)}">${esc(x.name)}</span><span class="ftag">${esc(x.label)}</span></div>`).join('')}</div><div class="rbmini"><button class="btn sm ghost" data-prmonthclear>Clear files</button></div>` : ''}
+    ${mWarn.map(t => `<p class="hint warnline">${esc(t)}</p>`).join('')}`;
   // 3. OTP and final termination calls: the old deck's and the workbook's numbers as they are, the Call history's days after them
   const CD = state.callDays, rule = prRule(), F = prFields(rule), OT = PrDeck.otpTerm(prBase(), CD && CD.days, rule), own = CD ? Object.keys(CD.days).sort() : [], BS = CD && CD.base;
   const fmt = v => Math.round(v).toLocaleString('en-US'), C = PR.calls, cd = C ? Object.keys(C.days).sort() : [], tot = f => cd.reduce((a, d) => a + C.days[d][f], 0);
@@ -229,10 +246,10 @@ function renderPerfWs() {
     : '<p class="hint">Logos: the tool\'s logo and the brands\' names. Drop one of your decks (.pptx) in step 1 once, and both decks show its Beyond One, Virgin, FRiENDi and FRiENDi Pay logos.</p>';
   const send = `<ol class="prslides">${slides.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${logoLine}
     <p class="hint">The email goes to ${esc(splitAddr(c.to).map(wcName).join(', ') || 'nobody yet')}${splitAddr(c.cc).length ? `, copy to ${esc(splitAddr(c.cc).map(wcName).join(', '))}` : ''}, with ${esc(PrDeck.fileName(date))} attached; it opens in Outlook as a draft to check and send. The presenter, the job title and who gets it are the <b>Weekly commercial</b> settings.</p>`;
-  const sts = stepStates([!!T, histOk, !!(OT.otp && OT.term), state.prBuilt === date]);
+  const sts = stepStates([!!T, histOk && nC > 0 && nT > 0, !!(OT.otp && OT.term), state.prBuilt === date]);
   const L3 = [
     { id: 'prs-mail', title: 'Drop the email', short: 'Email', cap: 'The "MC performance Review" email with its tables: Rebooking, Network issues, Web + App, Social media and Vnet. Read in this browser; nothing is kept.', body: drop },
-    { id: 'prs-brand', title: 'The brands\' slides', short: 'Brands', cap: 'Virgin Mobile, FRiENDi Mobile and Postpaid, as on the weekly presentation.', body: brand },
+    { id: 'prs-brand', title: 'The brands\' slides', short: 'Brands', cap: 'Virgin Mobile, FRiENDi Mobile and Postpaid, as on the weekly presentation: the brands\' history, and the month\'s Call history and Tickets exports.', body: brand },
     { id: 'prs-calls', title: 'OTP and final termination calls', short: 'OTP', cap: 'From the Call history export (the raw call reasons): the OTP calls of the last two months, day by day, and the final termination calls by month. Read in this browser; only the counts by day are kept.', body: calls },
     { id: 'prs-send', title: 'The deck and the email', short: 'Deck', cap: 'The slides, in the weekly presentation\'s look.', body: send, acts: `<button class="btn sm" data-prdeck${busy || !T ? ' disabled' : ''}>Download deck</button><button class="btn sm primary" data-prmail${busy || !T ? ' disabled' : ''}>Email with the deck</button>` },
   ];
@@ -261,7 +278,8 @@ const prOn = () => state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf();
 $('wfmBar').addEventListener('change', e => { if (!prOn() || !e.target.matches('[data-prdate]')) return; const v = e.target.value; state.prDate = wcIsDay(v) ? v : ''; if (PR.text) prRead(PR.text, PR.from); state.prBuilt = ''; renderPerfWs(); });
 document.addEventListener('click', e => {
   if (!prOn()) return;
-  const t = e.target.closest && e.target.closest('[data-prdeck], [data-prmail], [data-prdrop], [data-prread], [data-prlogosrm], [data-prcallsrm]'); if (!t || !($('wfmBody').contains(t) || $('wfmBar').contains(t))) return;
+  const t = e.target.closest && e.target.closest('[data-prdeck], [data-prmail], [data-prdrop], [data-prread], [data-prlogosrm], [data-prcallsrm], [data-prmonthclear]'); if (!t || !($('wfmBody').contains(t) || $('wfmBar').contains(t))) return;
+  if (t.matches('[data-prmonthclear]')) { wcClear(); state.prBuilt = ''; renderPerfWs(); return; }
   if (t.matches('[data-prcallsrm]')) {
     const old = state.callDays, oc = PR.calls, st = prStamp(); PR.calls = null;
     prCallsChange(cd => (cd ? { ...cd, days: {}, base: null, ...st } : null)); renderPerfWs();
@@ -275,7 +293,7 @@ document.addEventListener('click', e => {
   else if (t.matches('[data-prread]')) { const ta = $('wfmBody').querySelector('[data-prtext]'); PR.pasted = ta ? ta.value : ''; if (!normSpace(PR.pasted)) { PR.notes = 'Paste the email\'s text first.'; renderPerfWs(); return; } prRead(PR.pasted, 'the pasted text'); renderPerfWs(); if (PR.tables) toast(`${plural(PR.tables.length, 'table')} read from the pasted text.`); }
 });
 /** a drop zone clicked: its own file picker (the email's, or the Call history's) */
-function prPick(z) { const p = $('wfmBody').querySelector(z.dataset.prdrop === 'calls' ? '[data-prpick="calls"]' : '[data-prpick]:not([data-prpick="calls"])'); if (p) p.click(); }
+function prPick(z) { const k = z.dataset.prdrop, p = $('wfmBody').querySelector(k ? `[data-prpick="${k}"]` : '[data-prpick]:not([data-prpick="calls"]):not([data-prpick="month"])'); if (p) p.click(); }
 $('wfmBody').addEventListener('change', e => {
   if (!prOn()) return; const t = e.target;
   if (t.matches('[data-prpick]')) { if (t.files && t.files.length) prFiles([...t.files]); t.value = ''; }

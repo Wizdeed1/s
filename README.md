@@ -222,7 +222,7 @@ The Control and Complaint team sends the *MC performance Review* email: tables b
 
 | Slide | From |
 |---|---|
-| Cover; Virgin Mobile, FRiENDi Mobile, Postpaid | The brands' history (as Weekly commercial), the template's places, Cambria headings, the brands' colours (Virgin D0021B, FRiENDi 119DA4, Postpaid 3A5A8C), the callout's shadow, *Weekly Commercial Presentation* over them, *Monthly Trend*. |
+| Cover; Virgin Mobile, FRiENDi Mobile, Postpaid | The brands' history (as Weekly commercial); the Top Call Reasons, the complaints and tickets and the Top Complaint Drivers from the month's Call history and Tickets exports (Crystal, .xls) dropped in step 2 or on Weekly commercial (read in the browser, not kept; without them those places show –, and step 2 says which export is missing); the template's places, Cambria headings, the brands' colours (Virgin D0021B, FRiENDi 119DA4, Postpaid 3A5A8C), the callout's shadow, *Weekly Commercial Presentation* over them, *Monthly Trend*. |
 | Complaints Insights | The email: Web + App, Network (this year) and Social media, 3-D shaded columns in framed charts, *MC Service Level Stabilization* over it. |
 | Complaints Insights (Rebooking) | *Booking Code Reactivations by Day* (requests by brand, the average time to close in hours and minutes) from the MC KPIs workbook; *by Month* from the email. |
 | OTP Calls, Final termination calls | The numbers of the team's old deck (or the MC KPIs workbook), kept as they are, completed with the Call history export (the raw call reasons): the OTP calls of the two months to the last day, day by day, with two trend lines; this year's final termination calls by month with a dotted trend. Without any of them the slide is left out. |

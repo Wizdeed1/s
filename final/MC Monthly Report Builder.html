@@ -2621,6 +2621,10 @@ p.prange { padding-top: 12px; }
 .wcsum td:first-child { white-space: nowrap; }
 .wcnotes { margin: 10px 0 0; padding-left: 18px; color: var(--warn); font-size: 13px; line-height: 1.5; }
 .wcflow .flowstep .stacts { gap: 8px; }
+.prtab { max-height: none; margin-top: 10px; }
+.prtab td { white-space: normal; }
+.prtab td:first-child, .prtab td:nth-child(2) { white-space: nowrap; }
+.prslides { margin: 4px 0 8px; padding-left: 20px; display: grid; gap: 2px; font-size: 13.5px; }
 @media (max-width: 720px) {
   .wcout td:first-child { width: auto; }
   .wcout td.wcbr { white-space: normal; }
@@ -13957,7 +13961,7 @@ function squares(s, x, y) {
 }
 function head(s, o, m, title, sub) {
   logoAt(s, o, 0.45, 0.3, false);
-  s.text(8.2, 0.72, 4.65, 0.25, `Weekly Commercial Presentation  ·  ${longDate(m.date)}`, { size: 9, color: MUTED, align: 'right' });
+  s.text(8.2, 0.72, 4.65, 0.25, `${o.kicker || 'Weekly Commercial Presentation'}  ·  ${longDate(m.date)}`, { size: 9, color: MUTED, align: 'right' });
   s.text(0.5, 1.0, 9.5, 0.6, title, { size: 30, bold: true, font: 'Georgia', color: NAVY, name: 'Title' });
   s.text(0.5, 1.6, 9.5, 0.32, sub, { size: 12, italic: true, color: MUTED });
 }
@@ -14049,7 +14053,7 @@ function cover(D, m, o) {
   const s = D.slide({ bg: NAVY });
   logoAt(s, o, 0.55, 0.45, true);
   s.text(0.55, 2.7, 11, 0.75, 'Member Care Performance Review', { size: 36, bold: true, font: 'Georgia', color: 'FFFFFF', name: 'Title' });
-  s.text(0.55, 3.5, 11, 0.35, 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay  —  Weekly Commercial Presentation', { size: 13, color: PALE });
+  s.text(0.55, 3.5, 11, 0.35, o.coverSub || 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay  —  Weekly Commercial Presentation', { size: 13, color: PALE });
   s.rect(0.55, 4.22, 2.2, 0.02, { fill: '5B6BA8' });
   s.text(0.55, 4.45, 4, 0.3, longDate(m.date), { size: 10, color: PALE });
   if (o.presenter) s.text(0.55, 6.62, 7, 0.28, o.presenter, { size: 10, bold: true, color: 'FFFFFF' });
@@ -14060,7 +14064,7 @@ function thanks(D, o) {
   const s = D.slide({ bg: NAVY });
   logoAt(s, o, 0.55, 0.45, true);
   s.text(0.5, 3.0, 12.33, 0.8, 'Thank You', { size: 40, bold: true, font: 'Georgia', color: 'FFFFFF', align: 'center', name: 'Title' });
-  s.text(0.5, 3.85, 12.33, 0.35, 'Member Care Performance Review  —  Weekly Commercial Presentation', { size: 13, color: PALE, align: 'center' });
+  s.text(0.5, 3.85, 12.33, 0.35, o.thanksSub || 'Member Care Performance Review  —  Weekly Commercial Presentation', { size: 13, color: PALE, align: 'center' });
   const who = [o.presenter, o.title, o.org].filter(Boolean).join('  ·  ');
   if (who) s.text(0.5, 6.85, 12.33, 0.3, who, { size: 9, color: PALE, align: 'center' });
   squares(s, 10.7, 4.95);
@@ -14076,7 +14080,8 @@ function deck(m, o = {}) {
   return D;
 }
 const fileName = date => `Beyond_One_Member_Care_Review - ${longDate(date)}.pptx`;
-return { model, deck, fileName, brandVoice, ticketBrand, longDate, dShort, BRANDS, POSTPAID };
+return { model, deck, fileName, brandVoice, ticketBrand, longDate, dShort, BRANDS, POSTPAID,
+  parts: { cover, thanks, brandSlide, postpaidSlide, logoAt, foot, callout, label, fit, int, pct, NAVY, MUTED, MON } };   // for the Performance Review deck (prdeck.js)
 })(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'));
 if (typeof module !== 'undefined') module.exports = WcDeck;
 
@@ -14369,6 +14374,168 @@ function emlParts(bytes) {
 return { parse, valueOf, oneDay, daysOf, rowsOfText, fromRows, command, match, fit, htmlRows, emlParts, label, MON3 };
 })(typeof Core !== 'undefined' ? Core : (typeof require !== 'undefined' ? require('./core.js') : null));
 if (typeof module !== 'undefined') module.exports = UpdParse;
+
+/* MC Monthly Report Builder - the Member Care Performance Review: the deck made from the "MC performance Review" email the
+   Control and Complaint team sends (its tables: Rebooking TKTs, Network Issues TKTs, Web + App TKTs, Social Media issue TKTs, Vnet
+   Complaints, and any other one), with the brands' slides of the weekly presentation.
+   tablesOf(): the email's tables from its text (an Outlook .msg keeps one cell a line; a table copied from Outlook comes
+   tab-separated): a title ending with ":", its header, and a row per month ("Jan", "Jun-25", "1-Jan", "Oct-26"); the month to date
+   ends with "to N" ("Nov to 3", "11/1/2026 to 3": until the 3rd).
+   deck(): cover; Virgin, FRiENDi and Postpaid (WcDeck's slides); Complaints Insights (Web + App, Network, Social media);
+   Complaints Insights (Rebooking by month, Vnet, the month so far); a slide for any other table; thank you. */
+'use strict';
+const PrDeck = ((P, WD) => {
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONS = { jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4, may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12 };
+const pad = n => String(n).padStart(2, '0');
+const sp = s => String(s ?? '').replace(/[​-‏‪-‮﻿]/g, '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const monOf = w => MONS[String(w || '').toLowerCase().replace(/\.$/, '')] || 0;
+const yy = y => (+y < 100 ? 2000 + +y : +y);
+
+// ---------------------------------------------------------------- reading the email
+/** the cells of the text in order: a tab-separated line gives its cells, any other line is one cell */
+function cellsOf(text) {
+  const out = [];
+  for (const line of String(text || '').split(/\r?\n/)) { for (const p of line.includes('\t') ? line.split('\t') : [line]) { const c = sp(p); if (c) out.push(c); } }
+  return out;
+}
+/** a row's month: { m, y (null when the label has none), until (the day the month runs to, for the month to date) } */
+function monthOf(c) {
+  let t = sp(c).toLowerCase(), until = null, x;
+  if ((x = t.match(/^(.*\S)\s+(?:to|till|until|-|–)\s+(\d{1,2})(?:st|nd|rd|th)?$/))) { t = x[1]; until = +x[2]; }
+  if ((x = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/))) { const a = +x[1], b = +x[2], m = b === 1 ? a : a === 1 && b > 12 ? b : a; return m >= 1 && m <= 12 ? { m, y: yy(x[3]), until } : null; }   // 11/1/2026: the month's first day, as Outlook writes it
+  if ((x = t.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/))) { const m = +x[2]; return m >= 1 && m <= 12 ? { m, y: +x[1], until } : null; }
+  if ((x = t.match(/^(\d{1,2})[-\s]([a-z]{3,9})\.?(?:[-\s](\d{2,4}))?$/)) && monOf(x[2])) return { m: monOf(x[2]), y: x[3] ? yy(x[3]) : +x[1] > 1 ? yy(x[1]) : null, until };   // 1-Jan (its first day), 26-Jan (the year first)
+  if ((x = t.match(/^([a-z]{3,9})\.?[-\s'’]+(\d{2}|\d{4})$/)) && monOf(x[1])) return { m: monOf(x[1]), y: yy(x[2]), until };   // Jun-25, Oct 2026
+  if ((x = t.match(/^([a-z]{3,9})\.?$/)) && monOf(x[1])) return { m: monOf(x[1]), y: null, until };   // Jan, March
+  return null;
+}
+const isVal = c => /^[-–]$/.test(c) || /^\(?-?[\d,]+(?:\.\d+)?\)?\s*%?$/.test(c.replace(/\s/g, ''));
+function valOf(c) { if (/^[-–]$/.test(c)) return null; const t = c.replace(/[\s,()]/g, ''), pc = t.endsWith('%'), n = parseFloat(t); return Number.isFinite(n) ? (pc ? n / 100 : n) : null; }
+const KEYS = [[/rebook/i, 'rebooking'], [/network/i, 'network'], [/web\s*\+?\s*(?:and\s*)?app/i, 'webapp'], [/social/i, 'social'], [/vnet/i, 'vnet']];
+const tidy = s => sp(s).replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').replace(/\(S\s*\+\s*C\)/i, '(Service Requests + Complaints)').replace(/\bAll Just complaints\b/i, 'All complaints').replace(/\s*-\s*/g, ' - ').replace(/\bMNP - Port\b/, 'MNP - Port');
+/**
+ * the tables in an email's text. ref: { y, m } the month a label with no year is nearest to (the presentation's month), unless a
+ * month to date in the email names its year. Returns [{ key, title, first, cols, rows: [{ ym, until, label, vals }] }]
+ */
+function tablesOf(text, ref) {
+  const C = cellsOf(text), T = []; let cur = null;
+  for (let i = 0; i < C.length;) {
+    const c = C[i];
+    if (/:\s*$/.test(c) && c.length <= 80 && !isVal(c.replace(/:\s*$/, ''))) { cur = { title: sp(c.replace(/\s*:\s*$/, '')), head: [], rows: [] }; T.push(cur); i++; continue; }
+    if (!cur) { i++; continue; }
+    const L = cur.head.length || cur.rows.length ? monthOf(c) : null;
+    if (L) {
+      const vals = []; let j = i + 1;
+      while (j < C.length && isVal(C[j])) { vals.push(valOf(C[j])); j++; }
+      if (vals.length) { cur.rows.push({ raw: c, ...L, vals }); i = j; continue; }
+    }
+    if (!cur.rows.length && cur.head.length < 12) { cur.head.push(c); i++; continue; }
+    cur = null; i++;   // text after the rows: the table has ended (a note, the signature)
+  }
+  // the month the email runs to: a month to date that names its year, else the presentation's month
+  const dated = T.flatMap(t => t.rows).find(r => r.until && r.y);
+  const R = dated ? { y: dated.y, m: dated.m } : ref;
+  return T.filter(t => t.rows.length).map(t => {
+    const n = Math.max(...t.rows.map(r => r.vals.length)), head = t.head.slice(), cols = head.splice(Math.max(0, head.length - n)).map(tidy);
+    while (cols.length < n) cols.unshift(`Value ${n - cols.length}`);
+    const rows = t.rows.map(r => {
+      const y = r.y || (r.m > R.m ? R.y - 1 : R.y), ym = `${y}-${pad(r.m)}`;
+      return { ym, until: r.until, label: r.until ? `Until ${pad(r.until)} ${MON[r.m - 1]}` : `${MON[r.m - 1]}-${String(y).slice(2)}`, vals: Array.from({ length: n }, (_, k) => r.vals[k] ?? null) };
+    });
+    return { key: (KEYS.find(([re]) => re.test(t.title)) || [, 'other'])[1], title: t.title, first: tidy(head.join(' ')) || 'Month', cols, rows };
+  });
+}
+
+// ---------------------------------------------------------------- the slides
+const COLORS = ['1F5F8B', 'ED7D31', '2E8B57', '35A7DC', 'A23B9C', '7F7F7F', 'C9870A'];
+const isTotal = c => /^total$/i.test(c.trim());
+const lastRow = t => t.rows[t.rows.length - 1];
+/** a chart of a table: a column per series (the Total left out when there are others), a share (%) as a line on its own axis */
+function chartOf(t, o = {}) {
+  const rows = o.rows || t.rows, idx = t.cols.map((c, i) => i), pcs = idx.filter(i => rows.some(r => r.vals[i] != null && r.vals[i] <= 1.5) && /%|share|rate/i.test(t.cols[i]));
+  let bars = idx.filter(i => !pcs.includes(i)); if (bars.length > 1) bars = bars.filter(i => !isTotal(t.cols[i]));
+  const sums = bars.map(i => rows.reduce((a, r) => a + (r.vals[i] || 0), 0)), big = bars[sums.indexOf(Math.max(...sums))];
+  const lab = o.labels || (bars.length <= 2 ? 'all' : 'big');
+  return {
+    cats: rows.map(r => r.label), gap: bars.length > 3 ? 40 : 60, overlap: -10, catRot: rows.length > 12 ? -45 : undefined, catSize: rows.length > 12 ? 700 : 800, barFmt: '#,##0',
+    bars: bars.map((i, k) => ({ name: t.cols[i], values: rows.map(r => r.vals[i]), color: COLORS[k % COLORS.length], labels: lab === 'all' || (lab === 'big' && i === big) })),
+    // the share's axis runs to about twice its highest value, so its line sits between the short and the tall columns
+    line: pcs.length ? { name: o.lineName || t.cols[pcs[0]], values: rows.map(r => r.vals[pcs[0]]), color: '1F2A5C', fmt: '0%', max: Math.min(1, Math.max(0.5, Math.ceil(Math.max(...rows.map(r => r.vals[pcs[0]] || 0)) * 22) / 10)), min: 0, labelSize: 700 } : undefined,
+  };
+}
+const since = t => { const r = lastRow(t); return r.until ? r.label : r.label.replace('-', ' 20'); };
+function slideHead(D, m, o, title) {
+  const W = WD.parts, s = D.slide({ bg: 'FFFFFF' });
+  W.logoAt(s, o, 0.45, 0.3, false);
+  s.text(8.2, 0.72, 4.65, 0.25, `${o.kicker}  ·  ${WD.longDate(m.date)}`, { size: 9, color: W.MUTED, align: 'right' });
+  s.text(0.5, 0.95, 9.5, 0.6, title, { size: 30, bold: true, font: 'Georgia', color: W.NAVY, name: 'Title' });
+  return s;
+}
+/** a table's chart in a place on a slide, with its title over it; "not in the email" when the email has no such table */
+function place(s, t, x, y, w, h, name, o = {}) {
+  const W = WD.parts;
+  if (!t) { W.label(s, x + 0.05, y, w, `${name}`); s.rect(x, y + 0.27, w, h - 0.27, { fill: 'F7F8FA', line: 'E3E5EA', radius: 0.04 }); s.text(x, y + 0.27, w, h - 0.27, 'Not in the email', { size: 11, italic: true, color: W.MUTED, align: 'center', valign: 'middle' }); return; }
+  W.label(s, x + 0.05, y, w, `${o.title || t.title} – ${since(t)}`);
+  s.rect(x, y + 0.27, w, h - 0.27, { fill: 'FFFFFF', line: 'E3E5EA', radius: 0.03 });
+  s.chart(x + 0.05, y + 0.32, w - 0.1, h - 0.37, chartOf(t, o), { name });
+}
+/** the month so far against the month before, for each table */
+function soFar(s, tables, x, y, w, h) {
+  const W = WD.parts, rows = [];
+  const add = (name, t, i) => { const L = t.rows, a = L[L.length - 1], b = L.length > 1 ? L[L.length - 2] : null; rows.push([W.fit(name, w - 2.5), { t: W.int(a.vals[i]), align: 'right' }, { t: b ? W.int(b.vals[i]) : '–', align: 'right' }]); };
+  const total = t => { const i = t.cols.findIndex(isTotal); return i >= 0 ? i : 0; };
+  for (const t of tables) {
+    if (t.key === 'rebooking') { t.cols.forEach((c, i) => { if (!isTotal(c)) add(`Rebooking · ${c}`, t, i); }); }
+    else if (t.key === 'webapp') { t.cols.forEach((c, i) => { if (!/%/.test(c)) add(i ? 'All complaints' : 'Web + App TKTs', t, i); }); }
+    else add(t.key === 'network' ? 'Network TKTs' : t.key === 'social' ? 'Social media TKTs' : t.key === 'vnet' ? 'Vnet complaints' : t.title, t, total(t));
+  }
+  const last = tables.length ? lastRow(tables[0]) : null, prev = tables.length && tables[0].rows.length > 1 ? tables[0].rows[tables[0].rows.length - 2] : null;
+  W.label(s, x + 0.05, y, w, 'This Month So Far');
+  const head = ['Tickets', { t: last ? last.label : 'This month', align: 'right' }, { t: prev ? prev.label : 'Before', align: 'right' }];
+  const rh = Math.min(0.26, (h - 0.35) / Math.max(rows.length + 1, 1));
+  s.table(x, y + 0.32, [head, ...rows.slice(0, 12)], { cols: [w - 2.4, 1.2, 1.2], rowH: rh, size: 8.5, head: { fill: W.NAVY, color: 'FFFFFF' }, border: 'D9D9D9' });
+}
+/**
+ * the Performance Review: m = WcDeck.model() for the presentation's day (the brands' slides), tables = tablesOf() from the email,
+ * o = { presenter, title, org, logo }
+ */
+function deck(m, tables, o0 = {}) {
+  const W = WD.parts, o = { ...o0, kicker: 'Member Care Performance Review', coverSub: 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay', thanksSub: 'Member Care Performance Review' };
+  const D = P.create({ headFont: 'Georgia', bodyFont: 'Calibri' }), by = k => tables.find(t => t.key === k) || null;
+  let n = 2;
+  W.cover(D, m, o);
+  W.brandSlide(D, m, m.brands[0], n++, o);   // Virgin Mobile
+  W.brandSlide(D, m, m.brands[1], n++, o);   // FRiENDi Mobile
+  W.postpaidSlide(D, m, n++, o);
+  // Complaints Insights: Web + App over the whole width, Network and Social media under it
+  let s = slideHead(D, m, o, 'Complaints Insights');
+  place(s, by('webapp'), 0.45, 1.62, 12.45, 2.7, 'Web + App TKTs', { lineName: 'Web + App share of all complaints', labels: 'all' });
+  const net = by('network'), netRows = net ? (r => (r.length >= 6 ? r : net.rows.slice(-13)))(net.rows.filter(r => r.ym >= `${lastRow(net).ym.slice(0, 4)}-01`)) : null;
+  place(s, net, 0.45, 4.45, 6.15, 2.62, 'Network TKTs', { rows: netRows || undefined, labels: 'big' });
+  place(s, by('social'), 6.75, 4.45, 6.15, 2.62, 'Social Media issue TKTs', { labels: 'all' });
+  W.foot(s, o, n++);
+  // Complaints Insights: Rebooking by month over the whole width, Vnet and the month so far under it
+  s = slideHead(D, m, o, 'Complaints Insights');
+  place(s, by('rebooking'), 0.45, 1.62, 12.45, 2.7, 'Rebooking TKTs', { title: `${(by('rebooking') || {}).title || 'Rebooking TKTs'} (booking code reactivations)`, labels: 'all' });
+  place(s, by('vnet'), 0.45, 4.45, 6.15, 2.62, 'Vnet Complaints', { labels: 'all' });
+  soFar(s, ['rebooking', 'network', 'webapp', 'social', 'vnet'].map(by).filter(Boolean), 6.75, 4.45, 6.15, 2.62);
+  W.foot(s, o, n++);
+  // any other table in the email: two a slide
+  const other = tables.filter(t => t.key === 'other');
+  for (let i = 0; i < other.length; i += 2) {
+    s = slideHead(D, m, o, 'More Insights');
+    place(s, other[i], 0.45, 1.62, 12.45, 2.7, other[i].title, { rows: other[i].rows.slice(-14) });
+    if (other[i + 1]) place(s, other[i + 1], 0.45, 4.45, 12.45, 2.62, other[i + 1].title, { rows: other[i + 1].rows.slice(-14) });
+    W.foot(s, o, n++);
+  }
+  W.thanks(D, o);
+  return D;
+}
+const fileName = date => `MC_Performance_Review - ${WD.longDate(date)}.pptx`;
+return { tablesOf, cellsOf, monthOf, chartOf, deck, fileName };
+})(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'), typeof WcDeck !== 'undefined' ? WcDeck : require('./wcdeck.js'));
+if (typeof module !== 'undefined') module.exports = PrDeck;
 </script>
 <script id="vendor-motion">
 /*!
@@ -24887,9 +25054,9 @@ function wcRows(kind) {
   const rows = key ? rbCombine(F) : null; WC.comb[kind] = { key, rows }; return rows;
 }
 const wcCalls = () => wcRows('calls'), wcTickets = () => wcRows('tickets');
-function wcModel() {
+function wcModel(date) {
   const c = wcCfg();
-  return WcDeck.model({ date: wcDateNow(), hist: rbHist(), calls: wcCalls(), tickets: wcTickets(), fpayTickets: WC.fpay ? WC.fpay.rows : null, outages: outagesNow(), onTimeH: c.onTimeH, reports: (window.Build || {}).REPORTS }, rbE());
+  return WcDeck.model({ date: date || wcDateNow(), hist: rbHist(), calls: wcCalls(), tickets: wcTickets(), fpayTickets: WC.fpay ? WC.fpay.rows : null, outages: outagesNow(), onTimeH: c.onTimeH, reports: (window.Build || {}).REPORTS }, rbE());
 }
 
 // ---------------------------------------------------------------- the files: the month-to-date Crystal exports, FRiENDi Pay's tickets sheet
@@ -25103,6 +25270,131 @@ $('wfmBody').addEventListener('input', e => { if (e.target.matches && e.target.m
 $('wfmBody').addEventListener('keydown', e => { const z = e.target.closest && e.target.closest('[data-wcdrop]'); if (z && wcOn() && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const p = $('wfmBody').querySelector('[data-wcpick]'); if (p) p.click(); } });
 ['dragenter', 'dragover'].forEach(ev => $('wfmBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-wcdrop]'); if (z) { e.preventDefault(); z.classList.add('over'); } }));
 ['dragleave', 'drop'].forEach(ev => $('wfmBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-wcdrop]'); if (z) { e.preventDefault(); if (ev === 'drop') e.stopPropagation(); z.classList.remove('over'); if (ev === 'drop' && wcOn() && e.dataTransfer && e.dataTransfer.files.length) wcAddFiles([...e.dataTransfer.files]); } }));   // read once: the page's own drop handler does not see it
+
+// ================================================================ WFM TEAM › PERFORMANCE REVIEW: the Member Care Performance Review deck
+// The Control and Complaint team sends "MC performance Review": an email with tables by month (Rebooking TKTs, Network Issues TKTs,
+// Web + App TKTs, Social Media issue TKTs, Vnet Complaints). Drop the email (.msg, or a saved .eml, or paste its text): PrDeck reads
+// the tables and makes the deck in the weekly presentation's look (cover; Virgin, FRiENDi and Postpaid from the brands' history, as
+// on Weekly commercial; two Complaints Insights slides; a slide for any other table; thank you). The email to the VP comes as an
+// Outlook draft with the deck attached (the Weekly commercial settings: presenter, job title, To and Cc). The email's data stays
+// in this browser; the tool sends nothing itself.
+Object.assign(state, { prDate: '', prBusy: '', prBuilt: '' });
+const PR = { tables: null, from: '', notes: '', text: '', open: false };
+const canPerf = () => canWeekly();
+const prDateNow = () => (wcIsDay(state.prDate) ? state.prDate : wcToday());
+const prRef = () => ({ y: +prDateNow().slice(0, 4), m: +prDateNow().slice(5, 7) });
+const PR_NAMES = { rebooking: 'Rebooking TKTs', network: 'Network Issues TKTs', webapp: 'Web + App TKTs', social: 'Social Media issue TKTs', vnet: 'Vnet Complaints' };
+/** an email's HTML as text: each table's rows tab-separated, a line for each block (nothing in it runs or loads) */
+function prHtmlText(html) {
+  if (typeof DOMParser === 'undefined') return htmlText(html);
+  const doc = new DOMParser().parseFromString(String(html || ''), 'text/html'), out = [];
+  const walk = n => {
+    if (n.nodeType === 3) { const t = n.textContent.replace(/\s+/g, ' '); if (t.trim()) out.push(t); return; }
+    if (n.nodeType !== 1 || /^(script|style|head|title)$/i.test(n.tagName)) return;
+    if (n.tagName === 'TABLE' && !n.querySelector('table')) { out.push('\n'); for (const tr of n.querySelectorAll('tr')) out.push([...tr.children].map(td => td.textContent.replace(/\s+/g, ' ').trim()).join('\t') + '\n'); return; }
+    const block = /^(p|div|br|tr|li|h\d|table|tbody|blockquote)$/i.test(n.tagName);
+    if (block) out.push('\n'); for (const c of n.childNodes) walk(c); if (block) out.push('\n');
+  };
+  walk(doc.body || doc.documentElement);
+  return out.join('').replace(/[ \t]*\n[ \t]*/g, l => (l.includes('\t') ? l : '\n'));
+}
+/** what the tables say, from the email's text */
+function prRead(text, from) {
+  PR.text = String(text || ''); PR.from = from;
+  const T = PrDeck.tablesOf(PR.text, prRef());
+  PR.tables = T.length ? T : null;
+  const miss = Object.keys(PR_NAMES).filter(k => !T.some(t => t.key === k));
+  PR.notes = !T.length ? `No tables found in ${from}: drop the "MC performance Review" email (.msg), or paste its text with the tables.` : miss.length ? `Not in the email: ${miss.map(k => PR_NAMES[k]).join(', ')}. Their places say so on the slides.` : '';
+  state.prBuilt = '';
+}
+async function prFiles(list) {
+  if (!canPerf()) return;
+  const f = [...list][0]; if (!f) return;
+  state.prBusy = 'read'; renderPerfWs();
+  try {
+    const u8 = new Uint8Array(await f.arrayBuffer());
+    if (/\.msg$/i.test(f.name)) prRead(msgBodyText(u8), f.name);
+    else if (/\.eml$/i.test(f.name)) { const P = UpdParse.emlParts(u8); const a = P.text ? PrDeck.tablesOf(P.text, prRef()) : []; prRead(a.length || !P.html ? P.text : prHtmlText(P.html), f.name); }
+    else if (/\.(txt|html?)$/i.test(f.name)) { const t = new TextDecoder().decode(u8); prRead(/\.html?$/i.test(f.name) ? prHtmlText(t) : t, f.name); }
+    else if (/\.(png|jpe?g|gif|bmp|webp)$/i.test(f.name)) { PR.notes = `${f.name} is a picture, and the tool cannot read pictures: drop the email itself (save it from Outlook as .msg), or copy its text and paste it below.`; }
+    else PR.notes = `${f.name}: drop the "MC performance Review" email (.msg or .eml), or paste its text below.`;
+  } catch (e) { PR.notes = `${f.name}: ${(e && e.message) || 'could not be read'}.`; }
+  state.prBusy = ''; renderPerfWs();
+  if (PR.tables && PR.from === f.name) toast(`${f.name}: ${plural(PR.tables.length, 'table')} read.`);
+}
+function renderPerfWs() {
+  const body = $('wfmBody'); if (!body || state.ws !== 'wfm' || state.wfmTab !== 'perf') return;
+  if (!canPerf()) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; body.innerHTML = emptyCard('Only the WFM team', 'The WFM manager and the WFM analysts make the performance review.'); return; }
+  if (!WC.ready) {
+    $('wfmBar').innerHTML = '<div class="wsacts"></div>';
+    if (!body.querySelector('.wcload')) body.innerHTML = '<div class="rbload big wcload" role="status"><span class="spin"></span><span>Opening the brands\' history…</span></div>';
+    wcBoot().then(() => { WC.ready = true; if (state.ws === 'wfm' && state.wfmTab === 'perf') renderPerfWs(); }).catch(e => { if (state.ws === 'wfm' && state.wfmTab === 'perf') body.innerHTML = emptyCard('The performance review could not open', (e && e.message) || String(e)); });
+    return;
+  }
+  const date = prDateNow(), c = wcCfg(), busy = state.prBusy, T = PR.tables, m = wcModel(date), R = rbR();
+  $('wfmBar').innerHTML = `<label class="wsfield wcdate"><span>Presentation date</span><input type="date" class="cell" data-prdate value="${esc(date)}" max="2199-12-31"></label><div class="wsacts">
+    <button class="btn" data-prdeck${busy || !T ? ' disabled' : ''}>${busy === 'deck' ? '<span class="spin" aria-hidden="true"></span>Making the deck…' : '<svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>Download deck'}</button>
+    <button class="btn primary" data-prmail${busy || !T ? ' disabled' : ''}>${busy === 'mail' ? '<span class="spin" aria-hidden="true"></span>Making the email…' : 'Email with the deck'}</button></div>`;
+  // 1. the email
+  const rows = T ? T.map(t => { const a = t.rows[0], z = t.rows[t.rows.length - 1]; return `<tr><td dir="auto">${esc(t.title)}</td><td>${esc(a.label)} → ${esc(z.label)}</td><td class="num">${t.rows.length}</td><td dir="auto">${esc(t.cols.join(' · '))}</td><td class="num">${esc(z.vals.map(v => (v == null ? '–' : v > 0 && v < 1.5 && !Number.isInteger(v) ? Math.round(v * 1000) / 10 + '%' : Math.round(v).toLocaleString('en-US'))).join(' · '))}</td><td>${t.key === 'other' ? '<span class="pill info">its own slide</span>' : ''}</td></tr>`; }).join('') : '';
+  const read = T ? `<div class="tablewrap prtab"><table><thead><tr><th>Table</th><th>Months</th><th class="r">Rows</th><th>Columns</th><th class="r">The last row</th><th><span class="sr">Slide</span></th></tr></thead><tbody>${rows}</tbody></table></div><p class="hint">Read from ${esc(PR.from)}.</p>` : '';
+  const drop = `<div class="drop rbdrop" data-prdrop role="button" tabindex="0" aria-label="Drop the MC performance Review email, or choose it"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the "MC performance Review" email</strong><span>The .msg from Outlook (or a saved .eml), or click to choose it</span></div><input type="file" hidden accept=".msg,.eml,.txt,.html,.htm,.png,.jpg,.jpeg" data-prpick>
+    ${PR.notes ? `<p class="hint warnline">${esc(PR.notes)}</p>` : ''}${read}
+    <details class="wcpaste"${PR.open ? ' open' : ''} data-prpaste><summary>Or paste the email's text</summary><p class="hint">In Outlook, select the email's text with its tables (Ctrl+A), copy it and paste it here.</p><textarea class="cell rbta" rows="5" data-prtext spellcheck="false" placeholder="Rebooking TKTs:&#10;Months&#9;Virgin&#9;FRiENDi&#9;Total&#10;Jan&#9;…"></textarea><div class="acts"><button class="btn sm" data-prread>Read the text</button></div></details>`;
+  // 2. the brands' slides
+  const ref = m.ref, first = ref.slice(0, 8) + '01', want = []; for (let d = first; d <= ref; d = wcAddDays(d, 1)) want.push(d);
+  const B = [m.brands[0], m.brands[1], m.postpaid].map(b => { const have = new Set(b.v.daily.map(r => r.date)); return { b, n: have.size, miss: want.filter(d => !have.has(d)) }; });
+  const histOk = B.every(x => x.n && !x.miss.length);
+  const pills = `<div class="wchist">${B.map(({ b, n, miss }) => `<span class="pill ${n && !miss.length ? 'good' : n ? 'warn' : 'bad'}" title="${esc(miss.length ? 'Missing: ' + rbShortDays(miss) : 'Every day is in the history')}"><i class="wcdot" style="background:#${b.color}"></i>${esc(b.short)} · ${n}/${want.length} days</span>`).join('')}</div>`;
+  const span = want.length ? (want.length === 1 ? R.dayLabel(first) : R.niceRange(first, ref)) : '';
+  const brand = `${pills}<p class="hint">The month to date (${esc(span)}) and the months before, from the history the daily brand emails keep. The call reasons and complaints on these slides come from the month's exports when they were dropped on <b>Weekly commercial</b> in this browser; else they show "–".</p>`;
+  // 3. the deck and the email
+  const slides = ['Cover', 'Virgin Mobile', 'FRiENDi Mobile', 'Postpaid', 'Complaints Insights: Web + App, Network, Social media', 'Complaints Insights: Rebooking, Vnet, the month so far'].concat(T ? T.filter(t => t.key === 'other').map(t => `More Insights: ${t.title}`) : [], ['Thank you']);
+  const send = `<ol class="prslides">${slides.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+    <p class="hint">The email goes to ${esc(splitAddr(c.to).map(wcName).join(', ') || 'nobody yet')}${splitAddr(c.cc).length ? `, copy to ${esc(splitAddr(c.cc).map(wcName).join(', '))}` : ''}, with ${esc(PrDeck.fileName(date))} attached; it opens in Outlook as a draft to check and send. The presenter, the job title and who gets it are the <b>Weekly commercial</b> settings.</p>`;
+  const sts = stepStates([!!T, histOk, state.prBuilt === date]);
+  const L3 = [
+    { id: 'prs-mail', title: 'Drop the email', short: 'Email', cap: 'The "MC performance Review" email with its tables: Rebooking, Network issues, Web + App, Social media and Vnet. Read in this browser; nothing is kept.', body: drop },
+    { id: 'prs-brand', title: 'The brands\' slides', short: 'Brands', cap: 'Virgin Mobile, FRiENDi Mobile and Postpaid, as on the weekly presentation.', body: brand },
+    { id: 'prs-send', title: 'The deck and the email', short: 'Deck', cap: 'The slides, in the weekly presentation\'s look.', body: send, acts: `<button class="btn sm" data-prdeck${busy || !T ? ' disabled' : ''}>Download deck</button><button class="btn sm primary" data-prmail${busy || !T ? ' disabled' : ''}>Email with the deck</button>` },
+  ];
+  body.innerHTML = `<div class="flow wcflow prflow">${L3.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i] })).join('')}</div>`;
+  const ta = body.querySelector('[data-prtext]'); if (ta && PR.open) ta.value = PR.pasted || '';
+}
+async function prMake(kind) {
+  if (state.prBusy || !canPerf() || !PR.tables) return;
+  state.prBusy = kind; renderPerfWs();
+  try {
+    await wcBoot();
+    const c = wcCfg(), date = prDateNow(), m = wcModel(date), D = PrDeck.deck(m, PR.tables, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo() });
+    const bytes = await D.bytes(), name = PrDeck.fileName(date);
+    if (kind === 'deck') { if (await save(name, new Blob([bytes], { type: PPTX_TYPE }))) state.prBuilt = date; }
+    else {
+      const to = splitAddr(c.to), cc = splitAddr(c.cc), first = wcPerson(to[0]).split(' ')[0] || '';
+      const text = `Hi${first ? ' ' + first : ''},\r\nKindly find the MC Performance Review as attached.\r\nSincerely.`;
+      const p = t => `<p class="MsoNormal" style="margin:0;font-family:Calibri,sans-serif;font-size:11pt">${t}</p>`;
+      const html = p(`Hi${first ? ' ' + esc(first) : ''},`) + p('Kindly find the MC Performance Review as attached.') + p('Sincerely.');
+      if (await saveEml(`MC Performance Review - ${WcDeck.longDate(date)}`, { to, cc, subject: 'MC Performance Review', html, text, files: [{ name, bytes, type: PPTX_TYPE }] })) state.prBuilt = date;
+    }
+  } catch (e) { toast('The deck could not be made: ' + ((e && e.message) || e)); }
+  finally { state.prBusy = ''; renderPerfWs(); }
+}
+const prOn = () => state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf();
+$('wfmBar').addEventListener('change', e => { if (!prOn() || !e.target.matches('[data-prdate]')) return; const v = e.target.value; state.prDate = wcIsDay(v) ? v : ''; if (PR.text) prRead(PR.text, PR.from); state.prBuilt = ''; renderPerfWs(); });
+document.addEventListener('click', e => {
+  if (!prOn()) return;
+  const t = e.target.closest && e.target.closest('[data-prdeck], [data-prmail], [data-prdrop], [data-prread]'); if (!t || !($('wfmBody').contains(t) || $('wfmBar').contains(t))) return;
+  if (t.matches('[data-prdeck]')) prMake('deck');
+  else if (t.matches('[data-prmail]')) prMake('mail');
+  else if (t.matches('[data-prdrop]')) { const p = $('wfmBody').querySelector('[data-prpick]'); if (p) p.click(); }
+  else if (t.matches('[data-prread]')) { const ta = $('wfmBody').querySelector('[data-prtext]'); PR.pasted = ta ? ta.value : ''; if (!normSpace(PR.pasted)) { PR.notes = 'Paste the email\'s text first.'; renderPerfWs(); return; } prRead(PR.pasted, 'the pasted text'); renderPerfWs(); if (PR.tables) toast(`${plural(PR.tables.length, 'table')} read from the pasted text.`); }
+});
+$('wfmBody').addEventListener('change', e => { if (!prOn()) return; const t = e.target; if (t.matches('[data-prpick]')) { if (t.files && t.files.length) prFiles(t.files); t.value = ''; } });
+$('wfmBody').addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details[data-prpaste]')) PR.open = d.open; }, true);
+$('wfmBody').addEventListener('input', e => { if (e.target.matches && e.target.matches('[data-prtext]')) PR.pasted = e.target.value; });
+$('wfmBody').addEventListener('keydown', e => { const z = e.target.closest && e.target.closest('[data-prdrop]'); if (z && prOn() && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const p = $('wfmBody').querySelector('[data-prpick]'); if (p) p.click(); } });
+['dragenter', 'dragover'].forEach(ev => $('wfmBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-prdrop]'); if (z) { e.preventDefault(); z.classList.add('over'); } }));
+['dragleave', 'drop'].forEach(ev => $('wfmBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-prdrop]'); if (z) { e.preventDefault(); if (ev === 'drop') e.stopPropagation(); z.classList.remove('over'); if (ev === 'drop' && prOn() && e.dataTransfer && e.dataTransfer.files.length) prFiles([...e.dataTransfer.files]); } }));   // read once: the page's own drop handler does not see it
 
 // ================================================================ INTERACTIONS: the Genesys interactions export, day by day
 // The export lists every inbound interaction: who handled it, when, how long, which queue, who hung up and any error.
@@ -25357,18 +25649,19 @@ interPicker.addEventListener('change', async () => { const f = interPicker.files
 // ================================================================ WFM TEAM: one page for the WFM analysts and the WFM manager
 // Its tabs, in five groups. This month: Import, Review and Export (the month's build, for the WFM analysts) and Emails (the
 // four daily brand emails, and the month's deduction and absences emails; the incentive email is the senior manager's). Every day: Daily (the daily data) and
-// Report builder (the analysts make the daily emails). Every week: Weekly commercial (the presentation for the VP, weekly.js).
+// Report builder (the analysts make the daily emails). Every week: Weekly commercial (the presentation for the VP, weekly.js) and
+// Performance Review (the deck from the complaints team's email, perfrev.js).
 // Insight: Analytics (departments and months), Agents (every measure per agent) and Interactions (the interactions export).
 // Keep: Data (export and import of everything). Each role sees its own tabs; the senior manager reads.
 Object.assign(state, { agQ: '', agSort: 'adh', agDir: 'asc', agUnit: '', agSpv: '', agCols: 'core', wfmAt: '' });
-const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['weekly', 'Weekly commercial'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
+const WFM_TABS = [['import', 'Import'], ['review', 'Review'], ['export', 'Export'], ['emails', 'Emails'], ['daily', 'Daily'], ['builder', 'Report builder'], ['weekly', 'Weekly commercial'], ['perf', 'Performance Review'], ['analytics', 'Analytics'], ['agents', 'Agents'], ['inter', 'Interactions'], ['data', 'Data']];
 const WFM_STEPS = ['import', 'review', 'export'];   // the month's build, shown on the WFM team page
-const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Every week', ['weekly']], ['Insight', ['analytics', 'agents', 'inter']], ['Keep', ['data']]];
+const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['Every day', ['daily', 'builder']], ['Every week', ['weekly', 'perf']], ['Insight', ['analytics', 'agents', 'inter']], ['Keep', ['data']]];
 /** every email the WFM team sends, in one place shared by the WFM manager and the WFM analysts: the four daily brand emails and
     the month's deduction and absences emails. Both can edit them and send them (the tool copies them or opens them in Outlook). */
 const canWfmMail = () => hasRole('admin', 'wfm', 'user');
 Object.assign(state, { mailSub: '' });
-function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'weekly' ? canWeekly() : t === 'data' ? canBackup() : true)); }
+function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'weekly' || t === 'perf' ? canWeekly() : t === 'data' ? canBackup() : true)); }
 /** the tab now on screen: a step of the month's build, or a WFM tab */
 const wfmTabNow = () => (state.ws === 'build' ? (WFM_STEPS.includes(state.step) ? state.step : 'import') : state.wfmTab);
 /** the WFM team page's header: the title, the tabs of the role (with what each needs), and the actions of the tab */
@@ -25411,6 +25704,7 @@ const WFM_LEAD = {
   emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction and absences emails. Edit them here and send them from Outlook; the tool never sends anything itself. The incentive email is the senior manager\'s (Supervisors › Incentive email), with the incentive file you build on Export.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
   weekly: 'The Weekly Commercial Presentation for the VP, in four steps: the service level and the trends come from the brands\' history; drop the month\'s Call history and Tickets exports for the call reasons, complaints and tickets; keep the outages list here. The tool makes the PowerPoint and the email with it attached; it never sends anything itself.',
+  perf: 'The Member Care Performance Review for the VP: drop the "MC performance Review" email (.msg) and the tool reads its tables (Rebooking, Network issues, Web + App, Social media, Vnet) and makes the PowerPoint in the weekly presentation\'s look, with the brands\' slides, and the email with it attached; it never sends anything itself.',
   data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
 function renderWfmWs() {
@@ -25426,7 +25720,7 @@ function renderWfmWs() {
   const builder = t === 'builder', em = t === 'emails', dm = em && state.mailSub === 'daily', mm = em && !dm;
   $('wfmRb').hidden = !builder; $('wfmDm').hidden = !dm; $('wfmBody').hidden = builder || dm || mm;
   if (!mm) mountMail(false);
-  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'weekly') renderWeeklyWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
+  if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'weekly') renderWeeklyWs(); else if (t === 'perf') renderPerfWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
   else if (builder) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; rbShow(); }
   else if (dm) { $('wfmBar').innerHTML = mailSubHtml(unsent) + '<div class="wsacts"></div>'; dmShow(); }
   renderUpd();   // Emails › Deduction and absences: the corrections that come back after the review
@@ -25566,11 +25860,12 @@ $('wfmBody').addEventListener('click', e => {
 /** files dropped on a workspace page (not Build): the page that wants them takes them (the Report builder tab every daily export,
     Results the old Excel, Quality the Final EVAL); anything else is recognised and the Recognise files panel says where it goes */
 async function wsDrop(files) {
-  const L = [...files], rb = [], old = [], what = [], wk = [], up = [];
+  const L = [...files], rb = [], old = [], what = [], wk = [], up = [], pr = [];
   for (const f of L) {
     if (state.ws === 'wfm' && state.wfmTab === 'builder' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name)) { rb.push(f); continue; }   // on its own tab every export goes to Report builder
     if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(csv|xls|xlsx)$/i.test(f.name)) { wk.push(f); continue; }   // and on Weekly commercial, to the weekly presentation
     if (updShown() && !$('wfmUpd').hidden && /\.(msg|eml)$/i.test(f.name)) { up.push(f); continue; }   // an email on the deduction email page: its corrections
+    if (state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf() && /\.(msg|eml|txt|html?)$/i.test(f.name)) { pr.push(f); continue; }   // the MC performance Review email on Performance Review
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     const v = await recogOne(f), K = Recog.KINDS[v.kind] || Recog.KINDS.unknown;
     if (v.kind === 'inter' && canInter()) { importInteractions(f); continue; }
@@ -25582,6 +25877,7 @@ async function wsDrop(files) {
   if (rb.length) { if (state.wfmTab !== 'builder') { state.wfmTab = 'builder'; renderWs(); } rbAddFiles(rb); }
   if (wk.length) wcAddFiles(wk);
   if (up.length) updFiles(up);
+  if (pr.length) prFiles(pr);
   if (old.length) cmpFiles(old);   // the old Excel files of a month together, on Results › Reconcile
   if (what.length) recogOpen(what, 'drop');
 }
@@ -28616,6 +28912,7 @@ const DEPT = [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
     'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
+    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables, and <b>Download deck</b> makes the Member Care Performance Review in the weekly presentation\'s look (the brands\' slides, two Complaints Insights slides, any other table on its own slide); <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     'At month end, the numbered tabs are the month\'s steps, in order: <b>1 Import</b>, <b>2 Review</b>, <b>3 Export</b>, <b>4 Emails</b>. On <b>Import</b>, drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
@@ -28634,6 +28931,7 @@ const DEPT = [
   ['wfm', 'WFM manager', [
     'Every morning, <b>WFM team › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them.',
     'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
+    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables, and <b>Download deck</b> makes the Member Care Performance Review in the weekly presentation\'s look (the brands\' slides, two Complaints Insights slides, any other table on its own slide); <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
@@ -30101,7 +30399,7 @@ renderBrand();
 render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
-window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }), upd: () => ({ ctx: updCtx, read: updRead, files: updFiles, apply: updApply, now: updNow }) };   // for testing
+window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }), upd: () => ({ ctx: updCtx, read: updRead, files: updFiles, apply: updApply, now: updNow }), pr: () => ({ PR, read: prRead, files: prFiles }) };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
 Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing

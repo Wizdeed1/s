@@ -204,6 +204,18 @@ Every week the WFM team sends the VP the *Weekly Commercial Presentation* (Membe
 
 The slides follow the deck the team sent: a navy cover with the presenter and their job title (Settings), Performance Insights for Virgin Mobile, FRiENDi Mobile and FRiENDi Pay in their colours (the service level, three tiles, the daily and monthly trends as columns with the service level as a line, the top call reasons and complaint drivers; FRiENDi Pay's third tile is last month's service level), Postpaid Insights, Outages Insights and Thank You. Each chart is a real PowerPoint chart with its data in an embedded workbook (Edit Data works). A number the files do not give shows "–". The logo is the tool's logo (Settings › Logo) when there is one, else the company's name. `js/pptx.js` writes the PowerPoint (no library), `js/wcdeck.js` the numbers and the slides, `js/weekly.js` the page.
 
+## November 2026, corrections after the deduction email
+
+After the deduction email for review, champions and supervisors send corrections ("kindly update the leave records below": a table with Name, Team, Dep and a column per day, like 27-Oct with *SL leaves*). **WFM team › Emails › Deduction and absences** now has a **Corrections after the review** box above the email:
+
+| Way in | What the tool does |
+|---|---|
+| Paste the table from the email (or from Excel) | Read at once, with the cells apart (the email's HTML when the clipboard has it). |
+| Drop the email (.msg or .eml) or a sheet (.xlsx, .csv) | The table in it read; a picture is refused with what to do instead (copy the table, or drop the email). |
+| Type, one a line | *set Nawaf as absent on 10 Oct*, *Sara K. SL 27-29 Oct*, *Omar late 20 min on 5 Oct*, *clear Nawaf 10 Oct*: a day, a range (27-29 Oct, 27 Oct to 2 Nov) or a list (27, 28 and 31 Oct); Absent, Attend, OFF, AL, SL, any leave, late minutes, or clear (the correction taken away). |
+
+Each person is matched to the month's people by ID, or by name (the email's full name against the roster's shorter one, a first name when only one person in the month has it); when two people fit, the box asks which. Each day shows now → new; a day already so, an OFF day inside a typed range and a final month's days are not ticked. **Apply** makes them the month's attendance corrections (`att/<month>/edits/<person>`, the same records as a supervisor's, marked `src: 'update'` with who and when), so the month's row, the deduction workbook, the final email's list of what changed and the agent's page follow; Undo takes them back, and the list of corrections made from here has Remove. `js/updparse.js` reads (no page code), `js/attupd.js` is the box.
+
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.
 
@@ -275,8 +287,9 @@ node test/ctflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/sh
 node test/smartlink.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # Export › Smart-Link attendance: FRiENDi and FRiENDi Pay only, Smart-Link's sheet and formulas, a late day as Attend with its minutes, the shared month's corrections, Saved workbooks
 node test/absgrid.cjs "final/MC Monthly Report Builder.html" test/shots           # the deduction email's Absenteeism table: every cell on one line at any window width, fixed widths, the email as wide as the table
 node test/weekly.cjs "final/MC Monthly Report Builder.html" test/shots           # WFM team › Weekly commercial: the month from the history, the sheet read (another file refused, a drop read once), the exports' numbers, outages typed, pasted and undone, settings, the deck and the email to the VP, another day, the shared settings and outages, the senior manager without the tab, phone width
+node test/attupd.cjs "final/MC Monthly Report Builder.html" test/shots           # Emails › Deduction and absences › Corrections after the review: a champion's table pasted, typed lines (choose between two people, a range's OFF day, clear), Apply, Undo, Remove, an .eml chosen and dropped, a picture refused, a final month, text as text, the senior manager without the box
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)
-npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, Smart-Link's attendance file, the weekly presentation's numbers and PowerPoint, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
+npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, Smart-Link's attendance file, the weekly presentation's numbers and PowerPoint, the corrections read after the deduction email, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
 ```
 
 They load the page with `window.__NOLOCK__` and `window.__ROSTER__` (the existing test hooks) and `window.__mcUser`,

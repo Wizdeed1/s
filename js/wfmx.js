@@ -73,6 +73,7 @@ function renderWfmWs() {
   if (t === 'analytics') renderWfm(); else if (t === 'agents') renderAgentsWs(); else if (t === 'daily') renderDailyWs(); else if (t === 'inter') renderInterWs(); else if (t === 'weekly') renderWeeklyWs(); else if (t === 'data') renderBackupWs(); else if (mm) renderMailWs();
   else if (builder) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; rbShow(); }
   else if (dm) { $('wfmBar').innerHTML = mailSubHtml(unsent) + '<div class="wsacts"></div>'; dmShow(); }
+  renderUpd();   // Emails › Deduction and absences: the corrections that come back after the review
 }
 /** the two kinds of email on the Emails page */
 function mailSubHtml(unsent) {
@@ -209,10 +210,11 @@ $('wfmBody').addEventListener('click', e => {
 /** files dropped on a workspace page (not Build): the page that wants them takes them (the Report builder tab every daily export,
     Results the old Excel, Quality the Final EVAL); anything else is recognised and the Recognise files panel says where it goes */
 async function wsDrop(files) {
-  const L = [...files], rb = [], old = [], what = [], wk = [];
+  const L = [...files], rb = [], old = [], what = [], wk = [], up = [];
   for (const f of L) {
     if (state.ws === 'wfm' && state.wfmTab === 'builder' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name)) { rb.push(f); continue; }   // on its own tab every export goes to Report builder
     if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(csv|xls|xlsx)$/i.test(f.name)) { wk.push(f); continue; }   // and on Weekly commercial, to the weekly presentation
+    if (updShown() && !$('wfmUpd').hidden && /\.(msg|eml)$/i.test(f.name)) { up.push(f); continue; }   // an email on the deduction email page: its corrections
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     const v = await recogOne(f), K = Recog.KINDS[v.kind] || Recog.KINDS.unknown;
     if (v.kind === 'inter' && canInter()) { importInteractions(f); continue; }
@@ -223,6 +225,7 @@ async function wsDrop(files) {
   }
   if (rb.length) { if (state.wfmTab !== 'builder') { state.wfmTab = 'builder'; renderWs(); } rbAddFiles(rb); }
   if (wk.length) wcAddFiles(wk);
+  if (up.length) updFiles(up);
   if (old.length) cmpFiles(old);   // the old Excel files of a month together, on Results › Reconcile
   if (what.length) recogOpen(what, 'drop');
 }

@@ -1,0 +1,26 @@
+/* ------------------------------------------------------------------------------------------------------------- Emails › Deduction: corrections after the review */
+#wfmUpd { margin-bottom: var(--s4); }
+.updhd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.updhd h2 { margin: 0; }
+.upddrop { display: grid; gap: 8px; margin-top: 10px; padding: 10px; border: 1.5px dashed var(--line-3); border-radius: 12px; transition: border-color var(--t-fast) ease, background-color var(--t-fast) ease; }
+.upddrop.over { border-color: var(--brand); border-style: solid; background: var(--brand-soft); }
+.upddrop textarea { display: block; width: 100%; min-height: 92px; resize: vertical; font-family: var(--text); }
+.updacts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.updprev { display: grid; gap: 12px; margin-top: 14px; }
+.updgrp { display: grid; gap: 6px; }
+.updwho { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.updwho .sg { color: var(--muted); font-size: 12.5px; }
+.updwho .sg.bad { color: var(--bad); }
+.updpick select { min-width: 260px; max-width: 100%; }
+.updtab { max-height: none; width: fit-content; max-width: 100%; }
+.updtab table { width: auto; min-width: min(460px, 100%); }
+.updtab td { white-space: nowrap; }
+.updtab tr.off td { color: var(--muted); }
+.updtab tr.off td b { font-weight: 500; }
+.updtab td.updarrow { padding-inline: 2px; color: var(--muted); }
+.updbad summary { cursor: pointer; width: fit-content; font: 600 13px/20px var(--text); color: var(--warn); }
+.updbad ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.updgo { margin: 0; }
+.upddone { margin-top: 16px; }
+.upddone h3 { margin: 0 0 6px; font: 600 13px/18px var(--text); color: var(--ink-2); }
+.upddone .ilist li { align-items: center; }

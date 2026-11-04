@@ -2,9 +2,11 @@
 // 1. The email's tables read from its text as Outlook keeps it (a cell a line) and as copied (tab-separated): titles, header,
 //    a row per month (Jan, Jun-25, 1-Jan, Oct-26), the month to date ("Nov to 3", "11/1/2026 to 3": Until 03 Nov), the year of a
 //    month with none, numbers with commas and percentages, the signature left out; a table the deck does not know kept as other.
-// 2. The charts: the Total left out when there are other columns, a share as a line on its own axis.
-// 3. The deck: cover, Virgin, FRiENDi and Postpaid, two Complaints Insights slides (the numbers on them), a slide for the other
-//    table, thank you; "Not in the email" where a table is missing; its file name.
+// 2. The charts: the Total and the share left out, shaded columns, the year first where the team's deck has it.
+// 3. The MC KPIs workbook (made up, laid out as the team's): requests by day with the time to close, by month, OTP calls, final
+//    termination calls; the logos of a deck, by their names or where they sit.
+// 4. The deck as the team's: the cover, the brands' slides (Cambria, the brands' colours, the callout's shadow, the brand's logo),
+//    Complaints Insights in 3-D, Rebooking by day and by month, OTP and final termination calls, thank you; "not in the email".
 // 4. The made-up .msg the browser test drops is read back by the tool's own reader.
 // Usage: node test/prdeck.test.cjs [outDir: the made-up deck is written there]
 const fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
@@ -12,7 +14,7 @@ const repo = path.join(__dirname, '..');
 let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? '✓ ' : '✗ ') + m); };
 const src = fs.readFileSync(path.join(repo, 'js/rb_src.html'), 'utf8'), code = src.split('<script id="rb-code">')[1].split('</' + 'script>')[0];
 const W = { console, TextDecoder, TextEncoder, setTimeout, clearTimeout }; W.window = W; vm.createContext(W); vm.runInContext(code, W);
-const E = W.Engine, Core = require(path.join(repo, 'js/core.js')), WcDeck = require(path.join(repo, 'js/wcdeck.js')), PrDeck = require(path.join(repo, 'js/prdeck.js'));
+const E = W.Engine, Core = require(path.join(repo, 'js/core.js')), WcDeck = require(path.join(repo, 'js/wcdeck.js')), PrDeck = require(path.join(repo, 'js/prdeck.js')), Pptx = require(path.join(repo, 'js/pptx.js'));
 const { msgFile, sampleBody } = require('./msgfile.cjs');
 const ref = { y: 2026, m: 11 };
 (async () => {
@@ -37,29 +39,54 @@ const ref = { y: 2026, m: 11 };
   // ---- 2. charts
   const c1 = PrDeck.chartOf(rb), c2 = PrDeck.chartOf(wa), c3 = PrDeck.chartOf(by('vnet'));
   ok(c1.bars.map(b => b.name).join() === 'Virgin,FRiENDi' && !c1.line, 'Rebooking: Virgin and FRiENDi, the Total left out');
-  ok(c2.bars.length === 2 && c2.line && c2.line.fmt === '0%' && c2.line.max <= 1 && c2.line.max >= 0.5, `Web + App: two columns and the share as a line (its axis to ${c2.line.max * 100}%)`);
+  ok(c2.bars.length === 2 && !c2.line && c2.bars.every(b => b.grad && b.labels), 'Web + App: its two columns, shaded and labelled, the share left out (as in the team\'s deck)');
   ok(c3.bars.map(b => b.name).join() === 'Total', 'Vnet: its Total, the only column');
-  ok(PrDeck.chartOf(by('social')).catRot === -45, 'many months: the labels slanted');
-  // ---- 3. the deck
+  ok(PrDeck.chartOf(by('social')).catRot === -45 && PrDeck.chartOf(by('social'), { yearFirst: true }).cats[0] === '25-Jan', 'many months: the labels slanted; the year first where the deck has it (25-Jan)');
+  // ---- 3. the MC KPIs workbook (made up, laid out as the team's) and the logos of a deck
+  const W2 = require(path.join(repo, 'js/writer2.js')), S = new W2.Styles(), rbS = new W2.Sheet('Reactivate the Booking code '), otS = new W2.Sheet('OTP & Termination');
+  const ser = iso => Math.round((Date.parse(iso + 'T00:00:00Z') - Date.UTC(1899, 11, 30)) / 86400000), day = (m, d) => `2026-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  rbS.set(4, 9, 'Date'); rbS.set(4, 10, 'Virgin'); rbS.set(4, 11, 'Friendi'); rbS.set(4, 12, 'Avg Time to Close');
+  const days = []; for (let d = 14; d <= 30; d++) days.push(day(10, d)); for (let d = 1; d <= 3; d++) days.push(day(11, d));
+  days.forEach((d, k) => { rbS.set(5 + k, 9, ser(d)); rbS.set(5 + k, 10, 20 + (k % 9)); rbS.set(5 + k, 11, 15 + (k % 7)); rbS.set(5 + k, 12, 0.05 + (k % 5) * 0.04); });
+  rbS.set(31, 10, 'Virgin'); rbS.set(31, 11, 'FRiENDi');
+  ['26-Jan', '26-Feb', '26-Mar', 'Until 03 Nov'].forEach((c, k) => { rbS.set(32 + k, 9, c); rbS.set(32 + k, 10, 600 + k); rbS.set(32 + k, 11, 500 + k); });
+  otS.set(3, 3, 'OTP Count'); otS.set(3, 18, 'Final termination Count');
+  for (let k = 0; k < 60; k++) { const d = new Date(Date.UTC(2026, 8, 5 + k)).toISOString().slice(0, 10); otS.set(18 + k, 2, ser(d)); otS.set(18 + k, 3, 30 + (k % 25)); }
+  for (let mo = 1; mo <= 11; mo++) { otS.set(3 + mo, 17, ser(day(mo, 1))); otS.set(3 + mo, 18, 20000 - mo * 1000); }
+  const book = await Core.readXlsx(await W2.pack([rbS, otS], S)), K = PrDeck.kpiOf(book);
+  ok(K.byDay && K.byDay.length === 20 && K.byDay[0].date === '2026-10-14' && K.byDay[0].virgin === 20 && Math.abs(K.byDay[0].avg - 0.05) < 1e-9, `the workbook: the requests by day (${K.byDay && K.byDay.length} days from ${K.byDay && K.byDay[0].date}) with the time to close`);
+  ok(K.byMonth && K.byMonth.map(r => r[0]).join() === '26-Jan,26-Feb,26-Mar,Until 03 Nov' && K.otp.length === 60 && K.term.length === 11 && K.term[0].ym === '2026-01' && K.term[0].n === 19000, 'the requests by month, 60 days of OTP calls, the final termination calls by month');
+  const Ld = Pptx.create({}), png = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'));
+  const png2 = Uint8Array.from([...png]); png2[png2.length - 5] ^= 1;   // two different pictures
+  Ld.slide({ bg: '1E2761' }).image(0.55, 0.5, 0.48, 0.48, png, { descr: 'C:\\assets\\beyondone_mark_only.png' });
+  const sl = Ld.slide({}); sl.image(0.45, 0.36, 0.3, 0.46, png2, { descr: '' }); sl.image(12.45, 0.3, 0.4, 0.4, png2, { descr: 'virgin_logo.png' }); sl.text(0.45, 1.56, 8, 0.3, 'Virgin Mobile — Contact Centre Voice Channel');
+  const Lg = await PrDeck.logosOf(await Core.readZip(await Ld.bytes()));
+  ok(Object.keys(Lg).sort().join() === 'full,mark,virgin' && Lg.mark.type === 'image/png', `the logos of a deck: by their names, or by where they sit (${Object.keys(Lg).sort().join(', ')})`);
+  // ---- 4. the deck, as the team's
   const H = {}; for (const b of ['virgin', 'friendi', 'fpay', 'postpaid']) H[b] = { voice: { monthly: [{ date: '2026-09-01', presented: 1000, handled: 950, sl: 0.9 }], daily: [1, 2, 3].map(d => ({ date: `2026-11-0${d}`, presented: 1000, handled: 980, sl: 0.85 })) } };
-  const m = WcDeck.model({ date: '2026-11-04', hist: H }, E);
-  const png = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'));
-  const bytes = await PrDeck.deck(m, T, { presenter: 'Huda S.', title: 'Member Care lead', org: 'Beyond One', logo: { png, w: 300, h: 100 } }).bytes();
+  const m = WcDeck.model({ date: '2026-11-04', hist: H }, E), logo = { png, w: 300, h: 100 };
+  const bytes = await PrDeck.deck(m, T, { presenter: 'Huda S.', title: 'Member Care lead', org: 'Beyond One', logo, kpi: K, logos: { virgin: { png: png2, w: 10, h: 10 } } }).bytes();
   if (process.argv[2]) { fs.mkdirSync(process.argv[2], { recursive: true }); fs.writeFileSync(path.join(process.argv[2], PrDeck.fileName('2026-11-04')), bytes); }
   const z = await Core.readZip(bytes), names = z.names(), X = async n => [...((await z.text(n)) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
-  const slides = names.filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n)).length, charts = names.filter(n => /^ppt\/charts\/chart\d+\.xml$/.test(n)).length;
-  ok(slides === 8 && charts === 5 + 5 + 1 && names.filter(n => /^ppt\/embeddings\/.+\.xlsx$/.test(n)).length === charts, `8 slides (cover, three brands, two Complaints Insights, OTP Calls, thank you), ${charts} charts (five on the brands' slides, five from the email, OTP Calls), each with its workbook`);
-  const s1 = await X('ppt/slides/slide1.xml'), s2 = await X('ppt/slides/slide2.xml'), s5 = await X('ppt/slides/slide5.xml'), s6 = await X('ppt/slides/slide6.xml'), s7 = await X('ppt/slides/slide7.xml'), s8 = await X('ppt/slides/slide8.xml');
-  ok(s1.includes('Member Care Performance Review') && s1.includes('Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay') && s1.includes('4 Nov 2026') && s1.includes('Huda S.'), 'the cover: Member Care Performance Review, the three brands, the day, the presenter');
-  ok(s2.includes('Performance Insights') && s2.includes('Member Care Performance Review  ·  4 Nov 2026'), "the brands' slides with the review's name over them");
-  ok(['Complaints Insights', 'Web + App TKTs – Until 03 Nov', 'Network Issues TKTs – Until 03 Nov', 'Social Media issue TKTs – Until 03 Nov'].every(x => s5.includes(x)), 'Complaints Insights: Web + App, Network, Social media, until 03 Nov');
-  ok(['Rebooking TKTs (booking code reactivations) – Until 03 Nov', 'Vnet Complaints – Until 03 Nov', 'This Month So Far', 'Rebooking · Virgin', '80', '690', 'Vnet complaints', '7', '90'].every(x => s6.includes(x)), 'Complaints Insights: Rebooking, Vnet, the month so far against October');
-  ok(s7.includes('More Insights') && s7.includes('OTP Calls – Until 03 Nov') && s8.includes('Thank You') && s8.includes('Member Care Performance Review'), 'the other table on its own slide; thank you');
-  const c5 = await z.text('ppt/charts/chart6.xml');   // after the brands' five
-  ok(/<c:v>Jan-26<\/c:v>/.test(c5) && /<c:v>Until 03 Nov<\/c:v>/.test(c5) && /Web \+ App share of all complaints/.test(c5), "the Web + App chart: Jan-26 to Until 03 Nov, the share's line");
+  const slides = names.filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n)).length, charts = names.filter(n => /^ppt\/charts\/chart\d+\.xml$/.test(n));
+  ok(slides === 9 && charts.length === 5 + 3 + 2 + 2 + 1 && names.filter(n => /^ppt\/embeddings\/.+\.xlsx$/.test(n)).length === charts.length, `9 slides (cover, three brands, Complaints Insights, Rebooking, OTP and Final termination, OTP Calls from the email, thank you), ${charts.length} charts each with its workbook`);
+  const s1 = await X('ppt/slides/slide1.xml'), s2 = await X('ppt/slides/slide2.xml'), s5 = await X('ppt/slides/slide5.xml'), s6 = await X('ppt/slides/slide6.xml'), s7 = await X('ppt/slides/slide7.xml'), s9 = await X('ppt/slides/slide9.xml');
+  ok(s1.includes('Member Care Performance Review') && s1.includes('Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay') && s1.includes('04 Nov 2026') && s1.includes('Huda S.') && s1.includes('BEYOND ONE'), 'the cover as the team\'s: the title, the three brands, 04 Nov 2026, the presenter');
+  const x2 = await z.text('ppt/slides/slide2.xml');
+  ok(s2.includes('Performance Insights') && s2.includes('Weekly Commercial Presentation  ·  04 Nov 2026') && s2.includes('Monthly Trend') && /latin typeface="Cambria"/.test(x2) && /srgbClr val="D0021B"/.test(x2) && /outerShdw/.test(x2) && (x2.match(/<p:pic>/g) || []).length === 2, "Virgin's slide: the deck's heading and Monthly Trend, Cambria, Virgin's red with its shadow, the Virgin logo top right");
+  ok(['Complaints Insights', 'MC Service Level Stabilization  ·  04 Nov 2026', 'Web + App TKTs – Until 03 Nov', 'Network TKT – Until 03 Nov', 'Social Media issue TKTs – Until 03 Nov'].every(x => s5.includes(x)), 'Complaints Insights: as the team\'s, until 03 Nov');
+  const c5 = await z.text(charts.find(n => /chart6\.xml$/.test(n)) ? 'ppt/charts/chart6.xml' : charts[5]);
+  ok(/<c:bar3DChart>/.test(c5) && /<c:view3D>/.test(c5) && /<a:gradFill/.test(c5) && /<c:v>Until 03 Nov<\/c:v>/.test(c5) && !/<c:lineChart>/.test(c5) && /<a:srgbClr val="A6A6A6"\/>/.test(c5), 'its charts: 3-D shaded columns, framed, to Until 03 Nov');
+  ok(s6.includes('Complaints Insights') && s6.includes('Rebooking TKTs – From 14-Oct To 03 Nov'), `Rebooking: from the first to the last day of the workbook (${s6[1]})`);
+  const cd = await z.text('ppt/charts/chart9.xml'), cm = await z.text('ppt/charts/chart10.xml');
+  ok(/Booking Code Reactivations by Day/.test(cd) && /Avg Time to Close \(hh:mm\)/.test(cd) && /\[h\]:mm/.test(cd) && /<c:symbol val="circle"\/>/.test(cd) && /Booking Code Reactivations by Month/.test(cm) && /<c:v>Until 03 Nov<\/c:v>/.test(cm), 'by day (the time to close in hours and minutes, round marks) and by month (the email\'s), their titles in the charts');
+  const co = await z.text('ppt/charts/chart11.xml'), ct = await z.text('ppt/charts/chart12.xml');
+  ok(s7.includes('OTP Calls') && s7.includes('Final termination calls') && s7.includes('Until 03 Nov') && (co.match(/<c:trendline>/g) || []).length === 2 && /trendlineType val="exp"/.test(ct) && !/<c:legend>/.test(co), 'OTP calls (the last 52 days, two trend lines) and final termination calls (this year, a dotted trend), as the team\'s');
+  ok(co.match(/<c:ptCount val="(\d+)"\/>/)[1] === '1' && (co.match(/<c:pt idx="51">/g) || []).length > 0, 'OTP: 52 days');
+  ok(s9.includes('Thank You') && s9.includes('Member Care Performance Review  —  Weekly Commercial Presentation') && !s5.concat(s6).some(x => /Vnet|This Month So Far/.test(x)), 'thank you as the team\'s; no Vnet and no month-so-far table, as in the team\'s deck');
   const T3 = PrDeck.tablesOf(sampleBody({ network: false, vnet: false }), ref), z3 = await Core.readZip(await PrDeck.deck(m, T3, {}).bytes());
-  const t5 = await (async n => [...((await z3.text(n)) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]))('ppt/slides/slide5.xml'), t6 = [...((await z3.text('ppt/slides/slide6.xml')) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]);
-  ok(t5.includes('Not in the email') && t6.includes('Not in the email') && z3.names().filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n)).length === 7, 'no Network and no Vnet table: "Not in the email" in their places, 7 slides');
+  const t5 = [...((await z3.text('ppt/slides/slide5.xml')) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]);
+  ok(t5.includes('Network TKT: not in the email') && z3.names().filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n)).length === 7, 'no Network table: said so in its place; no workbook: no OTP slide (7 slides)');
   ok(PrDeck.fileName('2026-11-04') === 'MC_Performance_Review - 4 Nov 2026.pptx', 'the file name');
   // ---- 4. the made-up .msg, read with the tool's own reader
   const ex = fs.readFileSync(path.join(repo, 'js/extras.js'), 'utf8'), fn = ex.slice(ex.indexOf('function msgBodyText'), ex.indexOf('/** "Name / Team" pairs'));

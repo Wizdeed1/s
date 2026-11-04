@@ -13,7 +13,7 @@ const lineOf = (c, w = 0.75) => (c ? `<a:ln w="${Math.round(w * 12700)}">${fill(
 /** one run's properties: size in pt, colour, bold, italic, the font (a script font for Arabic and the like too) */
 function rPr(o, tag = 'a:rPr') {
   const f = o.font || 'Calibri';
-  return `<${tag} lang="en-US" sz="${Math.round((o.size || 12) * 100)}" b="${o.bold ? 1 : 0}" i="${o.italic ? 1 : 0}" dirty="0">${fill(o.color || '262626')}<a:latin typeface="${esc(f)}"/><a:cs typeface="Arial"/></${tag}>`;
+  return `<${tag} lang="en-US" sz="${Math.round((o.size || 12) * 100)}" b="${o.bold ? 1 : 0}" i="${o.italic ? 1 : 0}"${o.spc ? ` spc="${Math.round(o.spc * 100)}"` : ''} dirty="0">${fill(o.color || '262626')}<a:latin typeface="${esc(f)}"/><a:cs typeface="Arial"/></${tag}>`;
 }
 /** paragraphs from a string (lines), a list of runs, or a list of paragraphs (each a list of runs) */
 function paras(content, o) {
@@ -24,7 +24,16 @@ function paras(content, o) {
     + runs.map(r => `<a:r>${rPr({ ...o, ...r })}<a:t>${esc(r.t)}</a:t></a:r>`).join('') + `${rPr({ ...o, ...(runs[0] || {}) }, 'a:endParaRPr')}</a:p>`).join('');
 }
 
-// ------------------------------------------------------------ the chart: columns, and a line on its own axis (0-120%)
+// ------------------------------------------------------------ the chart: columns (flat or 3-D), and a line on its own axis
+/** a column's fill as Office draws its "gradient" style: lighter at the top, darker at the foot */
+const grad = c => `<a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:srgbClr val="${c}"><a:satMod val="103000"/><a:lumMod val="102000"/><a:tint val="94000"/></a:srgbClr></a:gs><a:gs pos="50000"><a:srgbClr val="${c}"><a:satMod val="110000"/><a:lumMod val="100000"/><a:shade val="100000"/></a:srgbClr></a:gs><a:gs pos="100000"><a:srgbClr val="${c}"><a:lumMod val="99000"/><a:satMod val="120000"/><a:shade val="78000"/></a:srgbClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill>`;
+/**
+ * ch: { cats, bars: [{ name, values, color, grad, labels, labelColor, labelSize, labelBold, trend: [{ type: exp|linear, dash }] }],
+ *   line: { name, values, color, w (pt), fmt, max, min (null: Office decides), labels (false: none), labelSize, labelColor, labelBold,
+ *   smooth (false: straight), marker: { symbol, size, color } }, d3 (3-D clustered columns), gap, overlap, barFmt, catRot, catSize,
+ *   axisSize, axisColor, gridColor, labelSize, labelColor, legend (false: none), legendSize, border (the frame's colour), title,
+ *   titleSize, titleColor, yTitle, y2Title }
+ */
 function chartXml(ch, n) {
   const cats = ch.cats.map(String), N = cats.length, col = i => String.fromCharCode(66 + i);   // B, C, D…
   const strCache = L => `<c:strCache><c:ptCount val="${L.length}"/>${L.map((v, i) => `<c:pt idx="${i}"><c:v>${esc(v)}</c:v></c:pt>`).join('')}</c:strCache>`;
@@ -33,22 +42,35 @@ function chartXml(ch, n) {
   const cat = `<c:cat><c:strRef><c:f>Sheet1!$A$2:$A$${N + 1}</c:f>${strCache(cats)}</c:strRef></c:cat>`;
   const val = (L, i, fmt) => `<c:val><c:numRef><c:f>Sheet1!$${col(i)}$2:$${col(i)}$${N + 1}</c:f>${numCache(L, fmt)}</c:numRef></c:val>`;
   const txt = (sz, color = '595959', b = 0, rot) => `<c:txPr><a:bodyPr${rot != null ? ` rot="${rot}" vert="horz"` : ''}/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="${sz}" b="${b}">${fill(color)}<a:latin typeface="Calibri"/></a:defRPr></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>`;
-  const bars = ch.bars.map((s, i) => `<c:ser><c:idx val="${i}"/><c:order val="${i}"/>${tx(s.name, i)}<c:spPr>${fill(s.color)}<a:ln><a:noFill/></a:ln></c:spPr><c:invertIfNegative val="0"/>`
-    + (s.labels ? `<c:dLbls><c:numFmt formatCode="${esc(ch.barFmt || '#,##0')}" sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(700, '404040')}<c:dLblPos val="outEnd"/><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>` : '')
-    + `${cat}${val(s.values, i, ch.barFmt || '#,##0')}</c:ser>`).join('');
+  const lbl = (fmt, sz, color, bold, pos) => `<c:dLbls><c:numFmt formatCode="${esc(fmt)}" sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(sz, color, bold ? 1 : 0)}${pos ? `<c:dLblPos val="${pos}"/>` : ''}<c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>`;
+  const title = (t, sz, color, rot) => `<c:title><c:tx><c:rich><a:bodyPr rot="${rot || 0}" vert="horz"/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="${sz}" b="1">${fill(color)}<a:latin typeface="Calibri"/></a:defRPr></a:pPr><a:r><a:rPr lang="en-US" sz="${sz}" b="1">${fill(color)}<a:latin typeface="Calibri"/></a:rPr><a:t>${esc(t)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>`;
+  const trend = t => `<c:trendline><c:spPr><a:ln w="${Math.round((t.w || 1.5) * 12700)}" cap="rnd">${fill(t.color)}<a:prstDash val="${t.dash || 'sysDot'}"/></a:ln></c:spPr><c:trendlineType val="${t.type || 'linear'}"/><c:dispRSqr val="0"/><c:dispEq val="0"/></c:trendline>`;
+  const axSz = ch.axisSize || 800, axC = ch.axisColor || '595959', d3 = !!ch.d3, tc = ch.titleColor || '0E2841';
+  const bars = ch.bars.map((s, i) => {
+    const pos = s.values.some(v => v != null && +v > 0) && !d3 ? 'outEnd' : null, plus = s.values.every(v => v == null || +v > 0);
+    return `<c:ser><c:idx val="${i}"/><c:order val="${i}"/>${tx(s.name, i)}<c:spPr>${s.grad ? grad(s.color) : fill(s.color)}<a:ln><a:noFill/></a:ln></c:spPr><c:invertIfNegative val="0"/>`
+      + (s.labels ? lbl(ch.barFmt || '#,##0', s.labelSize || ch.labelSize || 700, s.labelColor || ch.labelColor || '404040', s.labelBold, pos) : '')
+      + (s.trend || []).map(t => trend({ color: s.color, ...t, type: t.type === 'exp' && !plus ? 'linear' : t.type })).join('')   // an exponential trend needs every value above nothing
+      + `${cat}${val(s.values, i, ch.barFmt || '#,##0')}</c:ser>`;
+  }).join('');
   const li = ch.bars.length, L = ch.line;
-  const line = L ? `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/><c:ser><c:idx val="${li}"/><c:order val="${li}"/>${tx(L.name, li)}<c:spPr><a:ln w="28575" cap="rnd">${fill(L.color)}<a:round/></a:ln></c:spPr><c:marker><c:symbol val="none"/></c:marker>`
-    + `<c:dLbls><c:numFmt formatCode="${esc(L.fmt || '0%')}" sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(L.labelSize || 800, '262626', 0)}<c:dLblPos val="t"/><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>`
-    + `${cat}${val(L.values, li, L.fmt || '0%')}<c:smooth val="1"/></c:ser><c:marker val="1"/><c:axId val="${n * 10 + 3}"/><c:axId val="${n * 10 + 4}"/></c:lineChart>` : '';
-  const ax = (id, cross, pos, del, extra) => `<c:axId val="${id}"/><c:scaling><c:orientation val="minMax"/>${extra || ''}</c:scaling><c:delete val="${del ? 1 : 0}"/><c:axPos val="${pos}"/>`;
-  const catAx = `<c:catAx>${ax(n * 10 + 1, n * 10 + 2, 'b', false)}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln w="6350">${fill('BFBFBF')}</a:ln></c:spPr>${txt(ch.catSize || 800, '595959', 0, ch.catRot != null ? ch.catRot * 60000 : null)}<c:crossAx val="${n * 10 + 2}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`;
-  const valAx = `<c:valAx>${ax(n * 10 + 2, n * 10 + 1, 'l', false, '<c:min val="0"/>')}<c:majorGridlines><c:spPr><a:ln w="6350">${fill('E7E7E7')}</a:ln></c:spPr></c:majorGridlines><c:numFmt formatCode="${esc(ch.barFmt || '#,##0')}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln><a:noFill/></a:ln></c:spPr>${txt(800)}<c:crossAx val="${n * 10 + 1}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>`;
-  const sec = L ? `<c:catAx>${ax(n * 10 + 3, n * 10 + 4, 'b', true)}<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${n * 10 + 4}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`
-    + `<c:valAx>${ax(n * 10 + 4, n * 10 + 3, 'r', false, `<c:max val="${L.max ?? 1.2}"/><c:min val="${L.min ?? 0}"/>`)}<c:numFmt formatCode="${esc(L.fmt || '0%')}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln><a:noFill/></a:ln></c:spPr>${txt(800)}<c:crossAx val="${n * 10 + 3}"/><c:crosses val="max"/><c:crossBetween val="between"/></c:valAx>` : '';
+  const mk = L && L.marker ? `<c:marker><c:symbol val="${L.marker.symbol || 'circle'}"/><c:size val="${L.marker.size || 6}"/><c:spPr>${grad(L.marker.color || L.color)}<a:ln w="12700">${fill(L.marker.edge || 'E8E8E8')}</a:ln></c:spPr></c:marker>` : '<c:marker><c:symbol val="none"/></c:marker>';
+  const line = L ? `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/><c:ser><c:idx val="${li}"/><c:order val="${li}"/>${tx(L.name, li)}<c:spPr><a:ln w="${Math.round((L.w || 2.25) * 12700)}" cap="rnd">${fill(L.color)}<a:round/></a:ln></c:spPr>${mk}`
+    + (L.labels === false ? '' : lbl(L.fmt || '0%', L.labelSize || 800, L.labelColor || '262626', L.labelBold, 't'))
+    + `${cat}${val(L.values, li, L.fmt || '0%')}<c:smooth val="${L.smooth === false ? 0 : 1}"/></c:ser><c:marker val="1"/><c:axId val="${n * 10 + 3}"/><c:axId val="${n * 10 + 4}"/></c:lineChart>` : '';
+  const ax = (id, pos, del, extra) => `<c:axId val="${id}"/><c:scaling><c:orientation val="minMax"/>${extra || ''}</c:scaling><c:delete val="${del ? 1 : 0}"/><c:axPos val="${pos}"/>`;
+  const catAx = `<c:catAx>${ax(n * 10 + 1, 'b', false)}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln w="6350">${fill('BFBFBF')}</a:ln></c:spPr>${txt(ch.catSize || axSz, axC, 0, ch.catRot != null ? ch.catRot * 60000 : null)}<c:crossAx val="${n * 10 + 2}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`;
+  const valAx = `<c:valAx>${ax(n * 10 + 2, 'l', false, '<c:min val="0"/>')}<c:majorGridlines><c:spPr><a:ln w="6350">${fill(ch.gridColor || 'E7E7E7')}</a:ln></c:spPr></c:majorGridlines>${ch.yTitle ? title(ch.yTitle, 900, tc, -5400000) : ''}<c:numFmt formatCode="${esc(ch.barFmt || '#,##0')}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln><a:noFill/></a:ln></c:spPr>${txt(axSz, axC)}<c:crossAx val="${n * 10 + 1}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>`;
+  const sec = L ? `<c:catAx>${ax(n * 10 + 3, 'b', true)}<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${n * 10 + 4}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`
+    + `<c:valAx>${ax(n * 10 + 4, 'r', false, `${L.max === null ? '' : `<c:max val="${L.max ?? 1.2}"/>`}${L.min === null ? '' : `<c:min val="${L.min ?? 0}"/>`}`)}${ch.y2Title ? title(ch.y2Title, 900, tc, -5400000) : ''}<c:numFmt formatCode="${esc(L.fmt || '0%')}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln><a:noFill/></a:ln></c:spPr>${txt(axSz, axC)}<c:crossAx val="${n * 10 + 3}"/><c:crosses val="max"/><c:crossBetween val="between"/></c:valAx>` : '';
+  const none = '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>', wall = t => `<c:${t}><c:thickness val="0"/>${none}</c:${t}>`;
+  const view = d3 ? `<c:view3D><c:rotX val="15"/><c:rotY val="20"/><c:depthPercent val="100"/><c:rAngAx val="1"/></c:view3D>${wall('floor')}${wall('sideWall')}${wall('backWall')}` : '';
+  const barChart = d3 ? `<c:bar3DChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${bars}<c:gapWidth val="${ch.gap ?? 150}"/><c:shape val="box"/><c:axId val="${n * 10 + 1}"/><c:axId val="${n * 10 + 2}"/><c:axId val="0"/></c:bar3DChart>`
+    : `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${bars}<c:gapWidth val="${ch.gap ?? 60}"/><c:overlap val="${ch.overlap ?? -10}"/><c:axId val="${n * 10 + 1}"/><c:axId val="${n * 10 + 2}"/></c:barChart>`;
   return `${XML}<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${REL}"><c:date1904 val="0"/><c:roundedCorners val="0"/>`
-    + `<c:chart><c:autoTitleDeleted val="1"/><c:plotArea><c:layout/><c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${bars}<c:gapWidth val="${ch.gap ?? 60}"/><c:overlap val="${ch.overlap ?? -10}"/><c:axId val="${n * 10 + 1}"/><c:axId val="${n * 10 + 2}"/></c:barChart>${line}${catAx}${valAx}${sec}<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr></c:plotArea>`
-    + `<c:legend><c:legendPos val="b"/><c:overlay val="0"/>${txt(800)}</c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>`
-    + `<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${txt(800)}<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData></c:chartSpace>`;
+    + `<c:chart>${ch.title ? `${title(ch.title, ch.titleSize || 1600, tc)}<c:autoTitleDeleted val="0"/>` : '<c:autoTitleDeleted val="1"/>'}${view}<c:plotArea><c:layout/>${barChart}${line}${catAx}${valAx}${sec}${none}</c:plotArea>`
+    + `${ch.legend === false ? '' : `<c:legend><c:legendPos val="b"/><c:overlay val="0"/>${txt(ch.legendSize || 800, axC)}</c:legend>`}<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>`
+    + `<c:spPr>${ch.fill ? fill(ch.fill) : '<a:noFill/>'}${ch.border ? `<a:ln w="9525">${fill(ch.border)}</a:ln>` : '<a:ln><a:noFill/></a:ln>'}</c:spPr>${txt(800)}<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData></c:chartSpace>`;
 }
 /** the chart's data as a workbook (Sheet1: the categories in A, a column per series), for Edit Data */
 async function chartBook(ch) {
@@ -65,15 +87,23 @@ class Slide {
   /** a rectangle (radius: rounded corners, as a part of the shorter side) */
   rect(x, y, w, h, o = {}) {
     const id = this.nid(), geo = o.radius ? `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val ${Math.round(o.radius * 100000)}"/></a:avLst></a:prstGeom>` : '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>';
-    this.items.push(`<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${esc(o.name || 'Shape ' + id)}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${this.frame(x, y, w, h)}${geo}${fill(o.fill)}${lineOf(o.line, o.lineW)}</p:spPr>`
+    const f = o.fill && o.alpha != null ? `<a:solidFill><a:srgbClr val="${o.fill}"><a:alpha val="${Math.round(o.alpha * 100000)}"/></a:srgbClr></a:solidFill>` : fill(o.fill);   // alpha: how opaque, 0 to 1
+    const fx = o.shadow ? `<a:effectLst><a:outerShdw blurRad="${E(0.08)}" dist="${E(0.03)}" dir="5400000" algn="t" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="28000"/></a:srgbClr></a:outerShdw></a:effectLst>` : '';
+    this.items.push(`<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${esc(o.name || 'Shape ' + id)}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${this.frame(x, y, w, h)}${geo}${f}${lineOf(o.line, o.lineW)}${fx}</p:spPr>`
       + `<p:txBody><a:bodyPr rtlCol="0" anchor="ctr"/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`);
+    return this;
+  }
+  /** a straight line from (x1, y1) to (x2, y2): colour and width in pt */
+  line(x1, y1, x2, y2, o = {}) {
+    const id = this.nid(), x = Math.min(x1, x2), y = Math.min(y1, y2);
+    this.items.push(`<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="${id}" name="${esc(o.name || 'Line ' + id)}"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>${this.frame(x, y, Math.abs(x2 - x1), Math.abs(y2 - y1))}<a:prstGeom prst="line"><a:avLst/></a:prstGeom>${lineOf(o.color || '000000', o.w || 1)}</p:spPr></p:cxnSp>`);
     return this;
   }
   /** text in a box: a string (lines), runs or paragraphs; size, color, bold, italic, font, align, valign (top, middle, bottom) */
   text(x, y, w, h, content, o = {}) {
-    const id = this.nid(), an = { top: 't', middle: 'ctr', bottom: 'b' }[o.valign || 'top'], ins = E(o.inset ?? 0.02);
+    const id = this.nid(), an = { top: 't', middle: 'ctr', bottom: 'b' }[o.valign || 'top'], ix = E(o.insetX ?? o.inset ?? 0.02), iy = E(o.insetY ?? o.inset ?? 0.02);
     this.items.push(`<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${esc(o.name || 'Text ' + id)}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>${this.frame(x, y, w, h)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fill(o.fill)}${lineOf(o.line)}</p:spPr>`
-      + `<p:txBody><a:bodyPr wrap="square" lIns="${ins}" tIns="${ins}" rIns="${ins}" bIns="${ins}" rtlCol="0" anchor="${an}">${o.shrink ? '<a:normAutofit/>' : '<a:noAutofit/>'}</a:bodyPr><a:lstStyle/>${paras(content, o)}</p:txBody></p:sp>`);
+      + `<p:txBody><a:bodyPr wrap="square" lIns="${ix}" tIns="${iy}" rIns="${ix}" bIns="${iy}" rtlCol="0" anchor="${an}">${o.shrink ? '<a:normAutofit/>' : '<a:noAutofit/>'}</a:bodyPr><a:lstStyle/>${paras(content, o)}</p:txBody></p:sp>`);
     return this;
   }
   /** a picture: PNG bytes */
@@ -90,7 +120,7 @@ class Slide {
     const tr = (r, i) => `<a:tr h="${E(rh)}">${r.map((c0, j) => {
       const c = c0 && typeof c0 === 'object' ? c0 : { t: c0 }, hd = i === 0 && o.header !== false, al = c.align || (o.align && o.align[j]) || 'left';
       const bg = hd ? head.fill : c.fill || (o.zebra && i % 2 === 0 ? o.zebra : 'FFFFFF');
-      return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/>${paras([[{ t: c.t ?? '' }]], { size: c.size || fs, color: hd ? head.color : c.color || '262626', bold: hd || c.bold, font: o.font, align: al })}</a:txBody>`
+      return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/>${paras([[{ t: c.t ?? '' }]], { size: c.size || fs, color: hd ? head.color : c.color || o.ink || '262626', bold: hd || c.bold, font: o.font, align: al })}</a:txBody>`
         + `<a:tcPr marL="${E(0.06)}" marR="${E(0.06)}" marT="${E(0.02)}" marB="${E(0.02)}" anchor="ctr">${ln('lnL', edge)}${ln('lnR', edge)}${ln('lnT', edge)}${ln('lnB', edge)}${fill(bg)}</a:tcPr></a:tc>`;
     }).join('')}</a:tr>`;
     this.items.push(`<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="${id}" name="${esc(o.name || 'Table ' + id)}"/><p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="${E(x)}" y="${E(y)}"/><a:ext cx="${E(w)}" cy="${E(h)}"/></p:xfrm>`

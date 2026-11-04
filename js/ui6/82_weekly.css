@@ -24,6 +24,8 @@
 .prtab { max-height: none; margin-top: 10px; }
 .prtab td { white-space: normal; }
 .prtab td:first-child, .prtab td:nth-child(2) { white-space: nowrap; }
+.prlogos { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 8px; }
+.prlogos img { height: 34px; width: auto; max-width: 120px; object-fit: contain; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
 .prslides { margin: 4px 0 8px; padding-left: 20px; display: grid; gap: 2px; font-size: 13.5px; }
 @media (max-width: 720px) {
   .wcout td:first-child { width: auto; }

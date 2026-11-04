@@ -111,7 +111,7 @@ const near = (a, b) => a != null && Math.abs(a - b) < 1e-9;
   ok(T(s7).includes('Thank You') && T(s7).includes('Huda S.  ·  Member Care lead  ·  Beyond One'), 'thank you');
   ok(names.filter(n => /^ppt\/media\//.test(n)).join() === 'ppt/media/image1.png' && (await t('ppt/slides/_rels/slide2.xml.rels')).includes('../media/image1.png') && /<p:pic>/.test(s2) && /<p:pic>/.test(s7), 'the logo on every slide as a picture, kept once in the file');
   const c1 = await t('ppt/charts/chart1.xml'), c2 = await t('ppt/charts/chart2.xml');
-  ok((c1.match(/<c:v>\d+-Oct<\/c:v>/g) || []).length === 21 * 3 && c1.includes('<c:v>Calls Presented</c:v>') && c1.includes('<c:v>Service Level</c:v>') && c1.includes('<c:max val="1.2"/>') && c1.includes('<c:crosses val="max"/>'), "Virgin's daily trend: 21 days, columns and the service level on its own axis (0–120%)");
+  ok((c1.match(/<c:v>\d+-Oct<\/c:v>/g) || []).length === 21 * 3 && c1.includes('<c:v>Calls Presented</c:v>') && c1.includes('<c:v>Service Level</c:v>') && !/<c:max val=/.test(c1) && c1.includes('<c:crosses val="max"/>') && c1.includes('<a:srgbClr val="C00000"/>'), "Virgin's daily trend: 21 days, the template's columns (grey and C00000) and the service level on its own axis, its range as Office sets it");
   ok(c2.includes('<c:v>Jan-26</c:v>') && c2.includes('<c:v>MTD</c:v>') && c2.includes('<c:v>0.63</c:v>'), 'the monthly trend chart');
   const wb = await Core.readZip(await z.bytes(books[0])), sh = await wb.text('xl/worksheets/sheet1.xml'), ss = (await wb.text('xl/sharedStrings.xml')) || '';
   ok(/Calls Presented|Service Level/.test(sh + ss) && /1-Oct/.test(sh + ss), "the chart's data in its workbook (Edit Data)");

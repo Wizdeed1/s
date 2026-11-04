@@ -5,7 +5,7 @@
 // daily brand emails keep; the call reasons, complaints and tickets from the month-to-date Call history and Tickets exports dropped
 // here (read in this browser, not kept); the outages from a list the team keeps here (config/outages). The deck is made here
 // (WcDeck) and the email to the VP comes as an Outlook draft with the deck attached; the tool never sends anything itself.
-Object.assign(state, { wcDate: '', wcCfg: null, outages: null, wcBusy: '', wcBuilt: '' });
+Object.assign(state, { wcDate: '', wcCfg: null, outages: null, wcBusy: '', wcBuilt: '', deckLogos: null });
 const WC = { calls: {}, tickets: {}, comb: {}, fpay: null, files: [], loaded: null, boot: null, ready: false, saveT: 0, open: { paste: false, set: false }, pasteText: '' };
 const WC0 = { presenter: '', title: '', to: '', cc: '', onTimeH: 72 };
 const WC_BRAND = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay' };
@@ -43,6 +43,7 @@ function wcLoad() {
     if (!state.db) return;
     try { const s = await state.db.doc('config/weekly').get(); if (s.exists) { const d = s.data() || {}; state.wcCfg = { presenter: String(d.presenter || '').slice(0, 120), title: String(d.title || '').slice(0, 160), to: String(d.to || '').slice(0, 600), cc: String(d.cc || '').slice(0, 600), onTimeH: +d.onTimeH || WC0.onTimeH }; } } catch (e) { /* the defaults */ }
     try { const s = await state.db.doc('config/outages').get(); if (s.exists) { const d = s.data() || {}; if (Array.isArray(d.list)) state.outages = d.list.map(wcOutageOk).filter(Boolean); } } catch (e) { /* none yet */ }
+    try { const s = await state.db.doc('config/decklogos').get(); if (s.exists) state.deckLogos = deckLogosOk(s.data()); } catch (e) { /* the tool's logo */ }
   })();
   return WC.loaded;
 }
@@ -59,6 +60,21 @@ function wcSaveOutages(now) {
     queueWrite('config/outages', () => state.db.doc('config/outages').set(body)).catch(e => toast(`The outages were not saved (${(e && e.code) || 'error'}).`));
   };
   if (now) go(); else WC.saveT = setTimeout(go, 600);
+}
+/** the logos taken from one of the team's decks (config/decklogos): PNG pictures the tool made itself, nothing else is kept */
+const DECK_LOGOS = { mark: 'Beyond One mark', full: 'Beyond One', virgin: 'Virgin Mobile', friendi: 'FRiENDi Mobile', fpay: 'FRiENDi Pay' };
+function deckLogosOk(d) {
+  if (!d || typeof d !== 'object') return null; const out = {};
+  for (const k of Object.keys(DECK_LOGOS)) { const x = d[k]; if (x && typeof x.dataUrl === 'string' && /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(x.dataUrl) && x.dataUrl.length < 400000 && +x.w > 0 && +x.h > 0) out[k] = { dataUrl: x.dataUrl, w: +x.w, h: +x.h }; }
+  if (!Object.keys(out).length) return null;
+  out.from = String(d.from || '').slice(0, 200); out.at = String(d.at || '').slice(0, 40); out.by = String(d.by || '').slice(0, 120);
+  return out;
+}
+/** the decks' logos as pictures for the PowerPoint */
+function wcDeckLogos() {
+  const L = state.deckLogos, out = {}; if (!L) return out;
+  for (const k of Object.keys(DECK_LOGOS)) if (L[k]) { const b = atob(L[k].dataUrl.split(',')[1]); out[k] = { png: Uint8Array.from(b, c => c.charCodeAt(0)), w: L[k].w, h: L[k].h }; }
+  return out;
 }
 /** the report builder's modules and the brands' history (the shared copy first), once */
 function wcBoot() {
@@ -219,7 +235,7 @@ async function wcLogo() {
 }
 async function wcDeckBytes() {
   await wcBoot();
-  const c = wcCfg(), m = wcModel(), D = WcDeck.deck(m, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo() });
+  const c = wcCfg(), m = wcModel(), D = WcDeck.deck(m, { presenter: c.presenter, title: normSpace(c.title), org: 'Beyond One', logo: await wcLogo(), logos: wcDeckLogos() });
   return { m, bytes: await D.bytes(), name: WcDeck.fileName(m.date) };
 }
 async function wcMake(kind) {

@@ -218,15 +218,19 @@ Each person is matched to the month's people by ID, or by name (the email's full
 
 ## November 2026, the Member Care Performance Review
 
-The Control and Complaint team sends the *MC performance Review* email: tables by month of Rebooking TKTs (Virgin, FRiENDi), Network Issues TKTs (No Network, Weak Coverage, MNP - Port In, Inbound, Outbound), Web + App TKTs (against all complaints, with the share), Social Media issue TKTs (Postpaid, Prepaid) and Vnet Complaints, each ending with the month to date ("Nov to 3"). **WFM team › Performance Review** (in *Every week*, after Weekly commercial) makes the deck from it:
+The Control and Complaint team sends the *MC performance Review* email: tables by month of Rebooking TKTs (Virgin, FRiENDi), Network Issues TKTs (No Network, Weak Coverage, MNP - Port In, Inbound, Outbound), Web + App TKTs, Social Media issue TKTs (Postpaid, Prepaid) and Vnet Complaints, each ending with the month to date ("Nov to 3"). **WFM team › Performance Review** (in *Every week*, after Weekly commercial) makes the team's *MC performance Review* deck from it, slide for slide as the team's own:
 
-| Step | What it does |
+| Slide | From |
 |---|---|
-| 1 Drop the email | The .msg saved from Outlook (or a saved .eml, or its text pasted). Its tables are read: a title ending with ":", the header, a row per month (Jan, Jun-25, 1-Jan, Oct-26), the month to date as *Until 03 Nov*; the signature is left out. The page lists each table with its months and last row, and says which of the five are not in the email. Read in the browser; nothing is kept. |
-| 2 The brands' slides | Virgin Mobile, FRiENDi Mobile and Postpaid, as on Weekly commercial (the brands' history; the call reasons and complaints when the month's exports were dropped there). |
-| 3 The deck and the email | **Download deck** (*MC_Performance_Review - 4 Nov 2026.pptx*): cover; the three brands; Complaints Insights (Web + App with the share as a line, Network this year, Social media); Complaints Insights (Rebooking by month, Vnet, *This Month So Far* against the month before); a *More Insights* slide for any other table in the email; thank you. A table the email lacks says "Not in the email" in its place. **Email with the deck**: the Outlook draft to the VP (the Weekly commercial settings: presenter, job title, To, Cc), subject *MC Performance Review*, the deck attached. |
+| Cover; Virgin Mobile, FRiENDi Mobile, Postpaid | The brands' history (as Weekly commercial), the template's places, Cambria headings, the brands' colours (Virgin D0021B, FRiENDi 119DA4, Postpaid 3A5A8C), the callout's shadow, *Weekly Commercial Presentation* over them, *Monthly Trend*. |
+| Complaints Insights | The email: Web + App, Network (this year) and Social media, 3-D shaded columns in framed charts, *MC Service Level Stabilization* over it. |
+| Complaints Insights (Rebooking) | *Booking Code Reactivations by Day* (requests by brand, the average time to close in hours and minutes) from the MC KPIs workbook; *by Month* from the email. |
+| OTP Calls, Final termination calls | The MC KPIs workbook (the last 52 days with two trend lines; this year's months with a dotted trend). Without the workbook the slide is left out. |
+| Thank you | |
 
-`js/prdeck.js` reads the tables and makes the slides (with WcDeck's), `js/perfrev.js` is the page; `test/msgfile.cjs` writes made-up .msg files for the tests.
+The **MC KPIs workbook** is the one the team's charts are linked to (*BeyondOne_MC_KPIs*): its *Reactivate the Booking code* and *OTP & Termination* sheets are read by their headings (Virgin, Friendi, Avg Time to Close; OTP Count; Final termination Count). **Logos**: drop one of the team's decks (.pptx) once and its pictures are kept (`config/decklogos`, as PNG): the Beyond One mark (dark slides), the mark with the name (the other slides) and the brands' logos (top right); both the Weekly commercial and the Performance Review decks use them. Without them, the tool's logo and the brands' names. Drop the email (.msg, .eml or its text), the workbook and a deck in the same box; the page lists what it read. **Email with the deck**: the Outlook draft to the VP (the Weekly commercial settings), subject *MC Performance Review*, the deck attached. A table the deck does not know gets a *More Insights* slide; Vnet is read but, as in the team's deck, not on a slide.
+
+`js/prdeck.js` reads the tables, the workbook and a deck's logos and makes the slides (with WcDeck's, now in the template's exact layout), `js/perfrev.js` is the page, `js/pptx.js` gained 3-D columns, shaded fills, chart frames and titles, axis titles, round marks, trend lines, see-through squares and shadows; `test/msgfile.cjs` writes made-up .msg files for the tests.
 
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.

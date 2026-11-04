@@ -217,7 +217,7 @@ async function wsDrop(files) {
     if (state.ws === 'wfm' && state.wfmTab === 'builder' && canDailyTool() && /\.(csv|xls|xlsx)$/i.test(f.name)) { rb.push(f); continue; }   // on its own tab every export goes to Report builder
     if (state.ws === 'wfm' && state.wfmTab === 'weekly' && canWeekly() && /\.(csv|xls|xlsx)$/i.test(f.name)) { wk.push(f); continue; }   // and on Weekly commercial, to the weekly presentation
     if (updShown() && !$('wfmUpd').hidden && /\.(msg|eml)$/i.test(f.name)) { up.push(f); continue; }   // an email on the deduction email page: its corrections
-    if (state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf() && /\.(msg|eml|txt|html?)$/i.test(f.name)) { pr.push(f); continue; }   // the MC performance Review email on Performance Review
+    if (state.ws === 'wfm' && state.wfmTab === 'perf' && canPerf() && /\.(msg|eml|txt|html?|xlsx|xlsm|xlsb|pptx)$/i.test(f.name)) { pr.push(f); continue; }   // the MC performance Review email on Performance Review
     if (/\.msg$/i.test(f.name) && isBuilder()) { importDistributionMsg(f); continue; }
     const v = await recogOne(f), K = Recog.KINDS[v.kind] || Recog.KINDS.unknown;
     if (v.kind === 'inter' && canInter()) { importInteractions(f); continue; }

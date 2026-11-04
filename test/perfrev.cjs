@@ -40,14 +40,14 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   ok(rows.length === 6 && rows[0][0] === 'Rebooking TKTs' && rows[0][1] === 'Jan-26 → Until 03 Nov' && rows[0][4] === '80 · 70 · 150', `six tables read: ${rows.map(r => r[0]).join(', ')}`);
   ok(rows[2][4] === '250 · 700 · 35.7%' && rows[5][0] === 'OTP Calls' && /its own slide/i.test(rows[5][5]), 'the last rows (a share as a %), the extra table on its own slide');
   ok(await p.evaluate(() => !document.querySelector('#wfmBar [data-prdeck]').disabled && /Read from MC performance Review\.msg/.test(document.querySelector('#wfmBody #prs-mail').textContent)), 'read from the .msg; the deck can be made');
-  ok(await p.evaluate(() => [...document.querySelectorAll('#wfmBody .prslides li')].map(l => l.textContent).join('|') === 'Cover|Virgin Mobile|FRiENDi Mobile|Postpaid|Complaints Insights: Web + App, Network, Social media|Complaints Insights: Rebooking, Vnet, the month so far|More Insights: OTP Calls|Thank you'), 'the slides listed');
+  ok(await p.evaluate(() => [...document.querySelectorAll('#wfmBody .prslides li')].map(l => l.textContent).join('|') === 'Cover|Virgin Mobile|FRiENDi Mobile|Postpaid|Complaints Insights: Web + App, Network, Social media|Complaints Insights: Rebooking by month|More Insights: OTP Calls|Thank you'), 'the slides listed');
   // ---- 3. the deck and the email
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#wfmBar [data-prdeck]')]);
   const deckF = path.join(out, dl.suggestedFilename()); await dl.saveAs(deckF);
   const z = await Core.readZip(fs.readFileSync(deckF)), X = async n => [...((await z.text(n)) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1].replace(/&amp;/g, '&'));
   const n = z.names().filter(x => /^ppt\/slides\/slide\d+\.xml$/.test(x)).length, s5 = await X('ppt/slides/slide5.xml'), s6 = await X('ppt/slides/slide6.xml'), s1 = await X('ppt/slides/slide1.xml');
   ok(dl.suggestedFilename() === 'MC_Performance_Review - 4 Nov 2026.pptx' && n === 8, `Download deck: ${dl.suggestedFilename()}, ${n} slides`);
-  ok(s1.includes('Member Care Performance Review') && s1.includes('Huda S.') && s5.includes('Web + App TKTs – Until 03 Nov') && s6.includes('This Month So Far') && s6.includes('Rebooking · FRiENDi'), 'the cover with the VP as presenter; Complaints Insights from the email');
+  ok(s1.includes('Member Care Performance Review') && s1.includes('Huda S.') && s5.includes('Web + App TKTs – Until 03 Nov') && s5.includes('Network TKT – Until 03 Nov') && s6.includes('Rebooking TKTs – Until 03 Nov'), 'the cover with the VP as presenter; Complaints Insights and Rebooking from the email, as the team\'s deck');
   const [em] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#wfmBar [data-prmail]')]);
   const emlF = path.join(out, em.suggestedFilename()); await em.saveAs(emlF); const eml = fs.readFileSync(emlF, 'utf8');
   const part = eml.split(/\r\n--mc_[a-z0-9]+\r\n/).find(x => /presentationml\.presentation/.test(x)) || '', att = await Core.readZip(Buffer.from((part.split('\r\n\r\n')[1] || '').replace(/\s+/g, ''), 'base64')).catch(() => null);
@@ -55,6 +55,28 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   ok(em.suggestedFilename() === 'MC Performance Review - 4 Nov 2026.eml' && /\r\nTo: "Huda S\." <huda\.s@example\.com>/.test(eml) && /\r\nCc: "Omar T\." <omar\.t@example\.com>/.test(eml) && /\r\nSubject: MC Performance Review\r\n/.test(eml), 'Email with the deck: to the VP, the contact in copy, "MC Performance Review"');
   ok(/name="MC_Performance_Review - 4 Nov 2026\.pptx"/.test(part) && att && att.has('ppt/presentation.xml') && Buffer.from(txt.replace(/\s+/g, ''), 'base64').toString('utf8') === 'Hi Huda,\r\nKindly find the MC Performance Review as attached.\r\nSincerely.', 'the deck attached; "Hi Huda, Kindly find the MC Performance Review as attached. Sincerely."');
   ok(await p.evaluate(() => [...document.querySelectorAll('#wfmBody .flowstep')].map(s => s.classList.contains('done')).join()) === 'true,true,true', 'every step done');
+  // ---- the MC KPIs workbook and one of the team's decks (both made up): the three charts the email lacks, and the logos
+  const W2 = require('../js/writer2.js'), Pptx = require('../js/pptx.js'), S2 = new W2.Styles(), rbS = new W2.Sheet('Reactivate the Booking code '), otS = new W2.Sheet('OTP & Termination');
+  const ser = iso => Math.round((Date.parse(iso + 'T00:00:00Z') - Date.UTC(1899, 11, 30)) / 86400000), iso = (m, d) => new Date(Date.UTC(2026, m - 1, d)).toISOString().slice(0, 10);
+  rbS.set(4, 10, 'Virgin'); rbS.set(4, 11, 'Friendi'); rbS.set(4, 12, 'Avg Time to Close');
+  for (let k = 0; k < 21; k++) { rbS.set(5 + k, 9, ser(iso(10, 14 + k))); rbS.set(5 + k, 10, 20 + (k % 9)); rbS.set(5 + k, 11, 15 + (k % 7)); rbS.set(5 + k, 12, 0.04 + (k % 5) * 0.03); }
+  otS.set(3, 3, 'OTP Count'); otS.set(3, 18, 'Final termination Count');
+  for (let k = 0; k < 60; k++) { otS.set(18 + k, 2, ser(iso(9, 5 + k))); otS.set(18 + k, 3, 30 + (k % 25)); }
+  for (let mo = 1; mo <= 11; mo++) { otS.set(3 + mo, 17, ser(iso(mo, 1))); otS.set(3 + mo, 18, 20000 - mo * 1000); }
+  const kpiF = path.join(out, 'MC KPIs.xlsx'); fs.writeFileSync(kpiF, Buffer.from(await W2.pack([rbS, otS], S2)));
+  const dot = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64')), LD = Pptx.create({});
+  LD.slide({ bg: '1E2761' }).image(0.55, 0.5, 0.48, 0.48, dot, { descr: 'beyondone_mark_only.png' });
+  const v2 = LD.slide({}); v2.image(0.45, 0.36, 0.3, 0.46, dot, { descr: 'beyondone_full.png' }); v2.image(12.45, 0.3, 0.4, 0.4, dot, { descr: 'virgin_logo.png' });
+  LD.slide({}).image(12.45, 0.3, 0.4, 0.4, dot, { descr: 'friendi_logo.png' });
+  const deckIn = path.join(out, 'An old review.pptx'); fs.writeFileSync(deckIn, Buffer.from(await LD.bytes()));
+  await p.setInputFiles('#wfmBody [data-prpick]', [kpiF, deckIn]); await p.waitForFunction(() => document.querySelectorAll('#wfmBody .prlogos img').length > 0, null, { timeout: 15000 });
+  const kp = await p.evaluate(() => ({ line: [...document.querySelectorAll('#prs-mail .hint')].map(x => x.textContent).find(t => /MC KPIs workbook/.test(t)) || '', logos: [...document.querySelectorAll('#wfmBody .prlogos img')].map(i => i.alt).join(), slides: [...document.querySelectorAll('#wfmBody .prslides li')].map(l => l.textContent).join('|') }));
+  ok(/MC KPIs workbook \(MC KPIs\.xlsx\): Rebooking by day 14 Oct → 3 Nov · OTP calls 52 days to 3 Nov · Final termination calls 11 months/.test(kp.line), `the workbook read: ${kp.line}`);
+  ok(kp.logos === 'Beyond One mark,Beyond One,Virgin Mobile,FRiENDi Mobile' && /Rebooking by day and by month\|OTP calls and Final termination calls/.test(kp.slides), `the deck's logos kept (${kp.logos}); the slides now with Rebooking by day and OTP calls`);
+  const [dl2] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#wfmBar [data-prdeck]')]);
+  const d2 = path.join(out, 'with-kpi.pptx'); await dl2.saveAs(d2);
+  const z2 = await Core.readZip(fs.readFileSync(d2)), n2 = z2.names().filter(x => /^ppt\/slides\/slide\d+\.xml$/.test(x)).length, x2 = await z2.text('ppt/slides/slide2.xml'), x7 = await z2.text('ppt/slides/slide7.xml');
+  ok(n2 === 9 && (x2.match(/<p:pic>/g) || []).length === 2 && /OTP Calls/.test(x7) && /Final termination calls/.test(x7) && /Booking Code Reactivations by Day/.test(await z2.text('ppt/charts/chart9.xml')), `the deck with the workbook and the logos: ${n2} slides, Rebooking by day, OTP and final termination calls, the logos on the slides`);
   // ---- 4. a drop, a paste, a picture
   const dt = await p.evaluateHandle(b64 => { const d = new DataTransfer(); d.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'Review 2.msg', { type: 'application/vnd.ms-outlook' })); return d; }, msgFile(sampleBody({ vnet: false })).toString('base64'));
   await p.dispatchEvent('#wfmBody [data-prdrop]', 'drop', { dataTransfer: dt }); await p.waitForTimeout(600);

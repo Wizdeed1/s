@@ -10,7 +10,7 @@ const DASH_KPIS = [
   { k: 'aht', label: 'AHT', dir: -1, info: 'Average handle time (talk + hold + after-call work) per agent, as m:ss. Source: Genesys Agent Performance Summary, voice.', fmt: v => mss(v), why: 'No AHT in this month\'s data' },
   { k: 'absent', label: 'Absent days', dir: -1, info: 'Days marked Absent, added up over the agents, with the supervisors\' corrections. Source: the attendance sheets, or the Genesys schedule and sign-ons.', fmt: v => Math.round(v).toLocaleString('en-US'), why: 'No attendance in this month\'s data' },
   { k: 'ded', label: 'Deduction minutes', dir: -1, info: 'Scheduled minus actual minutes in the deduction scope, never below 0, added up. Source: Genesys Schedule and Agent Status Timeline.', fmt: v => Math.round(v).toLocaleString('en-US'), why: 'Needs the Schedule and the Agent Status Timeline' },
-  { k: 'fin', label: 'Final %', dir: 1, info: 'Average final %: each agent\'s weighted KPI rank divided by 5. Source: the KPI scorecards with the KPI file, Genesys and the attendance.', fmt: v => pct1(v), why: 'No KPI results in this month\'s data' },
+  { k: 'fin', label: 'Final %', dir: 1, info: 'Average final %: each agent\'s weighted KPI rank divided by 5. Source: the KPI scorecards, worked out in the tool from Genesys, the attendance, the quality EVAL and the month\'s figures.', fmt: v => pct1(v), why: 'No KPI results in this month\'s data' },
 ];
 const DASH_METRICS = ['adh', 'aht', 'absent', 'ded', 'fin', 'wfExc', 'tardy', 'adhUnder'];
 /** a month's six numbers: the same rows the other pages show (a draft is scored with today's inputs) */
@@ -164,7 +164,7 @@ function dashData() {
 // ---- the greeting and the role's quick actions
 const DASH_ACTS = {
   wfm: [['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Interactions', 'Add this week\'s export', 'wfm:inter', 'i-chart'], ['Every team', 'Agents ranked, one-to-ones', 'ws:team', 'i-team']],
-  user: [['Import this month\'s files', 'Exports, attendance, IDs, KPI file', 'step:import', 'i-up'], ['Review the checks', 'Names, attendance, decisions', 'step:checks', 'i-check'], ['Report builder', 'MC Leaders and the WFM Daily Review', 'wfm:builder', 'i-file'], ['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Daily data', 'Every stored day', 'wfm:daily', 'i-day']],
+  user: [['Import this month\'s files', 'Exports, attendance, IDs', 'step:import', 'i-up'], ['Review the checks', 'Names, attendance, decisions', 'step:checks', 'i-check'], ['Report builder', 'MC Leaders and the WFM Daily Review', 'wfm:builder', 'i-file'], ['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Daily data', 'Every stored day', 'wfm:daily', 'i-day']],
   senior: [['Supervisors and month close', 'The month close, step by step', 'ws:cycle', 'i-clock'], ['Every team', 'Where each one-to-one stands', 'ws:team', 'i-team'], ['Results', 'Eligibility, finalize the month', 'ws:results', 'i-check'], ['Analytics', 'Every department and month', 'wfm:analytics', 'i-chart']],
   admin: [['Build the month', 'Import, review, export, email', 'step:import', 'i-up'], ['Supervisors', 'The senior manager\'s page', 'ws:cycle', 'i-clock'], ['Results', 'Every agent for the month', 'ws:results', 'i-check'], ['Manage accounts', 'Roles, access, resets', 'accounts', 'i-user']],
 };

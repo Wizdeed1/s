@@ -185,16 +185,46 @@ body.presenting.shownotes .shnotes p { margin: 2px 0 0; }
 .shpos { font-size: 13px; color: var(--nav-muted); padding: 0 6px; white-space: nowrap; } .shpos b { color: var(--nav-ink); }
 .shdots { display: flex; gap: 4px; } .shdots i { width: 6px; height: 6px; background: rgba(255, 255, 255, .28); } .shdots i.on { background: var(--px4); width: 14px; }
 
+/* what it gives back: the room's own numbers */
+.shcalc { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr); gap: var(--sh-gap); align-items: start; }
+.shcalctab { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.shctab { width: 100%; border-collapse: collapse; font-size: 14.5px; table-layout: fixed; }
+.shctab th:first-child { width: 30%; } .shctab th:nth-child(2) { width: 16%; }
+.shctab th, .shctab td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.shctab thead th { background: var(--nav); color: var(--nav-ink); font: 600 11.5px/1.25 var(--display); letter-spacing: .08em; text-transform: uppercase; border-bottom: 0; vertical-align: bottom; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.shctab tbody th { font: 600 14.5px/1.3 var(--display); color: var(--ink); }
+.shctab input { width: 100%; min-width: 0; max-width: 140px; padding: 8px 10px; border: 1px solid var(--line-strong, var(--line)); border-radius: 8px; background: var(--surface); color: var(--ink);
+  font: 600 16px/1.2 var(--display); font-variant-numeric: tabular-nums; text-align: right; }
+.shctab input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.shgive { display: flex; flex-direction: column; gap: 12px; }
+.shgtiles { display: grid; gap: 12px; }
+.shgtiles > div { border-radius: 10px; padding: 16px 18px; background: var(--nav); color: var(--nav-ink); display: flex; flex-direction: column; gap: 2px; }
+.shgtiles > div.hot { background: var(--accent-fill); }
+.shgtiles b { font: 700 clamp(28px, 3.4vw, 44px)/1.05 var(--display); font-variant-numeric: tabular-nums; }
+.shgtiles span { font: 600 13px/1.3 var(--display); color: var(--nav-muted); }
+.shgtiles > div.hot span { color: rgba(255, 255, 255, .86); }
+.shgnote { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.shtop kbd { display: inline-block; min-width: 1.6em; padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; font: 600 11.5px/1.5 var(--display); text-align: center; color: var(--ink); background: var(--sunk); }
+body.presenting .shctab { font-size: 16px; }
+body.presenting .shctab input { font-size: 20px; padding: 10px 12px; max-width: 160px; }
+
+/* the presenter's keys: a spotlight that follows the pointer (S), a zoom where it points (Z) */
+.mcspot { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none;
+  background: radial-gradient(circle var(--sr, 170px) at var(--sx, 50%) var(--sy, 50%), rgba(0, 0, 0, 0) calc(var(--sr, 170px) - 14px), rgba(0, 0, 0, .74) var(--sr, 170px)); }
+html.mczoom { overflow: hidden; }
+html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-change: transform; }
+@media (prefers-reduced-motion: reduce) { html.mczoom body { transition: none; } }
+
 /* ---- narrower screens */
 @media (max-width: 1180px) { .shcards.five { grid-template-columns: repeat(3, 1fr); } .shroles { grid-template-columns: repeat(3, 1fr); } .shtiles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 1000px) { .shroles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 900px) {
-  .shhero, .shtrust, .shend { grid-template-columns: 1fr; }
+  .shhero, .shtrust, .shend, .shcalc { grid-template-columns: 1fr; }
   .shfig { max-width: 320px; }
   .shsteps { grid-template-columns: repeat(2, 1fr); }
   .shcards.three, .shnums { grid-template-columns: 1fr; }
   .shcounts { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 600px) { .shcards.five, .shroles, .shsteps, .shtiles { grid-template-columns: 1fr; } .shtop { flex-direction: column; align-items: flex-start; } .shtable tbody th { white-space: normal; } }
-@media print { .shctl, .viewbar { display: none !important; } .shsec .shrise { opacity: 1; transform: none; } }
-@media (forced-colors: active) { .shnums > div, .shtile, .shcard.stat, .viewbar, .shctl { border: 1px solid CanvasText; } }
+@media print { .shctl, .viewbar, .mcspot { display: none !important; } html.mczoom body { transform: none !important; } .shsec .shrise { opacity: 1; transform: none; } }
+@media (forced-colors: active) { .shnums > div, .shtile, .shcard.stat, .viewbar, .shctl, .shgtiles > div { border: 1px solid CanvasText; } .mcspot { display: none; } }

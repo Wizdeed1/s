@@ -1,5 +1,5 @@
 // The admin's View as and the Showcase, on a data folder the browser keeps for the page (the synthetic roster):
-// 1. The admin's pages end with the Showcase: its nine sections, the line figures drawn as they come into view, Present (one
+// 1. The admin's pages end with the Showcase: its ten sections, the line figures drawn as they come into view, Present (one
 //    section at a time, the arrow keys, the speaker notes on N, Esc to end).
 // 2. View as each role from the Showcase: that role's own pages (no Showcase among them), the banner, Back to Admin on the Showcase.
 // 3. A supervisor sees their own team only; an agent's page loads for the agent chosen. National IDs are hidden while viewing
@@ -40,7 +40,7 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   ok(/^dash,.*,show$/.test(N), `the admin's pages end with the Showcase: ${N}`);
   await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector('#showBody .shsec', { timeout: 10000 });
   const sh = await p.evaluate(() => ({ n: document.querySelectorAll('#showBody .shsec').length, h: (document.getElementById('h-show') || {}).textContent, roles: document.querySelectorAll('#showBody .shroles [data-vago]').length, notes: document.querySelectorAll('#showBody .shnotes').length, hash: location.hash }));
-  ok(sh.n === 9 && sh.h === 'Showcase' && sh.roles === 6 && sh.notes === 9 && sh.hash === '#/show', `the Showcase: ${sh.n} sections with speaker notes, ${sh.roles} roles to view, at ${sh.hash}`);
+  ok(sh.n === 10 && sh.h === 'Showcase' && sh.roles === 6 && sh.notes === 10 && sh.hash === '#/show', `the Showcase: ${sh.n} sections with speaker notes, ${sh.roles} roles to view, at ${sh.hash}`);
   for (let i = 0; i < 8; i++) { await p.evaluate(i => { const f = document.querySelectorAll('#showBody .shfig')[i]; if (f) f.scrollIntoView({ block: 'center' }); }, i); await p.waitForTimeout(200); }
   await p.waitForTimeout(400);
   const figs = await p.evaluate(() => ({ all: document.querySelectorAll('#showBody .shfig').length, drawn: [...document.querySelectorAll('#showBody .shfig')].filter(f => f.querySelector('svg')).length, lib: typeof Hairline !== 'undefined' && Object.keys(Hairline).length }));
@@ -52,9 +52,16 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowLeft'); await p.keyboard.press('ArrowRight'); await p.keyboard.press('n'); await p.waitForTimeout(150);
   P = await pres(); ok(P.cur === 2 && P.notes, 'the arrow keys go from section to section; N shows the speaker notes');
   await p.screenshot({ path: path.join(out, 'viewas-present.png') });
-  await p.keyboard.press('End'); P = await pres(); ok(P.cur === 8, 'End: the last section (how we start)');
+  await p.keyboard.press('End'); P = await pres(); ok(P.cur === 9, 'End: the last section (how we start)');
   await p.keyboard.press('Escape'); await p.waitForTimeout(150); P = await pres();
   ok(!P.on && !P.ctl && P.side !== 'none', 'Esc ends the presentation; the page is as it was');
+  // the admin's keys, on any page: S a spotlight that follows the pointer, Z a zoom where it points, Esc takes them off
+  await p.evaluate(() => { if (document.activeElement) document.activeElement.blur(); }); await p.mouse.move(640, 360);
+  await p.keyboard.press('s'); const sp1 = await p.evaluate(() => !!document.querySelector('.mcspot'));
+  await p.keyboard.press('Escape'); const sp2 = await p.evaluate(() => !document.querySelector('.mcspot') && window.__mc.state.ws === 'show');
+  await p.keyboard.press('z'); const z1 = await p.evaluate(() => document.documentElement.classList.contains('mczoom') && /scale/.test(document.body.style.transform));
+  await p.keyboard.press('Escape'); const z2 = await p.evaluate(() => !document.documentElement.classList.contains('mczoom') && !document.body.style.transform);
+  ok(sp1 && sp2 && z1 && z2, 'the admin\'s keys: S a spotlight, Z a zoom, Esc takes them off');
 
   // ---- 2. view as each role from the Showcase, and back
   for (const [r, first, label] of [['user', 'dash', 'WFM analyst'], ['wfm', 'dash', 'WFM manager'], ['senior', 'dash', 'Senior manager'], ['quality', 'quality', 'Quality team']]) {
@@ -148,6 +155,8 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
     const r = await q.evaluate(async () => { const M = window.__mc; await M.startViewAs('senior'); await M.startViewAs('agent', 'p20'); M.setWs('show');
       return { viewing: M.viewing(), ws: M.state.ws, nav: [...document.querySelectorAll('#wsSeg [data-ws]:not([hidden])')].map(x => x.dataset.ws).join(','), bar: !document.getElementById('viewBar').hidden, item: !!document.querySelector('#acctMenu [data-acct="viewas"]:not([hidden])') }; });
     ok(!r.viewing && r.ws === 'team' && r.nav === 'team' && !r.bar && !r.item, `a supervisor cannot view as anyone, nor open the Showcase (${r.nav}, on ${r.ws})`);
+    await q.mouse.move(400, 300); await q.keyboard.press('s'); await q.keyboard.press('z');
+    ok(await q.evaluate(() => !document.querySelector('.mcspot') && !document.documentElement.classList.contains('mczoom')), '  nor has the presenter\'s keys (S, Z)');
     await c2.close();
   }
   console.log(errs.length ? errs.join('\n') : 'no errors'); if (errs.length) bad++;

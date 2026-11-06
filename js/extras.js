@@ -321,7 +321,7 @@ function editAttDay(pid, k, day, v, note) {
 }
 
 // ---------------------------------------------------------------- freshness: when each kind of data last came in, for every page
-const FRESH_KINDS = [['month', 'Month exports'], ['kpi', 'KPI file'], ['quality', 'Quality EVAL'], ['daily', 'Daily data'], ['dailymail', 'Daily emails'], ['dayagents', 'Agents\' days'], ['inter', 'Interactions'], ['attendance', 'Attendance edits'], ['roster', 'Roster']];
+const FRESH_KINDS = [['month', 'Month exports'], ['quality', 'Quality EVAL'], ['daily', 'Daily data'], ['dailymail', 'Daily emails'], ['dayagents', 'Agents\' days'], ['inter', 'Interactions'], ['attendance', 'Attendance edits'], ['roster', 'Roster']];
 function markFresh(kind, what) {
   if (!state.db) return;
   const body = { at: new Date().toISOString(), by: whoNow() || '', what: String(what || '') };

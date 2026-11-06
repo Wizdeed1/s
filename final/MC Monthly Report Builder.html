@@ -511,13 +511,14 @@ body[data-ws="dash"] .fresh { display: none; }
 .tlist .tli { display: grid; gap: 2px; min-width: 0; }
 .tlist .tli b { font-weight: 600; }
 .tlist .tli small { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.tlist .tacts { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
 .tlist li.late .tli small { color: var(--bad); }
 .todaycard > .hint { padding: 0 20px 14px; }
 .todaymini { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 10px 16px; background: var(--surface); border: 1px solid var(--card-line); border-radius: var(--r-card); font-size: 13px; color: var(--ink-2); }
 .todaymini b { font: 600 14px/1 var(--display); }
 #dashToday .todaywrap { margin: 0; }
 #dashToday .tlist li { grid-template-columns: 8px minmax(0, 1fr); }
-#dashToday .tlist li .btn { grid-column: 2; justify-self: start; }
+#dashToday .tlist li .tacts { grid-column: 2; justify-content: flex-start; }
 
 /* ------------------------------------------------------------------------------------------------------------- the foot of every page */
 .sitefoot { border-top: 1px solid var(--line); margin-inline-start: var(--side-cur); transition: margin var(--t-panel) var(--ease-drawer); }
@@ -2903,7 +2904,7 @@ body.scrolled .appbar { border-bottom-color: var(--nav-line); }
   .dmday select { min-width: 0; width: 100%; }
   .tlist { padding: 0 16px; }
   .tlist li { grid-template-columns: 8px minmax(0, 1fr); }
-  .tlist li .btn { grid-column: 2; justify-self: start; }
+  .tlist li .tacts { grid-column: 2; justify-content: flex-start; }
   .todaycard > .cardhead { padding: 14px 16px 12px; }
   .toplist li { grid-template-columns: 24px minmax(0, 1fr) auto; } .toplist .chip { display: none; }
   .attgrid th.an { min-width: 120px; }
@@ -3320,19 +3321,49 @@ body.presenting.shownotes .shnotes p { margin: 2px 0 0; }
 .shpos { font-size: 13px; color: var(--nav-muted); padding: 0 6px; white-space: nowrap; } .shpos b { color: var(--nav-ink); }
 .shdots { display: flex; gap: 4px; } .shdots i { width: 6px; height: 6px; background: rgba(255, 255, 255, .28); } .shdots i.on { background: var(--px4); width: 14px; }
 
+/* what it gives back: the room's own numbers */
+.shcalc { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr); gap: var(--sh-gap); align-items: start; }
+.shcalctab { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.shctab { width: 100%; border-collapse: collapse; font-size: 14.5px; table-layout: fixed; }
+.shctab th:first-child { width: 30%; } .shctab th:nth-child(2) { width: 16%; }
+.shctab th, .shctab td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.shctab thead th { background: var(--nav); color: var(--nav-ink); font: 600 11.5px/1.25 var(--display); letter-spacing: .08em; text-transform: uppercase; border-bottom: 0; vertical-align: bottom; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.shctab tbody th { font: 600 14.5px/1.3 var(--display); color: var(--ink); }
+.shctab input { width: 100%; min-width: 0; max-width: 140px; padding: 8px 10px; border: 1px solid var(--line-strong, var(--line)); border-radius: 8px; background: var(--surface); color: var(--ink);
+  font: 600 16px/1.2 var(--display); font-variant-numeric: tabular-nums; text-align: right; }
+.shctab input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.shgive { display: flex; flex-direction: column; gap: 12px; }
+.shgtiles { display: grid; gap: 12px; }
+.shgtiles > div { border-radius: 10px; padding: 16px 18px; background: var(--nav); color: var(--nav-ink); display: flex; flex-direction: column; gap: 2px; }
+.shgtiles > div.hot { background: var(--accent-fill); }
+.shgtiles b { font: 700 clamp(28px, 3.4vw, 44px)/1.05 var(--display); font-variant-numeric: tabular-nums; }
+.shgtiles span { font: 600 13px/1.3 var(--display); color: var(--nav-muted); }
+.shgtiles > div.hot span { color: rgba(255, 255, 255, .86); }
+.shgnote { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.shtop kbd { display: inline-block; min-width: 1.6em; padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; font: 600 11.5px/1.5 var(--display); text-align: center; color: var(--ink); background: var(--sunk); }
+body.presenting .shctab { font-size: 16px; }
+body.presenting .shctab input { font-size: 20px; padding: 10px 12px; max-width: 160px; }
+
+/* the presenter's keys: a spotlight that follows the pointer (S), a zoom where it points (Z) */
+.mcspot { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none;
+  background: radial-gradient(circle var(--sr, 170px) at var(--sx, 50%) var(--sy, 50%), rgba(0, 0, 0, 0) calc(var(--sr, 170px) - 14px), rgba(0, 0, 0, .74) var(--sr, 170px)); }
+html.mczoom { overflow: hidden; }
+html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-change: transform; }
+@media (prefers-reduced-motion: reduce) { html.mczoom body { transition: none; } }
+
 /* ---- narrower screens */
 @media (max-width: 1180px) { .shcards.five { grid-template-columns: repeat(3, 1fr); } .shroles { grid-template-columns: repeat(3, 1fr); } .shtiles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 1000px) { .shroles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 900px) {
-  .shhero, .shtrust, .shend { grid-template-columns: 1fr; }
+  .shhero, .shtrust, .shend, .shcalc { grid-template-columns: 1fr; }
   .shfig { max-width: 320px; }
   .shsteps { grid-template-columns: repeat(2, 1fr); }
   .shcards.three, .shnums { grid-template-columns: 1fr; }
   .shcounts { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 600px) { .shcards.five, .shroles, .shsteps, .shtiles { grid-template-columns: 1fr; } .shtop { flex-direction: column; align-items: flex-start; } .shtable tbody th { white-space: normal; } }
-@media print { .shctl, .viewbar { display: none !important; } .shsec .shrise { opacity: 1; transform: none; } }
-@media (forced-colors: active) { .shnums > div, .shtile, .shcard.stat, .viewbar, .shctl { border: 1px solid CanvasText; } }
+@media print { .shctl, .viewbar, .mcspot { display: none !important; } html.mczoom body { transform: none !important; } .shsec .shrise { opacity: 1; transform: none; } }
+@media (forced-colors: active) { .shnums > div, .shtile, .shcard.stat, .viewbar, .shctl, .shgtiles > div { border: 1px solid CanvasText; } .mcspot { display: none; } }
 </style>
 </head>
 <body>
@@ -3503,7 +3534,7 @@ body.presenting.shownotes .shnotes p { margin: 2px 0 0; }
     <div class="viewhead">
       <div>
         <h2 class="vt" id="h-import">Import this month's files</h2>
-        <p>Drop all the month's files at once: the four Genesys exports, the supervisors' attendance sheets, the IDs file, the KPI file, the quality team's Final EVAL, even the old Excel. Each file is recognised by its sheets and columns, not its name, and goes to its place; anything unclear is asked about.</p>
+        <p>Drop all the month's files at once: the four Genesys exports, the supervisors' attendance sheets, the IDs file, the quality team's Final EVAL, even the old Excel. Each file is recognised by its sheets and columns, not its name, and goes to its place; anything unclear is asked about.</p>
       </div>
       <span class="privacy"><svg aria-hidden="true"><use href="#i-lock"/></svg><span id="impPrivacy">Files are kept for the WFM team only, locked like the rest of the data</span></span>
     </div>
@@ -3512,7 +3543,7 @@ body.presenting.shownotes .shnotes p { margin: 2px 0 0; }
     <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
       <svg aria-hidden="true"><use href="#i-up"/></svg>
       <strong>Drop files here, or click to choose</strong>
-      <span id="dropHelp">.csv, .xlsx or .xlsb, as many as you have: Genesys exports and attendance sheets fill this month; the Final EVAL goes to Quality, the KPI file to KPI results, the old final result, incentive data and deduction workbooks to Results › Reconcile. A new export replaces the old one of the same type; attendance files add up.</span>
+      <span id="dropHelp">.csv, .xlsx or .xlsb, as many as you have: Genesys exports and attendance sheets fill this month; the Final EVAL goes to Quality, the old final result, incentive data and deduction workbooks to Results › Reconcile. A new export replaces the old one of the same type; attendance files add up.</span>
     </div>
     <input type="file" id="picker" multiple accept=".csv,.txt,.xlsx,.xlsm,.xlsb,.xls,.msg" hidden>
     <ul class="pending" id="pending" aria-live="polite"></ul>
@@ -4021,7 +4052,7 @@ body.presenting.shownotes .shnotes p { margin: 2px 0 0; }
         <li>Supervisors: drop the <b>Teams Distribution</b> email (.msg) on Import, or paste its table with <b>Review › People › Supervisors…</b>. The tool shows who changes team before anything is saved; names it cannot match are listed so you can fix them in the roster's Supervisor column.</li>
         <li>Saving: while you build a month, its results are saved to the shared history by themselves, a few seconds after each change (the line at the top says when). A month already in the history from an older file is kept until you replace it in <b>Review › History</b>, and a month the senior manager has finalized is never overwritten.</li>
         <li>For a one-to-one, open a person and use <b>One-to-one form</b>, then <b>Final form</b> after the investigation. Both download as PDF; the one-to-one fits on one page (only a very long discussion runs on to a second).</li>
-        <li>KPI results: drop the monthly KPI file (DRC-CSAT, Quality, Empowerment, FCR…) on Import. Adherence, AHT, days under target and tardiness come from the exports and the attendance. <b>Review › KPI results</b> shows every agent's ranking, final %, incentive target and earned SR, with PDF cards, Excel and a copy-for-email card. Scorecards are in Settings.</li>
+        <li>KPI results are worked out in the tool: adherence, AHT, days under target and tardiness from the exports and the attendance; Quality Observations, FCR and Empowerment from the quality team's Final EVAL; DRC-CSAT is one number for the month (Quality); the month's figures (Service Level and the like) and one person's values are typed in Review › KPI results. <b>Review › KPI results</b> shows every agent's ranking, final %, incentive target and earned SR, with PDF cards, Excel and a copy-for-email card. Scorecards are in Settings.</li>
         <li>History: drop the past monthly incentive files (MC_all_team_incentive _data) and the Genesys exports of past months (AHT, Agent Performance, Monthly Adherence, Schedule, Agent Status Timeline) on Import or in <b>Review › History</b>. Each file goes to its own month; a month still running is left out. The incentive file's values are kept, and the Genesys exports fill the gaps and add deduction minutes and conformance (only for agents whose schedule covers the whole month, so drop all the schedule files that touch a month together). Each person's page shows their months as a chart, and <b>Review › History</b> shows everyone side by side. The month you send as final is added by itself.</li>
       </ol>
     </section>
@@ -4034,7 +4065,6 @@ body.presenting.shownotes .shnotes p { margin: 2px 0 0; }
         <tr><td><b>Agent Performance Summary</b> (AHT)</td><td>Analytics Workspace › Agents Performance Summary view, <b>Export</b></td><td>The month, Media Type voice, columns Interval Start, Media Type, Agent Name, Avg Handle.</td><td>AHT, the AHT sheet, the AHT KPI</td></tr>
         <tr><td><b>Agent Performance</b> (all columns)</td><td>The same view, <b>Export</b> with Include all columns</td><td>The month. Keep Answered, Handle, Avg Handle, Avg Talk, Avg Hold, Avg ACW, Total Talk, Total Hold, Total ACW, Held, Transferred, Outbound and Alert - No Answer. Voice only also fills AHT.</td><td>Performance in Preview and on each person's page, occupancy, high hold, no-answer alerts</td></tr>
         <tr><td><b>Monthly Adherence</b></td><td>The adherence export you use today (one column per day)</td><td>The whole month, every team.</td><td>Daily adherence, Adherence Avr., days under target</td></tr>
-        <tr><td><b>KPI file</b></td><td>Not from Genesys: the monthly file with DRC-CSAT, Quality, Empowerment, FCR</td><td>Drop it on Import.</td><td>KPI results, final %, earned SR</td></tr>
         <tr><td><b>Interactions</b></td><td>Performance › Interactions, <b>Export</b> (all columns)</td><td>Inbound, any period (a day, a week, a month). Users, Date, Duration, Queue, Disconnect Type, Error Code and ANI.</td><td>WFM team › Interactions: volumes, answered, abandoned, IVR, who hung up, call drops, repeat callers; calls per agent</td></tr>
       </tbody></table></div>
       <p>Late first call, calls under 10 seconds, longest calls, repeat callers and dropped calls need the Interactions export day by day, so they stay in the daily email.</p>
@@ -4063,7 +4093,7 @@ body.presenting.shownotes .shnotes p { margin: 2px 0 0; }
     </section>
     <section>
       <h3>Closing a month</h3>
-      <p>Each step of the close has its day of the next month: the month built from the exports (day 2), the KPI file and the EVAL (day 3), the results on the agents' pages and the ready email (day 5), the objections answered (day 8), the one-to-ones and the review (day 9), the final and the final emails (day 10). Most steps tick themselves when the tool sees them done; the <b>bell</b> reminds the person whose step it is when it is due soon or late, and <b>Mark done</b> there ticks a step done outside the tool. The senior manager changes the days under <b>Supervisors › Due days</b>; the dashboard shows the senior manager's own five steps.</p>
+      <p>Each step of the close has its day of the next month: the month built from the exports (day 2), the EVAL (day 3), the results on the agents' pages and the ready email (day 5), the objections answered (day 8), the one-to-ones and the review (day 9), the final and the final emails (day 10). Most steps tick themselves when the tool sees them done; the <b>bell</b> reminds the person whose step it is when it is due soon or late, and <b>Mark done</b> there ticks a step done outside the tool. The senior manager changes the days under <b>Supervisors › Due days</b>; the dashboard shows the senior manager's own five steps.</p>
       <p>The <b>bell</b> lists what is each person's to do now: their late or near month-close steps, one-to-ones to hold, objections to answer or fix, agents waiting for approval, forms waiting for a signature, last month's actions to check, a daily review not stored yet, names to link, accounts waiting. Each line opens the place to do it.</p>
     </section>
     <section>
@@ -12684,7 +12714,7 @@ const DEFAULTS = {
 };
 /** the cards of one role, not of a whole team (their keys are not departments) */
 const isRoleCard = key => /-/.test(String(key || ''));
-const SRC = { adh: 'Adherence from Genesys', adhUnder: 'Days under the adherence target (Genesys)', aht: 'AHT from Genesys (seconds)', tardy: 'Tardy minutes from the attendance', file: 'KPI file column',
+const SRC = { adh: 'Adherence from Genesys', adhUnder: 'Days under the adherence target (Genesys)', aht: 'AHT from Genesys (seconds)', tardy: 'Tardy minutes from the attendance', file: 'The quality EVAL, or a value typed in KPI results',
   team: 'Team Performance: the average final % of the people they supervise' };
 /** a KPI that is not applicable this month ("NA" in the KPI file, or typed by hand) */
 const NA = 'NA';
@@ -21367,7 +21397,7 @@ function queueWrite(key, fn) {
 }
 function retrySaves() { const L = [...failedW.entries()]; failedW.clear(); lastErr = null; L.forEach(([k, fn]) => queueWrite(k, fn).catch(() => {})); setSave(); }
 function setSave() {
-  const el = $('saveState'); if (!state.db) { el.textContent = state.rosterReady ? 'Test roster - changes are not saved' : ''; return; }
+  const el = $('saveState'); if (!state.db) { el.textContent = state.rosterReady ? (window.__DEMO__ ? 'Demo with made-up people: nothing is saved' : 'Test roster - changes are not saved') : ''; return; }
   if (state.db.local && state.db.persistent === false) { el.textContent = 'This browser blocks saving - changes last until you close the page'; return; }
   el.classList.toggle('bad', !!lastErr);
   if (lastErr && failedW.size) { el.innerHTML = `Not saved (${esc(lastErr)}). Check your connection. <button class="linkbtn" data-retry>Try again</button>`; return; }
@@ -22770,7 +22800,7 @@ const Auth = (() => {
 let fseq = 0;
 /** WFM team › Import takes every file of the month in one drop. The Genesys exports, the attendance sheets and the IDs file fill
     their places as before; every other file is recognised (js/recog.js) and goes where it belongs: the Final EVAL to Quality for its
-    month, the KPI file to KPI results, the old Excel of a month to Results › Reconcile, the incentive data of an open past month to
+    month, the old Excel of a month to Results › Reconcile, the incentive data of an open past month to
     the history. A file that could do harm where it lands (the incentive data of a final month, the old deduction workbook as this
     month's attendance, the old final result as the IDs file) or that the tool is not sure of opens the Recognise files panel.
     opts: { recog: a verdict already made, force: the route was chosen in the panel }. */
@@ -24190,7 +24220,7 @@ function kpiCardHtml(pid) {
     ${r.rows.map(x => `<tr><td>${esc(x.k.name)}</td><td class="r num">${+(x.w * 100).toFixed(1)}%</td><td class="r num">${esc(Kpi.target(x.k))}</td><td class="r num"><b>${esc(Kpi.fmtVal(x.k, Kpi.rankedVal(x)))}</b></td><td class="r">${rankChip(x.r)}</td></tr>`).join('')}
     </tbody></table>
     <div class="kpisum"><div><b>${esc(S.finalRank)}</b><span>Final ranking</span></div><div><b>${esc(S.finalPct)}</b><span>Final %</span></div><div><b>${S.actual ?? '–'} / ${S.sched ?? '–'}</b><span>Actual / scheduled days (${esc(S.daysPct)})</span></div>${srHidden() ? '' : `<div><b>${r.target ?? '–'}</b><span>Incentive target (SR)</span></div><div class="earned"><b>${r.earned ?? '–'}</b><span>Earned (SR)</span></div>`}</div>${r.elig && !r.elig.ok ? `<p class="hint warnline">Not eligible for the incentive: ${esc(r.elig.why.join(', '))}.${srHidden() ? '' : ` Calculated ${r.earnedCalc ?? '–'} SR; the senior manager can override it.`}</p>` : ''}</div>
-    ${r.missing.length ? `<p class="hint warnline">Missing: ${esc(r.missing.join(', '))}. The final ranking uses the other KPIs until ${r.missing.length > 1 ? 'they arrive' : 'it arrives'}${kpiFileNow() ? '' : ' (drop the KPI file on Import)'}.</p>` : ''}
+    ${r.missing.length ? `<p class="hint warnline">Missing: ${esc(r.missing.join(', '))}. The final ranking uses the other KPIs until ${r.missing.length > 1 ? 'they have a value' : 'it has a value'}: from the quality EVAL, or typed below (the month\'s figures, or one person\'s value).</p>` : ''}
     <div class="formbtns" style="margin-top:8px"><button class="btn sm" data-kpipdf="${esc(pid)}">PDF card</button><button class="btn sm" data-kpicopy="${esc(pid)}">Copy for email</button><button class="btn sm" data-kpixl="${esc(pid)}">Excel</button></div></section>`;
 }
 function kpiNotes(add) {
@@ -24204,9 +24234,8 @@ function kpiNotes(add) {
   const miss = new Map();
   for (const K of state.kpi.values()) for (const x of K.res.rows) if (x.r == null) { if (!miss.has(x.k.name)) miss.set(x.k.name, []); miss.get(x.k.name).push(K.m.exp); }
   if (!miss.size) return;
-  const F = kpiFileNow();
-  add({ id: 'kpi:miss', sev: F ? 'warn' : 'info', group: 'KPI results', title: F ? `KPI values missing for ${plural(new Set([...miss.values()].flat()).size, 'agent')}` : `No KPI file for ${MONTH_LONG[state.m - 1]} yet`,
-    body: F ? 'Their final ranking uses the KPIs that have a value. Check the KPI file.' : `Drop the KPI file (${[...new Set([...state.kpi.values()].flatMap(K => K.card.kpis.filter(k => k.src === 'file').map(k => k.name)))].join(', ')}) on Import. A template is in Review › KPI results.`,
+  add({ id: 'kpi:miss', sev: state.quality[monthKey()] ? 'warn' : 'info', group: 'KPI results', title: `KPI values missing for ${plural(new Set([...miss.values()].flat()).size, 'agent')}`,
+    body: 'Their final ranking uses the KPIs that have a value. The tool works the KPIs out itself: the quality ones come from the Final EVAL (DRC-CSAT from its one number on Quality), and the month\'s figures and one person\'s values are typed in Review › KPI results.',
     list: [...miss].map(([k, names]) => `${k}: ${names.length} (${names.slice(0, 12).join(', ')}${names.length > 12 ? ', …' : ''})`), go: 'kpi' });
 }
 async function tryKpiFile(it, notes) {
@@ -24233,7 +24262,7 @@ function renderKpiCard() {
 function renderKpiTab() {
   const el = $('kpiBody'), all = [...state.kpi.values()];
   $('bKpi').textContent = all.length;
-  if (!state.ctx) { el.innerHTML = emptyCard('No data yet', 'Drop the exports and the attendance files on Import, then the KPI file. Every agent with a scorecard gets a KPI result here.'); $('kpiTools').hidden = true; return; }
+  if (!state.ctx) { el.innerHTML = emptyCard('No data yet', 'Drop the exports and the attendance files on Import. Every agent with a scorecard gets a KPI result here, worked out in the tool.'); $('kpiTools').hidden = true; return; }
   $('kpiTools').hidden = false;
   // one choice per scorecard (a team's, or a role's such as the SPVs'), so the KPI columns always fit the people shown
   const cks = [...new Set(all.map(K => K.ck))].sort(cardOrder), CT = curCards(monthKey()).teams || {};
@@ -24246,7 +24275,7 @@ function renderKpiTab() {
   const card = state.kpiTeam ? CT[state.kpiTeam] || null : null;
   const tot = L.reduce((t, K) => t + (K.res.earned || 0), 0), full = L.filter(K => K.res.complete).length;
   const sr = !srHidden();   // the WFM analysts do not see the incentive amounts
-  $('kpiCount').textContent = `${plural(L.length, 'agent')} · ${full} with every KPI${sr ? ` · earned ${tot.toLocaleString('en-US')} SR in total` : ''}${kpiFileNow() ? '' : ' · no KPI file yet'}`;
+  $('kpiCount').textContent = `${plural(L.length, 'agent')} · ${full} with every KPI${sr ? ` · earned ${tot.toLocaleString('en-US')} SR in total` : ''}`;
   const sortBtn = `<button class="linkbtn" data-ksort="${dir === 'desc' ? 'asc' : 'desc'}">Final % ${dir === 'desc' ? '↓' : dir === 'asc' ? '↑' : ''}</button>`;
   const head = `<tr><th><button class="linkbtn" data-ksort="name">Name</button></th><th>Team</th>${card ? card.kpis.map(k => `<th class="r" title="${esc(Kpi.bandText(k))}">${esc(k.name)}<br><small>${+(k.weight * 100).toFixed(1)}%</small></th>`).join('') : ''}<th class="r">Final ranking</th><th class="r">${sortBtn}</th><th class="r">Actual days %</th>${sr ? '<th class="r">Target SR</th><th class="r">Earned SR</th>' : ''}${card ? '' : '<th>Missing</th>'}</tr>`;
   const body = L.map(K => { const r = K.res;
@@ -24449,8 +24478,8 @@ function renderScore() {
     <div class="field"><span class="lbl">Month figures</span><div class="seg sm wrap" role="group" aria-label="Which month figure this card ranks"><button type="button" data-cscope="all" aria-pressed="${card.scope !== 'brand'}">All brands</button><button type="button" data-cscope="brand" aria-pressed="${card.scope === 'brand'}">The person's brand</button></div><small>For the KPIs entered as a month figure (Service Level, Floor QoS, AHT…), typed once a month on Review › KPI results. All brands = the all-brands figure, or the brands' average.</small></div>
     <div class="tablewrap formtab sctab"><table><thead><tr><th>KPI</th><th>From</th><th>Entered by</th><th class="r">Weight %</th><th>Better</th><th class="r">5</th><th class="r">4</th><th class="r">3</th><th class="r">2</th><th></th></tr></thead><tbody>
     ${card.kpis.map((k, i) => `<tr data-ki="${i}"><td><input class="cell" data-sf="name" value="${esc(k.name)}" aria-label="KPI name"></td>
-      <td><select class="cell" data-sf="src" aria-label="Source">${Object.entries(Kpi.SRC).map(([v, l]) => `<option value="${v}"${k.src === v ? ' selected' : ''} title="${esc(l)}">${esc({ adh: 'Adherence %', adhUnder: 'Days under target', aht: 'AHT (sec)', tardy: 'Tardy (min)', file: 'KPI file', team: 'Team performance' }[v])}</option>`).join('')}</select></td>
-      <td>${k.src === 'file' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="quality"${!k.fig && ownerOf(k) === 'quality' ? ' selected' : ''}>Quality team</option><option value="file"${!k.fig && ownerOf(k) === 'file' ? ' selected' : ''}>KPI file</option><option value="fig"${k.fig ? ' selected' : ''}>Month figure</option></select>`
+      <td><select class="cell" data-sf="src" aria-label="Source">${Object.entries(Kpi.SRC).map(([v, l]) => `<option value="${v}"${k.src === v ? ' selected' : ''} title="${esc(l)}">${esc({ adh: 'Adherence %', adhUnder: 'Days under target', aht: 'AHT (sec)', tardy: 'Tardy (min)', file: 'Entered value', team: 'Team performance' }[v])}</option>`).join('')}</select></td>
+      <td>${k.src === 'file' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="quality"${!k.fig && ownerOf(k) === 'quality' ? ' selected' : ''}>Quality team</option><option value="file"${!k.fig && ownerOf(k) === 'file' ? ' selected' : ''}>Typed per person</option><option value="fig"${k.fig ? ' selected' : ''}>Month figure</option></select>`
         : k.src === 'team' ? '<span class="subtle">Their team</span>' : k.src === 'aht' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="genesys"${k.fig ? '' : ' selected'}>Genesys</option><option value="fig"${k.fig ? ' selected' : ''}>Month figure</option></select>` : '<span class="subtle">Genesys</span>'}</td>
       <td><input class="cell r" data-sf="weight" value="${+(k.weight * 100).toFixed(2)}" inputmode="decimal" aria-label="Weight %"></td>
       <td><select class="cell" data-sf="dir" aria-label="Better"><option value="high"${k.dir === 'high' ? ' selected' : ''}>Higher</option><option value="low"${k.dir === 'low' ? ' selected' : ''}>Lower</option></select></td>
@@ -26535,7 +26564,7 @@ $('scoreBody').addEventListener('change', e => {
   if (f === 'dir') { k.dir = el.value; what = `${k.name}: ${k.dir === 'low' ? 'lower' : 'higher'} is better`; }
   if (f === 'owner') {
     if (el.value === 'fig') { k.fig = true; what = `${k.name} is the month's figure`; }
-    else { delete k.fig; if (el.value !== 'genesys') k.owner = el.value; what = `${k.name} is entered by ${el.value === 'genesys' ? 'Genesys' : k.owner === 'quality' ? 'the quality team' : 'the KPI file'}`; }
+    else { delete k.fig; if (el.value !== 'genesys') k.owner = el.value; what = `${k.name} is entered by ${el.value === 'genesys' ? 'Genesys' : k.owner === 'quality' ? 'the quality team' : 'a value typed per person'}`; }
   }
   if (el.dataset.sb != null) { const i = +el.dataset.sb, v = parseFloat(String(el.value).replace('%', '')), old = k.bands[i]; k.bands[i] = el.value.trim() === '' || !Number.isFinite(v) ? null : k.unit === 'pct' ? v / 100 : v; what = `${k.name} ranking ${5 - i}: ${bt(k, old)} → ${bt(k, k.bands[i])}`; }
   scoreChanged(`${T}: ${what}`);
@@ -27043,7 +27072,7 @@ function countEditHtml() {
     ${row('A value exactly on a band', cntSeg('edge', c.edge, [['in', 'gets that ranking'], ['out', 'gets the ranking below']], 'A value exactly on a band'))}
     ${row('Percent KPIs before ranking', cntSel('valDp', c.valDp, [[0, 'whole % (94.99% → 95%)'], [1, '1 decimal'], [2, '2 decimals'], [-1, 'not rounded']], 'Percent KPIs before ranking'), 'Rounded as Excel shows them, half up: 94.5% → 95%, 94.49% → 94%. The ranking and the band use the rounded value.')}
     ${row('Seconds KPIs before ranking', cntSel('secDp', c.secDp, [[0, 'whole seconds (159.97 → 160)'], [1, '1 decimal'], [-1, 'not rounded']], 'Seconds KPIs before ranking'), 'AHT and other KPIs in seconds, as the incentive file shows them: 150.29 s ranks as 150, 159.97 s as 160.')}
-    ${row('A KPI marked N/A', cntSeg('na', c.na, [['rank5', 'counts as ranking 5'], ['scale', 'is left out']], 'A KPI marked N/A'), 'NA or N/A in the KPI file, or typed by hand, for a KPI that does not apply to someone that month. The September 2026 file ranks it 5.')}
+    ${row('A KPI marked N/A', cntSeg('na', c.na, [['rank5', 'counts as ranking 5'], ['scale', 'is left out']], 'A KPI marked N/A'), 'N/A, typed by hand for a KPI that does not apply to someone that month. The September 2026 file ranks it 5.')}
     ${row('Final ranking', cntSel('rankDp', c.rankDp, [[2, '2 decimals'], [1, '1 decimal'], [0, 'whole number'], [3, '3 decimals'], [-1, 'not rounded']], 'Final ranking decimals'))}
     ${row('Final %', cntSeg('pctOf', c.pctOf, [['rank5', 'ranking ÷ 5'], ['table', 'from a table']], 'Final %') + table)}
     ${row('Final % rounding', cntSel('pctDp', c.pctDp, [[2, 'whole %'], [3, '1 decimal'], [4, '2 decimals'], [-1, 'not rounded']], 'Final % rounding'), 'For example 95.6% (when a KPI is left out) counts as 96%.')}
@@ -27764,7 +27793,7 @@ function renderResults() {
       return `<td><span class="${el && !el.ok ? 'bad' : ''}">${esc(txt)}</span></td>`;
     }
     const v = r[c], mt = History.METRICS.find(m => m.k === c), td = histCell(mt, v == null ? null : v).replace('<td class="num', '<td class="r num');
-    return c === 'fin' && (r.kpi || r.kx) ? td.replace(/<\/td>$/, ` ${howLink(x.p._id, x.exp)}</td>`) : td;
+    return c === 'fin' && (r.kpi || r.kx) ? td.replace(/<\/td>$/, ` ${howLink(x.p._id, x.exp, k)}</td>`) : td;   // the month on screen, not the one in Build
   };
   const th = ([c, l]) => `<th class="${['name', 'unit', 'spv', 'one'].includes(c) ? '' : 'r'}"><button class="linkbtn" data-ressort="${c}">${esc(l)}${sc === c ? (dir < 0 ? ' ↓' : ' ↑') : ''}</button></th>`;
   const agentTab = `<div class="card"><div class="cardhead"><div><h2>Every agent</h2><p class="cap">${edit ? 'The month is final. You can change Final %, Earned SR and who is eligible; each change is logged with your name.' : locked ? 'The month is final.' : `Draft numbers from the shared history.${canCycle() ? ` Eligibility follows the rules (${esc(eligText(k))}) unless you decide otherwise here; each decision is logged.` : ''}`}</p></div>
@@ -28386,7 +28415,7 @@ function editAttDay(pid, k, day, v, note) {
 }
 
 // ---------------------------------------------------------------- freshness: when each kind of data last came in, for every page
-const FRESH_KINDS = [['month', 'Month exports'], ['kpi', 'KPI file'], ['quality', 'Quality EVAL'], ['daily', 'Daily data'], ['dailymail', 'Daily emails'], ['dayagents', 'Agents\' days'], ['inter', 'Interactions'], ['attendance', 'Attendance edits'], ['roster', 'Roster']];
+const FRESH_KINDS = [['month', 'Month exports'], ['quality', 'Quality EVAL'], ['daily', 'Daily data'], ['dailymail', 'Daily emails'], ['dayagents', 'Agents\' days'], ['inter', 'Interactions'], ['attendance', 'Attendance edits'], ['roster', 'Roster']];
 function markFresh(kind, what) {
   if (!state.db) return;
   const body = { at: new Date().toISOString(), by: whoNow() || '', what: String(what || '') };
@@ -28834,7 +28863,7 @@ function csatBoxHtml(k, ctx) {
   const v = csatAll(k), can = canQuality() && !monthLocked(k), id = 'csat-' + ctx;
   return `<div class="csatbox${v == null ? ' empty' : ''}"><label for="${id}"><b>DRC-CSAT</b><span>${esc(ymLabel(k))} · every agent</span></label>
     ${can ? `<span class="csatin"><input id="${id}" class="cell" data-csat="${esc(k)}" value="${v == null ? '' : +(v * 100).toFixed(2)}" inputmode="decimal" placeholder="–" aria-describedby="${id}-h"><span aria-hidden="true">%</span></span>` : `<b class="num">${v == null ? '–' : esc(pct(v, 1))}</b>`}
-    <small id="${id}-h">${v == null ? `One score for the month: type it once and it counts for every agent in ${esc(T.join(', '))}. Empty: each agent's own value from the KPI file.` : `Counts for every agent in ${esc(T.join(', '))}${monthLocked(k) ? '' : ', whatever the KPI file says'}.`}</small></div>`;
+    <small id="${id}-h">${v == null ? `One score for the month: type it once and it counts for every agent in ${esc(T.join(', '))}. Empty: DRC-CSAT has no value this month.` : `Counts for every agent in ${esc(T.join(', '))}.`}</small></div>`;
 }
 /** the box on WFM team › Import and Review › KPI results, for the month being built; never redrawn under the cursor */
 function renderCsat() {
@@ -30215,6 +30244,8 @@ function renderAll() { if (state.ws === 'me') renderWs(); else render(); if (sta
 // ---------------------------------------------------------------- the page (in English or Arabic: T() gives the agent's language)
 function renderMe() {
   if (state.db && roleNow() === 'agent' && Auth.user() && (!state.me || (viewing() && state.me.pid !== Auth.user().pid))) loadAgentData(state.db, Auth.user().pid);   // signed in outside the shared folder, or just approved
+  // the demo file (no shared data, made-up people): the agent's page comes from the made-up months instead
+  if (!state.db && window.__DEMO__ && typeof window.__DEMO__.me === 'function' && roleNow() === 'agent' && Auth.user() && (!state.me || state.me.pid !== Auth.user().pid)) state.me = window.__DEMO__.me(Auth.user().pid);
   if (!state.lang && Auth.user()) langLoad();
   langApply();
   const M = state.me, body = $('meBody'), ar = langNow() === 'ar';
@@ -34405,7 +34436,7 @@ document.addEventListener('keydown', e => {
 function syncFindBtn() { const b = $('findBtn'); if (b) b.hidden = !wsOfNow().length; }
 
 // ================================================================ MONTH CLOSE: who does what, by which day of the next month
-// Each month closes in the first days of the next one: the exports (day 2), the KPI file and the EVAL (day 3), the results on
+// Each month closes in the first days of the next one: the exports (day 2), the EVAL (day 3; the KPIs are worked out in the tool), the results on
 // the agents' pages and the ready email (day 5), the objections answered (day 8), the one-to-ones and the review (day 9), the
 // final (day 10). Every step has an owner and a due day the senior manager can change. Most steps tick themselves when the
 // tool sees them done; the others are ticked by hand. Late steps show in red, the next two days in amber, on the Supervisors
@@ -34413,7 +34444,6 @@ function syncFindBtn() { const b = $('findBtn'); if (b) b.hidden = !wsOfNow().le
 Object.assign(state, { calCfg: null, calMarks: {}, calDaysOpen: false });
 const CAL_STEPS = [
   { id: 'built', label: 'Month built from the Genesys exports', who: 'WFM analysts', roles: ['user', 'admin'], day: 2, go: 'step:import' },
-  { id: 'kpi', label: 'KPI file in', who: 'WFM analysts', roles: ['user', 'admin'], day: 3, go: 'step:import' },
   { id: 'eval', label: 'Final EVAL in, every name linked', who: 'Quality team', roles: ['quality', 'admin'], day: 3, go: 'ws:quality' },
   { id: 'shared', label: 'Results on the agents\' pages', who: 'Senior manager', roles: ['senior', 'admin'], day: 5, go: 'ws:cycle' },
   { id: 'ready', label: '"One-to-ones are ready" email to the supervisors', who: 'Senior manager', roles: ['senior', 'admin'], day: 5, go: 'ws:cycle' },
@@ -34444,7 +34474,6 @@ function calSteps(k) {
   return CAL_STEPS.map(s => {
     const due = calDue(k, s.id); let done = null, note = '';
     if (s.id === 'built') { if (H && !H.daily) done = { at: H.at, by: H.by || '' }; else if (H) note = 'only the daily data so far'; }
-    if (s.id === 'kpi' && state.kpiFiles[k]) done = { at: state.kpiFiles[k].at, by: state.kpiFiles[k].by || '' };
     if (s.id === 'eval' && Q) { const n = (Q.unmatched || []).length; if (n) note = `${plural(n, 'name')} still to link`; else done = { at: Q.at, by: Q.by || '' }; }
     if ((s.id === 'ready' || s.id === 'review') && sent[s.id]) done = sent[s.id];
     if (s.id === 'shared' && pages) done = { at: pages.at, by: pages.by || '' };   // "Update the agents' pages" (also from before the month close came in)
@@ -35081,7 +35110,7 @@ function renderBellTodo(L0) {
   const sum = !L.length ? (ar ? 'لا شيء مطلوب منك اليوم.' : T('Nothing for you today.')) : [`${L.length === 1 ? T('1 thing') : T('{n} things', { n: L.length })}`, late ? (ar ? `${late} متأخر` : `${late} late`) : '', soon ? (ar ? `${soon} قريب` : `${soon} due soon`) : ''].filter(Boolean).join(' · ');
   if (!b) $('notesSub').textContent = sum;
   box.innerHTML = `<section class="sec todosec" aria-labelledby="h-todo"><h3 id="h-todo">${esc(ar ? 'المطلوب منك' : 'To do')} <span class="tdate">· ${esc(dt)}</span>${L.length ? ` <span class="badge${late || soon ? ' n' : ''}">${L.length}</span>` : ''}</h3>
-    ${L.length ? `<ul class="tlist">${L.slice(0, 30).map(x => `<li class="${x.cls}"><span class="tdot" aria-hidden="true"></span><span class="tli"><b dir="auto">${esc(x.t)}</b>${x.s ? `<small dir="auto">${esc(x.s)}</small>` : ''}</span>${x.mark ? `<button class="btn sm ghost" data-calmark="${esc(x.mark)}" data-on="1" title="Done outside the tool">${esc(T('Mark done'))}</button>` : ''}${x.go ? `<button class="btn sm${x.cls === 'late' ? ' primary' : ''}" data-tgo="${esc(x.go)}">${esc(T(x.btn || 'Open'))}</button>` : ''}</li>`).join('')}</ul>` : `<p class="subtle">${esc(sum)}</p>`}</section>`;
+    ${L.length ? `<ul class="tlist">${L.slice(0, 30).map(x => `<li class="${x.cls}"><span class="tdot" aria-hidden="true"></span><span class="tli"><b dir="auto">${esc(x.t)}</b>${x.s ? `<small dir="auto">${esc(x.s)}</small>` : ''}</span>${x.mark || x.go ? `<span class="tacts">${x.mark ? `<button class="btn sm ghost" data-calmark="${esc(x.mark)}" data-on="1" title="Done outside the tool">${esc(T('Mark done'))}</button>` : ''}${x.go ? `<button class="btn sm${x.cls === 'late' ? ' primary' : ''}" data-tgo="${esc(x.go)}">${esc(T(x.btn || 'Open'))}</button>` : ''}</span>` : ''}</li>`).join('')}</ul>` : `<p class="subtle">${esc(sum)}</p>`}</section>`;
 }
 function openBell() { openNotes(); renderBellTodo(); }
 const scrollTo_ = sel => setTimeout(() => { const el = document.querySelector(sel); if (el) { el.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); if (el.animate && !RM()) el.animate([{ boxShadow: '0 0 0 3px var(--focus)' }, { boxShadow: '0 0 0 0 transparent' }], { duration: 1400 }); } }, 120);
@@ -35360,7 +35389,7 @@ function rcGroupsHtml(S) {
   const pctC = v => esc(rcFmt('fin', v)), srC = v => esc(rcSR(v));
   const takeB = (g, f, l) => `<button class="btn sm" data-rcfix="${f}|${g}">${esc(l)}</button>`;
   const out = [];
-  out.push(rcGroup(S, 'noTool', 'The tool has no Final % or earned SR', S.scored ? 'The tool cannot work these out yet: a KPI has no value (the KPI file or the quality EVAL is not in), so there is no Final % and no earned SR to compare.' : `${esc(ymLabel(k))} came into the tool from the incentive data file, which has no Final % and no earned SR. Take the old ones in, and Results, the agents' pages and the history show them.`,
+  out.push(rcGroup(S, 'noTool', 'The tool has no Final % or earned SR', S.scored ? 'The tool cannot work these out yet: a KPI has no value (the quality EVAL is not in, or a figure of the month is not typed), so there is no Final % and no earned SR to compare.' : `${esc(ymLabel(k))} came into the tool from the incentive data file, which has no Final % and no earned SR. Take the old ones in, and Results, the agents' pages and the history show them.`,
     [['Team', x => esc(x.team)], ['Old Final %', x => pctC(x.o.fin), 'r num'], ['Old earned SR', x => srC(x.o.earned), 'r num'], ['Missing', (x, c) => esc(c.why === 'kpi' ? x.t.missing.join(', ') : c.why === 'incentive' ? 'not worked out' : '–'), 'subtle']],
     takeB('noTool', 'both', `Take the old Final % and earned SR into ${ymLabel(k)}`)));
   out.push(rcGroup(S, 'noCard', 'No KPI scorecard for the team', `The incentive rules have no scorecard for ${esc([...new Set((S.G.noCard || []).map(({ x }) => x.team || 'their team'))].join(', '))}, so the tool cannot work their Final % out. Add a scorecard for the team, or take the old numbers.`,
@@ -35379,7 +35408,7 @@ function rcGroupsHtml(S) {
   out.push(rcGroup(S, 'days', 'Days counted differently', `The old Excel has other scheduled or attended days for ${(S.G.days || []).length === 1 ? 'this person' : 'these people'}.${(S.G.days || []).some(({ x }) => x.o.issues) ? ' Day cells typed with a space (\'SL \' for example) are not counted by the old workbook\'s formulas; the tool counts them.' : ''} The tool's count stays unless you take the old one.`,
     [['Old days', x => esc(x.o.ka != null && x.o.ks != null ? `${x.o.ka} of ${x.o.ks}` : '–'), 'r num'], ['Tool days', x => esc(x.t.ka != null && x.t.ks != null ? `${x.t.ka} of ${x.t.ks}` : '–'), 'r num'], ['Cells typed with a space', x => esc(x.o.issues ? String(x.o.issues) : '–'), 'r num']],
     monthLocked(k) ? '' : takeB('days', 'days', 'Take the old days')));
-  out.push(rcGroup(S, 'fin', 'A different Final %', 'The tool works the Final % out from the KPI file, the quality EVAL and the scorecard; the old Excel has another one. A KPI with no value, a KPI file or an EVAL that is not the one the old Excel used, or a value rounded before it was ranked usually explain it.',
+  out.push(rcGroup(S, 'fin', 'A different Final %', 'The tool works the Final % out itself, from the exports, the attendance, the quality EVAL, the month\'s figures and the scorecard; the old Excel has another one. A KPI with no value, an EVAL that is not the one the old Excel used, or a value rounded before it was ranked usually explain it.',
     [['Team', x => esc(x.team)], ['Old Final %', x => pctC(x.o.fin), 'r num'], ['Tool Final %', x => pctC(x.t.fin), 'r num'], ['KPIs with no value', (x, c) => esc((c.missing || []).join(', ') || '–'), 'subtle']],
     takeB('fin', 'fin', 'Take the old Final %')));
   out.push(rcGroup(S, 'elig', 'Not eligible in the tool', 'The tool pays these people nothing because of the eligibility rules; the old Excel paid them.',
@@ -35870,9 +35899,9 @@ const DEPT = [
     'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
     '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Drop your old deck (.pptx) once too: its OTP and final termination numbers are kept as they are, and the exports only add the days after them. For the brands\' slides (Top Call Reasons, complaints, tickets, Top Complaint Drivers) drop the month\'s Call history and Tickets exports in step 2; without them those boxes show –. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
-    'At month end, the numbered tabs are the month\'s steps, in order: <b>1 Import</b>, <b>2 Review</b>, <b>3 Export</b>, <b>4 Emails</b>. On <b>Import</b>, drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file, the KPI file and the quality Final EVAL. The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
+    'At month end, the numbered tabs are the month\'s steps, in order: <b>1 Import</b>, <b>2 Review</b>, <b>3 Export</b>, <b>4 Emails</b>. On <b>Import</b>, drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file and the quality Final EVAL (the KPIs are worked out in the tool). The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
-    'The CT team can send its <b>incentive workbook</b> instead (CT - Incentive - month, .xlsb or .xlsx: a block per day with the tickets, hours, % and Attendance). Drop it on Import: each CT agent\'s days come from its Attendance column, matched by the National IDs in its own list, and the month\'s <b>Utilization</b> (the average of each day\'s %) counts in the CT scorecard where the KPI file has none. It is never taken for the IDs file.',
+    'The CT team can send its <b>incentive workbook</b> instead (CT - Incentive - month, .xlsb or .xlsx: a block per day with the tickets, hours, % and Attendance). Drop it on Import: each CT agent\'s days come from its Attendance column, matched by the National IDs in its own list, and the month\'s <b>Utilization</b> (the average of each day\'s %) counts in the CT scorecard. It is never taken for the IDs file.',
     'Type the month\'s <b>DRC-CSAT</b> once (on Import or on Review › KPI results): it counts for every agent.',
     'On <b>Review › KPI results</b>, under the table: <b>Month figures</b> takes the floor\'s numbers once a month, one per brand (Service Level, Floor QoS / Empowerment, AHT, Resources Adherence, Utilization, Digital and Complaints resolution time) for the SPVs\', specialists\' and managers\' cards; <b>Typed by hand</b> takes a value for one person that is in no file (Staff Satisfaction, Digital projects, CST compliance…), or NA when a KPI does not apply. The scores follow at once.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
@@ -36222,7 +36251,7 @@ function renderImpSide() {
     W.innerHTML = [...KINDS, ...XKINDS].map(k => `<dt>${esc(k.title)}${k.optional ? ' <small>optional</small>' : ''}</dt><dd>${esc(k.what)}. <span class="cols">${esc(k.cols)}</span>${GX && GX[k.kind] ? `<br><span class="gx">${esc(GX[k.kind])}</span>` : ''}</dd>`).join('')
       + '<dt>Supervisors\' attendance <small>optional</small></dt><dd>Each supervisor\'s sheet (.xlsx or .xlsb), as many as there are. The right month\'s tab is picked by its dates.</dd>'
       + '<dt>IDs file</dt><dd>National ID, Name, Team, Dep for everyone. Kept with the page and used every month until a newer one is dropped.</dd>'
-      + '<dt>KPI file, past incentive files, Teams Distribution (.msg)</dt><dd>The KPI file goes to Review › KPI results; past files go to the history, each to its own month; the Teams Distribution email updates who leads whom (you see who moves before anything is saved).</dd>'
+      + '<dt>Past incentive files, Teams Distribution (.msg)</dt><dd>Past files go to the history, each to its own month; the Teams Distribution email updates who leads whom (you see who moves before anything is saved).</dd>'
       + '<dt>The quality team\'s Final EVAL</dt><dd>Goes to Quality for its month (the month in its name, else the month being built); every name is linked to the roster there.</dd>'
       + '<dt>The old Excel of a month</dt><dd>The old final result, the incentive data workbook and the old deduction workbook go to Results › Reconcile with the old Excel, which explains every difference (the incentive data of an open past month fills its history; of a final month, you choose).</dd>'
       + '<dt>Not sure?</dt><dd><button class="linkbtn" data-recogpick>Recognise a file</button>: drop or choose anything; the tool says what it is, which month it holds and where it goes, on this computer.</dd>';
@@ -36703,7 +36732,7 @@ function askSysNames(btn) {
   $('h-names').textContent = `Use ${plural(L.length, 'Genesys name')} as the name${L.length > 1 ? 's' : ''}?`;
   $('namesDlgBody').innerHTML = `<p>${plural(L.length, 'person', 'people')} get the name Genesys has for them. The emails, the workbook and the history show the new names from now on.</p>
     <ul class="dlglist">${L.slice(0, 8).map(p => `<li><span dir="auto">${esc(p.name)}</span> → <b dir="auto">${esc(normSpace(p.sys))}</b></li>`).join('')}${L.length > 8 ? `<li class="subtle">and ${L.length - 8} more</li>` : ''}</ul>
-    <p class="hint">The old names are kept as other spellings, so the Final EVAL, the KPI file, the supervisors' sheets and the IDs file still match these people. Undo is offered afterwards.</p>`;
+    <p class="hint">The old names are kept as other spellings, so the Final EVAL, the supervisors' sheets and the IDs file still match these people. Undo is offered afterwards.</p>`;
   $('namesGo').textContent = `Use ${plural(L.length, 'Genesys name')}`;
   openDlg('dNames', btn);
 }
@@ -36930,7 +36959,7 @@ const DASH_KPIS = [
   { k: 'aht', label: 'AHT', dir: -1, info: 'Average handle time (talk + hold + after-call work) per agent, as m:ss. Source: Genesys Agent Performance Summary, voice.', fmt: v => mss(v), why: 'No AHT in this month\'s data' },
   { k: 'absent', label: 'Absent days', dir: -1, info: 'Days marked Absent, added up over the agents, with the supervisors\' corrections. Source: the attendance sheets, or the Genesys schedule and sign-ons.', fmt: v => Math.round(v).toLocaleString('en-US'), why: 'No attendance in this month\'s data' },
   { k: 'ded', label: 'Deduction minutes', dir: -1, info: 'Scheduled minus actual minutes in the deduction scope, never below 0, added up. Source: Genesys Schedule and Agent Status Timeline.', fmt: v => Math.round(v).toLocaleString('en-US'), why: 'Needs the Schedule and the Agent Status Timeline' },
-  { k: 'fin', label: 'Final %', dir: 1, info: 'Average final %: each agent\'s weighted KPI rank divided by 5. Source: the KPI scorecards with the KPI file, Genesys and the attendance.', fmt: v => pct1(v), why: 'No KPI results in this month\'s data' },
+  { k: 'fin', label: 'Final %', dir: 1, info: 'Average final %: each agent\'s weighted KPI rank divided by 5. Source: the KPI scorecards, worked out in the tool from Genesys, the attendance, the quality EVAL and the month\'s figures.', fmt: v => pct1(v), why: 'No KPI results in this month\'s data' },
 ];
 const DASH_METRICS = ['adh', 'aht', 'absent', 'ded', 'fin', 'wfExc', 'tardy', 'adhUnder'];
 /** a month's six numbers: the same rows the other pages show (a draft is scored with today's inputs) */
@@ -37084,7 +37113,7 @@ function dashData() {
 // ---- the greeting and the role's quick actions
 const DASH_ACTS = {
   wfm: [['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Interactions', 'Add this week\'s export', 'wfm:inter', 'i-chart'], ['Every team', 'Agents ranked, one-to-ones', 'ws:team', 'i-team']],
-  user: [['Import this month\'s files', 'Exports, attendance, IDs, KPI file', 'step:import', 'i-up'], ['Review the checks', 'Names, attendance, decisions', 'step:checks', 'i-check'], ['Report builder', 'MC Leaders and the WFM Daily Review', 'wfm:builder', 'i-file'], ['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Daily data', 'Every stored day', 'wfm:daily', 'i-day']],
+  user: [['Import this month\'s files', 'Exports, attendance, IDs', 'step:import', 'i-up'], ['Review the checks', 'Names, attendance, decisions', 'step:checks', 'i-check'], ['Report builder', 'MC Leaders and the WFM Daily Review', 'wfm:builder', 'i-file'], ['Emails', 'Daily brand emails, deduction and absences: edit and send', 'wfm:emails', 'i-mail'], ['Daily data', 'Every stored day', 'wfm:daily', 'i-day']],
   senior: [['Supervisors and month close', 'The month close, step by step', 'ws:cycle', 'i-clock'], ['Every team', 'Where each one-to-one stands', 'ws:team', 'i-team'], ['Results', 'Eligibility, finalize the month', 'ws:results', 'i-check'], ['Analytics', 'Every department and month', 'wfm:analytics', 'i-chart']],
   admin: [['Build the month', 'Import, review, export, email', 'step:import', 'i-up'], ['Supervisors', 'The senior manager\'s page', 'ws:cycle', 'i-clock'], ['Results', 'Every agent for the month', 'ws:results', 'i-check'], ['Manage accounts', 'Roles, access, resets', 'accounts', 'i-user']],
 };
@@ -37317,8 +37346,9 @@ document.addEventListener('change', e => { const s = e.target.closest('[data-vap
 // One page the admin opens in front of the management team. It follows a messaging framework: the main message, the problem,
 // the answer as a value proposition, the key messages with their proof, a message for every role (each with View, which opens
 // that role's interface live through viewas.js), today's figures from the shared data (totals only, never a name), trust,
-// what changes, and how to start. Present turns it into slides: full screen, one section at a time, the arrow keys, speaker
-// notes on N. The line figures are hairline's (vendor/hairline.js), drawn only while the page is open.
+// what changes, what it gives back (the room's own hours, typed in), and how to start. Present turns it into slides: full screen,
+// one section at a time, the arrow keys, speaker notes on N. The line figures are hairline's (vendor/hairline.js), drawn only while
+// the page is open. For the admin, anywhere in the tool: S a spotlight that follows the pointer, Z a zoom where it points, Esc off.
 const showFig = () => (typeof Hairline !== 'undefined' ? Hairline : null);
 Object.assign(state, { showAt: 0, showNotes: false });
 let showOn = false, showIo = null;
@@ -37335,6 +37365,7 @@ const SHOW_SECTIONS = [
   { id: 'live', name: 'Today\'s data', notes: 'These are today\'s numbers from the shared data, the same cards the dashboard shows: totals only, never a name.' },
   { id: 'trust', name: 'Trust', notes: 'The data is the most sensitive Member Care has. Opened as a file, the page refuses every web address. The shared data is encrypted and only accounts made in the tool can read it. Attachments carry no National IDs. A security review was done, its findings fixed and tested, and every change is tested in the browser before it ships.' },
   { id: 'change', name: 'What changes', notes: 'In one view, what changes for Member Care: one drop instead of files joined by hand, checks before anything is built, any bonus explained in a click, ready email drafts without National IDs, and a month that no longer lives in one person\'s spreadsheets.' },
+  { id: 'gives', name: 'What it gives back', notes: 'Ask the room, role by role: how many people do month end work, and how many hours a month does it take each of them today? Type their answers. Then ask how many hours they expect with the tool, or use the hours measured in the first month. The totals are the room\'s own numbers, not ours.' },
   { id: 'start', name: 'How we start', notes: 'Three steps: put the HTML in the common folder next to MC Data, read-only for everyone but its owner; open it in Edge or Chrome on a computer; each person makes an account and the admin gives the roles. Thank you, and questions.' },
 ];
 const SHOW_ROLES = [
@@ -37356,7 +37387,26 @@ function showLiveHtml() {
 /** the hero's strip: the month shown, the people, the months kept */
 function showStripHtml() {
   const k = wsMonthNow();
-  return [k ? ymLabel(k) : '', `${rosterRows().length} people`, `${wsMonths().length} months of history`, 'works offline'].filter(Boolean).map(x => `<li>${esc(x)}</li>`).join('');
+  return [k ? ymLabel(k) : '', `${rosterRows().length} people`, `${plural(wsMonths().length, 'month')} of history`, 'works offline'].filter(Boolean).map(x => `<li>${esc(x)}</li>`).join('');
+}
+/** What it gives back: the room's own numbers, typed in while presenting (kept only while the page is open, never saved) */
+const GIVE_ROLES = ['WFM analysts', 'WFM manager', 'Senior manager', 'Supervisors', 'Quality team'];
+const giveVals = GIVE_ROLES.map(() => ({ n: '', a: '', b: '' }));
+function giveSum() {
+  let month = 0, any = false;
+  for (const v of giveVals) { if (v.n === '' || v.a === '' || v.b === '') continue; any = true; month += (+v.n) * Math.max(0, (+v.a) - (+v.b)); }
+  return any ? month : null;
+}
+function giveHtml() {
+  const m = giveSum(), f = x => Math.round(x).toLocaleString('en-US');
+  const tiles = [[m == null ? '–' : f(m), 'hours back a month'], [m == null ? '–' : f(m * 12), 'hours back a year'], [m == null ? '–' : f(m * 12 / 8), 'working days back a year']];
+  return `<div class="shgtiles">${tiles.map(([n, l], i) => `<div${i === 2 ? ' class="hot"' : ''}><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('')}</div>
+    <p class="shgnote">${m == null ? 'Type the room\'s numbers: the people in a role, and the hours each gives month end in a month, today and with the tool.' : 'The room\'s own numbers: people × (hours today − hours with the tool), for 12 months, in 8-hour working days.'}</p>`;
+}
+function giveTableHtml() {
+  const lab = { n: 'people', a: 'hours each a month, today', b: 'hours each a month, with the tool' };
+  return `<table class="shctab"><thead><tr><th scope="col">Role</th><th scope="col">People</th><th scope="col">Hours each a month, today</th><th scope="col">Hours each, with the tool</th></tr></thead>
+    <tbody>${GIVE_ROLES.map((r, i) => `<tr><th scope="row">${esc(r)}</th>${['n', 'a', 'b'].map(c => `<td><input type="number" inputmode="decimal" min="0" max="9999" step="any" data-give="${i}:${c}" value="${esc(giveVals[i][c])}" aria-label="${esc(r)}: ${lab[c]}"></td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
 function showHtml() {
   const S = {
@@ -37369,11 +37419,11 @@ function showHtml() {
         ${shFig('exploded', 'An app window taken apart into its layers: the tool')}</div>`,
     before: `${shHead('The challenge', 'Month end ran on <b>copy and paste.</b>', '')}
         <div class="shnums shrise">${[['10+', 'files joined by hand every month'], ['7', 'roles waiting on the same numbers'], ['1', 'deadline for all of it']].map(([n, l], i) => `<div class="${i === 2 ? 'hot' : ''}"><b>${n}</b><span>${l}</span></div>`).join('')}</div>
-        <div class="shcards three shrise">${[['Files gathered by hand', 'Four Genesys exports, every supervisor\'s attendance sheet, the KPI and quality files, joined by copy and paste.'], ['Hard to check, harder to explain', 'A rounding or a missed absence changed a bonus, and finding why meant opening the spreadsheets again.'], ['Emails built one by one', 'The deduction and incentive emails, their tables and attachments, put together by hand every month.']].map(([h, t]) => `<div class="shcard"><b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
+        <div class="shcards three shrise">${[['Files gathered by hand', 'Four Genesys exports, every supervisor\'s attendance sheet and the quality files, joined by copy and paste.'], ['Hard to check, harder to explain', 'A rounding or a missed absence changed a bonus, and finding why meant opening the spreadsheets again.'], ['Emails built one by one', 'The deduction and incentive emails, their tables and attachments, put together by hand every month.']].map(([h, t]) => `<div class="shcard"><b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
     answer: `${shHead('The answer', 'One file runs <b>the whole month.</b>', 'For Member Care\'s WFM team and managers, who close every month from scattered files, the MC Monthly Report Builder is one page in the common folder that takes the month from the Genesys exports to the last email. It checks every number before it builds anything, and it shows how every bonus was counted.')}
         <ol class="shsteps shrise">${[['Import', 'Drop every file of the month at once. Each is recognised by what is inside it.', 'riffle', 'A tray of cards: the month\'s files'], ['Review', 'The checks list what needs a decision before anything is built.', 'sieve', 'Sieves over a pan: the checks'], ['Export', 'The monthly workbook and the incentive data, built in one click.', 'format', 'Crooked lines snapping square: the workbook'], ['Emails', 'Deduction, absences and incentive emails, ready to send from Outlook.', 'relay', 'A hub lighting a path to a leaf: the emails']].map(([h, t, f, l], i) => `<li class="shstep"><span class="shn">${i + 1}</span>${shFig(f, l)}<b>${h}</b><p>${t}</p></li>`).join('')}</ol>`,
     why: `${shHead('Why it works', 'Five things that <b>change the month.</b>', '')}
-        <div class="shcards five shrise">${[['One drop, every file recognised', 'By its columns, never its name: the Genesys exports, attendance templates, IDs, KPI and quality files.', ''], ['Checked before it is built', 'Blocking checks stop the build until someone decides, and every decision is kept with who made it.', ''], ['Every bonus explains itself', 'Each KPI with its band, ranking and points, then the days and the amount.', '94.96% → 95%'], ['Emails ready, sent by people', 'The tool writes them; people send them from Outlook. Attachments carry no National IDs.', ''], ['Private by design', 'Opened as a file, the page refuses every web address; the shared data is encrypted.', '0 web requests']].map(([h, t, big], i) => `<div class="shcard${big ? ' stat' : ''}">${big ? `<em>${esc(big)}</em>` : `<span class="shno">0${i + 1}</span>`}<b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
+        <div class="shcards five shrise">${[['One drop, every file recognised', 'By its columns, never its name: the Genesys exports, attendance templates, IDs and the quality EVAL.', ''], ['Checked before it is built', 'Blocking checks stop the build until someone decides, and every decision is kept with who made it.', ''], ['Every bonus explains itself', 'Each KPI with its band, ranking and points, then the days and the amount.', '94.96% → 95%'], ['Emails ready, sent by people', 'The tool writes them; people send them from Outlook. Attachments carry no National IDs.', ''], ['Private by design', 'Opened as a file, the page refuses every web address; the shared data is encrypted.', '0 web requests']].map(([h, t, big], i) => `<div class="shcard${big ? ' stat' : ''}">${big ? `<em>${esc(big)}</em>` : `<span class="shno">0${i + 1}</span>`}<b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
     roles: `${shHead('Every role', 'A page for <b>every role.</b>', 'Press View to open that interface live, on today\'s data, exactly as its role sees it. Nothing is saved and National IDs are hidden while you view; Back to Admin returns here.')}
         <div class="shroles shrise">${SHOW_ROLES.map(([r, name, before, now, ico]) => { const R = VIEW_ROLES.find(x => x[0] === r), kind = R && R[3]; return `<div class="shrole"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#${ico}"/></svg></span><b>${esc(name)}</b></div>
             <p class="was"><span>Before</span>${esc(before)}</p><p class="now"><span>Now</span>${esc(now)}</p>
@@ -37382,10 +37432,13 @@ function showHtml() {
           ${shFig('hub', 'A hub and its tiles: one set of data, a page for every role')}</div>`,
     live: `${shHead('Today\'s data', 'This is <b>today\'s data.</b>', 'The same cards the dashboard shows, straight from the shared data: totals only, never a name.')}<div id="showLive">${showLiveHtml()}</div>`,
     trust: `${shHead('Trust', 'Your data <b>stays yours.</b>', '')}
-        <div class="shtrust shrise"><div class="shtiles">${[['0', 'web requests', 'Opened as a file, the browser itself refuses every web address.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read the files in the folder.'], ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['35', 'browser test suites', 'Every role, on a computer, light and dark, before each change ships.'], ['10,000', 'synthetic people', 'The counting rules checked against the previous engine, with the same results.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.']].map(([b, s, t], i) => `<div class="shtile${i ? '' : ' on'}"><b>${b}</b><span>${s}</span><p>${t}</p></div>`).join('')}</div>
+        <div class="shtrust shrise"><div class="shtiles">${[['0', 'web requests', 'Opened as a file, the browser itself refuses every web address.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read the files in the folder.'], ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['36', 'browser test suites', 'Every role, on a computer, light and dark, before each change ships.'], ['10,000', 'synthetic people', 'The counting rules checked against the previous engine, with the same results.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.']].map(([b, s, t], i) => `<div class="shtile${i ? '' : ' on'}"><b>${b}</b><span>${s}</span><p>${t}</p></div>`).join('')}</div>
           ${shFig('vault', 'A vault door: the shared data, encrypted')}</div>`,
     change: `${shHead('What it means', 'What changes for <b>Member Care.</b>', '')}
         <div class="shtable shrise"><table><thead><tr><th></th><th>Before</th><th class="hot">With the tool</th></tr></thead><tbody>${[['Gathering the files', 'Each file found and joined by hand', 'One drop, each file recognised'], ['Checking', 'Mistakes found after the emails went out', 'Checks before anything is built'], ['Explaining a bonus', 'Worked out again on request', 'Every person\'s breakdown in one click'], ['Emails', 'Tables and attachments put together by hand', 'Ready drafts, no National IDs'], ['Continuity', 'The month lived in one person\'s files', 'Shared, locked, backed up, vacation cover']].map(([a, b, c]) => `<tr><th scope="row">${a}</th><td>${b}</td><td>${c}</td></tr>`).join('')}</tbody></table></div>`,
+    gives: `${shHead('What it gives back', 'Time back for <b>Member Care.</b>', 'The room\'s own numbers: how many people give month end their hours today, and how many hours it takes with the tool.')}
+        <div class="shcalc shrise"><div class="shcalctab">${giveTableHtml()}<button class="btn sm ghost" data-giveclear>Clear the numbers</button></div>
+          <div class="shgive" id="showGive" aria-live="polite">${giveHtml()}</div></div>`,
     start: `<div class="shend">
         <div class="shendtext">${shHead('Next steps', 'Ready for <b>the next close.</b>', '')}
           <ol class="shgo shrise">${[['Put the HTML in the common folder', 'Next to MC Data, read-only for everyone but its owner.'], ['Open it in Edge or Chrome', 'On a computer: nothing to install, no server.'], ['Everyone makes an account', 'The admin gives each person their role.']].map(([h, t], i) => `<li><span class="shn">${i + 1}</span><div><b>${h}</b><p>${t}</p></div></li>`).join('')}</ol>
@@ -37393,7 +37446,7 @@ function showHtml() {
         ${shFig('laptop', 'A laptop, its lid opening: open the file and start')}</div>`,
   };
   const sec = (s, i) => `<section class="shsec sh-${s.id}" data-shsec="${i}" aria-label="${esc(s.name)}">${S[s.id]}<aside class="shnotes" aria-label="Speaker notes"><b>Speaker notes</b><p>${esc(s.notes)}</p></aside></section>`;
-  return `<div class="shtop"><div><div class="eyebrow">Admin</div><h1 id="h-show">Showcase</h1><p>The tool's own story for a meeting: present it full screen, and open any role's interface live from it.</p></div>
+  return `<div class="shtop"><div><div class="eyebrow">Admin</div><h1 id="h-show">Showcase</h1><p>The tool's own story for a meeting: present it full screen, and open any role's interface live from it. Anywhere in the tool: <kbd>S</kbd> spotlight, <kbd>Z</kbd> zoom, <kbd>Esc</kbd> off.</p></div>
       <div class="wsacts"><button class="btn primary" data-showpresent><svg aria-hidden="true"><use href="#i-present"/></svg>Present</button></div></div>
     ${SHOW_SECTIONS.map(sec).join('')}
     <div class="shctl" id="showCtl" hidden></div>`;
@@ -37472,6 +37525,18 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-shexit]')) { showPresent(false); return; }
   if (showOn && e.target.closest('[data-vago]')) showPresent(false);   // a role's interface opens out of the presentation
 });
+document.addEventListener('input', e => {
+  const t = e.target.closest && e.target.closest('[data-give]'); if (!t) return;
+  const [i, c] = t.dataset.give.split(':'), v = t.value.trim();
+  giveVals[+i][c] = v !== '' && Number.isFinite(+v) && +v >= 0 ? v : '';
+  const g = $('showGive'); if (g) g.innerHTML = giveHtml();
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('[data-giveclear]')) return;
+  giveVals.forEach(v => { v.n = ''; v.a = ''; v.b = ''; });
+  document.querySelectorAll('[data-give]').forEach(x => { x.value = ''; });
+  const g = $('showGive'); if (g) g.innerHTML = giveHtml();
+});
 document.addEventListener('keydown', e => {
   if (!showOn || state.ws !== 'show' || e.altKey || e.ctrlKey || e.metaKey || (openId && !$(openId).hidden)) return;
   if (e.target.closest && e.target.closest('input, select, textarea, [contenteditable]')) return;
@@ -37484,6 +37549,40 @@ document.addEventListener('keydown', e => {
   else if (k === 'Escape') { e.preventDefault(); showPresent(false); }
 });
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && showOn) showPresent(false); });
+
+// ---- the presenter's keys, for the admin on any page (also while viewing as someone): S a spotlight that follows the pointer,
+// Z a zoom where the pointer is (moving the pointer moves across the page), + and - for its size, Esc off. Nothing else changes.
+let spotEl = null, spotR = 170, zoomS = 0, zoomBase = { x: 0, y: 0 }, ptr = { x: innerWidth / 2, y: innerHeight / 2 }, ptrRaf = 0;
+const presKeys = () => typeof realAdmin === 'function' && realAdmin();
+function spotDraw() { if (!spotEl) return; spotEl.style.setProperty('--sx', ptr.x + 'px'); spotEl.style.setProperty('--sy', ptr.y + 'px'); spotEl.style.setProperty('--sr', spotR + 'px'); }
+function spotSet(on) {
+  if (on && !spotEl) { if (zoomS) zoomSet(0); spotEl = document.createElement('div'); spotEl.className = 'mcspot'; spotEl.setAttribute('aria-hidden', 'true'); document.documentElement.appendChild(spotEl); spotDraw(); }
+  else if (!on && spotEl) { spotEl.remove(); spotEl = null; }
+}
+function zoomAt() { if (zoomS) document.body.style.transformOrigin = `${ptr.x - zoomBase.x}px ${ptr.y - zoomBase.y}px`; }
+function zoomSet(z) {
+  const b = document.body;
+  if (z && !zoomS) { if (spotEl) spotSet(false); const r = b.getBoundingClientRect(); zoomBase = { x: r.left, y: r.top }; }
+  zoomS = z || 0;
+  document.documentElement.classList.toggle('mczoom', !!zoomS);
+  b.style.transform = zoomS ? `scale(${zoomS})` : '';
+  if (zoomS) zoomAt(); else b.style.transformOrigin = '';
+}
+window.addEventListener('pointermove', e => {
+  ptr = { x: e.clientX, y: e.clientY };
+  if ((spotEl || zoomS) && !ptrRaf) ptrRaf = requestAnimationFrame(() => { ptrRaf = 0; spotDraw(); zoomAt(); });
+}, { passive: true });
+window.addEventListener('resize', () => { if (zoomS) zoomSet(0); });
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || !presKeys()) return;
+  const t = e.target; if (t && t.closest && t.closest('input, select, textarea, [contenteditable]')) return;
+  const k = e.key, on = !!(spotEl || zoomS);
+  if (k === 's' || k === 'S') { e.preventDefault(); spotSet(!spotEl); }
+  else if (k === 'z' || k === 'Z') { e.preventDefault(); zoomSet(zoomS ? 0 : 1.8); }
+  else if (on && (k === '+' || k === '=')) { e.preventDefault(); if (spotEl) { spotR = Math.min(420, spotR + 30); spotDraw(); } else zoomSet(Math.min(3, Math.round((zoomS + 0.3) * 10) / 10)); }
+  else if (on && (k === '-' || k === '_')) { e.preventDefault(); if (spotEl) { spotR = Math.max(80, spotR - 30); spotDraw(); } else zoomSet(Math.max(1.2, Math.round((zoomS - 0.3) * 10) / 10)); }
+  else if (on && k === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); spotSet(false); zoomSet(0); }
+}, true);
 
 // ================================================================ RECOGNISE FILES: what a file is and where it goes, worked out on this computer
 // Drop or choose anything: each file gets a verdict from its sheet names, its columns (English and Arabic, spelling slips allowed),

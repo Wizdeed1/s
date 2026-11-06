@@ -305,7 +305,7 @@ function askSysNames(btn) {
   $('h-names').textContent = `Use ${plural(L.length, 'Genesys name')} as the name${L.length > 1 ? 's' : ''}?`;
   $('namesDlgBody').innerHTML = `<p>${plural(L.length, 'person', 'people')} get the name Genesys has for them. The emails, the workbook and the history show the new names from now on.</p>
     <ul class="dlglist">${L.slice(0, 8).map(p => `<li><span dir="auto">${esc(p.name)}</span> → <b dir="auto">${esc(normSpace(p.sys))}</b></li>`).join('')}${L.length > 8 ? `<li class="subtle">and ${L.length - 8} more</li>` : ''}</ul>
-    <p class="hint">The old names are kept as other spellings, so the Final EVAL, the KPI file, the supervisors' sheets and the IDs file still match these people. Undo is offered afterwards.</p>`;
+    <p class="hint">The old names are kept as other spellings, so the Final EVAL, the supervisors' sheets and the IDs file still match these people. Undo is offered afterwards.</p>`;
   $('namesGo').textContent = `Use ${plural(L.length, 'Genesys name')}`;
   openDlg('dNames', btn);
 }

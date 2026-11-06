@@ -165,7 +165,7 @@
     <div class="viewhead">
       <div>
         <h2 class="vt" id="h-import">Import this month's files</h2>
-        <p>Drop all the month's files at once: the four Genesys exports, the supervisors' attendance sheets, the IDs file, the KPI file, the quality team's Final EVAL, even the old Excel. Each file is recognised by its sheets and columns, not its name, and goes to its place; anything unclear is asked about.</p>
+        <p>Drop all the month's files at once: the four Genesys exports, the supervisors' attendance sheets, the IDs file, the quality team's Final EVAL, even the old Excel. Each file is recognised by its sheets and columns, not its name, and goes to its place; anything unclear is asked about.</p>
       </div>
       <span class="privacy"><svg aria-hidden="true"><use href="#i-lock"/></svg><span id="impPrivacy">Files are kept for the WFM team only, locked like the rest of the data</span></span>
     </div>
@@ -174,7 +174,7 @@
     <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
       <svg aria-hidden="true"><use href="#i-up"/></svg>
       <strong>Drop files here, or click to choose</strong>
-      <span id="dropHelp">.csv, .xlsx or .xlsb, as many as you have: Genesys exports and attendance sheets fill this month; the Final EVAL goes to Quality, the KPI file to KPI results, the old final result, incentive data and deduction workbooks to Results › Reconcile. A new export replaces the old one of the same type; attendance files add up.</span>
+      <span id="dropHelp">.csv, .xlsx or .xlsb, as many as you have: Genesys exports and attendance sheets fill this month; the Final EVAL goes to Quality, the old final result, incentive data and deduction workbooks to Results › Reconcile. A new export replaces the old one of the same type; attendance files add up.</span>
     </div>
     <input type="file" id="picker" multiple accept=".csv,.txt,.xlsx,.xlsm,.xlsb,.xls,.msg" hidden>
     <ul class="pending" id="pending" aria-live="polite"></ul>
@@ -683,7 +683,7 @@
         <li>Supervisors: drop the <b>Teams Distribution</b> email (.msg) on Import, or paste its table with <b>Review › People › Supervisors…</b>. The tool shows who changes team before anything is saved; names it cannot match are listed so you can fix them in the roster's Supervisor column.</li>
         <li>Saving: while you build a month, its results are saved to the shared history by themselves, a few seconds after each change (the line at the top says when). A month already in the history from an older file is kept until you replace it in <b>Review › History</b>, and a month the senior manager has finalized is never overwritten.</li>
         <li>For a one-to-one, open a person and use <b>One-to-one form</b>, then <b>Final form</b> after the investigation. Both download as PDF; the one-to-one fits on one page (only a very long discussion runs on to a second).</li>
-        <li>KPI results: drop the monthly KPI file (DRC-CSAT, Quality, Empowerment, FCR…) on Import. Adherence, AHT, days under target and tardiness come from the exports and the attendance. <b>Review › KPI results</b> shows every agent's ranking, final %, incentive target and earned SR, with PDF cards, Excel and a copy-for-email card. Scorecards are in Settings.</li>
+        <li>KPI results are worked out in the tool: adherence, AHT, days under target and tardiness from the exports and the attendance; Quality Observations, FCR and Empowerment from the quality team's Final EVAL; DRC-CSAT is one number for the month (Quality); the month's figures (Service Level and the like) and one person's values are typed in Review › KPI results. <b>Review › KPI results</b> shows every agent's ranking, final %, incentive target and earned SR, with PDF cards, Excel and a copy-for-email card. Scorecards are in Settings.</li>
         <li>History: drop the past monthly incentive files (MC_all_team_incentive _data) and the Genesys exports of past months (AHT, Agent Performance, Monthly Adherence, Schedule, Agent Status Timeline) on Import or in <b>Review › History</b>. Each file goes to its own month; a month still running is left out. The incentive file's values are kept, and the Genesys exports fill the gaps and add deduction minutes and conformance (only for agents whose schedule covers the whole month, so drop all the schedule files that touch a month together). Each person's page shows their months as a chart, and <b>Review › History</b> shows everyone side by side. The month you send as final is added by itself.</li>
       </ol>
     </section>
@@ -696,7 +696,6 @@
         <tr><td><b>Agent Performance Summary</b> (AHT)</td><td>Analytics Workspace › Agents Performance Summary view, <b>Export</b></td><td>The month, Media Type voice, columns Interval Start, Media Type, Agent Name, Avg Handle.</td><td>AHT, the AHT sheet, the AHT KPI</td></tr>
         <tr><td><b>Agent Performance</b> (all columns)</td><td>The same view, <b>Export</b> with Include all columns</td><td>The month. Keep Answered, Handle, Avg Handle, Avg Talk, Avg Hold, Avg ACW, Total Talk, Total Hold, Total ACW, Held, Transferred, Outbound and Alert - No Answer. Voice only also fills AHT.</td><td>Performance in Preview and on each person's page, occupancy, high hold, no-answer alerts</td></tr>
         <tr><td><b>Monthly Adherence</b></td><td>The adherence export you use today (one column per day)</td><td>The whole month, every team.</td><td>Daily adherence, Adherence Avr., days under target</td></tr>
-        <tr><td><b>KPI file</b></td><td>Not from Genesys: the monthly file with DRC-CSAT, Quality, Empowerment, FCR</td><td>Drop it on Import.</td><td>KPI results, final %, earned SR</td></tr>
         <tr><td><b>Interactions</b></td><td>Performance › Interactions, <b>Export</b> (all columns)</td><td>Inbound, any period (a day, a week, a month). Users, Date, Duration, Queue, Disconnect Type, Error Code and ANI.</td><td>WFM team › Interactions: volumes, answered, abandoned, IVR, who hung up, call drops, repeat callers; calls per agent</td></tr>
       </tbody></table></div>
       <p>Late first call, calls under 10 seconds, longest calls, repeat callers and dropped calls need the Interactions export day by day, so they stay in the daily email.</p>
@@ -725,7 +724,7 @@
     </section>
     <section>
       <h3>Closing a month</h3>
-      <p>Each step of the close has its day of the next month: the month built from the exports (day 2), the KPI file and the EVAL (day 3), the results on the agents' pages and the ready email (day 5), the objections answered (day 8), the one-to-ones and the review (day 9), the final and the final emails (day 10). Most steps tick themselves when the tool sees them done; the <b>bell</b> reminds the person whose step it is when it is due soon or late, and <b>Mark done</b> there ticks a step done outside the tool. The senior manager changes the days under <b>Supervisors › Due days</b>; the dashboard shows the senior manager's own five steps.</p>
+      <p>Each step of the close has its day of the next month: the month built from the exports (day 2), the EVAL (day 3), the results on the agents' pages and the ready email (day 5), the objections answered (day 8), the one-to-ones and the review (day 9), the final and the final emails (day 10). Most steps tick themselves when the tool sees them done; the <b>bell</b> reminds the person whose step it is when it is due soon or late, and <b>Mark done</b> there ticks a step done outside the tool. The senior manager changes the days under <b>Supervisors › Due days</b>; the dashboard shows the senior manager's own five steps.</p>
       <p>The <b>bell</b> lists what is each person's to do now: their late or near month-close steps, one-to-ones to hold, objections to answer or fix, agents waiting for approval, forms waiting for a signature, last month's actions to check, a daily review not stored yet, names to link, accounts waiting. Each line opens the place to do it.</p>
     </section>
     <section>

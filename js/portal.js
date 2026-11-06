@@ -510,7 +510,7 @@ function renderResults() {
       return `<td><span class="${el && !el.ok ? 'bad' : ''}">${esc(txt)}</span></td>`;
     }
     const v = r[c], mt = History.METRICS.find(m => m.k === c), td = histCell(mt, v == null ? null : v).replace('<td class="num', '<td class="r num');
-    return c === 'fin' && (r.kpi || r.kx) ? td.replace(/<\/td>$/, ` ${howLink(x.p._id, x.exp)}</td>`) : td;
+    return c === 'fin' && (r.kpi || r.kx) ? td.replace(/<\/td>$/, ` ${howLink(x.p._id, x.exp, k)}</td>`) : td;   // the month on screen, not the one in Build
   };
   const th = ([c, l]) => `<th class="${['name', 'unit', 'spv', 'one'].includes(c) ? '' : 'r'}"><button class="linkbtn" data-ressort="${c}">${esc(l)}${sc === c ? (dir < 0 ? ' ↓' : ' ↑') : ''}</button></th>`;
   const agentTab = `<div class="card"><div class="cardhead"><div><h2>Every agent</h2><p class="cap">${edit ? 'The month is final. You can change Final %, Earned SR and who is eligible; each change is logged with your name.' : locked ? 'The month is final.' : `Draft numbers from the shared history.${canCycle() ? ` Eligibility follows the rules (${esc(eligText(k))}) unless you decide otherwise here; each decision is logged.` : ''}`}</p></div>

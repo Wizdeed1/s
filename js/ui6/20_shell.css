@@ -221,13 +221,14 @@ body[data-ws="dash"] .fresh { display: none; }
 .tlist .tli { display: grid; gap: 2px; min-width: 0; }
 .tlist .tli b { font-weight: 600; }
 .tlist .tli small { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.tlist .tacts { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
 .tlist li.late .tli small { color: var(--bad); }
 .todaycard > .hint { padding: 0 20px 14px; }
 .todaymini { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 10px 16px; background: var(--surface); border: 1px solid var(--card-line); border-radius: var(--r-card); font-size: 13px; color: var(--ink-2); }
 .todaymini b { font: 600 14px/1 var(--display); }
 #dashToday .todaywrap { margin: 0; }
 #dashToday .tlist li { grid-template-columns: 8px minmax(0, 1fr); }
-#dashToday .tlist li .btn { grid-column: 2; justify-self: start; }
+#dashToday .tlist li .tacts { grid-column: 2; justify-content: flex-start; }
 
 /* ------------------------------------------------------------------------------------------------------------- the foot of every page */
 .sitefoot { border-top: 1px solid var(--line); margin-inline-start: var(--side-cur); transition: margin var(--t-panel) var(--ease-drawer); }

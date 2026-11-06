@@ -232,7 +232,7 @@ function csatBoxHtml(k, ctx) {
   const v = csatAll(k), can = canQuality() && !monthLocked(k), id = 'csat-' + ctx;
   return `<div class="csatbox${v == null ? ' empty' : ''}"><label for="${id}"><b>DRC-CSAT</b><span>${esc(ymLabel(k))} · every agent</span></label>
     ${can ? `<span class="csatin"><input id="${id}" class="cell" data-csat="${esc(k)}" value="${v == null ? '' : +(v * 100).toFixed(2)}" inputmode="decimal" placeholder="–" aria-describedby="${id}-h"><span aria-hidden="true">%</span></span>` : `<b class="num">${v == null ? '–' : esc(pct(v, 1))}</b>`}
-    <small id="${id}-h">${v == null ? `One score for the month: type it once and it counts for every agent in ${esc(T.join(', '))}. Empty: each agent's own value from the KPI file.` : `Counts for every agent in ${esc(T.join(', '))}${monthLocked(k) ? '' : ', whatever the KPI file says'}.`}</small></div>`;
+    <small id="${id}-h">${v == null ? `One score for the month: type it once and it counts for every agent in ${esc(T.join(', '))}. Empty: DRC-CSAT has no value this month.` : `Counts for every agent in ${esc(T.join(', '))}.`}</small></div>`;
 }
 /** the box on WFM team › Import and Review › KPI results, for the month being built; never redrawn under the cursor */
 function renderCsat() {

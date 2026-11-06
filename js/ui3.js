@@ -126,7 +126,7 @@ function queueWrite(key, fn) {
 }
 function retrySaves() { const L = [...failedW.entries()]; failedW.clear(); lastErr = null; L.forEach(([k, fn]) => queueWrite(k, fn).catch(() => {})); setSave(); }
 function setSave() {
-  const el = $('saveState'); if (!state.db) { el.textContent = state.rosterReady ? 'Test roster - changes are not saved' : ''; return; }
+  const el = $('saveState'); if (!state.db) { el.textContent = state.rosterReady ? (window.__DEMO__ ? 'Demo with made-up people: nothing is saved' : 'Test roster - changes are not saved') : ''; return; }
   if (state.db.local && state.db.persistent === false) { el.textContent = 'This browser blocks saving - changes last until you close the page'; return; }
   el.classList.toggle('bad', !!lastErr);
   if (lastErr && failedW.size) { el.innerHTML = `Not saved (${esc(lastErr)}). Check your connection. <button class="linkbtn" data-retry>Try again</button>`; return; }
@@ -390,7 +390,7 @@ function localDb() {
 let fseq = 0;
 /** WFM team › Import takes every file of the month in one drop. The Genesys exports, the attendance sheets and the IDs file fill
     their places as before; every other file is recognised (js/recog.js) and goes where it belongs: the Final EVAL to Quality for its
-    month, the KPI file to KPI results, the old Excel of a month to Results › Reconcile, the incentive data of an open past month to
+    month, the old Excel of a month to Results › Reconcile, the incentive data of an open past month to
     the history. A file that could do harm where it lands (the incentive data of a final month, the old deduction workbook as this
     month's attendance, the old final result as the IDs file) or that the tool is not sure of opens the Recognise files panel.
     opts: { recog: a verdict already made, force: the route was chosen in the panel }. */
@@ -1810,7 +1810,7 @@ function kpiCardHtml(pid) {
     ${r.rows.map(x => `<tr><td>${esc(x.k.name)}</td><td class="r num">${+(x.w * 100).toFixed(1)}%</td><td class="r num">${esc(Kpi.target(x.k))}</td><td class="r num"><b>${esc(Kpi.fmtVal(x.k, Kpi.rankedVal(x)))}</b></td><td class="r">${rankChip(x.r)}</td></tr>`).join('')}
     </tbody></table>
     <div class="kpisum"><div><b>${esc(S.finalRank)}</b><span>Final ranking</span></div><div><b>${esc(S.finalPct)}</b><span>Final %</span></div><div><b>${S.actual ?? '–'} / ${S.sched ?? '–'}</b><span>Actual / scheduled days (${esc(S.daysPct)})</span></div>${srHidden() ? '' : `<div><b>${r.target ?? '–'}</b><span>Incentive target (SR)</span></div><div class="earned"><b>${r.earned ?? '–'}</b><span>Earned (SR)</span></div>`}</div>${r.elig && !r.elig.ok ? `<p class="hint warnline">Not eligible for the incentive: ${esc(r.elig.why.join(', '))}.${srHidden() ? '' : ` Calculated ${r.earnedCalc ?? '–'} SR; the senior manager can override it.`}</p>` : ''}</div>
-    ${r.missing.length ? `<p class="hint warnline">Missing: ${esc(r.missing.join(', '))}. The final ranking uses the other KPIs until ${r.missing.length > 1 ? 'they arrive' : 'it arrives'}${kpiFileNow() ? '' : ' (drop the KPI file on Import)'}.</p>` : ''}
+    ${r.missing.length ? `<p class="hint warnline">Missing: ${esc(r.missing.join(', '))}. The final ranking uses the other KPIs until ${r.missing.length > 1 ? 'they have a value' : 'it has a value'}: from the quality EVAL, or typed below (the month\'s figures, or one person\'s value).</p>` : ''}
     <div class="formbtns" style="margin-top:8px"><button class="btn sm" data-kpipdf="${esc(pid)}">PDF card</button><button class="btn sm" data-kpicopy="${esc(pid)}">Copy for email</button><button class="btn sm" data-kpixl="${esc(pid)}">Excel</button></div></section>`;
 }
 function kpiNotes(add) {
@@ -1824,9 +1824,8 @@ function kpiNotes(add) {
   const miss = new Map();
   for (const K of state.kpi.values()) for (const x of K.res.rows) if (x.r == null) { if (!miss.has(x.k.name)) miss.set(x.k.name, []); miss.get(x.k.name).push(K.m.exp); }
   if (!miss.size) return;
-  const F = kpiFileNow();
-  add({ id: 'kpi:miss', sev: F ? 'warn' : 'info', group: 'KPI results', title: F ? `KPI values missing for ${plural(new Set([...miss.values()].flat()).size, 'agent')}` : `No KPI file for ${MONTH_LONG[state.m - 1]} yet`,
-    body: F ? 'Their final ranking uses the KPIs that have a value. Check the KPI file.' : `Drop the KPI file (${[...new Set([...state.kpi.values()].flatMap(K => K.card.kpis.filter(k => k.src === 'file').map(k => k.name)))].join(', ')}) on Import. A template is in Review › KPI results.`,
+  add({ id: 'kpi:miss', sev: state.quality[monthKey()] ? 'warn' : 'info', group: 'KPI results', title: `KPI values missing for ${plural(new Set([...miss.values()].flat()).size, 'agent')}`,
+    body: 'Their final ranking uses the KPIs that have a value. The tool works the KPIs out itself: the quality ones come from the Final EVAL (DRC-CSAT from its one number on Quality), and the month\'s figures and one person\'s values are typed in Review › KPI results.',
     list: [...miss].map(([k, names]) => `${k}: ${names.length} (${names.slice(0, 12).join(', ')}${names.length > 12 ? ', …' : ''})`), go: 'kpi' });
 }
 async function tryKpiFile(it, notes) {
@@ -1853,7 +1852,7 @@ function renderKpiCard() {
 function renderKpiTab() {
   const el = $('kpiBody'), all = [...state.kpi.values()];
   $('bKpi').textContent = all.length;
-  if (!state.ctx) { el.innerHTML = emptyCard('No data yet', 'Drop the exports and the attendance files on Import, then the KPI file. Every agent with a scorecard gets a KPI result here.'); $('kpiTools').hidden = true; return; }
+  if (!state.ctx) { el.innerHTML = emptyCard('No data yet', 'Drop the exports and the attendance files on Import. Every agent with a scorecard gets a KPI result here, worked out in the tool.'); $('kpiTools').hidden = true; return; }
   $('kpiTools').hidden = false;
   // one choice per scorecard (a team's, or a role's such as the SPVs'), so the KPI columns always fit the people shown
   const cks = [...new Set(all.map(K => K.ck))].sort(cardOrder), CT = curCards(monthKey()).teams || {};
@@ -1866,7 +1865,7 @@ function renderKpiTab() {
   const card = state.kpiTeam ? CT[state.kpiTeam] || null : null;
   const tot = L.reduce((t, K) => t + (K.res.earned || 0), 0), full = L.filter(K => K.res.complete).length;
   const sr = !srHidden();   // the WFM analysts do not see the incentive amounts
-  $('kpiCount').textContent = `${plural(L.length, 'agent')} · ${full} with every KPI${sr ? ` · earned ${tot.toLocaleString('en-US')} SR in total` : ''}${kpiFileNow() ? '' : ' · no KPI file yet'}`;
+  $('kpiCount').textContent = `${plural(L.length, 'agent')} · ${full} with every KPI${sr ? ` · earned ${tot.toLocaleString('en-US')} SR in total` : ''}`;
   const sortBtn = `<button class="linkbtn" data-ksort="${dir === 'desc' ? 'asc' : 'desc'}">Final % ${dir === 'desc' ? '↓' : dir === 'asc' ? '↑' : ''}</button>`;
   const head = `<tr><th><button class="linkbtn" data-ksort="name">Name</button></th><th>Team</th>${card ? card.kpis.map(k => `<th class="r" title="${esc(Kpi.bandText(k))}">${esc(k.name)}<br><small>${+(k.weight * 100).toFixed(1)}%</small></th>`).join('') : ''}<th class="r">Final ranking</th><th class="r">${sortBtn}</th><th class="r">Actual days %</th>${sr ? '<th class="r">Target SR</th><th class="r">Earned SR</th>' : ''}${card ? '' : '<th>Missing</th>'}</tr>`;
   const body = L.map(K => { const r = K.res;
@@ -2069,8 +2068,8 @@ function renderScore() {
     <div class="field"><span class="lbl">Month figures</span><div class="seg sm wrap" role="group" aria-label="Which month figure this card ranks"><button type="button" data-cscope="all" aria-pressed="${card.scope !== 'brand'}">All brands</button><button type="button" data-cscope="brand" aria-pressed="${card.scope === 'brand'}">The person's brand</button></div><small>For the KPIs entered as a month figure (Service Level, Floor QoS, AHT…), typed once a month on Review › KPI results. All brands = the all-brands figure, or the brands' average.</small></div>
     <div class="tablewrap formtab sctab"><table><thead><tr><th>KPI</th><th>From</th><th>Entered by</th><th class="r">Weight %</th><th>Better</th><th class="r">5</th><th class="r">4</th><th class="r">3</th><th class="r">2</th><th></th></tr></thead><tbody>
     ${card.kpis.map((k, i) => `<tr data-ki="${i}"><td><input class="cell" data-sf="name" value="${esc(k.name)}" aria-label="KPI name"></td>
-      <td><select class="cell" data-sf="src" aria-label="Source">${Object.entries(Kpi.SRC).map(([v, l]) => `<option value="${v}"${k.src === v ? ' selected' : ''} title="${esc(l)}">${esc({ adh: 'Adherence %', adhUnder: 'Days under target', aht: 'AHT (sec)', tardy: 'Tardy (min)', file: 'KPI file', team: 'Team performance' }[v])}</option>`).join('')}</select></td>
-      <td>${k.src === 'file' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="quality"${!k.fig && ownerOf(k) === 'quality' ? ' selected' : ''}>Quality team</option><option value="file"${!k.fig && ownerOf(k) === 'file' ? ' selected' : ''}>KPI file</option><option value="fig"${k.fig ? ' selected' : ''}>Month figure</option></select>`
+      <td><select class="cell" data-sf="src" aria-label="Source">${Object.entries(Kpi.SRC).map(([v, l]) => `<option value="${v}"${k.src === v ? ' selected' : ''} title="${esc(l)}">${esc({ adh: 'Adherence %', adhUnder: 'Days under target', aht: 'AHT (sec)', tardy: 'Tardy (min)', file: 'Entered value', team: 'Team performance' }[v])}</option>`).join('')}</select></td>
+      <td>${k.src === 'file' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="quality"${!k.fig && ownerOf(k) === 'quality' ? ' selected' : ''}>Quality team</option><option value="file"${!k.fig && ownerOf(k) === 'file' ? ' selected' : ''}>Typed per person</option><option value="fig"${k.fig ? ' selected' : ''}>Month figure</option></select>`
         : k.src === 'team' ? '<span class="subtle">Their team</span>' : k.src === 'aht' ? `<select class="cell" data-sf="owner" aria-label="Entered by"><option value="genesys"${k.fig ? '' : ' selected'}>Genesys</option><option value="fig"${k.fig ? ' selected' : ''}>Month figure</option></select>` : '<span class="subtle">Genesys</span>'}</td>
       <td><input class="cell r" data-sf="weight" value="${+(k.weight * 100).toFixed(2)}" inputmode="decimal" aria-label="Weight %"></td>
       <td><select class="cell" data-sf="dir" aria-label="Better"><option value="high"${k.dir === 'high' ? ' selected' : ''}>Higher</option><option value="low"${k.dir === 'low' ? ' selected' : ''}>Lower</option></select></td>
@@ -4155,7 +4154,7 @@ $('scoreBody').addEventListener('change', e => {
   if (f === 'dir') { k.dir = el.value; what = `${k.name}: ${k.dir === 'low' ? 'lower' : 'higher'} is better`; }
   if (f === 'owner') {
     if (el.value === 'fig') { k.fig = true; what = `${k.name} is the month's figure`; }
-    else { delete k.fig; if (el.value !== 'genesys') k.owner = el.value; what = `${k.name} is entered by ${el.value === 'genesys' ? 'Genesys' : k.owner === 'quality' ? 'the quality team' : 'the KPI file'}`; }
+    else { delete k.fig; if (el.value !== 'genesys') k.owner = el.value; what = `${k.name} is entered by ${el.value === 'genesys' ? 'Genesys' : k.owner === 'quality' ? 'the quality team' : 'a value typed per person'}`; }
   }
   if (el.dataset.sb != null) { const i = +el.dataset.sb, v = parseFloat(String(el.value).replace('%', '')), old = k.bands[i]; k.bands[i] = el.value.trim() === '' || !Number.isFinite(v) ? null : k.unit === 'pct' ? v / 100 : v; what = `${k.name} ranking ${5 - i}: ${bt(k, old)} → ${bt(k, k.bands[i])}`; }
   scoreChanged(`${T}: ${what}`);

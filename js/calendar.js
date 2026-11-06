@@ -1,5 +1,5 @@
 // ================================================================ MONTH CLOSE: who does what, by which day of the next month
-// Each month closes in the first days of the next one: the exports (day 2), the KPI file and the EVAL (day 3), the results on
+// Each month closes in the first days of the next one: the exports (day 2), the EVAL (day 3; the KPIs are worked out in the tool), the results on
 // the agents' pages and the ready email (day 5), the objections answered (day 8), the one-to-ones and the review (day 9), the
 // final (day 10). Every step has an owner and a due day the senior manager can change. Most steps tick themselves when the
 // tool sees them done; the others are ticked by hand. Late steps show in red, the next two days in amber, on the Supervisors
@@ -7,7 +7,6 @@
 Object.assign(state, { calCfg: null, calMarks: {}, calDaysOpen: false });
 const CAL_STEPS = [
   { id: 'built', label: 'Month built from the Genesys exports', who: 'WFM analysts', roles: ['user', 'admin'], day: 2, go: 'step:import' },
-  { id: 'kpi', label: 'KPI file in', who: 'WFM analysts', roles: ['user', 'admin'], day: 3, go: 'step:import' },
   { id: 'eval', label: 'Final EVAL in, every name linked', who: 'Quality team', roles: ['quality', 'admin'], day: 3, go: 'ws:quality' },
   { id: 'shared', label: 'Results on the agents\' pages', who: 'Senior manager', roles: ['senior', 'admin'], day: 5, go: 'ws:cycle' },
   { id: 'ready', label: '"One-to-ones are ready" email to the supervisors', who: 'Senior manager', roles: ['senior', 'admin'], day: 5, go: 'ws:cycle' },
@@ -38,7 +37,6 @@ function calSteps(k) {
   return CAL_STEPS.map(s => {
     const due = calDue(k, s.id); let done = null, note = '';
     if (s.id === 'built') { if (H && !H.daily) done = { at: H.at, by: H.by || '' }; else if (H) note = 'only the daily data so far'; }
-    if (s.id === 'kpi' && state.kpiFiles[k]) done = { at: state.kpiFiles[k].at, by: state.kpiFiles[k].by || '' };
     if (s.id === 'eval' && Q) { const n = (Q.unmatched || []).length; if (n) note = `${plural(n, 'name')} still to link`; else done = { at: Q.at, by: Q.by || '' }; }
     if ((s.id === 'ready' || s.id === 'review') && sent[s.id]) done = sent[s.id];
     if (s.id === 'shared' && pages) done = { at: pages.at, by: pages.by || '' };   // "Update the agents' pages" (also from before the month close came in)

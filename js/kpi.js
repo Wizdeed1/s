@@ -93,7 +93,7 @@ const DEFAULTS = {
 };
 /** the cards of one role, not of a whole team (their keys are not departments) */
 const isRoleCard = key => /-/.test(String(key || ''));
-const SRC = { adh: 'Adherence from Genesys', adhUnder: 'Days under the adherence target (Genesys)', aht: 'AHT from Genesys (seconds)', tardy: 'Tardy minutes from the attendance', file: 'KPI file column',
+const SRC = { adh: 'Adherence from Genesys', adhUnder: 'Days under the adherence target (Genesys)', aht: 'AHT from Genesys (seconds)', tardy: 'Tardy minutes from the attendance', file: 'The quality EVAL, or a value typed in KPI results',
   team: 'Team Performance: the average final % of the people they supervise' };
 /** a KPI that is not applicable this month ("NA" in the KPI file, or typed by hand) */
 const NA = 'NA';

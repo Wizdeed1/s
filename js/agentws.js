@@ -32,6 +32,8 @@ function renderAll() { if (state.ws === 'me') renderWs(); else render(); if (sta
 // ---------------------------------------------------------------- the page (in English or Arabic: T() gives the agent's language)
 function renderMe() {
   if (state.db && roleNow() === 'agent' && Auth.user() && (!state.me || (viewing() && state.me.pid !== Auth.user().pid))) loadAgentData(state.db, Auth.user().pid);   // signed in outside the shared folder, or just approved
+  // the demo file (no shared data, made-up people): the agent's page comes from the made-up months instead
+  if (!state.db && window.__DEMO__ && typeof window.__DEMO__.me === 'function' && roleNow() === 'agent' && Auth.user() && (!state.me || state.me.pid !== Auth.user().pid)) state.me = window.__DEMO__.me(Auth.user().pid);
   if (!state.lang && Auth.user()) langLoad();
   langApply();
   const M = state.me, body = $('meBody'), ar = langNow() === 'ar';

@@ -4,3 +4,9 @@ js/rb_src.html
 out/
 node_modules/
 test/shots/
+
+# graphify: its working files, machine paths and caches (the graph itself is kept: graph.json, GRAPH_REPORT.md, graph.html)
+graphify-out/.graphify_*
+!graphify-out/.graphify_build.json
+!graphify-out/.graphify_labels.json
+graphify-out/cache/

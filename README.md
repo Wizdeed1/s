@@ -63,9 +63,45 @@ The admin can open every role's interface, and has a page that tells the tool's 
 |---|---|
 | View as (admin only) | Account menu › **View as another role…**, or **View** on a Showcase role card: the WFM analyst's, the WFM manager's, the senior manager's, a chosen supervisor's (their own team), the quality team's or a chosen agent's own page, on the shared data, exactly as that role sees it. A black banner on every page says whose interface it is, with **Switch** and **Back to Admin**; Back to Admin returns to the page it started from. |
 | A preview | Nothing is saved while viewing. The data store refuses every write (`store.js`, and the browser's own store), `queueWrite` keeps nothing to try again, and the admin is told when something was not saved. If anything was refused, Back to Admin reads the watched data again and offers Reload. The account menu, the account checks and every record of who did what stay the admin's own (`auth.js`: the pages see the role chosen, the account does not change). Before a preview starts, the admin's own saves are let finish. |
-| Showcase (admin only) | **Showcase** in the admin's navigation (`js/showcase.js`): the tool's story in nine sections, built on a messaging framework: the main message, the challenge (10+ files, 7 roles, 1 deadline), the answer as a value proposition with the month's four steps, five key messages with their proof, a page for every role (before and now, with View), today's figures (the dashboard's cards and a few counts from the shared data: totals only, never a name), trust, what changes, and how to start. **Present** shows it full screen, one section at a time: ← and →, Home and End, **N** for the speaker notes, Esc to end. A role's View opens that interface live, out of the presentation. Other roles do not have the page; a link to `#/show` says it is not one of theirs. |
+| Showcase (admin only) | **Showcase** in the admin's navigation (`js/showcase.js`): the tool's story in ten sections, built on a messaging framework: the main message, the challenge (10+ files, 7 roles, 1 deadline), the answer as a value proposition with the month's four steps, five key messages with their proof, a page for every role (before and now, with View), today's figures (the dashboard's cards and a few counts from the shared data: totals only, never a name), trust, what changes, what it gives back (the room's own hours, typed in), and how to start. **Present** shows it full screen, one section at a time: ← and →, Home and End, **N** for the speaker notes, Esc to end. A role's View opens that interface live, out of the presentation. Other roles do not have the page; a link to `#/show` says it is not one of theirs. |
 | Line figures | The Showcase's animated line figures (an app in layers, a tray of files, sieves for the checks, lines snapping square for the workbook, a relay for the emails, a hub for the roles, a vault, a laptop) are [hairline](https://www.npmjs.com/package/@lucasmarkes/hairline) 0.5.1 (MIT), built into the file from `vendor/hairline.js`, its SHA-256 checked by `npm test` like GSAP's. They are drawn only while the Showcase is open, answer the pointer, and keep still with reduced motion. |
 | How it was written | The brand skill's messaging framework gave the structure; the copy follows plain-language rules (no slogans, numbers that can be checked); hairline gave the figures; Beyond One's look and Poppins carry over from the rest of the tool. |
+
+## The KPIs worked out in the tool (November 2026)
+
+No KPI file is uploaded: the tool works every KPI out itself, and nothing asks for one.
+
+| Part | What changed |
+|---|---|
+| Where the KPIs come from | Adherence, AHT, days under target and tardiness from the Genesys exports and the attendance; Quality Observations, FCR and Empowerment from the quality team's Final EVAL; DRC-CSAT is one number for the month (Quality); the month's figures (Service Level and the like) and one person's values are typed in Review › KPI results; the CT workbook's Utilization as before. |
+| The month close | The **KPI file in** step is gone, so it is never late in the bell: the exports (day 2), the Final EVAL (day 3), then the results, the objections, the one-to-ones, the review and the final as before. |
+| No more asks | Import, How to use, the WFM analyst's shortcut, the checks (*KPI values missing* now says where each value comes from), the KPI results page, the DRC-CSAT box, the data strip, Reconcile and the scorecard editor (*Entered value*, *Typed per person*) no longer ask for or name a KPI file. A KPI file dropped by mistake is still read. |
+| The bell | A line with both **Mark done** and **Open** keeps both buttons whole, side by side; Open used to fall into the dot's column and was cut. |
+| Results › How | Explains the month on the screen; it opened the month in Build before, so another month said there was nothing to explain. |
+| Showcase | "1 month of history", not "1 months". |
+
+## The meeting kit (November 2026)
+
+**final/Meeting kit/**: twelve weapons for the meeting where the tool is presented, made from the made-up test data only.
+`bash tools/meeting/build.sh` makes them again from the current build (`tools/meeting`: the demo file, the video, the papers).
+
+| # | Weapon | What it is |
+|---|---|---|
+| 00 | Start here | The twelve in the order they are used, and four rules (keep the tools hidden, show made-up people, let the room give the numbers, end with the ask). |
+| 01 | Meeting-room checklist | The day before, 30 minutes and 5 minutes before, and what to do when something fails. |
+| 02 | Who is in the room | For each person: what they worry about, the sentence to say, what to show, the likely question and its answer. |
+| 03 | Demo run sheet | Twenty minutes, minute by minute: what to click, what to say, the way round each failure, the keys. |
+| 04 | Hard questions | Twenty-two questions with short answers that are true today (accuracy, privacy, continuity, access, rollout). |
+| 05 | Demo file | The tool itself on a made-up month (`make_demo.py`): opens on any computer as a made-up admin, with no folder and no sign-in; the September 2026 close on 8 October; every page, View as and the Showcase; light for the projector; nothing saved, not even in the browser (its storage lives only while the page is open). |
+| 06 | Live drop pack | The four made-up Genesys exports of September 2026, to drop on Import in front of the room. |
+| 07 | Spotlight and zoom | For the admin, on any page: **S** a spotlight that follows the pointer, **Z** a zoom where it points, **+** and **-** for the size, **Esc** off (while presenting, Esc first takes them off). |
+| 08 | What it gives back | A Showcase section where the room types people and hours per role, today and with the tool; it shows the hours back a month and a year and the working days back a year. Never saved. |
+| 09 | Backup video | About fifty seconds with captions (`make_video.cjs`): one drop, the checks, the emails, how a bonus was counted, a supervisor's team, an agent's page in Arabic. Each role is shown signed in as itself, so the meeting tools never appear. |
+| 10 | Leave-behind | One page for the room. |
+| 11 | IT and security | One page for IT: where the data goes, the controls, the known limits, what is asked of IT. |
+| 12 | Pilot proposal and follow-up email | The ask (the November close, with its steps, success measures and risks) and an Outlook draft (.eml) that carries the leave-behind and the proposal. |
+
+The papers for the room (10 to 12), the video and the deck never name the admin's meeting tools.
 
 ## The design: Option A, by Apple's guidelines
 
@@ -365,6 +401,8 @@ node test/weekly.cjs "final/MC Monthly Report Builder.html" test/shots          
 node test/attupd.cjs "final/MC Monthly Report Builder.html" test/shots           # Emails › Deduction and absences › Corrections after the review: a champion's table pasted, typed lines (choose between two people, a range's OFF day, clear), exceptions as the supervisors list them (the deduction, the email and its workbook follow), Apply, Undo, Remove, an .eml chosen and dropped, a picture refused, a final month, text as text, the senior manager without the box
 node test/perfrev.cjs "final/MC Monthly Report Builder.html" test/shots          # WFM team › Performance Review: a made-up .msg chosen and one dropped, its tables listed, the deck and the email to the VP, a made-up Call history (.xlsx, and an .xls) counted and kept with the shared days, what counts, Clear and Undo, a pasted text, a picture refused, the senior manager without the tab, phone width
 node test/viewas.cjs "final/MC Monthly Report Builder.html" test/shots           # the admin's View as (every role, a supervisor's team, an agent's page, nothing saved while viewing) and the Showcase (sections, figures, Present)
+node test/meeting.cjs "final/Meeting kit/05 MC Monthly Report Builder - Demo.html" "final/Meeting kit/06 Live drop pack (made-up, Sep 2026)" test/shots   # the demo file (opens anywhere, nothing stored), no KPI file asked for, the bell's buttons, How on Results, the calculator, the presenter's keys, View as an agent, Import
+bash tools/meeting/build.sh                                                        # the meeting kit from the current build (made-up data; needs ffmpeg)
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)
 npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, Smart-Link's attendance file, the weekly presentation's numbers and PowerPoint, the corrections read after the deduction email, the performance review's tables and deck, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
 ```

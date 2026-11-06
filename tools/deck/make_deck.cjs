@@ -139,7 +139,7 @@ pres.addSection({ title: 'Launch' });
   });
   eyebrow(s, 'The job');
   title(s, 'Month end has *many moving parts*');
-  [['file', 'Files from many places', 'Genesys exports, attendance, KPI and quality files, each laid out its own way.'],
+  [['file', 'Files from many places', 'Genesys exports, attendance and quality files, each laid out its own way.'],
     ['chart', 'Numbers people must trust', 'A bonus or a deduction has to be explainable to the person it touches.'],
     ['mail', 'Emails that must be right', 'Deduction, absence and incentive emails, every month, on time.']]
     .forEach((p, i) => point(s, p, 6.0, 2.75 + i * 1.32, R - 6.0, { t: 400 + i * 150 }));
@@ -192,11 +192,11 @@ pres.addSection({ title: 'How it works' });
 
 // =============================================================================================== 6. one drop
 {
-  const s = add('LIGHT', 'How it works', 'Import takes every file of the month in one drop. The tool reads each one on this computer and recognises it by its columns: the four Genesys exports, the attendance templates, the IDs, the KPI and the quality files each go where they belong. Every upload is kept, locked, and is back at the next sign-in.');
+  const s = add('LIGHT', 'How it works', 'Import takes every file of the month in one drop. The tool reads each one on this computer and recognises it by its columns: the four Genesys exports, the attendance templates, the IDs and the quality EVAL each go where they belong. Every upload is kept, locked, and is back at the next sign-in.');
   eyebrow(s, 'Import');
   title(s, 'Drop everything *at once*');
   [['sparkle', 'Recognised by what is inside', 'Each file goes where it belongs by its columns, whatever its name.'],
-    ['layers', 'One drop for the whole month', 'The four Genesys exports, attendance templates, IDs, KPI and quality files together.'],
+    ['layers', 'One drop for the whole month', 'The four Genesys exports, attendance templates, IDs and the quality EVAL, together.'],
     ['folder', 'Kept for the next sign-in', 'Every upload is kept, locked with the shared data, and comes back by itself.']]
     .forEach((p, i) => point(s, p, M, 2.2 + i * 1.42, 4.75, { t: 300 + i * 150, th: 0.7, bg: i ? C.ink : C.blue }));
   pic(s, 'z-import', { x: 5.55, y: 2.0, w: R - 5.55 }, 70, 'up|250|shot');
@@ -345,10 +345,10 @@ pres.addSection({ title: 'Trust' });
 
 // =============================================================================================== 15. proof
 {
-  const s = add('LIGHT', 'Trust', 'It is tested like a product. Every counting rule runs over ten thousand synthetic people with the expected results. Thirty-five automated browser test suites run before every change ships. Every role\'s pages are checked, in light and dark.');
+  const s = add('LIGHT', 'Trust', 'It is tested like a product. Every counting rule runs over ten thousand synthetic people with the expected results. Thirty-six automated browser test suites run before every change ships. Every role\'s pages are checked, in light and dark.');
   eyebrow(s, 'Built to be right');
   title(s, 'Tested like a *product*');
-  const stats = [['10,000', 'synthetic people', 'run through every counting rule, with the expected results'], ['35', 'browser test suites', 'run before every change ships'], ['7', 'roles', 'every page checked,\nin light and dark']];
+  const stats = [['10,000', 'synthetic people', 'run through every counting rule, with the expected results'], ['36', 'browser test suites', 'run before every change ships'], ['7', 'roles', 'every page checked,\nin light and dark']];
   const cw = (R - M - 0.7) / 3;
   stats.forEach(([n, h, t], i) => {
     const x = M + i * (cw + 0.35), d = 300 + i * 200, on = i === 0;

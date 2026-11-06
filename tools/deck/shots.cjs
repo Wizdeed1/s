@@ -26,7 +26,7 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
       const M = window.__mc, F = window.__FIX__;
       M.state.history = F.history; M.state.finals = F.finals; M.state.histVer++; M.state.finVer++; M.state.wsMonth = '2026-09';
       const done = { at: '2026-10-05T09:00:00Z', by: 'Noura B.' };   // the steps due by the 8th are done
-      M.state.calMarks = { '2026-09': { k: '2026-09', marks: Object.fromEntries(['built', 'kpi', 'eval', 'shared', 'ready', 'objections'].map(s => [s, done])) } };
+      M.state.calMarks = { '2026-09': { k: '2026-09', marks: Object.fromEntries(['built', 'eval', 'shared', 'ready', 'objections'].map(s => [s, done])) } };
     });
     return { ctx, p };
   }
@@ -94,9 +94,10 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
     const who = await p.evaluate(() => {   // an agent with every KPI of the scorecard (as in test/rounding.cjs)
       const M = window.__mc, H = JSON.parse(JSON.stringify(window.__FIX__.history)), r = H['2026-09'].rows.find(x => x.team === 'CC' && x.brand === 'Virgin');
       Object.assign(r, { adh: 0.94962, aht: 140, tardy: 0, ks: 22, ka: 22, kat: 22, absent: 0, worked: 22, kr: 0 });
-      M.state.kpiFiles['2026-09'] = { at: '2026-10-01T09:00:00Z', rows: [{ id: String(r.id), name: r.n, cols: { 'drc csat': 0.9, 'quality observations': 0.96, 'empowerment utilization': 0.96, 'call reason fcr accuracy': 0.96 } }] };
+      const pid = M.state.roster.find(x => String(x.nid) === String(r.id))._id;   // the quality numbers as the Final EVAL gives them; DRC-CSAT one for all
+      M.state.quality['2026-09'] = { csat: 0.9, rows: { [pid]: { n: r.n, kpi: { qobs: 0.96, emp: 0.96, fcr: 0.96 }, eval: { callqa: 0.96 }, crit: [], qv: 2 } } }; M.state.qualityVer++;
       M.state.history = H; M.state.histVer++; M.state.wsMonth = '2026-09'; M.setWs('results');
-      return M.state.roster.find(x => String(x.nid) === String(r.id))._id;
+      return pid;
     });
     await p.waitForTimeout(500);
     await p.evaluate(pid => { const x = document.createElement('button'); x.dataset.how = pid; x.dataset.howk = '2026-09'; document.body.append(x); x.click(); x.remove(); }, who);

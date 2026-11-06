@@ -6,16 +6,24 @@
 Object.assign(state, { me: null, meMonth: '', signForm: null });
 
 /** after an agent signs in: their own place in the data, kept live */
+/** the agent page's watchers, stopped when the admin's preview of an agent ends (or another agent's page is opened) */
+let meStop = [];
+function stopAgentData() { for (const f of meStop.splice(0)) { try { f(); } catch (e) { /* none */ } } }
 function loadAgentData(db, pid) {
+  stopAgentData();
   state.db = db; state.rosterReady = true;
   langLoad();
   if (!pid) { state.me = { pid: '', prof: null, months: {}, forms: {}, sigs: {}, objs: {}, replies: {}, err: 'Your account is not linked to your name yet. Ask your supervisor.' }; renderAll(); return; }
   state.me = { pid, prof: null, months: {}, forms: {}, sigs: {}, objs: {}, replies: {}, loaded: 0, got: new Set() };
+  const live = () => !!state.me && state.me.pid === pid;   // answers for a page that is no longer open are dropped
   const poke = busyWatch(db, () => state.me && state.me.got && state.me.got.size >= 5);
-  const done = () => { state.me.loaded++; renderAll(); poke(); };
-  const getProf = () => db.doc('agent/' + pid).get().then(s => { state.me.prof = s.exists ? s.data() : null; renderAll(); }, () => {});
-  getProf(); setInterval(() => { if (!document.hidden) getProf(); }, 60000);
-  const sub = (c, f) => { const got = () => state.me.got.add(f); try { db.collection(`agent/${pid}/${c}`).onSnapshot(sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); state.me[f] = o; got(); done(); }, () => { got(); done(); }); } catch (e) { got(); done(); } };
+  const done = () => { if (!live()) return; state.me.loaded++; renderAll(); poke(); };
+  const getProf = () => db.doc('agent/' + pid).get().then(s => { if (!live()) return; state.me.prof = s.exists ? s.data() : null; renderAll(); }, () => {});
+  getProf(); const tick = setInterval(() => { if (!document.hidden) getProf(); }, 60000); meStop.push(() => clearInterval(tick));
+  const sub = (c, f) => {
+    const got = () => { if (live()) state.me.got.add(f); };
+    try { const un = db.collection(`agent/${pid}/${c}`).onSnapshot(sn => { if (!live()) return; const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); state.me[f] = o; got(); done(); }, () => { got(); done(); }); if (typeof un === 'function') meStop.push(un); } catch (e) { got(); done(); }
+  };
   sub('months', 'months'); sub('forms', 'forms'); sub('sign', 'sigs'); sub('obj', 'objs'); sub('reply', 'replies');
   try { db.doc('config/logo').get().then(s => { if (s.exists) { const d = s.data() || {}; if (typeof d.dataUrl === 'string' && d.dataUrl.startsWith('data:image/')) { state.logo = { dataUrl: d.dataUrl, w: d.w, h: d.h }; logoPx = null; } } }, () => {}); } catch (e) { /* the built-in logo */ }
 }
@@ -23,7 +31,7 @@ function renderAll() { if (state.ws === 'me') renderWs(); else render(); if (sta
 
 // ---------------------------------------------------------------- the page (in English or Arabic: T() gives the agent's language)
 function renderMe() {
-  if (!state.me && state.db && roleNow() === 'agent' && Auth.user()) loadAgentData(state.db, Auth.user().pid);   // signed in outside the shared folder, or just approved
+  if (state.db && roleNow() === 'agent' && Auth.user() && (!state.me || (viewing() && state.me.pid !== Auth.user().pid))) loadAgentData(state.db, Auth.user().pid);   // signed in outside the shared folder, or just approved
   if (!state.lang && Auth.user()) langLoad();
   langApply();
   const M = state.me, body = $('meBody'), ar = langNow() === 'ar';

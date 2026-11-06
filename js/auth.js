@@ -187,7 +187,7 @@ const Auth = (() => {
 
   // ---- screens
   const val = id => $(id).value;
-  const isAdmin = () => !!user && user.role === 'admin';
+  const isAdmin = () => !!user && user.role === 'admin' && !viewAs;   // while the admin views as another role, the pages see that role
   const lockMins = () => (user && [5, 15, 30, 60].includes(user.lockMins) ? user.lockMins : 15);
   const first = n => esc(String(n || '').split(' ')[0]);
   function showForm(on) { document.querySelectorAll('#lockForm .field, #pwCheck').forEach(el => { if (!on) el.hidden = true; }); }
@@ -298,6 +298,10 @@ const Auth = (() => {
   }
   /** the visual tests only (no data store, no sign-in): a pretend person, so each role's pages can be looked at */
   const testUser = () => (!db && window.__NOLOCK__ && window.__mcUser) || null;
+  /** the admin's View as preview (viewas.js): { role, pid, name, scope }. The pages then see that role and person; the account
+      menu, the account checks and every record of who did what keep the admin's own account */
+  let viewAs = null;
+  const eff = u => (u && viewAs && u.role === 'admin' ? { ...u, role: viewAs.role, pid: viewAs.pid || '', scope: viewAs.scope, viewing: viewAs } : u);
   function renderUser() {
     const me = user || testUser(), on = !!me && mode === 'open';
     $('acctBtn').hidden = !on;
@@ -309,7 +313,8 @@ const Auth = (() => {
     $('acctRole').textContent = role; $('acctRole').className = 'pill ' + (me.role === 'admin' ? 'info' : '');
     $('acctBtn').title = `${me.name} (${me.username || me.email}) - ${role}`;
     $('acctUserBtn').textContent = me.username ? 'Change username' : 'Choose a username';
-    $('acctMenu').querySelector('[data-acct="accounts"]').hidden = me.role !== 'admin';
+    $('acctMenu').querySelector('[data-acct="accounts"]').hidden = me.role !== 'admin' || !!viewAs;
+    for (const [k, show] of [['viewas', me.role === 'admin' && !viewAs], ['viewback', me.role === 'admin' && !!viewAs]]) { const b = $('acctMenu').querySelector(`[data-acct="${k}"]`); if (b) b.hidden = !show; }
     if (on) applyRole();
   }
   function busy(on, label) { const b = $('lockGo'); b.disabled = on; if (on) { b.dataset.l = b.textContent; b.innerHTML = `<span class="spin" aria-hidden="true"></span>${label}`; } else if (b.dataset.l) b.textContent = b.dataset.l; }
@@ -759,6 +764,7 @@ const Auth = (() => {
     const k = a.dataset.acct;
     if (k === 'lock') lock(); if (k === 'pw') setMode('change'); if (k === 'user') setMode('username'); if (k === 'out') signOut(); if (k === 'accounts') openAccounts();
     if (k === 'help') openDrawer('dHelp'); if (k === 'settings') openDrawer('dSettings');   // on a phone, where the header has no room for their buttons
+    if (k === 'viewas') openViewAs(); if (k === 'viewback') endViewAs();
   });
   $('signinSeg').addEventListener('click', e => { const b = e.target.closest('[data-signin]'); if (b) setSignin(b.dataset.signin === 'user'); });
   $('accList').addEventListener('submit', e => {
@@ -801,6 +807,6 @@ const Auth = (() => {
   $('accTemp').addEventListener('click', async e => { if (e.target.id === 'tempCopy') toast(await copyRich(null, $('tempPw').textContent) ? 'Temporary password copied' : 'Select the password and press Ctrl+C.'); });
   $('teamCopy').addEventListener('click', downloadTeamCopy);
   $('migrateGo').addEventListener('click', migrateLocal);
-  return { start, lock, signOut, change: () => { if (user) setMode('change'); }, setLockMins, lockMins, user: () => user || testUser(), isAdmin, openAccounts, check, team: () => TEAM, people, refreshMe, onDb: () => db,
+  return { start, lock, signOut, change: () => { if (user) setMode('change'); }, setLockMins, lockMins, user: () => eff(user || testUser()), realUser: () => user || testUser(), viewAs: () => viewAs, setViewAs: v => { viewAs = v || null; renderUser(); }, isAdmin, openAccounts, check, team: () => TEAM, people, refreshMe, onDb: () => db,
     connect, setConnect: o => { connectCb = o; }, mode: () => mode, onReady: f => readyFns.push(f), info, setAccess, approveAgent, rejectAgent, waitingAgents, autoGrants, folder, ROLES, STAFF, KINDS };
 })();

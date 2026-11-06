@@ -7,6 +7,9 @@ const root = path.join(__dirname, '..'), read = f => fs.readFileSync(path.join(r
 const want = (read('vendor/README.md').match(/SHA-256 of the reviewed `gsap\.min\.js`: `([0-9a-f]{64})`/) || [])[1];
 const got = crypto.createHash('sha256').update(fs.readFileSync(path.join(root, 'vendor/gsap.min.js'))).digest('hex');
 ok(want && got === want, `vendor/gsap.min.js is the reviewed file (SHA-256 ${got.slice(0, 16)}…${want ? '' : ', none recorded in vendor/README.md'})`);
+const wantH = (read('vendor/README.md').match(/SHA-256 of the reviewed `hairline\.js`: `([0-9a-f]{64})`/) || [])[1];
+const gotH = crypto.createHash('sha256').update(fs.readFileSync(path.join(root, 'vendor/hairline.js'))).digest('hex');
+ok(wantH && gotH === wantH, `vendor/hairline.js is the reviewed file (SHA-256 ${gotH.slice(0, 16)}…${wantH ? '' : ', none recorded in vendor/README.md'})`);
 const pkg = JSON.parse(read('package.json'));
 ok(!pkg.dependencies && !pkg.devDependencies && !pkg.optionalDependencies, 'nothing is installed from npm: the page carries all of its code');
 ok(/^permissions:\s*\n\s+contents:\s*read\s*$/m.test(read('.github/workflows/node.js.yml')), "the CI workflow's token can only read the repository");

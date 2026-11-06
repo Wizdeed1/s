@@ -24,6 +24,7 @@
   <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="1.5"/><path d="M15.5 8.5V5.5A1.5 1.5 0 0 0 14 4H5.5A1.5 1.5 0 0 0 4 5.5V14a1.5 1.5 0 0 0 1.5 1.5h3"/></symbol>
   <symbol id="i-bang" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"><path d="M12 4.5v9.5"/><path d="M12 19v.5"/></symbol><symbol id="i-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><path d="M7 12h10"/></symbol><symbol id="i-dn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 4v15"/><path d="m5.5 12.5 6.5 6.5 6.5-6.5"/></symbol>
   <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19z"/></symbol>
+  <symbol id="i-present" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8.5 20h7"/><path d="m10.5 8.2 3.6 1.8-3.6 1.8z"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
   <symbol id="i-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8.5 20h7M12 16.5V20"/></symbol>
@@ -86,6 +87,7 @@
     <button data-ws="wfm" aria-pressed="false" data-tip="WFM team"><svg aria-hidden="true"><use href="#i-chart"/></svg><span>WFM team</span></button>
     <button data-ws="quality" aria-pressed="false" data-tip="Quality"><svg aria-hidden="true"><use href="#i-star"/></svg><span>Quality</span></button>
     <button data-ws="me" aria-pressed="false" data-tip="My page"><svg aria-hidden="true"><use href="#i-user"/></svg><span>My page</span></button>
+    <button data-ws="show" aria-pressed="false" data-tip="Showcase"><svg aria-hidden="true"><use href="#i-present"/></svg><span>Showcase</span></button>
   </div>
   <div class="sbsec" id="sbSec">
     <button class="sbitem" data-sb="help" data-tip="How to use"><svg aria-hidden="true"><use href="#i-help"/></svg><span>How to use</span></button>
@@ -112,6 +114,8 @@
           <div class="who"><b id="acctName" dir="auto"></b><span id="acctEmail"></span><span><span class="pill" id="acctRole">User</span></span></div>
           <div class="appear" role="group" aria-labelledby="l-appear"><span id="l-appear">Appearance</span><div class="seg appearseg"><button role="menuitemradio" aria-checked="true" data-theme-set="system"><svg aria-hidden="true"><use href="#i-monitor"/></svg>System</button><button role="menuitemradio" aria-checked="false" data-theme-set="light"><svg aria-hidden="true"><use href="#i-sun"/></svg>Light</button><button role="menuitemradio" aria-checked="false" data-theme-set="dark"><svg aria-hidden="true"><use href="#i-moon"/></svg>Dark</button></div></div>
           <button role="menuitem" data-acct="accounts" hidden>Manage accounts</button>
+          <button role="menuitem" data-acct="viewas" hidden>View as another role…</button>
+          <button role="menuitem" data-acct="viewback" hidden>Back to Admin</button>
           <button role="menuitem" data-acct="user" id="acctUserBtn">Change username</button>
           <button role="menuitem" data-acct="pw">Change password</button>
           <button role="menuitem" data-acct="help" id="acctHelp" class="phoneonly">How to use</button>
@@ -125,6 +129,7 @@
 </header>
 
 <main id="main" tabindex="-1">
+  <div class="viewbar" id="viewBar" role="status" hidden></div>
   <div class="welcome" id="welcome" hidden><b id="welName"></b><time class="wtime" id="welTime"></time></div>
   <div class="buildbar" id="buildBar" hidden>
     <div class="bbring" id="bbRing" role="img" aria-label="0 of 4 steps done"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="rt" cx="18" cy="18" r="15.5"/><circle class="rf" id="bbRingF" cx="18" cy="18" r="15.5" pathLength="100" stroke-dasharray="0 100"/></svg><span id="bbRingN">0/4</span></div>
@@ -470,6 +475,9 @@
     <div class="viewhead"><div><div class="eyebrow">My page</div><h1 id="h-me">My results</h1><p id="meSub">Your performance, attendance and one-to-ones. You fill in your part of a one-to-one here, and sign it when your supervisor sends the final.</p></div><div class="wsbar" id="meBar"></div></div>
     <div id="meBody"></div>
   </section>
+  <section class="view ws" id="v-show" aria-labelledby="h-show" hidden>
+    <div id="showBody"></div>
+  </section>
   <section class="view ws" id="v-wait" aria-labelledby="h-wait" hidden>
     <div class="viewhead"><div><div class="eyebrow">Almost there</div><h1 id="h-wait">Waiting for access</h1><p id="waitSub">Your account is ready. An admin now gives you a role (supervisor, senior manager, WFM manager or WFM analyst); this page opens your workspace as soon as they do.</p></div></div>
   </section>
@@ -599,6 +607,11 @@
 <aside class="drawer wide" id="dAttTpl" role="dialog" aria-modal="true" aria-labelledby="h-atttpl" hidden>
   <header><div><h2 id="h-atttpl">Attendance templates</h2><div class="sub" id="attTplSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
   <div class="body" id="attTplBody"></div>
+</aside>
+
+<aside class="drawer" id="dViewAs" role="dialog" aria-modal="true" aria-labelledby="h-viewas" hidden>
+  <header><div><h2 id="h-viewas">View as another role</h2><div class="sub">Any interface, exactly as that role sees it, on the shared data. Nothing is saved while you view.</div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="viewAsBody"></div>
 </aside>
 
 <aside class="drawer wide" id="dHow" role="dialog" aria-modal="true" aria-labelledby="h-how" hidden>

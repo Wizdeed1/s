@@ -9,7 +9,8 @@ layout built on top of it (following Apple's Human Interface Guidelines), now in
 the October and November 2026 additions below. Every calculation, output, email
 template, role, permission and storage format is the same as v33 **by default**: the new counting settings start at what
 v33 did (tests compare 10,000 synthetic people against the v33 code), and the only permissions added on request are that the
-WFM analyst shares the Emails page with the WFM manager and that the WFM team (and admins) can export and import all the data.
+WFM analyst shares the Emails page with the WFM manager, that the WFM team (and admins) can export and import all the data, and
+that the admin can view every role's interface (a preview that saves nothing) and has the Showcase page.
 The tool still sends nothing and makes no network request; opened as a file, the browser itself now refuses any web
 address (see the security review below).
 
@@ -50,6 +51,18 @@ built in (`assets/brand`, turned into `js/bologos.js` and `js/ui6/05_brand.css` 
 **Left as they were, on purpose.** The emails (their templates byte for byte), the Excel workbooks and the KPI cards keep
 their look, and the tool's logo setting (`js/brand_src.html`, Settings › Logo) stays empty, so none of those outputs change.
 The Beyond One logo can go into the workbooks too, on request.
+
+## View as and the Showcase (November 2026)
+
+The admin can open every role's interface, and has a page that tells the tool's story in a meeting.
+
+| Part | What it does |
+|---|---|
+| View as (admin only) | Account menu › **View as another role…**, or **View** on a Showcase role card: the WFM analyst's, the WFM manager's, the senior manager's, a chosen supervisor's (their own team), the quality team's or a chosen agent's own page, on the shared data, exactly as that role sees it. A black banner on every page says whose interface it is, with **Switch** and **Back to Admin**; Back to Admin returns to the page it started from. |
+| A preview | Nothing is saved while viewing. The data store refuses every write (`store.js`, and the browser's own store), `queueWrite` keeps nothing to try again, and the admin is told when something was not saved. If anything was refused, Back to Admin reads the watched data again and offers Reload. The account menu, the account checks and every record of who did what stay the admin's own (`auth.js`: the pages see the role chosen, the account does not change). Before a preview starts, the admin's own saves are let finish. |
+| Showcase (admin only) | **Showcase** in the admin's navigation (`js/showcase.js`): the tool's story in nine sections, built on a messaging framework: the main message, the challenge (10+ files, 7 roles, 1 deadline), the answer as a value proposition with the month's four steps, five key messages with their proof, a page for every role (before and now, with View), today's figures (the dashboard's cards and a few counts from the shared data: totals only, never a name), trust, what changes, and how to start. **Present** shows it full screen, one section at a time: ← and →, Home and End, **N** for the speaker notes, Esc to end. A role's View opens that interface live, out of the presentation. Other roles do not have the page; a link to `#/show` says it is not one of theirs. |
+| Line figures | The Showcase's animated line figures (an app in layers, a tray of files, sieves for the checks, lines snapping square for the workbook, a relay for the emails, a hub for the roles, a vault, a laptop) are [hairline](https://www.npmjs.com/package/@lucasmarkes/hairline) 0.5.1 (MIT), built into the file from `vendor/hairline.js`, its SHA-256 checked by `npm test` like GSAP's. They are drawn only while the Showcase is open, answer the pointer, and keep still with reduced motion. |
+| How it was written | The brand skill's messaging framework gave the structure; the copy follows plain-language rules (no slogans, numbers that can be checked); hairline gave the figures; Beyond One's look and Poppins carry over from the rest of the tool. |
 
 ## The design: Option A, by Apple's guidelines
 
@@ -345,6 +358,7 @@ node test/absgrid.cjs "final/MC Monthly Report Builder.html" test/shots         
 node test/weekly.cjs "final/MC Monthly Report Builder.html" test/shots           # WFM team › Weekly commercial: the month from the history, the sheet read (another file refused, a drop read once), the exports' numbers, outages typed, pasted and undone, settings, the deck and the email to the VP, another day, the shared settings and outages, the senior manager without the tab, phone width
 node test/attupd.cjs "final/MC Monthly Report Builder.html" test/shots           # Emails › Deduction and absences › Corrections after the review: a champion's table pasted, typed lines (choose between two people, a range's OFF day, clear), exceptions as the supervisors list them (the deduction, the email and its workbook follow), Apply, Undo, Remove, an .eml chosen and dropped, a picture refused, a final month, text as text, the senior manager without the box
 node test/perfrev.cjs "final/MC Monthly Report Builder.html" test/shots          # WFM team › Performance Review: a made-up .msg chosen and one dropped, its tables listed, the deck and the email to the VP, a made-up Call history (.xlsx, and an .xls) counted and kept with the shared days, what counts, Clear and Undo, a pasted text, a picture refused, the senior manager without the tab, phone width
+node test/viewas.cjs "final/MC Monthly Report Builder.html" test/shots           # the admin's View as (every role, a supervisor's team, an agent's page, nothing saved while viewing) and the Showcase (sections, figures, Present)
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)
 npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, Smart-Link's attendance file, the weekly presentation's numbers and PowerPoint, the corrections read after the deduction email, the performance review's tables and deck, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)
 ```

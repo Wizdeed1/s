@@ -72,6 +72,8 @@ const FolderStore = (() => {
     const me = rid(4);
     const K = { dk: null, dkTag: 'dk1', ak: new Map(), staff: false };
     const cache = new Map(), loaded = new Set(), loading = new Map(), subs = new Map(), dirs = new Map(), bad = new Map();
+    let ro = null;   // the admin's View as preview: every write is refused (ro is then the function told of each refusal)
+    const refuse = p => { try { ro(p); } catch (e) { /* none */ } return Object.assign(new Error('Not saved: this is a preview'), { code: 'preview' }); };
     let pollTimer = 0, lastPoll = 0, polling = false, stopped = false;
     const bornAt = Date.now();   // when this window opened the folder
     const ext = p => (isPlainPath(p) ? '.json' : '.mcd');
@@ -116,6 +118,7 @@ const FolderStore = (() => {
       return { body: await decode(p, new Uint8Array(await slowly(f.arrayBuffer(), 30000))), sig };
     }
     async function writeFile(p, body) {
+      if (ro) throw refuse(p);
       const s = segsOf(p);
       if (s.length % 2) throw Object.assign(new Error('not a record path: ' + p), { code: 'invalid_argument' });
       let bytes;
@@ -128,6 +131,7 @@ const FolderStore = (() => {
       mark(p); emit(p);
     }
     async function removeFile(p) {
+      if (ro) throw refuse(p);
       const s = segsOf(p), d = await dirFor(s.slice(0, -1), false);
       if (d) { try { await d.removeEntry(fname(s[s.length - 1], p)); } catch (e) { if (!(e && e.name === 'NotFoundError')) throw e; } }
       cache.delete(p); mark(p); emit(p);
@@ -267,6 +271,10 @@ const FolderStore = (() => {
       }),
       /** keys from the sign-in: { dk, staff, ak: Map(pid -> key) } */
       unlock(k) { if (k.dk) { K.dk = k.dk; K.staff = true; } if (k.ak) for (const [p, v] of k.ak) K.ak.set(p, v); watch(); },
+      /** the admin's View as preview: on, every write is refused and told to onRefuse(path); off, writes go through again */
+      readOnly(on, onRefuse) { ro = on ? (onRefuse || (() => {})) : null; },
+      /** every watched collection told again what the folder holds (after a preview, so nothing shown stays unsaved) */
+      resync() { for (const [c, L] of subs) for (const f of L) setTimeout(() => { try { f(snap(c)); } catch (e) { /* the listener's own problem */ } }, 0); },
       watch,
       hasDataKey: () => !!K.dk,
       agentKey: pid => akey(pid, true),

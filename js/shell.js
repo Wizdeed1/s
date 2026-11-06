@@ -4,8 +4,8 @@
 // step bar. Light and dark follow the computer. On a phone the workspaces move to a tab bar at the bottom: every page when they
 // fit (five or fewer), else four and More (Apple: avoid overflow tabs). A page the role cannot use is not in the navigation; opened
 // by a link it says "Not one of your pages" with the way back. Nothing here reads or writes any data the role could not before.
-const WS_LABEL = { dash: 'Dashboard', build: 'WFM team', team: 'Team', results: 'Results', cycle: 'Supervisors', wfm: 'WFM team', quality: 'Quality', me: 'My page', wait: 'Waiting for access', blocked: 'Not one of your pages' };
-const WS_ICON = { dash: 'i-home', build: 'i-up', team: 'i-team', results: 'i-check', cycle: 'i-clock', wfm: 'i-chart', quality: 'i-star', me: 'i-user' };
+const WS_LABEL = { dash: 'Dashboard', build: 'WFM team', team: 'Team', results: 'Results', cycle: 'Supervisors', wfm: 'WFM team', quality: 'Quality', me: 'My page', show: 'Showcase', wait: 'Waiting for access', blocked: 'Not one of your pages' };
+const WS_ICON = { dash: 'i-home', build: 'i-up', team: 'i-team', results: 'i-check', cycle: 'i-clock', wfm: 'i-chart', quality: 'i-star', me: 'i-user', show: 'i-present' };
 const STEP_LABEL = { import: 'Import', review: 'Review', export: 'Export', email: 'Email' };
 const mqPhone = matchMedia('(max-width: 767.98px)'), mqLaptop = matchMedia('(max-width: 1279.98px)');
 const lsGet3 = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };

@@ -115,6 +115,9 @@ function limited(fn) {
 }
 const failedW = new Map();   // writes that failed, by record: Try again sends the latest of each once more
 function queueWrite(key, fn) {
+  if (viewing()) {   // the admin's View as preview: nothing is saved, nothing is kept to try again, the admin is told once in a while
+    viewRefused(key); const no = Promise.reject(Object.assign(new Error('Not saved: this is a preview'), { code: 'preview' })); no.catch(() => {}); return no;
+  }
   const p = (chains.get(key) || Promise.resolve()).then(() => limited(fn));
   chains.set(key, p.catch(() => {}));
   inflight++; lastErr = null; setSave();
@@ -307,6 +310,7 @@ function persistSettings() {
   if (!state.db) return;
   clearTimeout(setTimer);
   setTimer = setTimeout(() => {
+    setTimer = null;   // nothing waiting (View as waits for this before it starts)
     const body = clone(state.settings);
     queueWrite('config/settings', () => state.db.doc('config/settings').set(body))
       .then(() => { $('setSaved').textContent = savedWhere(); }, e => { $('setSaved').textContent = 'Not saved (' + ((e && e.code) || 'error') + ')'; });
@@ -351,7 +355,7 @@ const savedWhere = () => (state.db && state.db.local ? 'Saved in this browser on
 
 // ---------------------------------------------------------------- local storage stand-in for the page database (HTML file opened outside Claude)
 function localDb() {
-  const KEY = 'wf-db'; let data = {}, persistent = true;
+  const KEY = 'wf-db'; let data = {}, persistent = true, ro = null;   // ro: the admin's View as preview refuses every write
   try { data = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { persistent = false; }
   const listeners = new Map();
   const copy = v => JSON.parse(JSON.stringify(v));
@@ -366,14 +370,16 @@ function localDb() {
     doc: path => ({
       id: path.split('/').pop(), path,
       get: async () => snapDoc(path.split('/').pop(), data[path]),
-      set: async body => { data[path] = copy(body); save(); emit(path); },
-      update: async patch => { if (!(path in data)) throw { code: 'invalid_argument' }; Object.assign(data[path], copy(patch)); save(); emit(path); },
-      delete: async () => { delete data[path]; save(); emit(path); },
+      set: async body => { if (ro) { ro(path); throw { code: 'preview' }; } data[path] = copy(body); save(); emit(path); },
+      update: async patch => { if (ro) { ro(path); throw { code: 'preview' }; } if (!(path in data)) throw { code: 'invalid_argument' }; Object.assign(data[path], copy(patch)); save(); emit(path); },
+      delete: async () => { if (ro) { ro(path); throw { code: 'preview' }; } delete data[path]; save(); emit(path); },
     }),
     collection: c => ({
       get: async () => qsnap(c),
       onSnapshot: cb => { if (!listeners.has(c)) listeners.set(c, []); listeners.get(c).push(cb); setTimeout(() => cb(qsnap(c)), 0); return () => { listeners.set(c, (listeners.get(c) || []).filter(f => f !== cb)); }; },
     }),
+    readOnly(on, onRefuse) { ro = on ? (p => { try { (onRefuse || (() => {}))(p); } catch (e) { /* none */ } }) : null; },
+    resync() { for (const [c, L] of listeners) for (const f of L) setTimeout(() => f(qsnap(c)), 0); },
   };
 }
 
@@ -4319,7 +4325,7 @@ renderBrand();
 render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
-window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }), upd: () => ({ ctx: updCtx, read: updRead, files: updFiles, apply: updApply, now: updNow }), pr: () => ({ PR, read: prRead, files: prFiles }), dedData: () => dedMailData() };   // for testing
+window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, startViewAs, endViewAs, viewing, queueWrite, showGo, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }), upd: () => ({ ctx: updCtx, read: updRead, files: updFiles, apply: updApply, now: updNow }), pr: () => ({ PR, read: prRead, files: prFiles }), dedData: () => dedMailData() };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
 Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing

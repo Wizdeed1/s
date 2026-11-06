@@ -339,10 +339,10 @@ pres.addSection({ title: 'Trust' });
 
 // =============================================================================================== 14. tested
 {
-  const s = add('LIGHT', 'Trust', 'The tool is tested like a product. The counting rules were checked on ten thousand synthetic people against the previous engine, with the same results. Thirty-four automated browser test suites run on every change. Every role is checked on desktop and phone, light and dark. By default every calculation, email and permission is the same as before unless a setting is changed.');
+  const s = add('LIGHT', 'Trust', 'The tool is tested like a product. The counting rules were checked on ten thousand synthetic people against the previous engine, with the same results. Thirty-five automated browser test suites run on every change. Every role is checked on desktop and phone, light and dark. By default every calculation, email and permission is the same as before unless a setting is changed.');
   eyebrow(s, 'Built to be right');
   title(s, 'Tested like a *product*');
-  const stats = [['10,000', 'synthetic people', 'checked against the previous engine, with the same results'], ['34', 'browser test suites', 'run on every change before it ships'], ['7', 'roles', 'checked on desktop and phone, light and dark']];
+  const stats = [['10,000', 'synthetic people', 'checked against the previous engine, with the same results'], ['35', 'browser test suites', 'run on every change before it ships'], ['7', 'roles', 'checked on desktop and phone, light and dark']];
   const cw = (R - M - 0.7) / 3;
   stats.forEach(([n, h, t], i) => {
     const x = M + i * (cw + 0.35), d = 300 + i * 200, on = i === 0;

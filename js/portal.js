@@ -2,10 +2,10 @@
 // Everyone works on one set of data: the shared folder next to the HTML (or the online page's database). The month being built
 // is saved as the analyst works; supervisors, the senior manager, the WFM manager, the quality team and the agents read the
 // same history, final results and one-to-ones, live. A month the senior manager finalizes is frozen in `final/<month>`.
-const WS_VIEWS = ['dash', 'team', 'results', 'cycle', 'wfm', 'quality', 'me', 'wait', 'blocked'];
+const WS_VIEWS = ['dash', 'team', 'results', 'cycle', 'wfm', 'quality', 'me', 'show', 'wait', 'blocked'];
 // each role's pages in the order the month is done: the build (the WFM team page), the quality EVAL, the senior manager's month
 // close (Supervisors), the one-to-ones (Team), the final results; the dashboard first, the role's own first page
-const WS_OF = { admin: ['dash', 'build', 'wfm', 'quality', 'cycle', 'team', 'results'], user: ['dash', 'build', 'wfm', 'team'], senior: ['dash', 'cycle', 'team', 'results', 'wfm'], wfm: ['dash', 'wfm', 'results', 'team'], spv: ['team'], quality: ['quality'], agent: ['me'], pending: [] };
+const WS_OF = { admin: ['dash', 'build', 'wfm', 'quality', 'cycle', 'team', 'results', 'show'], user: ['dash', 'build', 'wfm', 'team'], senior: ['dash', 'cycle', 'team', 'results', 'wfm'], wfm: ['dash', 'wfm', 'results', 'team'], spv: ['team'], quality: ['quality'], agent: ['me'], pending: [] };
 Object.assign(state, { ws: 'build', finals: {}, finVer: 0, frozen: {}, people: [], wsMonth: '', wsSpv: '', wsUnit: '', wsQ: '', resSort: 'name', resDir: 'asc', resUnit: '', resSpv: '', resQ: '',
   wfmMetric: 'adh', wfmGroup: 'unit', wfmUnit: '', teamMetric: 'adh', autoAt: 0, autoNote: '', boardAll: {}, wfmTab: 'analytics', spvDone: {}, spvDoneVer: 0, cycleLog: {} });
 const FORM_STATUS = [['planned', 'Arranged'], ['held', 'Held'], ['closed', 'Closed']];
@@ -416,6 +416,7 @@ function setWs(ws, quiet) {
   const L = wsOfNow(); if (!L.includes(ws)) return;
   const changed = state.ws !== ws; state.ws = ws; if (ws === 'wfm') state.wfmAt = 'wfm'; syncWsSeg(); hidePop(); putHash(ws);
   if (ws !== 'wfm' && ws !== 'cycle') mountMail(false);
+  if (ws !== 'show') leaveShow();   // the Showcase's figures and presentation end with the page
   if (ws === 'build') { for (const w of WS_VIEWS) $('v-' + w).hidden = true; const s = STEPS.includes(state.step) ? state.step : 'import'; state.step = '__'; setStep(s); return; }
   showWsView(ws); renderWs();
   if (changed && !quiet) { animIn($('v-' + ws)); window.scrollTo({ top: 0 }); }
@@ -424,7 +425,7 @@ function setWs(ws, quiet) {
 function leaveWs() { if (state.ws === 'build') return; state.ws = 'build'; for (const w of WS_VIEWS) $('v-' + w).hidden = true; syncWsSeg(); }
 function renderWs() {
   const w = state.ws;
-  if (w === 'dash') renderDash(); else if (w === 'team') renderTeam(); else if (w === 'results') renderResults(); else if (w === 'wfm') renderWfmWs(); else if (w === 'quality') renderQuality(); else if (w === 'cycle') renderCycle(); else if (w === 'me') renderMe();
+  if (w === 'dash') renderDash(); else if (w === 'team') renderTeam(); else if (w === 'results') renderResults(); else if (w === 'wfm') renderWfmWs(); else if (w === 'quality') renderQuality(); else if (w === 'cycle') renderCycle(); else if (w === 'me') renderMe(); else if (w === 'show') renderShow();
   if (w === 'cycle') sectionNav('cycleBody'); else if (w === 'results') sectionNav('resultsBody');
   renderAutoNote(); renderFresh(); cycleBadge(); renderToday(); syncNav();
   requestAnimationFrame(() => { segThumbs(); introOnce($('v-' + w)); });

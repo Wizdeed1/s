@@ -3,7 +3,7 @@
 // senior manager's, one supervisor's (their own team), the quality team's and one agent's own page. It is a preview: while it is
 // on, the data store refuses every write (store.js, localDb) and queueWrite keeps nothing to try again, so a click during a
 // meeting never changes the shared data. The account menu, the account checks and every record of who did what keep the admin's
-// own account (auth.js). Back to Admin ends it, on the page it started from (the Showcase, say).
+// own account (auth.js). National IDs are hidden on the screen while it is on. Back to Admin ends it, on the page it started from.
 const VIEW_ROLES = [
   ['user', 'WFM analyst', 'Builds the month: the exports, the checks, the workbook, the daily reports.'],
   ['wfm', 'WFM manager', 'Sends the emails; analytics, agents and interactions.'],
@@ -74,6 +74,7 @@ async function startViewAs(role, pid) {
   Auth.setViewAs({ role, pid: person ? person.pid : '', name: person ? person.name : '' });
   document.body.classList.add('viewing'); renderViewBar();
   applyRole();
+  nidWatch(true);
   window.scrollTo({ top: 0 });
   toast(`Viewing as ${viewSentence()} Nothing is saved while you view.`);
 }
@@ -81,6 +82,7 @@ function endViewAs() {
   if (!viewing()) return;
   const back = state.viewFrom, n = state.viewRefused || 0;
   stopAgentData(); state.me = null;
+  nidWatch(false);
   Auth.setViewAs(null);
   if (state.db && state.db.readOnly) state.db.readOnly(false);
   document.body.classList.remove('viewing'); renderViewBar();
@@ -91,12 +93,49 @@ function endViewAs() {
   if (n) toast(`Back to Admin. ${plural(n, 'change')} made while viewing ${n === 1 ? 'was' : 'were'} not saved; reload the page to be sure the screen shows only what is saved.`, { label: 'Reload', fn: () => location.reload() });
   else toast('Back to Admin');
 }
+/** National IDs hidden while the admin views as someone (a meeting may see the screen): every ten-digit ID drawn on the page, in
+    the previews (the email documents) and in the tips shows as dots, as it is drawn; the ID fields show dots, their values stay */
+const NID_RE = /(^|\D)([12]\d{9})(?!\d)/g, NID_HIDE = '\u2022'.repeat(10), NID_ANY = /[12]\d{9}/;
+const nidMask = t => t.replace(NID_RE, (m, a) => a + NID_HIDE);
+function nidHide(root) {
+  if (!root) return;
+  if (root.nodeType === 3) { const v = root.nodeValue; if (v && NID_ANY.test(v)) { const m = nidMask(v); if (m !== v) root.nodeValue = m; } return; }
+  if (root.nodeType !== 1) return;
+  const doc = root.ownerDocument, w = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) { const v = n.nodeValue; if (v.length >= 10 && NID_ANY.test(v)) { const m = nidMask(v); if (m !== v) n.nodeValue = m; } }
+  for (const el of [root, ...root.querySelectorAll('[title], [aria-label], iframe')]) {
+    for (const at of ['title', 'aria-label']) { const t = el.getAttribute && el.getAttribute(at); if (t && NID_ANY.test(t)) el.setAttribute(at, nidMask(t)); }
+    if (el.tagName === 'IFRAME') nidFrame(el);
+  }
+}
+function nidFrame(fr) {
+  const go = () => { try { if (viewing() && fr.contentDocument && fr.contentDocument.body) nidHide(fr.contentDocument.body); } catch (e) { /* not the page's own */ } };
+  if (!fr.dataset.nidw) { fr.dataset.nidw = '1'; fr.addEventListener('load', go); }
+  go();
+}
+let nidObs = null;
+function nidWatch(on) {
+  if (nidObs) { nidObs.disconnect(); nidObs = null; }
+  document.body.classList.toggle('nidhide', !!on);
+  if (!on) return;
+  nidHide(document.body);
+  nidObs = new MutationObserver(L => {
+    if (!viewing()) return;
+    for (const m of L) {
+      if (m.type === 'childList') m.addedNodes.forEach(nidHide);
+      else if (m.type === 'characterData') nidHide(m.target);
+      else if (m.attributeName === 'srcdoc' && m.target.tagName === 'IFRAME') nidFrame(m.target);
+      else if (m.target.getAttribute) { const t = m.target.getAttribute(m.attributeName); if (t && NID_ANY.test(t)) m.target.setAttribute(m.attributeName, nidMask(t)); }
+    }
+  });
+  nidObs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['title', 'aria-label', 'srcdoc'] });
+}
 /** the banner on every page while the admin views as someone else */
 function renderViewBar() {
   const el = $('viewBar'); if (!el) return;
   const v = viewing() ? Auth.viewAs() : null; el.hidden = !v;
   if (!v) { el.innerHTML = ''; return; }
-  el.innerHTML = `<span class="vbpx" aria-hidden="true"><i></i><i></i><i></i></span><div class="vbtext"><b>Viewing as ${esc(viewLabel(v))}</b><span>A preview of the shared data: nothing you change here is saved.</span></div>
+  el.innerHTML = `<span class="vbpx" aria-hidden="true"><i></i><i></i><i></i></span><div class="vbtext"><b>Viewing as ${esc(viewLabel(v))}</b><span>A preview of the shared data: nothing you change here is saved, and National IDs are hidden.</span></div>
     <div class="vbacts"><button class="btn sm" data-vbswitch>Switch</button><button class="btn sm primary" data-vbback>Back to Admin</button></div>`;
 }
 document.addEventListener('click', e => {

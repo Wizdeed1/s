@@ -2,7 +2,8 @@
 // 1. The admin's pages end with the Showcase: its nine sections, the line figures drawn as they come into view, Present (one
 //    section at a time, the arrow keys, the speaker notes on N, Esc to end).
 // 2. View as each role from the Showcase: that role's own pages (no Showcase among them), the banner, Back to Admin on the Showcase.
-// 3. A supervisor sees their own team only; an agent's page loads for the agent chosen.
+// 3. A supervisor sees their own team only; an agent's page loads for the agent chosen. National IDs are hidden while viewing
+//    (on the page, in a preview, in an ID field) and show again after Back to Admin.
 // 4. Nothing is saved while viewing: a write to the folder is refused (code "preview"), queueWrite keeps nothing to try again and
 //    the save line shows no error; the record is not in the folder. After Back to Admin writes go through again, and the refused
 //    change is said, with Reload.
@@ -81,6 +82,14 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   const tb = await bar();
   ok(team.size > 0 && team.rows.length > 0 && team.theirs === team.rows.length && tb.includes(`Supervisor · ${team.name}`), `View as a supervisor (${team.name}): their team only, ${team.rows.length} of their ${team.size} people listed, nobody else's`);
   await p.screenshot({ path: path.join(out, 'viewas-spv.png') });
+  const ids = await p.evaluate(async () => {
+    const fr = document.createElement('iframe'); fr.setAttribute('sandbox', 'allow-same-origin'); fr.srcdoc = '<p>ID 1542291999 and 2034567890</p>'; document.getElementById('teamBody').append(fr);
+    await new Promise(r => setTimeout(r, 500));
+    const txt = document.body.innerText, inFrame = fr.contentDocument.body.textContent; fr.remove();
+    const field = document.createElement('input'); field.dataset.f = 'nid'; field.value = '1542291999'; document.body.append(field); const sec = getComputedStyle(field).webkitTextSecurity; field.remove();
+    return { leaked: (txt.match(/(^|\D)[12]\d{9}(?!\d)/g) || []).length, dots: (document.getElementById('teamBody').textContent.match(/\u2022{10}/g) || []).length, inFrame, sec };
+  });
+  ok(ids.leaked === 0 && ids.dots > 0 && !/\d{10}/.test(ids.inFrame) && ids.sec === 'disc', `National IDs hidden while viewing: none readable on the page (${ids.dots} shown as dots), none in a preview ("${ids.inFrame}"), an ID field shows dots`);
 
   // ---- 4. nothing saved while viewing
   const tried = await p.evaluate(async () => {
@@ -105,6 +114,10 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   ok(!after.kept, 'nothing the preview tried is in the folder');
   ok(after.ws === 'show' && after.now === 3 && !after.retry, 'Back to Admin (account menu): on the Showcase, writes go through again, nothing waits to be tried again');
   ok(/2 changes made while viewing were not saved/.test(after.toast) && after.act === 'Reload', `  "${after.toast.slice(0, 60)}…" with ${after.act}`);
+  await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(600);
+  const shown = await p.evaluate(() => (document.getElementById('teamBody').innerText.match(/(^|\D)[12]\d{9}(?!\d)/g) || []).length);
+  ok(shown > 0, `after Back to Admin the IDs show again (the admin's Team page: ${shown})`);
+  await p.evaluate(() => window.__mc.setWs('show')); await p.waitForTimeout(300);
 
   // an agent's page loads for the agent chosen
   const agent = await p.evaluate(() => window.__mc.state.roster.find(x => x.team === 'CC' && x.status === 'Active')._id);

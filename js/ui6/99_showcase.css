@@ -18,6 +18,9 @@
 .viewbar .btn.primary:hover { background: #e4e4e7; border-color: #e4e4e7; color: #080808; }
 @media (max-width: 640px) { .viewbar { flex-wrap: wrap; } .viewbar .vbacts { width: 100%; } .viewbar .vbacts .btn { flex: 1; } }
 
+/* National IDs while viewing: the ID fields show dots (their values stay as they are; viewas.js hides the IDs drawn as text) */
+body.nidhide input[data-f="nid"], body.nidhide input[data-df="nid"] { -webkit-text-security: disc; }
+
 /* ---- the choice of roles */
 .valist { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
 .varow { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); transition: border-color .15s, background .15s; }

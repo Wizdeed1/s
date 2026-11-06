@@ -7,6 +7,7 @@
 //    the save line shows no error; the record is not in the folder. After Back to Admin writes go through again, and the refused
 //    change is said, with Reload.
 // 5. The account menu: View as another role for the admin; while viewing, Back to Admin, and no Manage accounts.
+// 6. Only the admin: a supervisor cannot start a preview or open the Showcase.
 // Usage: node test/viewas.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -126,6 +127,16 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   ok((await bar()).includes('Viewing as WFM manager'), 'from the menu: the WFM manager\'s dashboard, with the banner');
   await p.click('#viewBar [data-vbback]');
 
+  // ---- 6. only the admin: a supervisor (here in the page's test mode) asking for another role's interface gets nothing
+  {
+    const c2 = await b.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' }), q = await c2.newPage(); q.on('pageerror', e => errs.push(e.message));
+    await q.addInitScript(([fx]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u4', name: 'Ghada S.', username: 'ghada.s', role: 'spv', pid: 'p6' }; }, [fixture]);
+    await q.goto('file://' + path.resolve(page0)); await q.waitForFunction(() => window.__mc && window.__mc.state.rosterReady);
+    const r = await q.evaluate(async () => { const M = window.__mc; await M.startViewAs('senior'); await M.startViewAs('agent', 'p20'); M.setWs('show');
+      return { viewing: M.viewing(), ws: M.state.ws, nav: [...document.querySelectorAll('#wsSeg [data-ws]:not([hidden])')].map(x => x.dataset.ws).join(','), bar: !document.getElementById('viewBar').hidden, item: !!document.querySelector('#acctMenu [data-acct="viewas"]:not([hidden])') }; });
+    ok(!r.viewing && r.ws === 'team' && r.nav === 'team' && !r.bar && !r.item, `a supervisor cannot view as anyone, nor open the Showcase (${r.nav}, on ${r.ws})`);
+    await c2.close();
+  }
   console.log(errs.length ? errs.join('\n') : 'no errors'); if (errs.length) bad++;
   await b.close();
   console.log(bad ? `${bad} failed` : 'all passed'); process.exit(bad ? 1 : 0);

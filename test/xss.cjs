@@ -1,6 +1,6 @@
 // Security test: every made-up person gets a name that looks like HTML (a quote that closes an attribute, then an <img>
 // whose onerror calls top.__x), the Genesys exports carry the same names, and every page is opened as each role with its
-// tabs, the person panel, Search, and the Build flow up to the emails. Nothing from the data may become markup: no handler
+// tabs, the person panel, Search, the admin's View as (the banner, the role picker) and the Build flow up to the emails. Nothing from the data may become markup: no handler
 // may run and no element from a name may be in the page or in a preview (the email previews are documents of their own),
 // a line break in an address, a subject or a file name never starts a header in an Outlook draft, and text that starts like a
 // formula (= + - @) stays text in the CSV files (the roster, the daily exceptions). No network: opened as
@@ -67,6 +67,16 @@ const SCAN = () => {
       await p.click(`nav#sidebar [data-ws="${ws}"]`); await p.waitForTimeout(500); await scan(ws);
       const tabs = await p.$$eval('main [role="tab"], main [data-wt], main #cycleBar [data-cyctab]', ts => ts.filter(x => x.offsetParent && !x.disabled).map((x, i) => { x.setAttribute('data-xss-tab', i); return i; }));
       for (const i of tabs) { const t = await p.$(`[data-xss-tab="${i}"]`); if (!t || !(await t.isVisible())) continue; await t.click().catch(() => {}); await p.waitForTimeout(350); await scan(`${ws} › tab ${i}`); }
+    }
+    if (role === 'admin') {   // View as from the Showcase: a supervisor and an agent whose names are planted; the banner, their pages, the role picker
+      for (const r of ['spv', 'agent']) {
+        await p.evaluate(() => window.__mc.setWs('show')); await p.waitForTimeout(300);
+        await p.evaluate(r => { const c = document.querySelector(`#showBody [data-vago="${r}"]`).closest('.shrole'), s = c.querySelector('[data-vapick]'); s.selectedIndex = 1; s.dispatchEvent(new Event('change', { bubbles: true })); c.querySelector('[data-vago]').click(); }, r);
+        await p.waitForTimeout(700); await scan(`view as ${r}`);
+        await p.click('#viewBar [data-vbswitch]').catch(() => {}); await p.waitForTimeout(300); await scan(`view as ${r} › the role picker`);
+        await p.keyboard.press('Escape'); await p.click('#viewBar [data-vbback]').catch(() => {}); await p.waitForTimeout(300);
+      }
+      if (!(await p.evaluate(() => !window.__mc.viewing()))) bad.push('admin: View as did not end');
     }
     if (role !== 'agent' && role !== 'quality') {   // the person panel and Search
       for (const pid of ['p0', 'p13', 'p20', 'p100']) { await p.evaluate(id => window.__mc.openPerson && window.__mc.openPerson(id), pid).catch(() => {}); await p.waitForTimeout(400); await scan(`person ${pid}`); await p.keyboard.press('Escape'); await p.waitForTimeout(200); }

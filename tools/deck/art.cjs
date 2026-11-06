@@ -84,7 +84,6 @@ const laptopHtml = (src, dark) => `<div class="laptop"><div class="lid"><div cla
     await (await p.$('#f')).screenshot({ path: path.join(out, `fig-${f}-${theme}.png`), omitBackground: true });
   }
   console.log('✓ figures', FIGS.length * 2);
-  for (const [n, t] of [['showcase', 'Showcase'], ['viewas', 'View as · Supervisor']]) if (fs.existsSync(path.join(shots, n + '.png'))) await render('win-' + n, winHtml(shot(n), `MC Monthly Report Builder · ${t}`));
   // the dashboard large, for the slide that points at its parts (make_deck.cjs reads hero.json to place the numbers), and close-ups
   await render('hero-dash', winHtml(shot('dash-light'), 'MC Monthly Report Builder · Dashboard'));
   fs.writeFileSync(path.join(out, 'hero.json'), JSON.stringify({ pad: 90, winW: 1500, bar: 46, boxes: JSON.parse(fs.readFileSync(path.join(shots, 'dash-light.json'), 'utf8')) }));

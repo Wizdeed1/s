@@ -1,5 +1,5 @@
 // The launch deck: the MC Monthly Report Builder introduced as a new product, for the management team. It follows a product-demo
-// arc (the hook, the job month end asks for, the answer, how it works feature by feature, every role, the meeting room, trust,
+// arc (the hook, the job month end asks for, the answer, how it works feature by feature, every role, trust,
 // proof, what it means, and the call to action), with a messaging framework (the main message, the value proposition, key
 // messages with their proof, a message for every role) and plain copy. It speaks only of the product as it is.
 // On the Beyond One template the team's decks are made with (the decks the tool makes have the same look: js/bodeck.js): the cover
@@ -7,8 +7,8 @@
 // square at the top right, CONFIDENTIAL and its number at the foot, and its title in capitals with the words that matter in bold;
 // Poppins; flat boxes in the template's colours; hairline's line figures (vendor/hairline.js) as illustrations; dark slides for
 // the emails, for privacy and to close.
-// The tool is shown large enough to read: close-ups of its screens, the dashboard with its parts pointed out, the Showcase and
-// View as (tools/deck/shots.cjs and art.cjs, synthetic data only). Motion: every slide fades in and its parts rise in one after another.
+// The tool is shown large enough to read: close-ups of its screens, the dashboard with its parts pointed out, and the roles' own
+// pages (tools/deck/shots.cjs and art.cjs, synthetic data only). Motion: every slide fades in and its parts rise in one after another.
 // Usage: node tools/deck/make_deck.cjs artDir out.pptx   (needs pptxgenjs: npm i pptxgenjs)
 const fs = require('node:fs'), path = require('node:path');
 const Pptx = require('pptxgenjs');
@@ -48,7 +48,7 @@ const T = (s, text, o) => s.addText(text, { isTextBox: true, margin: 0, fontFace
 const ALT = { 'laptop-dark': 'The dashboard, in dark, on a laptop', 'hero-dash': 'The dashboard: shortcuts, the month at a glance, the month close and the bell',
   'z-import': 'Import: the four Genesys exports recognised and ready', 'z-checks': 'Review, Checks: what needs a decision before the build', 'z-email': 'The deduction email for review, ready to copy into Outlook',
   'z-templates': 'Attendance templates: one for each department', 'z-how': 'How this was counted, for one agent: each KPI, its band, ranking and points', 'win-xlsx': 'An attendance template open on How to fill',
-  'win-builder': 'WFM team, Report builder', 'win-showcase': 'The Showcase, presented full screen', 'win-viewas': 'View as a supervisor: their team, National IDs hidden', 'win-team': 'A supervisor\'s own team', 'win-agent-ar': 'An agent\'s own page, in Arabic', 'paper-form': 'A one-to-one form on one A4 page' };
+  'win-builder': 'WFM team, Report builder', 'win-team': 'A supervisor\'s own team', 'win-agent-ar': 'An agent\'s own page, in Arabic', 'paper-form': 'A one-to-one form on one A4 page' };
 /** a picture whose visible part (inside `pad` transparent pixels kept for its shadow) is put at x, y with width w (or height h) */
 function pic(s, n, b, pad, name) {
   const z = size(A(n)), vw = z.w - 2 * pad, vh = z.h - 2 * pad, k = b.w ? b.w / vw : b.h / vh;
@@ -274,7 +274,7 @@ pres.addSection({ title: 'Everyone' });
   title(s, 'A page for *every role*');
   const roles = [['up', 'WFM analyst', 'Builds the month and the daily emails'], ['mail', 'WFM manager', 'Sends the emails; sees the analytics'],
     ['star', 'Senior manager', 'Keeps the rules; finalizes the month'], ['team', 'Supervisor', 'The team, attendance, one-to-ones'],
-    ['check', 'Quality team', 'The Final EVAL and critical errors'], ['user', 'Agent', 'Own results, in English or Arabic'], ['lock', 'Admin', 'Accounts, roles and the Showcase']];
+    ['check', 'Quality team', 'The Final EVAL and critical errors'], ['user', 'Agent', 'Own results, in English or Arabic'], ['lock', 'Admin', 'Accounts and roles for everyone']];
   roles.forEach(([icon, h, t], i) => {
     const y = 1.95 + i * 0.67, d = 300 + i * 90, cw = 6.7;
     card(s, M, y, cw, 0.58, { t: d });
@@ -324,25 +324,14 @@ pres.addSection({ title: 'Everyone' });
   pic(s, 'win-builder', { x: 6.0, y: 2.0, w: R - 6.0 }, 90, 'up|250|shot');
 }
 
-// =============================================================================================== 14. built for the meeting room
-{
-  const s = add('LIGHT', 'Everyone', 'It is built for the meeting room too. The Showcase is the product telling its own story, full screen, with speaker notes, from inside the tool. View as opens any role\'s interface live, on today\'s data, exactly as that role sees it. And it is safe to show: nothing is saved while viewing, and every National ID on the screen is hidden.');
-  eyebrow(s, 'Present it');
-  title(s, 'Built for *the meeting room*');
-  pic(s, 'win-showcase', { x: M, y: 1.95, w: 6.15 }, 90, 'up|250|showcase');
-  pic(s, 'win-viewas', { x: 6.8, y: 1.95, w: R - 6.8 }, 90, 'up|420|viewas');
-  [['monitor', 'Showcase', 'The product tells its story, full screen, with speaker notes.'], ['eye', 'View as', 'Any role\'s interface, live, exactly as that role sees it.'], ['shield', 'Safe to show', 'Nothing is saved while viewing; National IDs are hidden.']]
-    .forEach((p, i) => point(s, p, M + i * 4.17, 6.02, 3.95, { t: 650 + i * 150, d: 0.46, hs: 14, ts: 12, th: 0.5, bg: i ? C.ink : C.blue }));
-}
-
-// =============================================================================================== 15. private by design
+// =============================================================================================== 14. private by design
 pres.addSection({ title: 'Trust' });
 {
-  const s = add('DARK', 'Trust', 'The data is the most sensitive Member Care has: names, National IDs, results and money. Opened as a file, the page refuses every web address, so nothing can leave by accident. The shared data is encrypted with AES-256 and only accounts made in the tool can read it. Attachments carry no National IDs, and on screen they are hidden while the admin presents. A security review was done, every finding fixed and covered by tests, and every change is logged with a name and a time.');
+  const s = add('DARK', 'Trust', 'The data is the most sensitive Member Care has: names, National IDs, results and money. Opened as a file, the page refuses every web address, so nothing can leave by accident. The shared data is encrypted with AES-256 and only accounts made in the tool can read it. Attachments carry no National IDs, and each person sees only what their role allows: an agent, only their own page. A security review was done, every finding fixed and covered by tests, and every change is logged with a name and a time.');
   eyebrow(s, 'Private by design', true);
   title(s, 'Your data *stays yours*');
   const tiles = [['0', 'web requests', 'Opened as a file, the browser itself refuses every web address.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read the files in the folder.'],
-    ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['Hidden', 'IDs while presenting', 'View as shows every National ID as dots on the screen.'],
+    ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['By role', 'what each person sees', 'An agent sees only their own page; a supervisor, only their team.'],
     ['Reviewed', 'for security', 'Every finding fixed and covered by tests.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.']];
   const tw = (R - M - 0.4) / 3;
   tiles.forEach(([big, small, t], i) => {
@@ -354,7 +343,7 @@ pres.addSection({ title: 'Trust' });
   });
 }
 
-// =============================================================================================== 16. proof
+// =============================================================================================== 15. proof
 {
   const s = add('LIGHT', 'Trust', 'It is tested like a product. Every counting rule runs over ten thousand synthetic people with the expected results. Thirty-five automated browser test suites run before every change ships. Every role\'s pages are checked, in light and dark.');
   eyebrow(s, 'Built to be right');
@@ -372,7 +361,7 @@ pres.addSection({ title: 'Trust' });
   T(s, 'Every calculation, email and permission is covered by tests that run before each change ships.', { x: M + 0.7, y: 6.1, w: 10.5, h: 0.46, fontSize: 14, color: C.ink2, valign: 'middle', objectName: 'up|900|same' });
 }
 
-// =============================================================================================== 17. what it means
+// =============================================================================================== 16. what it means
 pres.addSection({ title: 'Launch plan' });
 {
   const s = add('LIGHT', 'Launch plan', 'What it means for Member Care: every file of the month in one drop; problems decided before a number goes out; any bonus explained in a click; email drafts that are checked and private by default; and a month that is shared, locked and backed up, with vacation cover built in.');
@@ -388,7 +377,7 @@ pres.addSection({ title: 'Launch plan' });
   fig(s, 'hub', { x: 9.2, y: 2.6, w: R - 9.2 }, false, 600);
 }
 
-// =============================================================================================== 18. how we start
+// =============================================================================================== 17. how we start
 {
   const s = add('END', 'Launch plan', 'Three steps to start: put the HTML in the common folder next to MC Data, read-only for everyone but its owner; open it in Edge or Chrome on a computer; each person makes an account and the admin gives the roles. Next: opening it from anywhere, phones included. Thank you, and questions.');
   pixels(s, [[11.95, 1.08, 0.40, C.red], [12.55, 1.72, 0.16, C.pink], [6.80, 5.98, 0.28, C.lav], [12.32, 5.84, 0.22, C.orange], [7.08, 1.38, 0.14, C.blue]], 120);

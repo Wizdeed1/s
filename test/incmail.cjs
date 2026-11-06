@@ -6,6 +6,8 @@
 //    month's other emails. The Incentive email finds the file the analyst saved by itself, makes the review email (with the
 //    review deadline) and the final (compared with the review), and attaches the file; a month with no file says so.
 // 3. A newer build of the file replaces the older one on the senior manager's page (Look for a newer file).
+// 4. The final result form (Month close › Send the final result form): only the people on the incentive list who earned it, an
+//    earned SR of 0 or none left off (and said so); the month's total; the Excel file the same.
 // Usage: node test/incmail.cjs page.html outDir exportsDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -108,6 +110,27 @@ const today = () => '2026-10-20';   // the page's clock (below): the day the lat
   ok(/make it for Aug 2026 on WFM team › Export/.test(none.src) && /have not built the incentive file for August 2026/.test(none.warns), 'August: no incentive file yet, and where the analysts make it');
   await s.click('#cycleBar [data-cyctab="close"]'); await s.waitForTimeout(300);
   ok(await s.evaluate(() => !document.getElementById('cycleBody').hidden && document.getElementById('cycMail').hidden && !!document.querySelector('#cycleBody #st-increv')), 'Month close: the page as before');
+
+  // 4. the final result form for August (final): three who earned it, two with 0 and one with no result on the incentive list
+  const fx = await s.evaluate(() => {
+    const M = window.__mc, F = window.__FIX__, S = M.state; S.finals = F.finals; S.finVer++;
+    const map = M.rowsByPid('2026-08'), pids = [...map.keys()], name = pid => S.roster.find(p => p._id === pid).name;
+    const pos = pids.filter(pid => (map.get(pid).earned || 0) > 0).slice(0, 3), zero = pids.filter(pid => map.get(pid).earned === 0).slice(0, 2), none = S.roster.find(p => !map.has(p._id) && p.name);
+    S.incList = { items: [...pos, ...zero, none._id].map(pid => ({ pid })) }; M.renderWs();
+    return { pos: pos.map(name), zero: zero.map(name), none: none.name, tot: pos.reduce((a, pid) => a + Math.round(map.get(pid).earned), 0) };
+  });
+  await s.waitForSelector('#cycleBody [data-mail4="final"]:not([disabled])', { timeout: 10000 });
+  const [fd] = await Promise.all([s.waitForEvent('download', { timeout: 30000 }), s.click('#cycleBody [data-mail4="final"]')]);
+  const fe = path.join(out, 'final-form.eml'); await fd.saveAs(fe);
+  const raw = fs.readFileSync(fe, 'utf8'), parts = raw.split(/\r\n--mc(?:alt)?_[a-z0-9]+(?:--)?\r\n/);
+  const b64 = pt => Buffer.from((pt.split('\r\n\r\n')[1] || '').replace(/\s+/g, ''), 'base64');
+  const html = (parts.map(pt => (/text\/html/.test(pt) ? b64(pt).toString('utf8') : '')).find(Boolean) || '').replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  ok(fx.pos.length === 3 && fx.zero.length === 2 && fx.pos.every(n => html.includes(n)) && !fx.zero.some(n => html.includes(n)) && !html.includes(fx.none), `the final result form: the three who earned it, not the two with 0 nor ${fx.none} with no result (${fx.pos.join(', ')})`);
+  ok(html.includes(fx.tot.toLocaleString('en-US')), `the month's total: ${fx.tot.toLocaleString('en-US')}`);
+  const xp = parts.find(pt => /spreadsheetml\.sheet/.test(pt)), Core = require('../js/core.js'), xb = xp ? (await Core.readXlsx(b64(xp)))[0].rows : [];
+  const xn = xb.map(r => String((r || [])[1] || '')).filter(n => fx.pos.includes(n) || fx.zero.includes(n) || n === fx.none);
+  ok(xn.length === 3 && xn.every(n => fx.pos.includes(n)), `the Excel file the same: ${xn.join(', ')}`);
+  await s.waitForFunction(() => /Left off the form: 3 people with an earned SR of 0 or none/.test(document.getElementById('toastMsg').textContent), null, { timeout: 8000 }).then(() => ok(true, 'the page says who was left off: 3 people with an earned SR of 0 or none'), () => ok(false, 'the page says who was left off'));
 
   ok(!errs.length, `no errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
   await b.close();

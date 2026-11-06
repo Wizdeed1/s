@@ -117,7 +117,7 @@ function renderCycle() {
       cap: 'On Results: decide who is eligible where the rules say otherwise, then Finalize. After that only you can change the results.',
       acts: on => `<button class="${btn(on)}" data-cycgo="results">Open Results</button>` },
     { id: 'st-form', short: 'Final result form', title: 'Send the final result form', done: calDone('finalmail'), skip: calPast('finalmail'), note: sentTxt('final') || calNote('finalmail'),
-      cap: `To ${who('form') || 'the WFM manager'}: everyone on the incentive list with their final % and earned SR, the month's total, the table the VP, HR, Finance and the CEO sign, and the same form as an Excel file.${monthLocked(k) ? '' : ' Finalize the month first.'}`,
+      cap: `To ${who('form') || 'the WFM manager'}: everyone on the incentive list who earned it (0 or no earned SR left off), with their final % and earned SR, the month's total, the table the VP, HR, Finance and the CEO sign, and the same form as an Excel file.${monthLocked(k) ? '' : ' Finalize the month first.'}`,
       acts: on => `<button class="${btn(on)}" data-mail4="final"${dis}>Make the email</button>` },
     { id: 'st-incfin', short: 'Final incentive data', title: 'Send the final incentive data', done: !!sent.incFinal, skip: past, note: incSent('incFinal') || (past ? 'Not recorded' : ''),
       cap: 'To the champions after the review deadline, with the final incentive file.',
@@ -248,10 +248,12 @@ async function mail4(kind) {
       + mP('Please finish them and press <b>Finish my team</b> on your Team page.') + sign;
     ok = await saveEml(`Deadline reminder - ${M}`, { to, cc: splitAddr(con.wfm), subject: `Reminder | ${M} one-to-ones ${dl ? (days < 0 ? 'overdue' : `due ${Forms.fmtDate(dl)}`) : 'due'}`, html });
   }
-  if (kind === 'final') {
-    const L = incRows(k).filter(x => x.pid); if (!L.length) { toast('The incentive list is empty: add the people below.'); return; }
+  if (kind === 'final') {   // the people on the incentive list who earned it: an earned SR of 0 or none is left off the form
+    const all = incRows(k).filter(x => x.pid); if (!all.length) { toast('The incentive list is empty: add the people below.'); return; }
+    const L = all.filter(x => (finalEarned(x) || 0) > 0), off = all.length - L.length;
+    if (!L.length) { toast(`Nobody on the incentive list has an earned SR for ${M} yet.`); return; }
     if (!monthLocked(k)) toast(`${M} is not final yet: these are today's numbers. Finalize it on Results so they cannot change.`);
-    const none = L.filter(x => !x.has); if (none.length) setTimeout(() => toast(`No result in ${M} for ${none.slice(0, 4).map(x => x.name).join(', ')}${none.length > 4 ? '…' : ''}: their row is empty. Remove them from the incentive list if they should not be on the form.`), 2600);
+    if (off) setTimeout(() => toast(`Left off the form: ${plural(off, 'person', 'people')} with an earned SR of 0 or none.`), 2600);
     const tot = L.reduce((a, x) => a + (finalEarned(x) || 0), 0), title = finalTitle(k), signers = signersNow();   // the total is the column's sum
     let bytes = null; try { bytes = await finalFormXlsx(title, L, tot, signers); } catch (e) { toast('Could not make the Excel file: ' + (e && e.message ? e.message : e)); }
     const to = splitAddr(con.form); if (!to.length) toast('No address for the final result form yet (Email addresses, below): the draft has no recipient.');

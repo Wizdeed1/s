@@ -5,15 +5,15 @@
    WFM team logs. deck(): the 7 slides of the presentation as a PowerPoint (cover, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay,
    Postpaid, outages, thank you); a number the files do not give shows "–". */
 'use strict';
-const WcDeck = ((P) => {
+const WcDeck = ((P, K) => {
 const BRANDS = [
-  { k: 'virgin', name: 'Virgin Mobile', short: 'Virgin', color: 'D0021B', bar: 'C00000' },
-  { k: 'friendi', name: 'FRiENDi Mobile', short: 'FRiENDi', color: '119DA4', bar: '009999' },
-  { k: 'fpay', name: 'FRiENDi Pay', short: 'FRiENDi Pay', color: 'C8860D', bar: 'C8860D' },
+  { k: 'virgin', name: 'Virgin Mobile', short: 'Virgin', color: 'E10A0A', bar: 'E10A0A' },
+  { k: 'friendi', name: 'FRiENDi Mobile', short: 'FRiENDi', color: '1E9AA3', bar: '1E9AA3' },
+  { k: 'fpay', name: 'FRiENDi Pay', short: 'FRiENDi Pay', color: '0B6E78', bar: '0B6E78' },
 ];
-const POSTPAID = { k: 'postpaid', name: 'Cross-Brand Postpaid', short: 'Postpaid', color: '3A5A8C', bar: '0070C0' };
-// the template the team's decks are made with: Cambria headings, Calibri text, navy 1E2761
-const NAVY = '1E2761', BAR = 'D9D9D9', INK = '2B2F42', MUTED = '6B7280', SOFT = 'F4F6FB', PALE = 'CADCFC', DIM = '9FB3DE', FOOT = '9AA3B2', RULE = '5470A8', SLINE = '002060', HEAD = 'Cambria', FRAME = 'A6A6A6';
+const POSTPAID = { k: 'postpaid', name: 'Cross-Brand Postpaid', short: 'Postpaid', color: '0D76BD', bar: '0D76BD' };
+// the Beyond One template (bodeck.js): the brands in their logos' colours, the rest in the template's ink, greys and Poppins
+const NAVY = K.C.ink, BAR = K.C.bar, INK = K.C.text, MUTED = K.C.grey, SLINE = K.C.ink, HEAD = K.HEAD, FRAME = K.C.line;
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DASH = '–';
 const pad = n => String(n).padStart(2, '0');
@@ -159,81 +159,60 @@ function pic(s, L, x, y, w, h, o = {}) {
   s.image(x + (o.center ? (w - pw) / 2 : 0), y + (o.middle ? (h - ph) / 2 : 0), pw, ph, L.png, { descr: o.descr || 'Logo', name: o.name || 'Logo' });
   return true;
 }
-const logos = o => o.logos || {};
-/** the company's logo at the top left: the decks' own (the mark with the name under it), else the tool's logo, else the name */
-function logoTop(s, o) {
-  const G = logos(o);
-  if (pic(s, G.full, 0.45, 0.36, 0.30, 0.46)) return;
-  if (pic(s, G.mark || o.logo, 0.45, 0.36, 0.46, 0.46, { maxW: 1.6 })) return;
-  tt(s, 0.45, 0.36, 3, 0.4, (o.org || 'Beyond One').toUpperCase(), { size: 12, bold: true, font: HEAD, color: NAVY, valign: 'middle', name: 'Logo' });
-}
-const SQ_COVER = [[11.30, 5.60, 0.80, '0976BC'], [12.08, 5.55, 0.55, '047B94'], [11.92, 6.28, 0.62, 'F5ACCC'], [10.75, 6.10, 0.42, '8C3A50'], [12.58, 6.02, 0.40, 'AD8A2E'], [11.45, 4.92, 0.36, '3E7A4E']];
-const SQ_THANKS = [[-0.60, -0.60, 0.80, '0976BC'], [0.18, -0.65, 0.55, '047B94'], [0.02, 0.08, 0.62, 'F5ACCC'], [-1.15, -0.10, 0.42, '8C3A50'], [0.68, -0.18, 0.40, 'AD8A2E'], [-0.45, -1.28, 0.36, '3E7A4E'],
-  [11.50, 5.90, 0.68, '0976BC'], [12.16, 5.86, 0.47, '047B94'], [12.03, 6.48, 0.53, 'F5ACCC'], [11.03, 6.33, 0.36, '8C3A50'], [12.59, 6.26, 0.34, 'AD8A2E'], [11.63, 5.32, 0.31, '3E7A4E']];
-/** the see-through squares of the dark slides */
-const squares = (s, L) => L.forEach(([x, y, w, c]) => s.rect(x, y, w, w, { fill: c, alpha: 0.55 }));
+/** the brands' logos: the official ones built in (assets/brand), else the ones taken from one of the team's decks */
+const logos = o => { const G = { ...(o.logos || {}) }; for (const k of ['virgin', 'friendi', 'fpay']) if (K.logo(k)) G[k] = K.logo(k); if (G.virgin) G.postpaid = G.virgin; return G; };
+/** Beyond One's logo at the top left, as the template has it */
+function logoTop(s) { K.img(s, K.logo('stackedBlack'), 0.40, 0.30, 0.42, 0.64, { descr: 'Beyond One', name: 'Logo' }); }
 function head(s, o, m, title, sub) {
-  logoTop(s, o);
-  tt(s, 8.30, 0.74, 4.55, 0.22, `${o.kicker || 'Weekly Commercial Presentation'}  ·  ${deckDate(m.date)}`, { size: 9.5, color: MUTED, align: 'right' });
-  tt(s, 0.45, 1.02, 8.10, 0.55, title, { size: 30, bold: true, font: HEAD, color: NAVY, name: 'Title' });
-  tt(s, 0.45, 1.56, 8.10, 0.32, sub, { size: 13.5, italic: true, color: MUTED });
+  K.top(s, `${o.kicker || 'Weekly Commercial Presentation'}  ·  ${deckDate(m.date)}`);
+  K.title(s, 0.45, 1.04, 8.10, title, sub);
 }
-function foot(s, o, n) {
-  tt(s, 0.45, 7.14, 4.00, 0.28, `${o.org || 'Beyond One'}  |  Member Care`, { size: 8.5, color: FOOT });
-  tt(s, 12.43, 7.14, 0.45, 0.28, String(n), { size: 8.5, color: FOOT, align: 'right' });
-}
-/** the big number at the top right: the month's service level, in the brand's colour, with its shadow */
-function callout(s, x, y, w, h, color, big, small) {
-  s.rect(x, y, w, h, { fill: color, radius: 0.08, shadow: true, name: 'Callout' });
-  tt(s, x, y + 0.03, w, h - 0.06, [[{ t: big, size: 30, bold: true }], [{ t: small, size: 10 }]], { color: 'FFFFFF', align: 'center', valign: 'middle' });
-}
-function tile(s, x, y, big, lab, color) {
-  s.rect(x, y, 1.37, 0.92, { fill: SOFT, radius: 0.06 });
-  s.rect(x, y, 0.06, 0.92, { fill: 'FFFFFF', radius: 0.5 });
-  tt(s, x, y + 0.08, 1.37, 0.51, big, { size: 19, bold: true, font: HEAD, color, align: 'center', valign: 'middle' });
-  tt(s, x + 0.05, y + 0.55, 1.27, 0.35, lab, { size: 8.5, color: MUTED, align: 'center', valign: 'top', insetY: 0.02 });
-}
-/** a chart's heading (12.5pt) and a table's (11.5pt), navy */
-function label(s, x, y, w, t, size = 12.5) { tt(s, x, y, w, 0.28, t, { size, bold: true, color: NAVY }); }
+function foot(s, o, n) { K.foot(s, n); }
+/** the big number at the top right: the month's service level, in a flat box of the brand's colour (the template's "15%") */
+function callout(s, x, y, w, h, color, big, small) { K.stat(s, x, y, w, h, color, big, small); }
+function tile(s, x, y, big, lab, color) { K.figure(s, x, y, 1.37, 0.92, big, lab, color); }
+/** a chart's heading and a table's, in Poppins */
+function label(s, x, y, w, t, size = 12.5) { K.heading(s, x, y, w, t, size - 1.5); }
 /** a table of the top lines: label, count and share (or label and share), in the template's table style */
 function topTable(s, x, y, w, head0, top, withCount, o = {}) {
   const L = top && top.list && top.list.length ? top.list : null;
   const cols = withCount ? [w - 1.40, 0.75, 0.65] : [w - 0.75, 0.75];
   const rows = [withCount ? [head0, { t: 'Vol.', align: 'center' }, { t: '%', align: 'center' }] : [head0, { t: '%', align: 'center' }]];
   (L || [{ label: DASH, count: null, pct: null }]).forEach(r => rows.push(withCount ? [fit(r.label, cols[0] * 1.1), int(r.count), pct(r.pct)] : [fit(r.label, cols[0] * 1.1), pct(r.pct)]));
-  s.table(x, y, rows, { cols, rowH: o.rowH || 0.27, size: 9, head: { fill: NAVY, color: 'FFFFFF' }, border: 'E2E6EF', ink: INK });
+  s.table(x, y, rows, K.table({ cols, rowH: o.rowH || 0.27, size: 9 }));
 }
 /** columns of calls presented and handled, and the service level as a line on its own axis (0–120%), framed */
 function trendChart(s, x, y, w, h, cats, rows, color, o = {}) {
   s.chart(x, y, w, h, {
-    cats, gap: 219, overlap: 0, catRot: cats.length > 12 ? -45 : undefined, catSize: cats.length > 12 ? 800 : 900, axisSize: 900, border: 'BFBFBF', fill: 'FFFFFF', gridColor: 'D9D9D9', legendSize: 900,
+    ...K.frame(), cats, gap: 219, overlap: 0, catRot: cats.length > 12 ? -45 : undefined, catSize: cats.length > 12 ? 800 : 900,
     bars: [{ name: 'Calls Presented', values: rows.map(r => (r ? r.presented : null)), color: BAR }, { name: 'Calls Handled', values: rows.map(r => (r ? r.handled : null)), color }],
-    line: { name: 'Service Level', values: rows.map(r => (r ? r.sl : null)), color: SLINE, w: 2.25, fmt: '0%', max: null, min: null, labelSize: 900, labelBold: true, labelColor: '404040' },
+    line: { name: 'Service Level', values: rows.map(r => (r ? r.sl : null)), color: SLINE, w: 2.25, fmt: '0%', max: null, min: null, labelSize: 900, labelBold: true, labelColor: INK },
   }, { name: o.name || 'Chart' });
 }
 function brandSlide(D, m, B, n, o) {
   const s = D.slide({ bg: 'FFFFFF' }), v = B.v, t = B.tickets;
   head(s, o, m, 'Performance Insights', `${B.name} — Contact Centre Voice Channel`);
   foot(s, o, n);   // under the charts, as in the template
-  if (!pic(s, logos(o)[B.k], 12.45, 0.30, 0.40, 0.40, { center: true, middle: true, descr: B.name, name: 'Brand' })) tt(s, 10.6, 0.3, 2.25, 0.32, B.name, { size: 11, bold: true, color: B.color, align: 'right', name: 'Brand' });
+  if (!pic(s, logos(o)[B.k], 8.82, 0.98, 1.80, 1.06, { center: true, middle: true, descr: B.name, name: 'Brand' })) tt(s, 8.82, 0.98, 1.80, 1.06, B.name, { size: 11, bold: true, font: HEAD, color: B.color, align: 'center', name: 'Brand' });
   callout(s, 10.85, 0.95, 2.03, 1.12, B.color, pct(v.mtd && v.mtd.sl), `Service Level · ${m.month}`);
   label(s, 0.45, 2.10, 7.85, `Daily Trend — ${m.month}`);
   trendChart(s, 0.43, 2.42, 7.35, 2.27, v.daily.map(r => dShort(r.date)), v.daily, B.bar, { name: 'Daily trend' });
   label(s, 0.45, 4.66, 7.85, o.monthlyLabel || `Monthly Trend — ${(v.trend[0] || { m: m.ym }).m.slice(0, 4)} to Date`);
-  trendChart(s, 0.43, 4.91, 7.35, 2.51, v.trend.map(x => x.label), v.trend.map(x => x.v), B.bar, { name: 'Monthly trend' });
+  trendChart(s, 0.43, 4.91, 7.35, 2.15, v.trend.map(x => x.label), v.trend.map(x => x.v), B.bar, { name: 'Monthly trend' });   // ends above the foot (7.10)
   const tiles = B.k === 'fpay'
     ? [[int(t && t.total), 'Complaints logged'], [int(t && t.open), 'Tickets still open'], [pct(v.prev && v.prev.sl), `Service level — ${m.prev}`]]
     : [[int(t && t.total), 'Complaints logged'], [pct(t && t.onTime), 'Closed tickets resolved on time'], [int(t && t.open), 'Tickets still open']];
   tiles.forEach(([big, lab], i) => tile(s, [8.62, 10.07, 11.53][i], 2.10, big, lab, B.color));
   label(s, 8.62, 3.27, 4.28, 'Top Call Reasons', 11.5);
-  topTable(s, 8.62, 3.55, 4.28, 'Reason', B.reasons, true);
-  label(s, 8.62, 5.37, 4.28, 'Top Complaint Drivers', 11.5);
-  topTable(s, 8.62, 5.65, 4.28, 'Complaint Type', t && t.drivers, false);
+  topTable(s, 8.62, 3.55, 4.28, 'Reason', B.reasons, true, { rowH: 0.25 });
+  label(s, 8.62, 5.22, 4.28, 'Top Complaint Drivers', 11.5);
+  topTable(s, 8.62, 5.50, 4.28, 'Complaint Type', t && t.drivers, false, { rowH: 0.25 });   // six rows end at 7.00, above the foot
 }
 function postpaidSlide(D, m, n, o) {
   const s = D.slide({ bg: 'FFFFFF' }), B = m.postpaid, v = B.v;
   head(s, o, m, 'Postpaid Insights', `${B.name} — Contact Centre Voice Channel`);
   foot(s, o, n);
+  pic(s, logos(o).postpaid, 8.82, 0.98, 1.80, 1.06, { center: true, middle: true, descr: 'Virgin Mobile', name: 'Brand' });
   callout(s, 10.85, 0.95, 2.03, 1.12, B.color, pct(v.mtd && v.mtd.sl), `Service Level · ${m.month}`);
   if (o.ppLabel === false) trendChart(s, 0.45, 2.18, 12.40, 3.26, v.daily.map(r => dShort(r.date)), v.daily, B.bar, { name: 'Daily trend' });   // the review's: the chart without its heading
   else { label(s, 0.45, 1.93, 12.43, `Daily Trend — ${m.month}`); trendChart(s, 0.45, 2.21, 12.40, 3.18, v.daily.map(r => dShort(r.date)), v.daily, B.bar, { name: 'Daily trend' }); }
@@ -247,47 +226,33 @@ function outageSlides(D, m, n0, o) {
   const O = m.outages, L = O.list, pages = Math.max(1, Math.ceil(L.length / OUT_ROWS));
   for (let p = 0; p < pages; p++) {
     const s = D.slide({ bg: 'FFFFFF' });
-    logoTop(s, o);
-    tt(s, 8.30, 0.74, 4.55, 0.22, deckDate(m.date), { size: 9.5, color: MUTED, align: 'right' });
-    tt(s, 0.45, 1.02, 8.10, 0.55, p ? 'Outages Insights (continued)' : 'Outages Insights', { size: 30, bold: true, font: HEAD, color: NAVY, name: 'Title' });
-    tt(s, 0.45, 1.56, 8.10, 0.32, `Service Incidents Logged — Last 3 Months (${O.span})`, { size: 13.5, italic: true, color: MUTED });
+    K.top(s, `${o.kicker || 'Weekly Commercial Presentation'}  ·  ${deckDate(m.date)}`);
+    K.title(s, 0.45, 1.04, 8.10, p ? 'Outages Insights (continued)' : 'Outages Insights', `Service Incidents Logged — Last 3 Months (${O.span})`);
     callout(s, 10.85, 0.95, 2.03, 1.12, NAVY, String(L.length), `Incidents logged, ${O.brands === 1 ? '1 brand' : O.brands + ' brands'}`);
     const part = L.slice(p * OUT_ROWS, (p + 1) * OUT_ROWS);
     if (!part.length) tt(s, 0.45, 2.6, 12.3, 0.4, `No outages logged in ${O.span}.`, { size: 12, color: MUTED, italic: true });
     else {
       const rows = [['Date', 'Outage and Issue', 'Affected Brand', 'Description']]
         .concat(part.map(x => [dShort(x.date), fit(x.title, 2.7), fit((Array.isArray(x.brands) ? x.brands : []).map(k => BRAND_NAME[k] || k).join(', '), 1.95), fit(x.desc, 6.8)]));
-      s.table(0.45, 2.35, rows, { cols: [0.9, 2.7, 1.95, 6.85], rowH: 0.25, size: 8.5, align: ['center', 'center', 'center', 'center'], head: { fill: NAVY, color: 'FFFFFF' }, border: 'E2E6EF', ink: INK });
+      s.table(0.45, 2.35, rows, K.table({ cols: [0.9, 2.7, 1.95, 6.85], rowH: 0.25, size: 8.5, align: ['center', 'center', 'center', 'center'] }));
     }
     foot(s, o, n0 + p);
   }
   return pages;
 }
 function cover(D, m, o) {
-  const s = D.slide({ bg: NAVY }), G = logos(o);
-  squares(s, SQ_COVER);
-  const mark = pic(s, G.mark || o.logo, 0.55, 0.50, 0.48, 0.48, { maxW: 1.5 });
-  tt(s, mark ? 1.13 : 0.55, 0.63, 3.00, 0.40, (o.org || 'Beyond One').toUpperCase(), { size: 17, bold: true, font: HEAD, color: 'FFFFFF', spc: 2 });
-  tt(s, 0.55, 2.65, 11.50, 0.90, 'Member Care Performance Review', { size: 40, bold: true, font: HEAD, color: 'FFFFFF', name: 'Title' });
-  tt(s, 0.55, 3.55, 10.50, 0.45, o.coverSub || 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay  —  Weekly Commercial Presentation', { size: 16, color: PALE });
-  s.line(0.58, 4.25, 2.78, 4.25, { color: RULE, w: 1 });
-  tt(s, 0.55, 4.42, 4.00, 0.35, deckDate(m.date), { size: 13, color: DIM });
-  const who = [o.presenter ? [{ t: o.presenter, size: 12.5, bold: true, color: 'FFFFFF' }] : null, o.title || o.org ? [{ t: [o.title, o.org].filter(Boolean).join(' — '), size: 11.5, color: DIM }] : null].filter(Boolean);
-  if (who.length) tt(s, 0.55, 6.55, 6.00, 0.60, who, {});
+  const s = D.slide({ bg: 'FFFFFF' });
+  K.cover(s, { title: 'Member Care Performance Review', sub: o.coverSub || 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay  —  Weekly Commercial Presentation', date: deckDate(m.date),
+    who: [o.presenter, [o.title, o.org].filter(Boolean).join(' — ')].filter(Boolean) });
 }
 function thanks(D, o) {
-  const s = D.slide({ bg: NAVY }), G = logos(o);
-  squares(s, SQ_THANKS);
-  pic(s, G.mark || o.logo, 6.39, 2.15, 0.56, 0.56, { center: true, middle: true, maxW: 1.5 });
-  tt(s, 0, 3.05, 13.33, 1.00, 'Thank You', { size: 44, bold: true, font: HEAD, color: 'FFFFFF', align: 'center', name: 'Title' });
-  tt(s, 0, 3.95, 13.33, 0.40, o.thanksSub || 'Member Care Performance Review  —  Weekly Commercial Presentation', { size: 14, color: PALE, align: 'center' });
-  const who = [o.presenter, o.title, o.org].filter(Boolean).join('  ·  ');
-  if (who) tt(s, 0, 6.85, 13.33, 0.35, who, { size: 11, color: DIM, align: 'center' });
+  const s = D.slide({ bg: K.C.ink });
+  K.closing(s, { title: 'Thank You', sub: o.thanksSub || 'Member Care Performance Review  —  Weekly Commercial Presentation', who: [o.presenter, o.title, o.org].filter(Boolean).join('  ·  ') });
 }
-/** the PowerPoint: o = { presenter, title (their job title), org (the company), logo (the tool's: { png, w, h }), logos (the decks'
-    own pictures: mark, full, virgin, friendi, fpay) } */
+/** the PowerPoint, on the Beyond One template: o = { presenter, title (their job title), org (the company), logos (pictures taken
+    from one of the team's decks; the official brand logos built in come first) } */
 function deck(m, o = {}) {
-  const D = P.create({ headFont: HEAD, bodyFont: 'Calibri' });
+  const D = P.create({ headFont: K.HEAD, bodyFont: K.BODY });
   cover(D, m, o);
   m.brands.forEach((B, i) => brandSlide(D, m, B, i + 2, o));
   postpaidSlide(D, m, 5, o);
@@ -297,6 +262,6 @@ function deck(m, o = {}) {
 }
 const fileName = date => `Beyond_One_Member_Care_Review - ${longDate(date)}.pptx`;
 return { model, deck, fileName, brandVoice, ticketBrand, longDate, dShort, BRANDS, POSTPAID,
-  parts: { cover, thanks, brandSlide, postpaidSlide, logoTop, pic, tt, foot, callout, label, fit, int, pct, deckDate, logos, NAVY, MUTED, INK, HEAD, FRAME, MON } };   // for the Performance Review deck (prdeck.js)
-})(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'));
+  parts: { cover, thanks, brandSlide, postpaidSlide, logoTop, pic, tt, foot, callout, label, fit, int, pct, deckDate, logos, NAVY, MUTED, INK, HEAD, FRAME, MON, K } };   // for the Performance Review deck (prdeck.js)
+})(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'), typeof BoDeck !== 'undefined' ? BoDeck : require('./bodeck.js'));
 if (typeof module !== 'undefined') module.exports = WcDeck;

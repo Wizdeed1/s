@@ -10,10 +10,10 @@ const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
 const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const fill = c => (c ? `<a:solidFill><a:srgbClr val="${c}"/></a:solidFill>` : '<a:noFill/>');
 const lineOf = (c, w = 0.75) => (c ? `<a:ln w="${Math.round(w * 12700)}">${fill(c)}</a:ln>` : '<a:ln><a:noFill/></a:ln>');
-/** one run's properties: size in pt, colour, bold, italic, the font (a script font for Arabic and the like too) */
+/** one run's properties: size in pt, colour, bold, italic, capitals (shown, the words kept as written), the font (a script font for Arabic and the like too) */
 function rPr(o, tag = 'a:rPr') {
   const f = o.font || 'Calibri';
-  return `<${tag} lang="en-US" sz="${Math.round((o.size || 12) * 100)}" b="${o.bold ? 1 : 0}" i="${o.italic ? 1 : 0}"${o.spc ? ` spc="${Math.round(o.spc * 100)}"` : ''} dirty="0">${fill(o.color || '262626')}<a:latin typeface="${esc(f)}"/><a:cs typeface="Arial"/></${tag}>`;
+  return `<${tag} lang="en-US" sz="${Math.round((o.size || 12) * 100)}" b="${o.bold ? 1 : 0}" i="${o.italic ? 1 : 0}"${o.caps ? ' cap="all"' : ''}${o.spc ? ` spc="${Math.round(o.spc * 100)}"` : ''} dirty="0">${fill(o.color || '262626')}<a:latin typeface="${esc(f)}"/><a:cs typeface="Arial"/></${tag}>`;
 }
 /** paragraphs from a string (lines), a list of runs, or a list of paragraphs (each a list of runs) */
 function paras(content, o) {

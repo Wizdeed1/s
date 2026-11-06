@@ -1,0 +1,175 @@
+/* ==========================================================================================================================
+   Beyond One: the look of the whole tool (November 2026), the last layer. Same page, same parts, same names (every id, class
+   and data attribute the scripts use is untouched): only how they look. Taken from the Beyond One template:
+   - the black panel with the white logo (the sidebar, the sign-in screen), the template's title slides;
+   - Poppins headings with a light and a bold weight ("Good afternoon, Noura"), small capitals with a square for labels, as
+     "SECTION ONE ■" on the template's slides;
+   - the pixel squares in the template's colours, sparingly: beside a heading, a status, the dashboard's greeting;
+   - solid white panels on a light grey ground, one hairline, shadows only on what floats: easy to scan all day.
+   The brand blue marks what can be clicked, chosen, focused or is in progress; the main action is the brand's black.
+   ========================================================================================================================== */
+
+/* ---------- ground, type, selection ---------- */
+body { background: var(--bg); color: var(--ink); font-family: var(--text); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+::selection { background: rgba(13, 118, 189, .22); }
+:root[data-theme="dark"] ::selection { background: rgba(59, 155, 230, .35); }
+td.num, th.num, .num, .kval, .tile b, .kv b, .fabig > b, .fatiles b, .dcn b, .lowl b, time { font-variant-numeric: tabular-nums; }
+h1, h2, h3, .viewhead h1, .card > h2, .cardhead h2, .dch h2, .sechead h3, .sec h3, .drawer header h2, .drawer header h3, .phase h2, .stephd h2, .success h2 {
+  font-family: var(--display); letter-spacing: -0.008em; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- the sidebar: Beyond One's black panel with the white logo ---------- */
+.sidebar { background: var(--nav); -webkit-backdrop-filter: none; backdrop-filter: none; border-inline-end: 1px solid var(--nav-line); box-shadow: none; }
+.sbtop { height: auto; min-height: var(--head-h); padding: 18px 10px 12px; }
+.brand { display: grid; justify-items: start; gap: 9px; }
+.brand::before { content: ""; width: 138px; height: 38px; background: var(--bo-logo-white) left center / contain no-repeat; }
+.brand .mark { display: none; }
+.brand b { font: 600 10px/1.45 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--nav-faint); white-space: normal; }
+.brand.has-logo::before { display: none; }
+html.rail .brand { justify-items: center; }
+html.rail .brand::before { width: 30px; height: 30px; background-image: var(--bo-mark); background-position: center; }
+html.rail .brand b { display: none; }
+.sbsearch .sbitem { background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .1); color: var(--nav-faint); }
+.sbsearch .sbitem:hover { background: rgba(255, 255, 255, .08); color: var(--nav-ink); }
+.sbitem .kbd, .sbsearch .sbitem .kbd { background: rgba(255, 255, 255, .08); border: 0; color: var(--nav-faint); box-shadow: none; }
+.sbnav::before { font: 600 10px/1.2 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--nav-faint); padding: 14px 10px 6px; }
+.sbnav button, .sbitem { color: var(--nav-muted); font-family: var(--text); transition: background-color var(--t-hover) ease, color var(--t-hover) ease, box-shadow var(--t-hover) ease; }
+.sbnav button:hover, .sbitem:hover { background: var(--nav-hover); color: var(--nav-ink); }
+.sbnav button[aria-current="page"] { background: var(--nav-current); color: var(--nav-ink); box-shadow: inset 3px 0 0 #5aaeec; }
+.sbnav button[aria-current="page"] svg { color: #5aaeec; }
+.sbnav button:focus-visible, .sbitem:focus-visible { outline: 2px solid #5aaeec; outline-offset: -2px; }
+.sbsec, .sbfoot { border-color: var(--nav-line); }
+
+/* ---------- the toolbar ---------- */
+.appbar::before { background: var(--mat-bar); -webkit-backdrop-filter: none; backdrop-filter: none; border-bottom: 1px solid var(--line); box-shadow: none; }
+.ptext { font: 600 15px/20px var(--display); letter-spacing: 0; }
+.appbar .btn.icon, .appbar .acctbtn { border-radius: var(--r-ctl); }
+.appbar .btn.ghost:hover { background: var(--fill); }
+.periodbtn { border: 1px solid var(--line-2) !important; background: var(--surface) !important; border-radius: var(--r-ctl); }
+.periodbtn:hover { border-color: var(--line-3) !important; }
+.avatar { border-radius: var(--r-ctl); background: var(--ink); color: var(--inverse); font-family: var(--display); font-weight: 600; letter-spacing: .02em; }
+.bell .bn, .badge.n { border-radius: var(--r-chip); background: var(--badge); color: var(--on-badge); }
+.roletag { font-family: var(--display); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-size: 10px; border-radius: var(--r-chip); }
+
+/* ---------- headings: Poppins, light and bold; labels in small capitals with the square ---------- */
+.viewhead h1 { font: 600 28px/1.15 var(--display); letter-spacing: -0.016em; }
+.eyebrow, .viewhead .eyebrow { display: inline-flex; align-items: center; gap: 8px; font: 600 10.5px/1.3 var(--display); letter-spacing: .15em; text-transform: uppercase; color: var(--muted); }
+.eyebrow::before { content: ""; width: 7px; height: 7px; flex: none; background: var(--accent); }
+.greet .gt { font: 300 30px/1.15 var(--display); letter-spacing: -0.018em; color: var(--ink); }
+.greet .gt b { font-weight: 600; }
+.card > h2, .cardhead h2, .dch h2 { font-weight: 600; font-size: 15.5px; letter-spacing: -0.005em; }
+.phase h2, .stephd h2 { font-weight: 600; }
+h3.sub, .sec h3, .sechead h3 { font-family: var(--display); font-weight: 600; }
+
+/* ---------- the dashboard greeting: a few of the template's pixels ---------- */
+.dhead { position: relative; }
+.dhead::after { content: ""; position: absolute; top: 6px; right: 4px; width: 12px; height: 12px; background: var(--px1); pointer-events: none;
+  box-shadow: -34px 22px 0 -2px var(--px3), -70px 4px 0 -3px var(--px8), 18px 30px 0 -4px var(--px5), -16px 46px 0 -1px var(--px2), 2px 70px 0 -5px var(--px7); }
+@media (max-width: 760px) { .dhead::after { display: none; } }
+
+/* ---------- panels ---------- */
+.card, .kpi, .qa, .fbar, .buildbar, .board, .todaymini, .monthbox, .dclose { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.card, .kpi, .qa, .dclose { border-color: var(--card-line); }
+.qa, .kpi { transition: border-color var(--t-hover) ease, box-shadow var(--t-hover) ease, transform var(--t-hover) var(--ease-out); }
+.qa:hover { border-color: var(--card-line-hover); box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+.qa svg { color: var(--accent); }
+.kpi .kl, .khead .kl { font: 600 10.5px/1.3 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.kpi .kval { font-family: var(--display); font-weight: 600; letter-spacing: -0.02em; }
+.ksp polyline { stroke: var(--accent); }
+.ksp .ksa { fill: var(--accent-soft); }
+
+/* ---------- controls: the main action in the brand's black, the rest quiet ---------- */
+.btn { font-family: var(--text); font-weight: 500; transition: background-color var(--t-hover) ease, border-color var(--t-hover) ease, color var(--t-hover) ease, box-shadow var(--t-hover) ease, transform var(--t-press) var(--ease-out); }
+.btn:not(.ghost):not(.primary):not(.danger):not(.linkbtn) { background: var(--surface); border: 1px solid var(--line-2); color: var(--ink); }
+.btn:not(.ghost):not(.primary):not(.danger):not(.linkbtn):hover:not(:disabled) { border-color: var(--line-3); background: var(--sunk); }
+.btn.primary { background: var(--cta); border: 1px solid var(--cta); color: var(--cta-ink); box-shadow: 0 1px 1px rgba(8, 8, 8, .12); }
+.btn.primary:hover:not(:disabled) { background: var(--cta-hover); border-color: var(--cta-hover); }
+:root[data-theme="dark"] .btn.primary { box-shadow: none; }
+.btn.danger { background: var(--bad-mark); border-color: var(--bad-mark); color: #ffffff; }
+.btn:active:not(:disabled) { transform: scale(.98); }
+.btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.linkbtn { color: var(--accent-text); text-underline-offset: 3px; }
+.linkbtn:hover { text-decoration: underline; }
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), select, textarea {
+  transition: border-color var(--t-hover) ease, box-shadow var(--t-hover) ease, background-color var(--t-hover) ease; }
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):focus, select:focus, textarea:focus {
+  border-color: var(--field-focus) !important; box-shadow: 0 0 0 3px var(--accent-soft) !important; outline: none; }
+input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
+.seg { background: var(--fill); border-radius: var(--r-ctl); }
+.seg button[aria-pressed="true"], .seg.thumbed > .sthumb { background: var(--seg-thumb); color: var(--ink); box-shadow: 0 1px 2px rgba(8, 8, 8, .08), 0 0 0 1px var(--line); }
+:root[data-theme="dark"] .seg button[aria-pressed="true"], :root[data-theme="dark"] .seg.thumbed > .sthumb { box-shadow: 0 0 0 1px var(--line-2); }
+.wftabs button[aria-pressed="true"], .rbtabs button[aria-pressed="true"], .tab[aria-selected="true"] { color: var(--ink); }
+
+/* ---------- chips and status: almost square, the pixel's corner ---------- */
+.pill, .badge, .chip { border-radius: var(--r-chip); font-weight: 600; }
+.pill.good, .pill.warn, .pill.bad, .pill.info { border: 1px solid transparent; }
+.pill.good { border-color: var(--good-line); } .pill.warn { border-color: var(--warn-line); } .pill.bad { border-color: var(--bad-line); } .pill.info { border-color: var(--info-line); }
+.stepn { border-radius: var(--r-chip); font-family: var(--display); font-weight: 600; }
+.flowstep.next .stepn { background: var(--accent-fill); color: var(--on-accent); }
+.flowstep.done .stepn { background: var(--good-mark); color: #ffffff; }
+
+/* ---------- tables: small-capital headings, a quiet row line, the row under the pointer marked ---------- */
+.tablewrap { border-color: var(--line); }
+thead th { font: 600 10.5px/1.3 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--sunk); }
+@media (hover: hover) {
+  tbody tr:hover td, .restab tbody tr:hover td, .tteam tbody tr:hover td, .teamtab tbody tr:hover td { background-color: rgba(13, 118, 189, .045); }
+  :root[data-theme="dark"] tbody tr:hover td { background-color: rgba(59, 155, 230, .07); }
+}
+
+/* ---------- what floats: menus, drawers, dialogs, the message ---------- */
+.menu, .pop, .attpop, .findbox, .drawer, .dlgbox, .sheet-more, .rbpeek { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.menu, .pop, .attpop { background: var(--overlay); border: 1px solid var(--line); border-radius: var(--r-widget); box-shadow: var(--shadow-pop); }
+.drawer { background: var(--overlay); border-inline-start: 1px solid var(--line); }
+.drawer header { border-bottom: 1px solid var(--line); }
+.toast { background: var(--toast-bg); color: var(--toast-ink); border: 1px solid var(--toast-line); border-radius: 10px; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.toast button { color: var(--toast-act); font-weight: 600; }
+.tt { background: var(--tt-bg); color: var(--tt-ink); border-radius: 6px; }
+.scrim { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ---------- sign-in: the template's title slide. The black panel with the logo and its pixels, the form on white ---------- */
+@media (min-width: 900px) {
+  .lock { grid-template-columns: minmax(340px, 42%) minmax(0, 1fr); place-items: center; padding: 0; background: var(--bg); }
+  .lock::before { content: ""; grid-column: 1; grid-row: 1; align-self: stretch; justify-self: stretch;
+    background: var(--bo-logo-white) 18% 46% / 220px auto no-repeat, var(--nav); }
+  .lock::after { content: ""; position: fixed; top: 12%; left: calc(42% - 42px); width: 28px; height: 28px; background: var(--px1); pointer-events: none;
+    box-shadow: 130px 22px 0 -9px var(--px3), -64px 60vh 0 -4px var(--px8), 34px 70vh 0 -8px var(--px7), -190px 72vh 0 -10px var(--px5), 150px 50vh 0 -7px var(--px2); }
+  .lock .lockcard { grid-column: 2; grid-row: 1; margin: 32px; }
+}
+.lockcard { border-color: var(--card-line); box-shadow: var(--shadow-raise); }
+.lockmark { background: var(--bo-mark) center / contain no-repeat; color: transparent; font-size: 0; border-radius: 0; }
+.lockhead .eyebrow { font: 600 10.5px/1.3 var(--display); letter-spacing: .15em; text-transform: uppercase; }
+.lockhead h1 { font: 600 28px/1.15 var(--display); letter-spacing: -0.016em; }
+
+/* ---------- the pixel: status dots and keys are squares, avatars and numbers rounded squares ---------- */
+.autonote::before, .fc i, .tlist .tdot, .wsstatus .dot, .stt::before, .bcol .bhead b::before, .bcard.hot .nm::before, .callist .cdot, .rleg i,
+.mosaic .mkey i, .dsd::after { border-radius: 1px; }
+.avatar, .av, .lav { border-radius: var(--r-ctl); }
+.step .n, .tabn, .chkhead .sev, .ck { border-radius: var(--r-chip); }
+.drawer header .btn.icon { border-radius: var(--r-ctl); }
+.wfmgrp > small { font: 600 10px/1.3 var(--display); letter-spacing: .15em; text-transform: uppercase; color: var(--faint); }
+
+/* ---------- the brands: their logos on the daily email boxes, their colour as a pixel on their tabs ---------- */
+.rbbrands .bn { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rbbrands .bn::before { content: ""; width: 44px; height: 26px; flex: none; border-radius: var(--r-chip); background: var(--fill) center / cover no-repeat; box-shadow: 0 0 0 1px var(--line); }
+.rbbrands li[data-peek="virgin"] .bn::before, .rbbrands li[data-peek="postpaid"] .bn::before { background-image: var(--logo-virgin); }
+.rbbrands li[data-peek="friendi"] .bn::before { background-image: var(--logo-friendi); }
+.rbbrands li[data-peek="fpay"] .bn::before { background-image: var(--logo-fpay); }
+.rbbrands li[data-peek="leaders"] .bn::before { background: #080808 var(--logo-mark) center / 18px auto no-repeat; }
+button[data-rbtab]::before { content: ""; width: 7px; height: 7px; flex: none; margin-inline-end: 7px; background: var(--line-3); }
+button[data-rbtab="virgin"]::before, button[data-rbtab="postpaid"]::before { background: var(--brand-virgin); }
+button[data-rbtab="friendi"]::before { background: var(--brand-friendi); }
+button[data-rbtab="fpay"]::before { background: var(--brand-fpay); }
+button[data-rbtab="leaders"]::before { background: var(--ink); }
+
+/* ---------- the system asks for less: no movement of the pixels, solid colours stay ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .qa:hover { transform: none; }
+  .btn:active:not(:disabled) { transform: none; }
+}
+@media (forced-colors: active) {
+  .brand::before, .lock::before { forced-color-adjust: none; }
+  .dhead::after, .lock::after, .eyebrow::before { display: none; }
+}
+@media print {
+  .dhead::after, .lock::after { display: none; }
+}

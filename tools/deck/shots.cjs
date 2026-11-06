@@ -74,6 +74,8 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
       M.state.mailKind = 'ded'; M.state.mailStage = 'review'; M.renderWs(); scrollTo(0, 0);
     });
     await shot(p, 'emails', { wait: 900 });
+    // the email's card sits under the Corrections box: bring it to the top of the window before the close-up
+    await p.evaluate(() => { const f = document.querySelector('#mailFrame'), c = f && (f.closest('.card') || f); if (c) { c.scrollIntoView({ block: 'start' }); window.scrollBy(0, -24); } });
     await zoom(p, 'z-email', ['#mailFrame'], { closest: '.card', maxH: 640, wait: 600 });
     // the attendance templates, with a few synthetic people in the other template departments
     await p.evaluate(() => {

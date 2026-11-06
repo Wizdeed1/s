@@ -22,6 +22,8 @@ function teamCopyHtml(team) {
 document.querySelectorAll('link[media="print"][href*="fonts.googleapis"]').forEach(l => { l.media = 'all'; });   // fonts load without blocking the page
 const BRAND = (() => { try { const b = JSON.parse(document.getElementById('brand-assets').textContent); return b && b.light ? b : null; } catch (e) { return null; } })();   // the company logo, built in
 const BUILTIN_LOGO = BRAND ? { dataUrl: BRAND.light, w: BRAND.w, h: BRAND.h, builtin: true } : null;
+// the brands' logos (assets/brand, as BoLogos) for the styles: the daily email boxes show them
+try { if (typeof BoLogos !== 'undefined') for (const k of ['virgin', 'friendi', 'fpay', 'mark']) document.documentElement.style.setProperty(`--logo-${k}`, `url(${BoLogos[k].dataUrl})`); } catch (e) { /* the names alone */ }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const { normSpace, normName, MON, DEP_ORDER, DEP_NAMES } = Core;
 const MONTH_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -3770,7 +3772,7 @@ const themeMq = matchMedia('(prefers-color-scheme: dark)');
 function applyTheme(t = themeNow()) {
   const dark = t === 'dark' || (t === 'system' && themeMq.matches);
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#07080d' : '#e7eaf4'));
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#0c0c0e' : '#f4f4f5'));
   document.dispatchEvent(new CustomEvent('mc-theme'));
 }
 function syncTheme() {

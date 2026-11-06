@@ -4,9 +4,9 @@ The Member Care Workforce Management tool: one offline HTML file that turns the 
 supervisors' attendance sheets into the monthly report, the incentive data and everything that follows (KPI results,
 one-to-ones, objections, the senior manager's review and final, the month close, the daily Member Care reports).
 
-This repository holds the v33 source restored from *MC Monthly Report Builder.md* (Part 2), with the **Option A
-(Daylight)** visual design built on top of it, following Apple's Human Interface Guidelines, now in **glass** (see below), and
-the October 2026 additions below. Every calculation, output, email
+This repository holds the v33 source restored from *MC Monthly Report Builder.md* (Part 2), with the **Option A**
+layout built on top of it (following Apple's Human Interface Guidelines), now in the **Beyond One** brand (see below), and
+the October and November 2026 additions below. Every calculation, output, email
 template, role, permission and storage format is the same as v33 **by default**: the new counting settings start at what
 v33 did (tests compare 10,000 synthetic people against the v33 code), and the only permissions added on request are that the
 WFM analyst shares the Emails page with the WFM manager and that the WFM team (and admins) can export and import all the data.
@@ -16,22 +16,45 @@ address (see the security review below).
 **The built file:** [`final/MC Monthly Report Builder.html`](final/MC%20Monthly%20Report%20Builder.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
 
-## Glass (glassmorphism)
+## Beyond One (November 2026)
 
-Since 27 October 2026 the interface is frosted glass over a soft, still field of colour (`js/ui6/97_glass.css`, the last
-layer, so the design underneath is unchanged and comes back by removing the file):
+Since 6 November 2026 the tool, and every deck it makes, wears the **Beyond One** brand: the *Beyond One - Template*
+PowerPoint the team's decks are made with, and the company's logos. Only the look changed. Every ID, class, data field,
+workflow, calculation, email, workbook, permission and storage format is as it was. The glass layer is gone
+(`js/ui6/97_glass.css` removed); the look is `js/ui6/00_tokens.css` (colours, type, spacing) and `js/ui6/98_beyond.css`
+(the last layer).
+
+**The idea.** People open this tool every working day, so it should feel like the company's own and stay calm, exact and
+quick to read. The template gives it a black and white base, one blue for what can be done, and the logo's pixel squares as
+the only ornament. Numbers come first and decoration last.
 
 | Part | How it looks |
 |---|---|
-| The field | A few broad washes of the brand orange and the data colours (blue, violet, teal) under everything, in light and in dark. It never moves and is painted once, so scrolling stays smooth. |
-| Panels | Cards, dashboard tiles, filter bars and the sign-in card are translucent (white in light, graphite in dark) and frost what is behind them, with a bright top edge where light catches the glass and a soft shadow. |
-| No glass on glass | A panel inside a card, a drawer or a dialog is a light fill, not a second blur, so text stays sharp. Person tiles and nested boxes are translucent without a blur of their own (many on screen at once). |
-| Floating parts | The sidebar is the heaviest glass, the toolbar and tab bar lighter; drawers, dialogs, menus and the hover previews are thicker glass with a stronger blur. Dialogs arrive as a material (their frost and size together) unless the system asks for less motion. |
-| Tables | Sticky headers and first columns are nearly solid, so rows never show through a name or a figure. Separators blend into the glass; control edges stay solid. |
-| Legibility | Secondary text is a step darker in light and lighter in dark than on solid panels; the main action stays solid orange. |
-| System settings | *Reduce transparency* turns every surface solid and the field off; *Increase contrast* makes panels nearly solid with a defined edge; printing shows white panels and no field. |
+| Colour | The template's theme: ink 080808 and white, its blue 0D76BD for links, focus, selection and the current place, and its pixel colours (red, pink, lavender, orange, teal, teal blue) for the series of the charts and as small squares. The brands keep their own colours where a brand is named. Every text colour is at least 4.5:1 on its background in light and in dark, secondary text about 7:1. |
+| Type | **Poppins**, the template's typeface (built in from `vendor/fonts`, SIL Open Font License 1.1), for headings, the greeting, KPI figures and the small-capital labels; **Geist** for text and tables, as before. The greeting is light with the name in bold, as the template writes its titles. |
+| Navigation | A black sidebar in light and in dark with the white Beyond One logo at its top (the mark alone on the icon rail); the current page has a blue edge. The top bar is solid, with a hairline under it. |
+| Surfaces | White cards with a hairline and 12 px corners on a light grey page (in dark, near-black cards on black). No blur, no glow, almost no shadow. Sections are marked by small capitals with a blue square before them. |
+| Controls | White buttons with a border and one main action in black (white in dark); a 3 px blue focus ring on every field and control; square chips and pills; buttons press in a little; table rows tint on hover. |
+| Sign-in | On a computer, the template's title slide: a black panel with the logo and the pixel squares beside the sign-in card. |
+| Report builder | Each brand box carries its brand's logo (Virgin Mobile, FRiENDi mobile, FRiENDi pay), and each brand's tab has a pixel of its colour. |
+| System settings | Reduced motion, Windows contrast themes (forced colours) and printing are handled; the toolbar colour follows the page (`theme-color`). |
+
+**The decks.** The Weekly commercial presentation, the MC performance Review and the stakeholder overview are made on the
+template (`js/bodeck.js`, the kit the tool's decks share). The cover is the template's title slide: the black panel with the
+logo, the title in a box of colour among the pixel squares. Every other slide has the logo at the top left, the deck's name (or
+the slide's section) in small capitals beside a black square at the top right, and CONFIDENTIAL and the slide's number at the
+foot. Titles are in capitals with the last word bold, key numbers sit in a flat box of colour, tables have a black heading and
+charts are flat in the template's colours. The official logos of Beyond One, Virgin Mobile, FRiENDi mobile and FRiENDi pay are
+built in (`assets/brand`, turned into `js/bologos.js` and `js/ui6/05_brand.css` by `python3 js/make_brand.py`).
+
+**Left as they were, on purpose.** The emails (their templates byte for byte), the Excel workbooks and the KPI cards keep
+their look, and the tool's logo setting (`js/brand_src.html`, Settings › Logo) stays empty, so none of those outputs change.
+The Beyond One logo can go into the workbooks too, on request.
 
 ## The design: Option A, by Apple's guidelines
+
+The layout, navigation, words and behaviour below still hold. The colours, type and surfaces are now Beyond One's (above),
+so where the table says orange, grey fills or frosted, read the blue, white and black of Beyond One.
 
 Option A was chosen from three samples and built by the rules of Apple's Human Interface Guidelines (as the
 [apple-design-skill](https://github.com/dickwu/apple-design-skill) reviews them). What changed, and the guideline behind it:
@@ -106,7 +129,7 @@ Option A was chosen from three samples and built by the rules of Apple's Human I
 | One-to-one form | The PDF fits on **one A4 page**: the same parts (details, results, follow-up, discussion with the root cause and the agent's comments side by side, actions, the supervisor's final, signatures), tighter; a form with very long writing shrinks a little, and only one that still does not fit runs on to a second page, so nothing is cut. The final form is as it was. |
 | No IDs in the email attachments | The deduction email's workbook has no ID column (Name, Team and Dep first). The incentive email's workbook is the saved incentive file (or Build's) without the ID column (Build's own export keeps it); a dropped incentive workbook is attached with its ID columns emptied. The email bodies are as before. |
 | Still reading | After the sign-in a pill under the toolbar says **Reading the shared data… N files** until the first read is in, **Putting Oct 2026 back in Build** while the saved uploads are opened, and **Reading 3 files…** while dropped files are read; the dashboard, Team and Supervisors pages say they are still reading instead of "No months yet". |
-| Stakeholder deck | **final/MC Monthly Report Builder - Overview.pptx**: 16 slides for the stakeholders and the management team, one story: the month end before, the tool (the dashboard with its parts pointed out), a month in four steps (import, the checks, attendance, every bonus explained, the emails), every role, the coaching loop, daily reporting, privacy, how it is tested, what changes for Member Care and how to start. In the tool's look (its greys, white cards and orange; dark slides to open, for the emails, for privacy and to close), with close-ups of the tool large enough to read, a fade between slides and every part rising in, one after another; speaker notes on every slide. The screenshots are made from the synthetic test data; `bash tools/deck/build.sh` makes the deck again from the current build. |
+| Stakeholder deck | **final/MC Monthly Report Builder - Overview.pptx**: 16 slides for the stakeholders and the management team, one story: the month end before, the tool (the dashboard with its parts pointed out), a month in four steps (import, the checks, attendance, every bonus explained, the emails), every role, the coaching loop, daily reporting, privacy, how it is tested, what changes for Member Care and how to start. On the Beyond One template (its title slide as the cover; the logo, the section in small capitals, CONFIDENTIAL and the number on every other slide; titles in capitals; flat boxes in its colours; dark slides for the emails, for privacy and to close), with close-ups of the tool large enough to read, a fade between slides and every part rising in, one after another; speaker notes on every slide. The screenshots are made from the synthetic test data; `bash tools/deck/build.sh` makes the deck again from the current build. |
 
 ## October 2026, security review
 
@@ -202,7 +225,7 @@ Every week the WFM team sends the VP the *Weekly Commercial Presentation* (Membe
 | 3 Outages | A list the team keeps in the shared data (`config/outages`): date, outage and issue, the brands it hit and a description, typed in once or pasted from Excel. The deck shows the month and the two before (a second slide past 17). |
 | 4 The deck and the email | What each slide shows, then **Download deck** (*Beyond_One_Member_Care_Review - 25 Oct 2026.pptx*) and **Email with the deck**: an Outlook draft (.eml) to the VP, the final result form's contact in copy (from the senior manager's contacts, or typed in Settings), subject *Weekly Commercial Presentation*, the body as before, the deck attached. The tool sends nothing. |
 
-The slides follow the deck the team sent: a navy cover with the presenter and their job title (Settings), Performance Insights for Virgin Mobile, FRiENDi Mobile and FRiENDi Pay in their colours (the service level, three tiles, the daily and monthly trends as columns with the service level as a line, the top call reasons and complaint drivers; FRiENDi Pay's third tile is last month's service level), Postpaid Insights, Outages Insights and Thank You. Each chart is a real PowerPoint chart with its data in an embedded workbook (Edit Data works). A number the files do not give shows "–". The logo is the tool's logo (Settings › Logo) when there is one, else the company's name. `js/pptx.js` writes the PowerPoint (no library), `js/wcdeck.js` the numbers and the slides, `js/weekly.js` the page.
+The slides follow the deck the team sent, on the Beyond One template (see Beyond One above): the template's title slide as the cover, with the presenter and their job title (Settings), Performance Insights for Virgin Mobile, FRiENDi Mobile and FRiENDi Pay in their colours (the service level, three tiles, the daily and monthly trends as columns with the service level as a line, the top call reasons and complaint drivers; FRiENDi Pay's third tile is last month's service level), Postpaid Insights, Outages Insights and Thank You. Each chart is a real PowerPoint chart with its data in an embedded workbook (Edit Data works). A number the files do not give shows "–". The logos are the official ones built in (Beyond One's, and each brand's on its slide). `js/pptx.js` writes the PowerPoint (no library), `js/bodeck.js` gives it the template's look, `js/wcdeck.js` the numbers and the slides, `js/weekly.js` the page.
 
 ## November 2026, corrections after the deduction email
 
@@ -225,20 +248,21 @@ The Control and Complaint team sends the *MC performance Review* email: tables b
 
 | Slide | From |
 |---|---|
-| Cover; Virgin Mobile, FRiENDi Mobile, Postpaid | The brands' history (as Weekly commercial); the Top Call Reasons, the complaints and tickets and the Top Complaint Drivers from the month's Call history and Tickets exports (Crystal, .xls) dropped in step 2 or on Weekly commercial (read in the browser, not kept; without them those places show –, and step 2 says which export is missing); the template's places, Cambria headings, the brands' colours (Virgin D0021B, FRiENDi 119DA4, Postpaid 3A5A8C), the callout's shadow, *Weekly Commercial Presentation* over them, *Monthly Trend*. |
+| Cover; Virgin Mobile, FRiENDi Mobile, Postpaid | The brands' history (as Weekly commercial); the Top Call Reasons, the complaints and tickets and the Top Complaint Drivers from the month's Call history and Tickets exports (Crystal, .xls) dropped in step 2 or on Weekly commercial (read in the browser, not kept; without them those places show –, and step 2 says which export is missing); on the Beyond One template: Poppins, the brands' colours (Virgin E10A0A, FRiENDi 1E9AA3, Postpaid 0D76BD), the service level in a flat box, *Weekly Commercial Presentation* over them, *Monthly Trend*. |
 | Complaints Insights | The email: Web + App, Network (this year) and Social media, 3-D shaded columns in framed charts, *MC Service Level Stabilization* over it. |
 | Complaints Insights (Rebooking) | *Booking Code Reactivations by Day* (requests by brand, the average time to close in hours and minutes) from the MC KPIs workbook; *by Month* from the email. |
 | OTP Calls, Final termination calls | The numbers of the team's old deck (or the MC KPIs workbook), kept as they are, completed with the Call history export (the raw call reasons): the OTP calls of the two months to the last day, day by day, with two trend lines; this year's final termination calls by month with a dotted trend. Without any of them the slide is left out. |
 | Thank you | |
 
-The **MC KPIs workbook** is the one the team's charts are linked to (*BeyondOne_MC_KPIs*): its *Reactivate the Booking code* and *OTP & Termination* sheets are read by their headings (Virgin, Friendi, Avg Time to Close; OTP Count; Final termination Count). **Logos**: drop one of the team's decks (.pptx) once and its pictures are kept (`config/decklogos`, as PNG): the Beyond One mark (dark slides), the mark with the name (the other slides) and the brands' logos (top right); both the Weekly commercial and the Performance Review decks use them. Without them, the tool's logo and the brands' names. Drop the email (.msg, .eml or its text), the workbook and a deck in the same box; the page lists what it read. **Email with the deck**: the Outlook draft to the VP (the Weekly commercial settings), subject *MC Performance Review*, the deck attached. A table the deck does not know gets a *More Insights* slide; Vnet is read but, as in the team's deck, not on a slide.
+The **MC KPIs workbook** is the one the team's charts are linked to (*BeyondOne_MC_KPIs*): its *Reactivate the Booking code* and *OTP & Termination* sheets are read by their headings (Virgin, Friendi, Avg Time to Close; OTP Count; Final termination Count). **Logos**: the official Beyond One and brand logos are built into both decks. A deck (.pptx) dropped here still has its pictures kept (`config/decklogos`, as PNG, shown on the page with Remove), but the built-in logos are used in their place. Drop the email (.msg, .eml or its text), the workbook and a deck in the same box; the page lists what it read. **Email with the deck**: the Outlook draft to the VP (the Weekly commercial settings), subject *MC Performance Review*, the deck attached. A table the deck does not know gets a *More Insights* slide; Vnet is read but, as in the team's deck, not on a slide.
 
 **OTP and final termination calls** come from the **Call history export** from Crystal (*Call Center History Report*, .xls: the raw call reasons), dropped in step 3 (or with the email). The tool counts, by day, the **OTP calls** (a Service or Sub Service that names OTP: *OTP is not received*, *App OTP isn't Received*) and the **final termination calls** (Type *Virgin Final Deactivation* and *FRiENDi Final Deactivation*), and keeps only those counts for everyone (`config/calldays`, the latest 800 days), so the exports dropped over the weeks fill the two months and the year: a day dropped again keeps its fuller export, and the page names the days of the two months still missing. *What counts* chooses every channel (calls, WhatsApp, email, social media; the default) or calls only (Contact Type CALL), and every Final Deactivation contact (the default) or only the terminations done (Sub Service *Termination Done*); each day is kept counted every way, so a change needs no new drop. **The old deck's numbers stay as they are.** Drop the team's last *MC performance Review* deck (.pptx) once, and the values its *OTP Count* and *Final termination Count* charts keep (the OTP calls by day, the final termination calls by month; Excel dates or labels) are kept for everyone with the Call history's days (`config/calldays`), as are the MC KPIs workbook's. On the slide they are shown as they are: the Call history only adds the days after them, and completes the month they have only part of (the deck's month to its last day, then the Call history's days after it). A day in two decks takes the newer number, a month the one that covers more of it; a deck the tool made is read for its logos only. The page names the days the slide still lacks (*No data yet for …*). *Clear* empties everything kept (with Undo).
 
 `js/prdeck.js` reads the tables, the workbook, the Call history and a deck's logos and makes the slides (with WcDeck's, now in the template's exact layout), `js/perfrev.js` is the page, `js/pptx.js` gained 3-D columns, shaded fills, chart frames and titles, axis titles, round marks, trend lines, see-through squares and shadows; `test/msgfile.cjs` writes made-up .msg files for the tests.
 
-GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
-the page still works offline.
+GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), Geist from `js/fonts.css`, and Poppins
+and the Beyond One logos from `js/ui6/05_brand.css` (Poppins from `vendor/fonts`, SIL Open Font License 1.1 in
+`vendor/fonts/Poppins-OFL.txt`), so the page still works offline.
 
 ## Skills in this repo
 
@@ -263,6 +287,9 @@ GitHub Actions runs both on every push, see `.github/workflows/node.js.yml`).
 `tools/build_fonts.py` rebuilds `js/fonts.css` from `tools/fontsrc/geist-latin.woff2` (Geist, the latin subset as Google Fonts
 serves it, SIL Open Font License 1.1 in `tools/fontsrc/GEIST-OFL.txt`). It needs only Python.
 
+`python3 js/make_brand.py` rebuilds `js/ui6/05_brand.css` (Poppins and the logos for the pages) and `js/bologos.js` (the logos
+for the decks) from `assets/brand` and `vendor/fonts`. Run it after changing a logo; `npm run build` then picks both up.
+
 ### Parts the document described but did not print
 
 The markdown printed every source file but left out encoded data. They are recreated here as follows; drop the
@@ -271,7 +298,7 @@ originals from your own project folder in their place to get them back byte for 
 | File | Here | The original |
 |---|---|---|
 | `js/fonts.css` | Geist, rebuilt by `tools/build_fonts.py` (Option A) | Inter and Poppins |
-| `js/brand_src.html` | An empty block: no company logo is built in (the neutral WF mark shows; a logo can be chosen in Settings) | The Beyond One logos |
+| `js/brand_src.html` | An empty block: no logo is built into the workbooks and KPI cards (one can be chosen in Settings); the pages and decks show the Beyond One logos from `assets/brand` instead | The Beyond One logos |
 | `dt/templates.js` | The three daily email templates as printed, each omitted image replaced by a 1×1 placeholder | The templates with their logo images |
 | `dt/logos.js`, `dt/seed.js` | Empty | The daily emails' logos and the report builder's history seed |
 

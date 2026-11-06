@@ -56,7 +56,7 @@ async function prDeckFile(f, u8) {
   if (keys.length) {
     state.deckLogos = deckLogosOk({ ...(state.deckLogos || {}), ...out, from: f.name, at: new Date().toISOString(), by: whoNow() });
     if (state.db) { const body = { ...state.deckLogos }; queueWrite('config/decklogos', () => state.db.doc('config/decklogos').set(body)).catch(e => toast(`The logos were not saved (${(e && e.code) || 'error'}).`)); }
-    kept.push(`logos (${keys.map(k => DECK_LOGOS[k]).join(', ')}), for both decks`);
+    kept.push(`logos (${keys.map(k => DECK_LOGOS[k]).join(', ')})`);
   }
   if (DC.otp || DC.term) { prKeepBase(PrDeck.baseOf(DC), f.name); kept.push(prBaseText(PrDeck.baseOf(DC))); }
   if (!kept.length) { PR.notes = `${f.name}: no logos (the Beyond One logo top left, the brands' logos top right)${DC.own ? '' : ' and no OTP Count or Final termination Count chart'} found in it.`; return; }
@@ -242,8 +242,8 @@ function renderPerfWs() {
   // 4. the deck and the email
   const slides = ['Cover', 'Virgin Mobile', 'FRiENDi Mobile', 'Postpaid', 'Complaints Insights: Web + App, Network, Social media', `Complaints Insights: Rebooking ${K && K.byDay ? 'by day and by month' : 'by month'}`]
     .concat(OT.otp || OT.term ? ['OTP calls and Final termination calls'] : [], T ? T.filter(t => t.key === 'other').map(t => `More Insights: ${t.title}`) : [], ['Thank you']);
-  const G = state.deckLogos, logoLine = G ? `<div class="prlogos"><span class="hint">Logos from ${esc(G.from || 'a deck')}:</span>${Object.keys(DECK_LOGOS).filter(k => G[k]).map(k => `<img src="${esc(G[k].dataUrl)}" alt="${esc(DECK_LOGOS[k])}" title="${esc(DECK_LOGOS[k])}">`).join('')}<button class="btn sm ghost" data-prlogosrm>Remove</button></div>`
-    : '<p class="hint">Logos: the tool\'s logo and the brands\' names. Drop one of your decks (.pptx) in step 1 once, and both decks show its Beyond One, Virgin, FRiENDi and FRiENDi Pay logos.</p>';
+  const G = state.deckLogos, logoLine = G ? `<div class="prlogos"><span class="hint">Logos kept from ${esc(G.from || 'a deck')} (the decks use the official ones built in):</span>${Object.keys(DECK_LOGOS).filter(k => G[k]).map(k => `<img src="${esc(G[k].dataUrl)}" alt="${esc(DECK_LOGOS[k])}" title="${esc(DECK_LOGOS[k])}">`).join('')}<button class="btn sm ghost" data-prlogosrm>Remove</button></div>`
+    : '<p class="hint">Logos: the official Beyond One, Virgin Mobile, FRiENDi mobile and FRiENDi pay logos are built into both decks.</p>';
   const send = `<ol class="prslides">${slides.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${logoLine}
     <p class="hint">The email goes to ${esc(splitAddr(c.to).map(wcName).join(', ') || 'nobody yet')}${splitAddr(c.cc).length ? `, copy to ${esc(splitAddr(c.cc).map(wcName).join(', '))}` : ''}, with ${esc(PrDeck.fileName(date))} attached; it opens in Outlook as a draft to check and send. The presenter, the job title and who gets it are the <b>Weekly commercial</b> settings.</p>`;
   const sts = stepStates([!!T, histOk && nC > 0 && nT > 0, !!(OT.otp && OT.term), state.prBuilt === date]);

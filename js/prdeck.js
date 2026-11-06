@@ -299,7 +299,7 @@ async function logosOf(z) {
 }
 
 // ---------------------------------------------------------------- the slides (as the team's deck has them)
-const THEME = ['156082', 'E97132', '196B24', '0F9ED5', 'A02B93', '4EA72E'];   // the deck's chart colours
+const THEME = WD.parts.K.CHART;   // the Beyond One template's colours, in its order
 const isTotal = c => /^total$/i.test(c.trim());
 const lastRow = t => t.rows[t.rows.length - 1];
 /** a chart of a table: a column per series (the Total and any share left out); labels on all, or on the biggest series */
@@ -309,62 +309,63 @@ function chartOf(t, o = {}) {
   const sums = bars.map(i => rows.reduce((a, r) => a + (r.vals[i] || 0), 0)), big = bars[sums.indexOf(Math.max(...sums))];
   const lab = o.labels || (bars.length <= 2 ? 'all' : 'big');
   return {
-    cats: rows.map(r => (o.yearFirst ? r.label2 || r.label : r.label)), d3: !!o.d3, gap: o.gap ?? 150, overlap: o.overlap, catRot: rows.length > 12 ? -45 : undefined, catSize: 900, axisSize: 900, axisColor: '0E2841',
-    border: WD.parts.FRAME, gridColor: 'D9D9D9', legendSize: 900, labelSize: 900, labelColor: '0E2841', barFmt: '#,##0',
-    bars: bars.map((i, k) => ({ name: t.cols[i], values: rows.map(r => r.vals[i]), color: THEME[k % THEME.length], grad: o.grad !== false, labels: lab === 'all' || (lab === 'first' && k === 0) || (lab === 'big' && i === big) })),
+    ...WD.parts.K.frame(), cats: rows.map(r => (o.yearFirst ? r.label2 || r.label : r.label)), gap: o.gap ?? 150, overlap: o.overlap, catRot: rows.length > 12 ? -45 : undefined, catSize: 900, barFmt: '#,##0',
+    bars: bars.map((i, k) => ({ name: t.cols[i], values: rows.map(r => r.vals[i]), color: THEME[k % THEME.length], labels: lab === 'all' || (lab === 'first' && k === 0) || (lab === 'big' && i === big) })),
   };
 }
 const since = t => lastRow(t).until ? lastRow(t).label : `To ${lastRow(t).label}`;
-const kick = (s, m, o) => WD.parts.tt(s, 8.42, 0.11, 4.55, 0.22, `MC Service Level Stabilization  ·  ${WD.parts.deckDate(m.date)}`, { size: 9.5, color: WD.parts.MUTED, align: 'right' });
-const title = (s, x, y, t, size = 30) => WD.parts.tt(s, x, y, 8.10, 0.55, t, { size, bold: true, font: WD.parts.HEAD, color: WD.parts.NAVY, name: 'Title' });
-const sub = (s, x, y, t, w = 7.85) => WD.parts.tt(s, x, y, w, 0.28, t, { size: 12.5, bold: true, color: WD.parts.NAVY });
+/** the top of a slide (the template's: the logo, the deck's name in small capitals, the square), its title, a chart's heading */
+const kick = (s, m) => WD.parts.K.top(s, `MC Service Level Stabilization  ·  ${WD.parts.deckDate(m.date)}`);
+const title = (s, x, y, t, size = 26) => WD.parts.K.title(s, x, y, 8.10, t, null, { size });
+const sub = (s, x, y, t, w = 7.85) => WD.parts.K.heading(s, x, y, w, t, 11);
 /** a place a table the email lacks */
 function missing(s, x, y, w, h, name) {
-  s.rect(x, y, w, h, { fill: 'F7F8FA', line: 'E3E5EA', radius: 0.03 });
+  s.rect(x, y, w, h, { fill: WD.parts.K.C.soft, line: WD.parts.K.C.line });
   s.text(x, y, w, h, `${name}: not in the email`, { size: 11, italic: true, color: WD.parts.MUTED, align: 'center', valign: 'middle' });
 }
 function complaints(D, m, o, by, n) {
   const W = WD.parts, s = D.slide({ bg: 'FFFFFF' });
-  W.logoTop(s, o); kick(s, m, o); title(s, 0.45, 1.02, 'Complaints Insights');
-  const at = (t, name, lx, ly, x, y, w, h, c) => { if (!t) { sub(s, lx, ly, name); missing(s, x, y, w, h, name); return; } sub(s, lx, ly, `${name} – ${since(t)}`); s.chart(x, y, w, h, chartOf(t, { d3: true, ...c }), { name }); };
+  kick(s, m); title(s, 0.45, 1.04, 'Complaints Insights');
+  const at = (t, name, lx, ly, x, y, w, h, c) => { if (!t) { sub(s, lx, ly, name); missing(s, x, y, w, h, name); return; } sub(s, lx, ly, `${name} – ${since(t)}`); s.chart(x, y, w, h, chartOf(t, c), { name }); };
   const net = by('network'), netRows = net ? (r => (r.length >= 6 ? r : net.rows.slice(-13)))(net.rows.filter(r => r.ym >= `${lastRow(net).ym.slice(0, 4)}-01`)) : null;
-  at(by('webapp'), 'Web + App TKTs', 5.12, 1.51, 0.43, 1.88, 12.45, 2.63, { labels: 'all' });
-  at(net, 'Network TKT', 0.45, 4.56, 0.43, 4.85, 6.04, 2.54, { rows: netRows || undefined, labels: 'big', yearFirst: true });
-  at(by('social'), 'Social Media issue TKTs', 7.16, 4.57, 6.67, 4.84, 6.22, 2.53, { labels: 'all', yearFirst: true });
+  at(by('webapp'), 'Web + App TKTs', 0.45, 1.66, 0.43, 1.98, 12.45, 2.40, { labels: 'all' });
+  at(net, 'Network TKT', 0.45, 4.44, 0.43, 4.76, 6.04, 2.24, { rows: netRows || undefined, labels: 'big', yearFirst: true });
+  at(by('social'), 'Social Media issue TKTs', 6.69, 4.44, 6.67, 4.76, 6.22, 2.24, { labels: 'all', yearFirst: true });
   W.foot(s, o, n);
 }
 const dd = d => `${d.slice(8, 10)} ${MON[+d.slice(5, 7) - 1]}`, dm = d => `${+d.slice(8, 10)}-${MON[+d.slice(5, 7) - 1]}`;
 function rebooking(D, m, o, t, K, n) {
   const W = WD.parts, s = D.slide({ bg: 'FFFFFF' }), day = K.byDay && K.byDay.length ? K.byDay.slice(-22) : null;
-  title(s, 0.43, 0.47, 'Complaints Insights');
-  sub(s, 0.43, 1.16, day ? `Rebooking TKTs – From ${dm(day[0].date)} To ${dd(day[day.length - 1].date)}` : t ? `Rebooking TKTs – ${since(t)}` : 'Rebooking TKTs');
-  const frame = { border: W.FRAME, gridColor: 'D9D9D9', axisSize: 900, axisColor: '0E2841', legendSize: 900, labelSize: 900, labelColor: '0E2841', titleSize: 1600 };
+  kick(s, m); title(s, 0.45, 1.04, 'Complaints Insights');
+  sub(s, 0.45, 1.62, day ? `Rebooking TKTs – From ${dm(day[0].date)} To ${dd(day[day.length - 1].date)}` : t ? `Rebooking TKTs – ${since(t)}` : 'Rebooking TKTs', 9.00);
+  const frame = W.K.frame({ titleSize: 1400 });
   if (day) {
-    s.chart(2.16, 1.58, 9.79, 2.74, { ...frame, title: 'Booking Code Reactivations by Day', yTitle: 'Requests', y2Title: 'Avg Time to Close (hh:mm)', cats: day.map(r => dm(r.date)), gap: 219, overlap: -27, catSize: 800,
-      bars: [{ name: 'Virgin', values: day.map(r => r.virgin), color: THEME[0], grad: true, labels: true }, { name: 'Friendi', values: day.map(r => r.friendi), color: THEME[1], grad: true }],
+    s.chart(1.75, 1.98, 9.84, 2.48, { ...frame, title: 'Booking Code Reactivations by Day', yTitle: 'Requests', y2Title: 'Avg Time to Close (hh:mm)', cats: day.map(r => dm(r.date)), gap: 219, overlap: -27, catSize: 800,
+      bars: [{ name: 'Virgin', values: day.map(r => r.virgin), color: THEME[0], labels: true }, { name: 'Friendi', values: day.map(r => r.friendi), color: THEME[1] }],
       line: day.some(r => r.avg != null) ? { name: 'Avg Time to Close', values: day.map(r => r.avg), color: THEME[2], w: 2.5, fmt: '[h]:mm', max: null, min: 0, labels: false, smooth: false, marker: { symbol: 'circle', size: 6, color: THEME[2] } } : undefined }, { name: 'Rebooking by day' });
   }
   const T = t || (K.byMonth ? { cols: ['Virgin', 'FRiENDi'], rows: K.byMonth.map(([c, v, f]) => { const L = monthOf(c); return { label: c, label2: c, vals: [v, f], until: L && L.until }; }) } : null);
-  const [x, y, w, h] = day ? [2.11, 4.42, 9.84, 2.99] : [1.75, 1.62, 9.84, 5.45];
+  const [x, y, w, h] = day ? [1.75, 4.52, 9.84, 2.48] : [1.75, 1.98, 9.84, 5.02];
   if (T) {
     const vi = T.cols.findIndex(c => /virgin/i.test(c)), fi = T.cols.findIndex(c => /friendi/i.test(c));
     s.chart(x, y, w, h, { ...frame, title: 'Booking Code Reactivations by Month', cats: T.rows.map(r => r.label2 || r.label), gap: 219, overlap: -27,
       bars: [{ name: 'Virgin', values: T.rows.map(r => r.vals[vi >= 0 ? vi : 0]), color: THEME[0], labels: true }, { name: 'FRiENDi', values: T.rows.map(r => r.vals[fi >= 0 ? fi : 1]), color: THEME[1] }] }, { name: 'Rebooking by month' });
   } else missing(s, x, y, w, h, 'Rebooking TKTs');
+  W.foot(s, o, n);
 }
 /** OTP calls by day and final termination calls by month: T = otpTerm() */
 function otpSlide(D, m, o, T, n) {
   const W = WD.parts, s = D.slide({ bg: 'FFFFFF' }), { otp, term } = T, end = T.otpEnd || m.ref, few = L => L.filter(r => r.n != null).length < 3;   // a trend needs a few points
-  const frame = { border: W.FRAME, gridColor: 'D9D9D9', axisSize: 900, axisColor: '0E2841', labelSize: 900, labelColor: '000000', legend: false };
-  W.logoTop(s, o); kick(s, m, o);
-  title(s, 0.45, 0.83, 'OTP Calls', 24); sub(s, 2.17, 1.03, `Until ${dd(end)}`, 6.67);
-  if (otp) s.chart(1.31, 1.34, 10.98, 2.97, { ...frame, cats: otp.map(r => `${dm(r.date)}-${r.date.slice(2, 4)}`), gap: 100, overlap: -24, catRot: -45, catSize: 800,
-    bars: [{ name: 'OTP Count', values: otp.map(r => r.n), color: THEME[0], grad: true, trend: few(otp) ? [] : [{ type: 'exp', dash: 'sysDash' }, { type: 'linear', dash: 'sysDash' }] }] }, { name: 'OTP calls' });
-  else missing(s, 1.31, 1.34, 10.98, 2.97, 'OTP calls');
-  W.tt(s, 0.19, 4.24, 6.67, 0.50, 'Final termination calls', { size: 24, bold: true, font: W.HEAD, color: W.NAVY }); sub(s, 3.94, 4.37, `Until ${dd(T.termEnd || end)}`, 6.67);
-  if (term) s.chart(1.31, 4.68, 10.98, 2.55, { ...frame, cats: term.map(r => `${MON[+r.ym.slice(5) - 1]}-${r.ym.slice(2, 4)}`), gap: 150,
+  const frame = W.K.frame({ legend: false });
+  kick(s, m);
+  title(s, 0.45, 1.04, 'OTP Calls', 22); sub(s, 3.10, 1.18, `Until ${dd(end)}`, 6.67);
+  if (otp) s.chart(1.31, 1.62, 10.98, 2.62, { ...frame, cats: otp.map(r => `${dm(r.date)}-${r.date.slice(2, 4)}`), gap: 100, overlap: -24, catRot: -45, catSize: 800,
+    bars: [{ name: 'OTP Count', values: otp.map(r => r.n), color: THEME[0], trend: few(otp) ? [] : [{ type: 'exp', dash: 'sysDash' }, { type: 'linear', dash: 'sysDash' }] }] }, { name: 'OTP calls' });
+  else missing(s, 1.31, 1.62, 10.98, 2.62, 'OTP calls');
+  W.K.title(s, 0.45, 4.28, 6.67, 'Final termination calls', null, { size: 22 }); sub(s, 5.55, 4.42, `Until ${dd(T.termEnd || end)}`, 6.67);
+  if (term) s.chart(1.31, 4.86, 10.98, 2.14, { ...frame, cats: term.map(r => `${MON[+r.ym.slice(5) - 1]}-${r.ym.slice(2, 4)}`), gap: 150,
     bars: [{ name: 'Final termination Count', values: term.map(r => r.n), color: THEME[0], labels: true, trend: few(term) ? [] : [{ type: 'exp', dash: 'sysDot' }] }] }, { name: 'Final termination calls' });
-  else missing(s, 1.31, 4.68, 10.98, 2.55, 'Final termination calls');
+  else missing(s, 1.31, 4.86, 10.98, 2.14, 'Final termination calls');
   W.foot(s, o, n);
 }
 /**
@@ -375,7 +376,7 @@ function otpSlide(D, m, o, T, n) {
  */
 function deck(m, tables, o0 = {}) {
   const W = WD.parts, o = { ...o0, kicker: 'Weekly Commercial Presentation', coverSub: 'Virgin Mobile  ·  FRiENDi Mobile  ·  FRiENDi Pay', monthlyLabel: 'Monthly Trend', ppLabel: false };
-  const D = P.create({ headFont: W.HEAD, bodyFont: 'Calibri' }), by = k => tables.find(t => t.key === k) || null, K = o0.kpi || {};
+  const D = P.create({ headFont: W.K.HEAD, bodyFont: W.K.BODY }), by = k => tables.find(t => t.key === k) || null, K = o0.kpi || {};
   let n = 2;
   W.cover(D, m, o);
   W.brandSlide(D, m, m.brands[0], n++, o);   // Virgin Mobile
@@ -389,8 +390,8 @@ function deck(m, tables, o0 = {}) {
   const other = tables.filter(t => t.key === 'other');
   for (let i = 0; i < other.length; i += 2) {
     const s = D.slide({ bg: 'FFFFFF' });
-    W.logoTop(s, o); kick(s, m, o); title(s, 0.45, 1.02, 'More Insights');
-    [[other[i], 1.51, 1.88, 2.63], [other[i + 1], 4.56, 4.85, 2.54]].forEach(([t, ly, y, h]) => { if (!t) return; sub(s, 0.45, ly, `${t.title} – ${since(t)}`); s.chart(0.43, y, 12.45, h, chartOf(t, { rows: t.rows.slice(-14) }), { name: t.title }); });
+    kick(s, m); title(s, 0.45, 1.04, 'More Insights');
+    [[other[i], 1.66, 1.98, 2.40], [other[i + 1], 4.44, 4.76, 2.24]].forEach(([t, ly, y, h]) => { if (!t) return; sub(s, 0.45, ly, `${t.title} – ${since(t)}`); s.chart(0.43, y, 12.45, h, chartOf(t, { rows: t.rows.slice(-14) }), { name: t.title }); });
     W.foot(s, o, n++);
   }
   W.thanks(D, o);

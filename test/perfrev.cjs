@@ -51,7 +51,9 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   // ---- 3. the deck and the email
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#wfmBar [data-prdeck]')]);
   const deckF = path.join(out, dl.suggestedFilename()); await dl.saveAs(deckF);
-  const z = await Core.readZip(fs.readFileSync(deckF)), X = async n => [...((await z.text(n)) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1].replace(/&amp;/g, '&'));
+  // a slide's texts: each run, and each paragraph whole (a title is a regular run and its last word in bold, on the template)
+  const paras = x => [...(x || '').matchAll(/<a:p>([\s\S]*?)<\/a:p>/g)].map(p => [...p[1].matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]).join('').replace(/&amp;/g, '&')).filter(Boolean);
+  const z = await Core.readZip(fs.readFileSync(deckF)), X = async n => { const x = (await z.text(n)) || ''; return [...x.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1].replace(/&amp;/g, '&')).concat(paras(x)); };
   const n = z.names().filter(x => /^ppt\/slides\/slide\d+\.xml$/.test(x)).length, s5 = await X('ppt/slides/slide5.xml'), s6 = await X('ppt/slides/slide6.xml'), s1 = await X('ppt/slides/slide1.xml');
   ok(dl.suggestedFilename() === 'MC_Performance_Review - 4 Nov 2026.pptx' && n === 8, `Download deck: ${dl.suggestedFilename()}, ${n} slides`);
   ok(s1.includes('Member Care Performance Review') && s1.includes('Huda S.') && s5.includes('Web + App TKTs – Until 03 Nov') && s5.includes('Network TKT – Until 03 Nov') && s6.includes('Rebooking TKTs – Until 03 Nov'), 'the cover with the VP as presenter; Complaints Insights and Rebooking from the email, as the team\'s deck');
@@ -84,7 +86,8 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   const [dl2] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#wfmBar [data-prdeck]')]);
   const d2 = path.join(out, 'with-kpi.pptx'); await dl2.saveAs(d2);
   const z2 = await Core.readZip(fs.readFileSync(d2)), n2 = z2.names().filter(x => /^ppt\/slides\/slide\d+\.xml$/.test(x)).length, x2 = await z2.text('ppt/slides/slide2.xml'), x7 = await z2.text('ppt/slides/slide7.xml');
-  ok(n2 === 9 && (x2.match(/<p:pic>/g) || []).length === 2 && /OTP Calls/.test(x7) && /Final termination calls/.test(x7) && /Booking Code Reactivations by Day/.test(await z2.text('ppt/charts/chart9.xml')), `the deck with the workbook and the logos: ${n2} slides, Rebooking by day, OTP and final termination calls, the logos on the slides`);
+  const p7 = paras(x7).join('\n');
+  ok(n2 === 9 && (x2.match(/<p:pic>/g) || []).length === 2 && /OTP Calls/.test(p7) && /Final termination calls/.test(p7) && /Booking Code Reactivations by Day/.test(await z2.text('ppt/charts/chart9.xml')), `the deck with the workbook and the logos: ${n2} slides, Rebooking by day, OTP and final termination calls, the logos on the slides`);
   // ---- 4. the Call history export (made up, laid out as Crystal's), with the days the shared data had
   const chS = new W2.Sheet('Sheet1'), CH = [['User :', 'A.TEST', 'Call Center History Report', 'From :', '01-11-2026', 'To :', '03-11-2026'], ['Ser.', 'Caller ID', 'Agent ID', 'Call Date', 'Type', 'Service', 'Sub Service', 'Notes', 'Language', 'Contact Type', 'App User']];
   const crow = (d, h, type, service, subS, contact, k) => { for (let i = 0; i < k; i++) CH.push([CH.length - 1, '0500000000', 'AGENT.A', ser(iso(11, d)) + h / 24, type, service, subS, 'note', 'Arabic', contact, 'NA']); };

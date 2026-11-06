@@ -14224,9 +14224,12 @@ function dayOk(y, m, d) { return y > 1990 && y < 2200 && m >= 1 && m <= 12 && d 
 const monOf = w => MONS[String(w || '').toLowerCase().replace(/\.$/, '')] || 0;
 const span = (a, b) => { const out = []; for (let t = Date.parse(a + 'T00:00:00Z'), e = Date.parse(b + 'T00:00:00Z'); t <= e && out.length < 62; t += 86400000) out.push(new Date(t).toISOString().slice(0, 10)); return out; };
 const ORD = '(?:st|nd|rd|th)?';
+const WDAY = '(?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)(?:day|sday|nesday|rsday|urday)?';
+/** a day cell without its weekday ("Thu 22-Oct", "22 Oct 2026 (Thu)", "Thursday, 22 October") */
+const noWday = t => t.replace(new RegExp(`^${WDAY}\\.?[,\\s]+`, 'i'), '').replace(new RegExp(`[,\\s]*\\(?${WDAY}\\.?\\)?$`, 'i'), '').trim();
 /** one cell that is a day: 27-Oct, 27 Oct 2026, Oct 27, 27/10/2026 (day first), 2026-10-27, or an Excel date number */
 function oneDay(s, ctx) {
-  const t = sp(s).toLowerCase(); let m;
+  const t = noWday(sp(s).toLowerCase()); let m;
   if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ t].*)?$/))) return dayOk(+m[1], +m[2], +m[3]);
   if ((m = t.match(/^(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?$/))) { const mo = +m[2]; return dayOk(m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : yearFor(mo, ctx), mo, +m[1]); }
   if ((m = t.match(new RegExp(`^(\\d{1,2})${ORD}[\\s-]*(?:of\\s+)?([a-z]{3,9})\\.?(?:[\\s,-]+(\\d{2,4}))?$`))) && monOf(m[2])) { const mo = monOf(m[2]); return dayOk(m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : yearFor(mo, ctx), mo, +m[1]); }
@@ -14274,7 +14277,8 @@ function daysOf(line, ctx) {
 // ---------------------------------------------------------------- tables
 const H_NAME = /^(?:name|full name|agent(?: name)?|employee(?: name)?|staff(?: name)?)$/i, H_TEAM = /^(?:team|brand)$/i, H_DEP = /^(?:dep|dept|department)$/i;
 const H_ID = /^(?:id|national id|nid|iqama|iqama no\.?|employee id|emp\.? ?id|staff id)$/i, H_DATE = /^(?:date|day)$/i, H_FROM = /^(?:from|start(?: date)?)$/i, H_TO = /^(?:to|end(?: date)?|until)$/i;
-const H_TYPE = /^(?:type|leave(?: type)?|status|code|attendance|reason|update|correction|change(?: to)?|new(?: status)?)$/i;
+const H_TYPE = /^(?:type|leave(?: type)?|status|code|attendance|reason|reasons|update|correction|change(?: to)?|new(?: status)?|exceptions?|exception type|remarks?|comments?|notes?|details?|description|justification|excuse|category|issue)$/i;
+const H_MIN = /^(?:minutes?|mins?|duration|excused(?: minutes| mins)?|time \(min\)|minutes excused)$/i;
 const headerish = (c, ctx) => H_NAME.test(c) || H_TEAM.test(c) || H_DEP.test(c) || H_ID.test(c) || H_DATE.test(c) || H_FROM.test(c) || H_TO.test(c) || H_TYPE.test(c) || !!oneDay(c, ctx);
 /** the rows of pasted text: tab-separated lines, or (an email's text) one cell a line after a header row; null when it is neither */
 function rowsOfText(text, ctx) {
@@ -14303,7 +14307,7 @@ function fromRows(rows, ctx) {
   if (hi < 0) return null;
   const H = R[hi], col = re => H.findIndex(c => re.test(c)), ni = col(H_NAME), ti = col(H_TEAM), di = col(H_DEP), ii = col(H_ID);
   const dateCols = H.map((c, j) => [j, j === ni ? null : oneDay(c, ctx)]).filter(x => x[1]);
-  const dc = col(H_DATE), fc = col(H_FROM), tc = col(H_TO), yc = col(H_TYPE);
+  const dc = col(H_DATE), fc = col(H_FROM), tc = col(H_TO), yc = col(H_TYPE), mc = col(H_MIN);
   const groups = [], bad = [];
   for (const r of R.slice(hi + 1)) {
     const name = r[ni] || '', who = { name, team: ti >= 0 ? r[ti] || '' : '', dep: di >= 0 ? r[di] || '' : '', id: ii >= 0 ? r[ii] || '' : '' };
@@ -14317,9 +14321,14 @@ function fromRows(rows, ctx) {
         if (v) changes.push({ date, v: v.v, exc: v.exc, why: v.why, clear: !!v.clear, raw: cell }); else bad.push({ text: `${name}, ${date.slice(8)} ${MON3[+date.slice(5, 7) - 1]}: "${cell}"`, why: 'not a day value the tool knows (Absent, Attend, OFF, AL, SL, a leave, or late minutes)' });
       }
     } else {
-      const v = valueOf(yc >= 0 ? r[yc] : '', true), d1 = oneDay(dc >= 0 ? r[dc] : fc >= 0 ? r[fc] : '', ctx), d2 = tc >= 0 ? oneDay(r[tc], ctx) : null;
+      let v = valueOf(yc >= 0 ? r[yc] : '', true);
+      for (let j = 0; !v && j < r.length; j++) if (j !== ni && j !== dc && j !== fc && j !== tc && j !== ii && j !== mc) v = valueOf(r[j], true);   // what it was, in another column
+      if (!v) { const x = excOf(r.filter((c, j) => j !== dc && j !== fc && j !== tc).join(' ')); if (x) v = { v: undefined, exc: x.exc, why: x.why }; }
+      const d1 = oneDay(dc >= 0 ? r[dc] : fc >= 0 ? r[fc] : '', ctx), d2 = tc >= 0 ? oneDay(r[tc], ctx) : null;
       if (!d1 || !v) { bad.push({ text: r.filter(Boolean).join(' · '), why: !d1 ? 'no day the tool can read' : 'no value the tool knows' }); continue; }
-      const vx = v.exc != null ? { ...v, ...(excOf(r.filter(Boolean).join(' ')) || {}) } : v;   // an exception's minutes may be in another cell
+      let vx = v.exc != null ? { ...v, ...(excOf(r.filter(Boolean).join(' ')) || {}) } : v;   // an exception's minutes may be in another cell
+      const mn = mc >= 0 ? parseFloat(String(r[mc] || '').replace(/[^\d.]/g, '')) : NaN;
+      if (vx.exc != null && mn > 0 && mn <= 720) vx = { ...vx, exc: Math.round(mn) };   // the Minutes column says how many
       for (const date of d2 && d2 >= d1 ? span(d1, d2) : [d1]) changes.push({ date, v: vx.v, exc: vx.exc, why: vx.why, clear: !!v.clear, raw: yc >= 0 ? r[yc] : '', wide: !!(d2 && d2 > d1) });
     }
     if (changes.length) groups.push({ who, changes, src: 'table', text: [name, who.team, who.dep].filter(Boolean).join(' · ') });
@@ -14340,6 +14349,7 @@ function fromLooseRows(rows, ctx) {
   const groups = [], bad = [];
   for (const r0 of rows || []) {
     const r = (Array.isArray(r0) ? r0 : []).map(v => (v instanceof Date ? v.toISOString().slice(0, 10) : sp(v))).filter(Boolean); if (!r.length) continue;
+    if (r.length === 1) { const c = command(r[0], ctx); if (c && c.group) groups.push(c.group); else if (c && c.bad) bad.push(c.bad); continue; }   // a line written out, among the pasted rows
     let di = r.findIndex(c => oneDay(c, ctx)), dates = di >= 0 ? [oneDay(r[di], ctx)] : null, wide = false;
     if (!dates) { const j = r.findIndex(c => daysOf(c, ctx).days.length && !/[a-z]{3,}\s+[a-z]{3,}/i.test(daysOf(c, ctx).rest.trim())); if (j >= 0) { const D = daysOf(r[j], ctx); dates = D.days; wide = D.wide; di = j; } }
     const rest = r.filter((_, j) => j !== di), text = r.join(' · ');
@@ -14356,7 +14366,8 @@ function fromLooseRows(rows, ctx) {
 
 // ---------------------------------------------------------------- typed lines
 const FILL = new Set(['set', 'mark', 'make', 'change', 'changed', 'update', 'put', 'record', 'register', 'as', 'an', 'a', 'on', 'the', 'to', 'for', 'is', 'was', 'be', 'been', 'should', 'marked',
-  'day', 'days', 'from', 'and', 'of', 'in', 'at', 'please', 'kindly', 'pls', 'plz', 'with', 'he', 'she', 'his', 'her', 'him', 'agent', 'employee', 'it', 'by', 'not', 'but', 'leave', 'leaves', 'until', 'till', 'through', 'min', 'mins', 'minutes', 'late', 'tardy', 'also', 'both', 'all', 'whole']);
+  'day', 'days', 'from', 'and', 'of', 'in', 'at', 'please', 'kindly', 'pls', 'plz', 'with', 'he', 'she', 'his', 'her', 'him', 'agent', 'employee', 'it', 'by', 'not', 'but', 'leave', 'leaves', 'until', 'till', 'through', 'min', 'mins', 'minutes', 'late', 'tardy', 'also', 'both', 'all', 'whole',
+  'sun', 'mon', 'tue', 'tues', 'wed', 'thu', 'thur', 'thurs', 'fri', 'sat', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'only', 'pm', 'am']);
 const BRAND = [[/\bfriendi\s*pay\b|\bfpay\b/i, 'Friendi Pay'], [/\bfriendi\b/i, 'Friendi'], [/\bvirgin\b/i, 'Virgin']];
 const TEAMS = new Set(['cc', 'sm', 'ct', 'qa', 'ts', 'mg', 'de', 'wf', 'op']);
 /** one typed line: who, the value and the days. A line with neither a day nor a value (a greeting, a signature) is left out */
@@ -19585,13 +19596,13 @@ async function exportDailyAdh(pid) {
     if (cv != null) W.set(r, 3, cv, cv < set.target ? pcBad : pc); else W.set(r, 3, 'NA', na);
     W.set(r, 4, cv != null ? (cv < set.target ? 'Under target' : 'On target') : rv != null ? `NA: under ${pct(set.floor, 0)}` : m.adh ? 'NA: blank' : '', tx);
     W.set(r, 5, a == null ? '' : typeof a === 'number' ? `${a} min late` : a, isOff ? off : tx);
-    const AX = m.actX || m.act, sv = m.sch ? m.sch[i] : null, av = AX ? AX[i] : null, df = m.diff ? m.diff[i] : null, xc = m.exc ? m.exc.exc[i] : null;   // the Actual with an exception's minutes
+    const AX = m.actX || m.act, sv = m.sch ? m.sch[i] : null, av = AX ? AX[i] : null, df = m.diff ? m.diff[i] : null, xc = m.exc && (m.act || [])[i] !== av ? m.exc.exc[i] : null;   // the Actual with an exception's minutes (shown when it changed)
     W.set(r, 6, sv, num); W.set(r, 7, av, num); W.set(r, 8, df, num);
     if (w && !w.leave && !w.none) {
       W.set(r, 9, w.start != null ? clock(w.start) : '', num); W.set(r, 10, w.firstOn != null ? clock(w.firstOn) : '', num); W.set(r, 11, Math.round(w.logged || 0), num);
       W.set(r, 12, w.late ?? null, num); W.set(r, 13, w.short ?? null, num); W.set(r, 14, w.brk || null, num);
     }
-    const notes = [!w ? '' : w.leave ? `Leave: ${w.leave}` : w.absent ? 'No sign-on' : [w.excused && `${w.excused} min late, excused (${w.code})`, w.off && 'worked outside the schedule'].filter(Boolean).join(' · '), xc != null ? `Exception after the review: ${xc === 'day' ? 'the day' : xc + ' min'} counted as worked` : ''].filter(Boolean).join(' · ');
+    const notes = [!w ? '' : w.leave ? `Leave: ${w.leave}` : w.absent ? 'No sign-on' : [w.excused && `${w.excused} min late, excused (${w.code})`, w.off && 'worked outside the schedule'].filter(Boolean).join(' · '), xc != null ? `After the review: ${xc === 'day' ? 'the day' : xc + ' min'} counted as worked` : ''].filter(Boolean).join(' · ');
     W.set(r, 15, notes, tx);
   }
   const a1 = r0 + 1, b1 = r0 + ND, rt = b1 + 1, col = c => `${Core.colName(c)}${a1}:${Core.colName(c)}${b1}`;
@@ -21916,11 +21927,16 @@ const editedDay = (cur, e) => (!e ? cur : e.x ? (typeof cur === 'number' ? 'Atte
 /** a day's Actual with an exception's minutes counted as worked, as Genesys counts an exception: no more than the Sched., the whole
     Sched. for 'day'; a day with no sign-on (Actual 0) has no deduction to excuse */
 function excAct(sv, av, exc) { return sv == null || av == null || av === 0 || exc == null || av >= sv ? av : exc === 'day' ? sv : Math.min(sv, av + Math.max(0, +exc || 0)); }
-/** the exceptions of a person's corrections: { [day index]: minutes | 'day' } and their note for the deduction's Review Notes */
+/** what a person's corrections take off the deduction: { [day index]: minutes | 'day' } (an exception's minutes or its day; a day
+    corrected to a leave, OFF or a holiday is not a working day, so its whole deduction) and the exceptions' note for Review Notes */
 function excOfEdits(ed, m) {
   const exc = {}, notes = [];
-  for (const [d, e] of Object.entries((ed && ed.days) || {}).sort((a, b) => +a[0] - +b[0])) if (e && e.exc != null) { exc[+d - 1] = e.exc; notes.push(`${+d} ${MON[m - 1]} ${e.why || 'exception'}${typeof e.exc === 'number' ? ` (${e.exc} min)` : ' (the day)'}`); }
-  return notes.length ? { exc, note: `Exceptions: ${notes.join('; ')}` } : null;
+  for (const [d, e] of Object.entries((ed && ed.days) || {}).sort((a, b) => +a[0] - +b[0])) {
+    if (!e) continue;
+    if (e.exc != null) { exc[+d - 1] = e.exc; notes.push(`${+d} ${MON[m - 1]} ${e.why || 'exception'}${typeof e.exc === 'number' ? ` (${e.exc} min)` : ' (the day)'}`); }
+    else if (typeof e.v === 'string' && e.v && e.v !== 'Attend' && e.v !== 'Absent') exc[+d - 1] = 'day';
+  }
+  return Object.keys(exc).length ? { exc, note: notes.length ? `Exceptions: ${notes.join('; ')}` : '' } : null;
 }
 /** a saved row with the supervisor's corrections applied (draft months only), counted with the month's rules */
 function withEdits(r, edits, ND, k) {
@@ -21936,8 +21952,8 @@ function withEdits(r, edits, ND, k) {
   if (X && r.ds != null && r.da != null) {
     const L = v => String(v).split(',').map(x => (x === '' ? null : +x)), S = L(r.ds), A = L(r.da).map((av, i) => excAct(S[i], av, X.exc[i]));
     let ded = 0, base = 0; S.forEach((sv, i) => { const av = A[i]; if (sv == null || av == null || av === 0) return; ded += Math.max(0, sv - av); base += sv; });
-    Object.assign(dd, { ded, da: A.map(v => (v == null ? '' : Math.round(v))).join(','), dxn: X.note }, base > 0 ? { conf: Math.round((1 - ded / base) * 1e4) / 1e4 } : {});
-  } else if (X) dd.dxn = X.note;
+    Object.assign(dd, { ded, da: A.map(v => (v == null ? '' : Math.round(v))).join(',') }, X.note ? { dxn: X.note } : {}, base > 0 ? { conf: Math.round((1 - ded / base) * 1e4) / 1e4 } : {});
+  } else if (X && X.note) dd.dxn = X.note;
   return { ...rest, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, ...keptCount(t, k), ...dd, _edited: Object.keys(edits.days).length };
 }
 function leaveCode(c) {
@@ -26542,7 +26558,7 @@ function renderUpd() {
   const src = !mailShared() && state.wb ? `<p class="hint warnline">The email takes its numbers from ${esc(state.wb.name)}: the corrections go to the month, not into that file. Choose <b>Shared month</b> above the email to see them in it.</p>` : '';
   host.innerHTML = `<section class="card updcard" aria-labelledby="updH">
     <div class="updhd"><h2 id="updH">Corrections after the review</h2><span class="pill info">${esc(ymLabel(M.k))}</span></div>
-    <p class="cap">When corrections come back after the deduction email, put them here: paste the table from the email, drop the email (.msg or .eml) or a sheet, or type them, one a line, like <i>set Nawaf as absent on 10 Oct</i> or <i>Sara K. SL 27-29 Oct</i>. Exceptions too (a day, the name and the reason, like <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i> or <i>4:00 PM - 4:30 PM</i>): the day's lateness is excused and its minutes, or the whole day, come off the deduction. You see each day first; <b>Apply</b> makes them the month's corrections, so every sheet, the workbooks and the final email have them.</p>
+    <p class="cap">When corrections come back after the deduction email, put them here: paste the table from the email, drop the email (.msg or .eml) or a sheet, or type them, one a line, like <i>set Nawaf as absent on 10 Oct</i> or <i>Sara K. SL 27-29 Oct</i>. Exceptions too (a day, the name and the reason, like <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i> or <i>4:00 PM - 4:30 PM</i>): the day's lateness is excused and its minutes, or the whole day, come off the deduction (the Diff); a leave changes the attendance and that day's deduction goes. You see each day first; <b>Apply</b> makes them the month's corrections, so every sheet, the workbooks and the final email have them.</p>
     ${lock ? `<p class="hint warnline">${esc(ymLabel(M.k))} is final: its attendance can no longer change.</p>` : ''}${src}
     <div class="upddrop" data-upddrop><textarea class="cell" data-updtext rows="4" spellcheck="false" placeholder="Paste the table from the email here, or type: set Nawaf as absent on 10 Oct · Nawaf PC loading 5 min on 11 Oct">${esc(state.updText)}</textarea>
       <div class="acts updacts"><button class="btn" data-updread${state.updBusy ? ' disabled' : ''}>${state.updBusy ? '<span class="spin" aria-hidden="true"></span>Reading…' : 'Read'}</button><button class="btn ghost" data-updfile>Choose a file</button><span class="hint">or drop the email or the sheet here</span>
@@ -29514,7 +29530,7 @@ const DEPT = [
     '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one.',
     '<b>Export › Smart-Link attendance</b>: first, <b>Set Smart-Link\'s list from its file</b> once (any of Smart-Link\'s attendance files: its ID and Name columns), so the file holds exactly Smart-Link\'s agents, the SM agents and those on Virgin too. Then the month\'s attendance of those agents in Smart-Link\'s own file (Smart-Link Attendance -Sep 2026.xlsx): each day\'s code, the late minutes and the counts with Smart-Link\'s formulas, and the National IDs, as Smart-Link\'s file has them. It is made from the shared month, with the supervisors\' corrections, and kept in Saved workbooks; send it to Smart-Link yourself.',
     '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs.',
-    '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
+    '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction (the Diff); a leave changes the Attendance Report and that day\'s deduction goes. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
     '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
@@ -29525,7 +29541,7 @@ const DEPT = [
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
-    '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
+    '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction (the Diff); a leave changes the Attendance Report and that day\'s deduction goes. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
     'When a WFM analyst is on vacation, tick their name under <b>Vacation cover</b> on the WFM team page: you then have their tabs (Import, Review, Export, Report builder) until you untick it.',
     '<b>WFM team › Data</b>: export all the data to one file locked with a password, or import such a file. Accounts and passwords are never in it.',
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',

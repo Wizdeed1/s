@@ -86,9 +86,12 @@ function dayOk(y, m, d) { return y > 1990 && y < 2200 && m >= 1 && m <= 12 && d 
 const monOf = w => MONS[String(w || '').toLowerCase().replace(/\.$/, '')] || 0;
 const span = (a, b) => { const out = []; for (let t = Date.parse(a + 'T00:00:00Z'), e = Date.parse(b + 'T00:00:00Z'); t <= e && out.length < 62; t += 86400000) out.push(new Date(t).toISOString().slice(0, 10)); return out; };
 const ORD = '(?:st|nd|rd|th)?';
+const WDAY = '(?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)(?:day|sday|nesday|rsday|urday)?';
+/** a day cell without its weekday ("Thu 22-Oct", "22 Oct 2026 (Thu)", "Thursday, 22 October") */
+const noWday = t => t.replace(new RegExp(`^${WDAY}\\.?[,\\s]+`, 'i'), '').replace(new RegExp(`[,\\s]*\\(?${WDAY}\\.?\\)?$`, 'i'), '').trim();
 /** one cell that is a day: 27-Oct, 27 Oct 2026, Oct 27, 27/10/2026 (day first), 2026-10-27, or an Excel date number */
 function oneDay(s, ctx) {
-  const t = sp(s).toLowerCase(); let m;
+  const t = noWday(sp(s).toLowerCase()); let m;
   if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ t].*)?$/))) return dayOk(+m[1], +m[2], +m[3]);
   if ((m = t.match(/^(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?$/))) { const mo = +m[2]; return dayOk(m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : yearFor(mo, ctx), mo, +m[1]); }
   if ((m = t.match(new RegExp(`^(\\d{1,2})${ORD}[\\s-]*(?:of\\s+)?([a-z]{3,9})\\.?(?:[\\s,-]+(\\d{2,4}))?$`))) && monOf(m[2])) { const mo = monOf(m[2]); return dayOk(m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : yearFor(mo, ctx), mo, +m[1]); }
@@ -136,7 +139,8 @@ function daysOf(line, ctx) {
 // ---------------------------------------------------------------- tables
 const H_NAME = /^(?:name|full name|agent(?: name)?|employee(?: name)?|staff(?: name)?)$/i, H_TEAM = /^(?:team|brand)$/i, H_DEP = /^(?:dep|dept|department)$/i;
 const H_ID = /^(?:id|national id|nid|iqama|iqama no\.?|employee id|emp\.? ?id|staff id)$/i, H_DATE = /^(?:date|day)$/i, H_FROM = /^(?:from|start(?: date)?)$/i, H_TO = /^(?:to|end(?: date)?|until)$/i;
-const H_TYPE = /^(?:type|leave(?: type)?|status|code|attendance|reason|update|correction|change(?: to)?|new(?: status)?)$/i;
+const H_TYPE = /^(?:type|leave(?: type)?|status|code|attendance|reason|reasons|update|correction|change(?: to)?|new(?: status)?|exceptions?|exception type|remarks?|comments?|notes?|details?|description|justification|excuse|category|issue)$/i;
+const H_MIN = /^(?:minutes?|mins?|duration|excused(?: minutes| mins)?|time \(min\)|minutes excused)$/i;
 const headerish = (c, ctx) => H_NAME.test(c) || H_TEAM.test(c) || H_DEP.test(c) || H_ID.test(c) || H_DATE.test(c) || H_FROM.test(c) || H_TO.test(c) || H_TYPE.test(c) || !!oneDay(c, ctx);
 /** the rows of pasted text: tab-separated lines, or (an email's text) one cell a line after a header row; null when it is neither */
 function rowsOfText(text, ctx) {
@@ -165,7 +169,7 @@ function fromRows(rows, ctx) {
   if (hi < 0) return null;
   const H = R[hi], col = re => H.findIndex(c => re.test(c)), ni = col(H_NAME), ti = col(H_TEAM), di = col(H_DEP), ii = col(H_ID);
   const dateCols = H.map((c, j) => [j, j === ni ? null : oneDay(c, ctx)]).filter(x => x[1]);
-  const dc = col(H_DATE), fc = col(H_FROM), tc = col(H_TO), yc = col(H_TYPE);
+  const dc = col(H_DATE), fc = col(H_FROM), tc = col(H_TO), yc = col(H_TYPE), mc = col(H_MIN);
   const groups = [], bad = [];
   for (const r of R.slice(hi + 1)) {
     const name = r[ni] || '', who = { name, team: ti >= 0 ? r[ti] || '' : '', dep: di >= 0 ? r[di] || '' : '', id: ii >= 0 ? r[ii] || '' : '' };
@@ -179,9 +183,14 @@ function fromRows(rows, ctx) {
         if (v) changes.push({ date, v: v.v, exc: v.exc, why: v.why, clear: !!v.clear, raw: cell }); else bad.push({ text: `${name}, ${date.slice(8)} ${MON3[+date.slice(5, 7) - 1]}: "${cell}"`, why: 'not a day value the tool knows (Absent, Attend, OFF, AL, SL, a leave, or late minutes)' });
       }
     } else {
-      const v = valueOf(yc >= 0 ? r[yc] : '', true), d1 = oneDay(dc >= 0 ? r[dc] : fc >= 0 ? r[fc] : '', ctx), d2 = tc >= 0 ? oneDay(r[tc], ctx) : null;
+      let v = valueOf(yc >= 0 ? r[yc] : '', true);
+      for (let j = 0; !v && j < r.length; j++) if (j !== ni && j !== dc && j !== fc && j !== tc && j !== ii && j !== mc) v = valueOf(r[j], true);   // what it was, in another column
+      if (!v) { const x = excOf(r.filter((c, j) => j !== dc && j !== fc && j !== tc).join(' ')); if (x) v = { v: undefined, exc: x.exc, why: x.why }; }
+      const d1 = oneDay(dc >= 0 ? r[dc] : fc >= 0 ? r[fc] : '', ctx), d2 = tc >= 0 ? oneDay(r[tc], ctx) : null;
       if (!d1 || !v) { bad.push({ text: r.filter(Boolean).join(' · '), why: !d1 ? 'no day the tool can read' : 'no value the tool knows' }); continue; }
-      const vx = v.exc != null ? { ...v, ...(excOf(r.filter(Boolean).join(' ')) || {}) } : v;   // an exception's minutes may be in another cell
+      let vx = v.exc != null ? { ...v, ...(excOf(r.filter(Boolean).join(' ')) || {}) } : v;   // an exception's minutes may be in another cell
+      const mn = mc >= 0 ? parseFloat(String(r[mc] || '').replace(/[^\d.]/g, '')) : NaN;
+      if (vx.exc != null && mn > 0 && mn <= 720) vx = { ...vx, exc: Math.round(mn) };   // the Minutes column says how many
       for (const date of d2 && d2 >= d1 ? span(d1, d2) : [d1]) changes.push({ date, v: vx.v, exc: vx.exc, why: vx.why, clear: !!v.clear, raw: yc >= 0 ? r[yc] : '', wide: !!(d2 && d2 > d1) });
     }
     if (changes.length) groups.push({ who, changes, src: 'table', text: [name, who.team, who.dep].filter(Boolean).join(' · ') });
@@ -202,6 +211,7 @@ function fromLooseRows(rows, ctx) {
   const groups = [], bad = [];
   for (const r0 of rows || []) {
     const r = (Array.isArray(r0) ? r0 : []).map(v => (v instanceof Date ? v.toISOString().slice(0, 10) : sp(v))).filter(Boolean); if (!r.length) continue;
+    if (r.length === 1) { const c = command(r[0], ctx); if (c && c.group) groups.push(c.group); else if (c && c.bad) bad.push(c.bad); continue; }   // a line written out, among the pasted rows
     let di = r.findIndex(c => oneDay(c, ctx)), dates = di >= 0 ? [oneDay(r[di], ctx)] : null, wide = false;
     if (!dates) { const j = r.findIndex(c => daysOf(c, ctx).days.length && !/[a-z]{3,}\s+[a-z]{3,}/i.test(daysOf(c, ctx).rest.trim())); if (j >= 0) { const D = daysOf(r[j], ctx); dates = D.days; wide = D.wide; di = j; } }
     const rest = r.filter((_, j) => j !== di), text = r.join(' · ');
@@ -218,7 +228,8 @@ function fromLooseRows(rows, ctx) {
 
 // ---------------------------------------------------------------- typed lines
 const FILL = new Set(['set', 'mark', 'make', 'change', 'changed', 'update', 'put', 'record', 'register', 'as', 'an', 'a', 'on', 'the', 'to', 'for', 'is', 'was', 'be', 'been', 'should', 'marked',
-  'day', 'days', 'from', 'and', 'of', 'in', 'at', 'please', 'kindly', 'pls', 'plz', 'with', 'he', 'she', 'his', 'her', 'him', 'agent', 'employee', 'it', 'by', 'not', 'but', 'leave', 'leaves', 'until', 'till', 'through', 'min', 'mins', 'minutes', 'late', 'tardy', 'also', 'both', 'all', 'whole']);
+  'day', 'days', 'from', 'and', 'of', 'in', 'at', 'please', 'kindly', 'pls', 'plz', 'with', 'he', 'she', 'his', 'her', 'him', 'agent', 'employee', 'it', 'by', 'not', 'but', 'leave', 'leaves', 'until', 'till', 'through', 'min', 'mins', 'minutes', 'late', 'tardy', 'also', 'both', 'all', 'whole',
+  'sun', 'mon', 'tue', 'tues', 'wed', 'thu', 'thur', 'thurs', 'fri', 'sat', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'only', 'pm', 'am']);
 const BRAND = [[/\bfriendi\s*pay\b|\bfpay\b/i, 'Friendi Pay'], [/\bfriendi\b/i, 'Friendi'], [/\bvirgin\b/i, 'Virgin']];
 const TEAMS = new Set(['cc', 'sm', 'ct', 'qa', 'ts', 'mg', 'de', 'wf', 'op']);
 /** one typed line: who, the value and the days. A line with neither a day nor a value (a greeting, a signature) is left out */

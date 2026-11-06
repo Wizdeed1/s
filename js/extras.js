@@ -202,11 +202,16 @@ const editedDay = (cur, e) => (!e ? cur : e.x ? (typeof cur === 'number' ? 'Atte
 /** a day's Actual with an exception's minutes counted as worked, as Genesys counts an exception: no more than the Sched., the whole
     Sched. for 'day'; a day with no sign-on (Actual 0) has no deduction to excuse */
 function excAct(sv, av, exc) { return sv == null || av == null || av === 0 || exc == null || av >= sv ? av : exc === 'day' ? sv : Math.min(sv, av + Math.max(0, +exc || 0)); }
-/** the exceptions of a person's corrections: { [day index]: minutes | 'day' } and their note for the deduction's Review Notes */
+/** what a person's corrections take off the deduction: { [day index]: minutes | 'day' } (an exception's minutes or its day; a day
+    corrected to a leave, OFF or a holiday is not a working day, so its whole deduction) and the exceptions' note for Review Notes */
 function excOfEdits(ed, m) {
   const exc = {}, notes = [];
-  for (const [d, e] of Object.entries((ed && ed.days) || {}).sort((a, b) => +a[0] - +b[0])) if (e && e.exc != null) { exc[+d - 1] = e.exc; notes.push(`${+d} ${MON[m - 1]} ${e.why || 'exception'}${typeof e.exc === 'number' ? ` (${e.exc} min)` : ' (the day)'}`); }
-  return notes.length ? { exc, note: `Exceptions: ${notes.join('; ')}` } : null;
+  for (const [d, e] of Object.entries((ed && ed.days) || {}).sort((a, b) => +a[0] - +b[0])) {
+    if (!e) continue;
+    if (e.exc != null) { exc[+d - 1] = e.exc; notes.push(`${+d} ${MON[m - 1]} ${e.why || 'exception'}${typeof e.exc === 'number' ? ` (${e.exc} min)` : ' (the day)'}`); }
+    else if (typeof e.v === 'string' && e.v && e.v !== 'Attend' && e.v !== 'Absent') exc[+d - 1] = 'day';
+  }
+  return Object.keys(exc).length ? { exc, note: notes.length ? `Exceptions: ${notes.join('; ')}` : '' } : null;
 }
 /** a saved row with the supervisor's corrections applied (draft months only), counted with the month's rules */
 function withEdits(r, edits, ND, k) {
@@ -222,8 +227,8 @@ function withEdits(r, edits, ND, k) {
   if (X && r.ds != null && r.da != null) {
     const L = v => String(v).split(',').map(x => (x === '' ? null : +x)), S = L(r.ds), A = L(r.da).map((av, i) => excAct(S[i], av, X.exc[i]));
     let ded = 0, base = 0; S.forEach((sv, i) => { const av = A[i]; if (sv == null || av == null || av === 0) return; ded += Math.max(0, sv - av); base += sv; });
-    Object.assign(dd, { ded, da: A.map(v => (v == null ? '' : Math.round(v))).join(','), dxn: X.note }, base > 0 ? { conf: Math.round((1 - ded / base) * 1e4) / 1e4 } : {});
-  } else if (X) dd.dxn = X.note;
+    Object.assign(dd, { ded, da: A.map(v => (v == null ? '' : Math.round(v))).join(',') }, X.note ? { dxn: X.note } : {}, base > 0 ? { conf: Math.round((1 - ded / base) * 1e4) / 1e4 } : {});
+  } else if (X && X.note) dd.dxn = X.note;
   return { ...rest, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, ...keptCount(t, k), ...dd, _edited: Object.keys(edits.days).length };
 }
 function leaveCode(c) {

@@ -95,6 +95,11 @@ const HX = U.parse({ text: 'Name\tDate\tType\tNotes\nRayan Alexample\t20-Oct\tEx
 ok(xo(HX) === 'p1: 10-20=x12 | p4: 10-21=SL', `a table with a Type column: an exception (its minutes in the Notes) and a leave (${xo(HX)})`);
 ok(U.winMin('4:00 PM - 4:30 PM').min === 30 && U.winMin('11:45 am - 12:15 pm').min === 30 && U.winMin('13:00-13:20').min === 20 && U.excOf('Excuse').exc === 'day' && !U.excOf('Rayan Alexample'), 'a time window\'s minutes (across noon, 24-hour); an excuse with no time is the day; a name is not an exception');
 ok(U.label({ exc: 2, why: 'PC loading' }) === 'Exception: PC loading · 2 min excused' && U.label({ exc: 'day', why: 'Excuse' }) === 'Exception: Excuse · the day excused', 'an exception in words');
+const WX = U.parse({ text: ['Thu 22-Oct Omar Al Demo 4:00 PM - 4:30 PM Supervisorx 30mins', '11-oct\tNawal Sampleson Supervisorx-pc loading for 2 mins\tPc loading', 'Thu 22-Oct\tRayan Alexample\t4:00 PM - 4:30 PM Supervisorx'].join('\n') }, ctx);
+ok(xo(WX) === 'p4: 10-22=x30 | p3: 10-11=x2 | p1: 10-22=x30' && !WX.bad.length, `a day with its weekday (Thu 22-Oct), a line written out among the pasted rows: ${xo(WX)}`);
+ok(U.oneDay('Thursday, 22 October 2026', ctx) === '2026-10-22' && U.oneDay('22-Oct-2026 (Thu)', ctx) === '2026-10-22' && U.oneDay('Thu, Oct 22', ctx) === '2026-10-22', 'a day cell with its weekday before or after it');
+const MX = U.parse({ text: 'Date\tAgent Name\tException\tMinutes\nThu 22-Oct\tOmar Al Demo\tPermission\t30\n11-oct\tNawal Sampleson\tPc loading\t2\nOct-22\tNawal Sampleson\tExcuse\t\n27-Oct\tRayan Alexample\tSL\t' }, ctx);
+ok(xo(MX) === 'p4: 10-22=x30 | p3: 10-11=x2 10-22=xday | p1: 10-27=SL' && MX.table, `a table with Exception and Minutes columns, and a leave in it: ${xo(MX)}`);
 // the monthly workbook's Deduction sheet: each excused day's Diff, the total and the Review Notes
 (async () => {
   const W2 = require(path.join(__dirname, '../js/writer2.js')), Core = require(path.join(__dirname, '../js/core.js'));

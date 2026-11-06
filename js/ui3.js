@@ -3547,13 +3547,13 @@ async function exportDailyAdh(pid) {
     if (cv != null) W.set(r, 3, cv, cv < set.target ? pcBad : pc); else W.set(r, 3, 'NA', na);
     W.set(r, 4, cv != null ? (cv < set.target ? 'Under target' : 'On target') : rv != null ? `NA: under ${pct(set.floor, 0)}` : m.adh ? 'NA: blank' : '', tx);
     W.set(r, 5, a == null ? '' : typeof a === 'number' ? `${a} min late` : a, isOff ? off : tx);
-    const AX = m.actX || m.act, sv = m.sch ? m.sch[i] : null, av = AX ? AX[i] : null, df = m.diff ? m.diff[i] : null, xc = m.exc ? m.exc.exc[i] : null;   // the Actual with an exception's minutes
+    const AX = m.actX || m.act, sv = m.sch ? m.sch[i] : null, av = AX ? AX[i] : null, df = m.diff ? m.diff[i] : null, xc = m.exc && (m.act || [])[i] !== av ? m.exc.exc[i] : null;   // the Actual with an exception's minutes (shown when it changed)
     W.set(r, 6, sv, num); W.set(r, 7, av, num); W.set(r, 8, df, num);
     if (w && !w.leave && !w.none) {
       W.set(r, 9, w.start != null ? clock(w.start) : '', num); W.set(r, 10, w.firstOn != null ? clock(w.firstOn) : '', num); W.set(r, 11, Math.round(w.logged || 0), num);
       W.set(r, 12, w.late ?? null, num); W.set(r, 13, w.short ?? null, num); W.set(r, 14, w.brk || null, num);
     }
-    const notes = [!w ? '' : w.leave ? `Leave: ${w.leave}` : w.absent ? 'No sign-on' : [w.excused && `${w.excused} min late, excused (${w.code})`, w.off && 'worked outside the schedule'].filter(Boolean).join(' · '), xc != null ? `Exception after the review: ${xc === 'day' ? 'the day' : xc + ' min'} counted as worked` : ''].filter(Boolean).join(' · ');
+    const notes = [!w ? '' : w.leave ? `Leave: ${w.leave}` : w.absent ? 'No sign-on' : [w.excused && `${w.excused} min late, excused (${w.code})`, w.off && 'worked outside the schedule'].filter(Boolean).join(' · '), xc != null ? `After the review: ${xc === 'day' ? 'the day' : xc + ' min'} counted as worked` : ''].filter(Boolean).join(' · ');
     W.set(r, 15, notes, tx);
   }
   const a1 = r0 + 1, b1 = r0 + ND, rt = b1 + 1, col = c => `${Core.colName(c)}${a1}:${Core.colName(c)}${b1}`;

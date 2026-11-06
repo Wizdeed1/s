@@ -6,6 +6,7 @@ const fs = require('node:fs'), path = require('node:path');
 const [page0, exp, out] = process.argv.slice(2); fs.mkdirSync(out, { recursive: true });
 const fixture = fs.readFileSync(path.join(__dirname, '..', '..', 'test', 'fixture.js'), 'utf8');
 const USERS = {
+  admin: { id: 'u0', name: 'Amal R.', username: 'amal.r', role: 'admin' },
   senior: { id: 'u3', name: 'Faisal M.', username: 'faisal.m', role: 'senior' }, wfm: { id: 'u2', name: 'Noura B.', username: 'noura.b', role: 'wfm' },
   user: { id: 'u1', name: 'Yousef T.', username: 'yousef.t', role: 'user' }, spv: { id: 'u4', name: 'Ghada S.', username: 'ghada.s', role: 'spv', pid: 'p6' },
   agent: { id: 'a1', name: 'Lina A.', username: 'lina.a', role: 'agent', pid: 'p20' },
@@ -112,6 +113,17 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
     await shot(p, 'builder', { wait: 900 });
     await p.evaluate(() => { const M = window.__mc; M.state.wfmTab = 'data'; M.setWs('wfm'); M.renderWs(); scrollTo(0, 0); });
     await shot(p, 'data', { wait: 700 });
+    await ctx.close();
+  }
+  // ---- the admin: the Showcase presenting its opening, and View as a supervisor (IDs hidden)
+  {
+    const { ctx, p } = await open('admin');
+    await p.evaluate(() => { window.__mc.setWs('show'); }); await p.waitForTimeout(700);
+    await p.click('.shtop [data-showpresent]'); await p.waitForTimeout(900); await shot(p, 'showcase', { wait: 300 });
+    await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+    await p.evaluate(() => { const c = document.querySelector('#showBody [data-vago="spv"]').closest('.shrole'), s = c.querySelector('[data-vapick]'); s.selectedIndex = 1; s.dispatchEvent(new Event('change', { bubbles: true })); c.querySelector('[data-vago]').click(); });
+    await p.waitForTimeout(1200); await p.evaluate(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; scrollTo(0, 0); });
+    await shot(p, 'viewas', { wait: 300 });
     await ctx.close();
   }
   // ---- phones: a supervisor's team, the dashboard, the agent's page in English and Arabic

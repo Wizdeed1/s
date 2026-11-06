@@ -5,6 +5,9 @@ const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
 const [shots, out, formPng, xlsxPng] = process.argv.slice(2); fs.mkdirSync(out, { recursive: true });
 const body = fs.readFileSync(path.join(__dirname, '..', '..', 'js', 'ui3_body.html'), 'utf8');
+// hairline's line figures (vendor/hairline.js, an ES module), wrapped as the page builds it, for the slides' illustrations
+const HAIRLINE = "const Hairline = (() => { 'use strict';\n" + fs.readFileSync(path.join(__dirname, '..', '..', 'vendor', 'hairline.js'), 'utf8').replace(/^export \{$/m, 'return {') + '\n})();';
+const FIGS = ['exploded', 'riffle', 'sieve', 'format', 'relay', 'hub', 'vault', 'laptop', 'terminal', 'plot'];
 const sym = id => { const m = body.match(new RegExp(`<symbol id="${id}"([^>]*)>([\\s\\S]*?)</symbol>`)); return m ? { attrs: m[1], inner: m[2] } : null; };
 // icons the tool's sprite does not have, in the same line style (24 px grid, 1.8 stroke, round ends)
 const EXTRA = {
@@ -83,6 +86,15 @@ const laptopHtml = (src, dark) => `<div class="laptop"><div class="lid"><div cla
   await render('phones-fan', `<div class="fan">${phoneHtml(shot('phone-team'), 'transform: rotate(-7deg) translateY(30px)')}${phoneHtml(shot('phone-agent-en'), 'z-index:2; transform: translateY(-10px)')}${phoneHtml(shot('phone-agent-ar'), 'transform: rotate(7deg) translateY(30px)')}</div>`, { pad: 120 });
   if (formPng && fs.existsSync(formPng)) await render('paper-form', `<div class="paper"><img src="${img(formPng)}"></div>`, { style: 'transform: rotate(-3deg)', pad: 110 });
   if (xlsxPng && fs.existsSync(xlsxPng)) await render('win-xlsx', winHtml(img(xlsxPng), 'Attendance - Oct 2026 - TS.xlsx'));
+  // the line figures at rest: on white for the light slides, on the dark grey for the dark ones (their faces take the ground's colour)
+  for (const [theme, plate] of [['light', '#ffffff'], ['dark', '#323131']]) for (const f of FIGS) {
+    await p.setContent(`<!doctype html><html><head><style>body{margin:0;background:transparent}#f{width:720px;--hairline-plate:${plate}}</style></head><body><div id="f"></div><script>${HAIRLINE}<\/script></body></html>`);
+    await p.evaluate(([f, theme]) => Hairline[f](document.getElementById('f'), { play: false, theme, intensity: 0.6 }), [f, theme]);
+    await p.waitForTimeout(250);
+    await (await p.$('#f')).screenshot({ path: path.join(out, `fig-${f}-${theme}.png`), omitBackground: true });
+  }
+  console.log('✓ figures', FIGS.length * 2);
+  for (const [n, t] of [['showcase', 'Showcase'], ['viewas', 'View as · Supervisor']]) if (fs.existsSync(path.join(shots, n + '.png'))) await render('win-' + n, winHtml(shot(n), `MC Monthly Report Builder · ${t}`));
   // the dashboard large, for the slide that points at its parts (make_deck.cjs reads hero.json to place the numbers), and close-ups
   await render('hero-dash', winHtml(shot('dash-light'), 'MC Monthly Report Builder · Dashboard'));
   fs.writeFileSync(path.join(out, 'hero.json'), JSON.stringify({ pad: 90, winW: 1500, bar: 46, boxes: JSON.parse(fs.readFileSync(path.join(shots, 'dash-light.json'), 'utf8')) }));

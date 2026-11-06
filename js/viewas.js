@@ -10,7 +10,7 @@ const VIEW_ROLES = [
   ['senior', 'Senior manager', 'The month close in eight steps, the results and the final.'],
   ['spv', 'Supervisor', 'Their own team: attendance, one-to-ones, objections.', 'spv'],
   ['quality', 'Quality team', 'The Final EVAL, matched names and quality KPIs.'],
-  ['agent', 'Agent', 'One agent\'s own page, in English or Arabic, on a phone too.', 'agent'],
+  ['agent', 'Agent', 'One agent\'s own page, in English or Arabic.', 'agent'],
 ];
 Object.assign(state, { viewFrom: '', viewRefused: 0, viewPick: {} });
 /** the admin is previewing another role (hoisted, and safe before Auth exists: queueWrite asks it) */

@@ -197,16 +197,34 @@ const keptCount = (t, k) => ({ kat: t.attend, kr: t.runs, ...(t.kab !== t.absent
 /** the day rules a row was counted with, kept on the row only when they are not the defaults */
 const kdrOf = k => { const x = Kpi.dayRulesKey(countFor(k)); return x === KDR0 ? {} : { kdr: x }; };
 const DAYCH = v => (v == null ? '-' : typeof v === 'number' || v === 'Attend' ? 'A' : v === 'OFF' ? 'O' : v === 'AL' ? 'L' : v === 'SL' ? 'S' : v === 'Absent' ? 'X' : 'V');
+/** a day with a correction on it: the value set, or (an exception sent after the review, e.x) the day as it is, its lateness excused */
+const editedDay = (cur, e) => (!e ? cur : e.x ? (typeof cur === 'number' ? 'Attend' : cur) : e.v === '' ? null : e.v);
+/** a day's Actual with an exception's minutes counted as worked, as Genesys counts an exception: no more than the Sched., the whole
+    Sched. for 'day'; a day with no sign-on (Actual 0) has no deduction to excuse */
+function excAct(sv, av, exc) { return sv == null || av == null || av === 0 || exc == null || av >= sv ? av : exc === 'day' ? sv : Math.min(sv, av + Math.max(0, +exc || 0)); }
+/** the exceptions of a person's corrections: { [day index]: minutes | 'day' } and their note for the deduction's Review Notes */
+function excOfEdits(ed, m) {
+  const exc = {}, notes = [];
+  for (const [d, e] of Object.entries((ed && ed.days) || {}).sort((a, b) => +a[0] - +b[0])) if (e && e.exc != null) { exc[+d - 1] = e.exc; notes.push(`${+d} ${MON[m - 1]} ${e.why || 'exception'}${typeof e.exc === 'number' ? ` (${e.exc} min)` : ' (the day)'}`); }
+  return notes.length ? { exc, note: `Exceptions: ${notes.join('; ')}` } : null;
+}
 /** a saved row with the supervisor's corrections applied (draft months only), counted with the month's rules */
 function withEdits(r, edits, ND, k) {
   if (!edits || !edits.days || !Object.keys(edits.days).length) return r;
   const days = daysOfRow(r, ND), byDay = days.some(v => typeof v === 'number');   // a month whose late minutes were never by day (an attendance sheet's Tardy column) keeps its total
-  for (const [d, e] of Object.entries(edits.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = e.v === '' ? null : e.v; }
+  for (const [d, e] of Object.entries(edits.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = editedDay(days[i], e); }
   const t = attTotals(days, k), dx = {};
   if (!byDay) t.tardy += +r.tardy || 0;   // the sheet's total, plus any late minutes the supervisor typed on a day
   days.forEach((v, i) => { if (v != null && (typeof v === 'number' || !['Attend', 'OFF', 'AL', 'SL', 'Absent'].includes(v))) dx[i + 1] = v; });
   const { kdr, kab, ...rest } = r;
-  return { ...rest, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, ...keptCount(t, k), _edited: Object.keys(edits.days).length };
+  // the exceptions: their minutes off each day's deduction (Sched. - Actual), the Actual shown with them, the month's total again
+  const X = excOfEdits(edits, +k.slice(5)), dd = {};
+  if (X && r.ds != null && r.da != null) {
+    const L = v => String(v).split(',').map(x => (x === '' ? null : +x)), S = L(r.ds), A = L(r.da).map((av, i) => excAct(S[i], av, X.exc[i]));
+    let ded = 0, base = 0; S.forEach((sv, i) => { const av = A[i]; if (sv == null || av == null || av === 0) return; ded += Math.max(0, sv - av); base += sv; });
+    Object.assign(dd, { ded, da: A.map(v => (v == null ? '' : Math.round(v))).join(','), dxn: X.note }, base > 0 ? { conf: Math.round((1 - ded / base) * 1e4) / 1e4 } : {});
+  } else if (X) dd.dxn = X.note;
+  return { ...rest, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, ...keptCount(t, k), ...dd, _edited: Object.keys(edits.days).length };
 }
 function leaveCode(c) {
   const s = String(c || '');
@@ -247,7 +265,7 @@ function autoAttendance(ctx) {
       for (let i = 0; i < last; i++) if (auto[i] == null) auto[i] = 'OFF';
     }
     for (let i = 0; i < ND; i++) days[i] = auto[i];
-    if (ed && ed.days) for (const [d, e] of Object.entries(ed.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = e.v === '' ? null : e.v; }
+    if (ed && ed.days) for (const [d, e] of Object.entries(ed.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = editedDay(days[i], e); }
     const t = days.reduce((a, v) => a + (typeof v === 'number' ? v : 0), 0);
     byPerson.set(p._id, { days, auto, tardyFile: null, dayTardy: t, srcs: ['Genesys'], filled: days.filter(v => v != null).length, edited: ed ? Object.keys(ed.days || {}).length : 0 });
     people++;
@@ -275,7 +293,7 @@ function overlayAttEdits(byPerson) {
   for (const [pid, ed] of E) {
     if (!ed || !ed.days) continue;
     const cur = byPerson.get(pid) || { days: new Array(ND).fill(null), tardyFile: null, dayTardy: 0, srcs: [], filled: 0 };
-    const days = cur.days.slice(); for (const [d, e] of Object.entries(ed.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = e.v === '' ? null : e.v; }
+    const days = cur.days.slice(); for (const [d, e] of Object.entries(ed.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = editedDay(days[i], e); }
     byPerson.set(pid, { ...cur, days, dayTardy: days.reduce((a, v) => a + (typeof v === 'number' ? v : 0), 0), filled: days.filter(v => v != null).length, edited: Object.keys(ed.days).length, srcs: [...(cur.srcs || []), 'supervisor'] });
   }
 }

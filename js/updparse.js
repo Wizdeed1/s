@@ -3,7 +3,12 @@
      "Absent" …), or a Date (or From and To) column with a Type column; tab-separated as pasted from Outlook or Excel, one cell a
      line as an email's text has it, or the rows of a sheet;
    - lines typed in plain words: "set Nawaf as absent on 10 Oct", "Sara K. SL 27-29 Oct", "Omar late 20 min on 3 Oct",
-     "clear Nawaf 10 Oct" (the correction taken away).
+     "clear Nawaf 10 Oct" (the correction taken away);
+   - rows with no header, as the supervisors list their exceptions: a day, a name (with the reason after it) and what it was
+     ("22-Oct-2026 · Name · 4:00 PM - 4:30 PM", "Oct-22 · Name Approver-excuse · Excuse", "11-oct · Name Approver-pc loading for
+     2 min · Pc loading").
+   An exception (an excuse, PC loading, a system or network issue, a meeting, training, a permission, or a time like 4:00 PM - 4:30
+   PM) excuses the day: its lateness, and its minutes (the time, "2 min", or the whole day when none is given) off the deduction.
    parse() gives each person's days (matched to the people of the month by ID or name, or the names to choose from when it is not
    clear) and what it could not read, with why. Nothing here changes anything: the page shows it first. */
 'use strict';
@@ -27,6 +32,32 @@ const PHRASES = [
   ['unpaid', 'Unpaid'], ['exam', 'Exam'], ['marriage', 'Marriage'], ['maternity', 'ML'], ['ml', 'ML'], ['paternity', 'Paternity'],
   ['compassionate', 'Compassionate Leave'], ['bereavement', 'Compassionate Leave'],
 ];
+// an exception the supervisor approved: the words that say so, and a time window (4:00 PM - 4:30 PM)
+const EXC_RE = /\b(excuse[ds]?|exception|pc[\s-]*(?:loading|issue|problem|restart(?:ed)?|hang(?:ed|ing)?|slow)|system[\s-]*(?:issue|down|problem|error|slow)|technical[\s-]*(?:issue|problem)|network[\s-]*(?:issue|problem|down)|internet[\s-]*(?:issue|problem|down)|login[\s-]*(?:issue|problem)|power[\s-]*(?:cut|outage|issue)|meeting|training|coaching|permission|approved)\b/i;
+const WIN_RE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|–|—|to)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b|\b(\d{1,2}):(\d{2})\s*(?:-|–|—|to)\s*(\d{1,2}):(\d{2})\b/i;
+const EXC_NAME = { pc: 'PC loading', system: 'System issue', technical: 'Technical issue', network: 'Network issue', internet: 'Internet issue', login: 'Login issue', power: 'Power cut' };
+/** the minutes of a time window (4:00 PM - 4:30 PM: 30), or null */
+function winMin(t) {
+  const m = String(t || '').match(WIN_RE); if (!m) return null;
+  const hm = (h, mi, ap) => { let x = +h % 12 + (ap && /pm/i.test(ap) ? 12 : 0); if (!ap) x = +h; return x * 60 + (+mi || 0); };
+  let a, b;
+  if (m[1] != null) { b = hm(m[4], m[5], m[6]); a = hm(m[1], m[2], m[3] || m[6]); } else { a = hm(m[7], m[8]); b = hm(m[9], m[10]); }
+  let d = b - a; if (d <= 0) d += 12 * 60; if (d <= 0 || d > 12 * 60) return null;
+  return { min: d, text: m[0].replace(/\s+/g, ' ').trim() };
+}
+/** an exception in some text: { exc: minutes or 'day', why } (the time window's minutes, "for 2 min", "1 hour", else the whole day) */
+function excOf(text) {
+  const t = sp(text); if (!t) return null;
+  const w = winMin(t), e = t.match(EXC_RE); if (!w && !e) return null;
+  let why = '';
+  if (e) { const k = e[1].toLowerCase().split(/[\s-]/)[0]; why = EXC_NAME[k] || (/^excuse/i.test(e[1]) ? 'Excuse' : e[1].charAt(0).toUpperCase() + e[1].slice(1).toLowerCase()); }
+  if (w) return { exc: w.min, why: why ? `${why}, ${w.text}` : w.text };
+  const mm = t.match(/\b(\d{1,3})\s*(?:m|mins?|minutes?)\b/i), hh = t.match(/\b(\d{1,2}(?:\.\d+)?)\s*(?:h|hrs?|hours?)\b/i);
+  const n = mm ? +mm[1] : hh ? Math.round(+hh[1] * 60) : null;
+  return { exc: n != null && n > 0 && n <= 720 ? n : 'day', why };
+}
+/** what an exception does, in words */
+const excLabel = c => `Exception${c.why ? `: ${c.why}` : ''} · ${c.exc === 'day' ? 'the day excused' : `${c.exc} min excused`}`;
 // in a table cell only: a single letter, and Eid (a family name too, so a typed line says "Eid holiday")
 const CELL = { a: 'Absent', o: 'OFF', p: 'Attend', x: 'Absent', eid: 'Eid' };
 const CLEAR = /^(?:clear|reset|undo|original)$/i;
@@ -42,10 +73,11 @@ function valueOf(s, inTable) {
   }
   const p = PHRASES.find(([w]) => w === t); if (p) return { v: p[1] };
   if (inTable && /\bleaves?\b/.test(t)) return { v: sp(s).replace(/\s*\bleaves?\b\s*/i, ' ').trim().replace(/^./, c => c.toUpperCase()) || 'Other leave' };   // another leave, as written
+  const x = excOf(s); if (x) return { v: undefined, exc: x.exc, why: x.why };   // an exception: the day excused
   return null;
 }
 /** the label a value shows with (as the Attendance Report writes it) */
-const label = v => (v === undefined ? '?' : v === null ? 'empty' : typeof v === 'number' ? `Late ${v} min` : { AL: 'AL leave', SL: 'SL leave', ML: 'Maternity leave', Exam: 'Exam leave', Unpaid: 'Unpaid leave', Marriage: 'Marriage leave', Paternity: 'Paternity leave' }[v] || v);
+const label = v => (v && typeof v === 'object' && v.exc != null ? excLabel(v) : v === undefined ? '?' : v === null ? 'empty' : typeof v === 'number' ? `Late ${v} min` : { AL: 'AL leave', SL: 'SL leave', ML: 'Maternity leave', Exam: 'Exam leave', Unpaid: 'Unpaid leave', Marriage: 'Marriage leave', Paternity: 'Paternity leave' }[v] || v);
 
 // ---------------------------------------------------------------- days
 /** the year of a day given without one: the one nearest the month the corrections are for */
@@ -92,7 +124,7 @@ function daysOf(line, ctx) {
   });
   // 27 Oct, 27th of October 2026, Oct 27
   take(new RegExp(`\\b(\\d{1,2})${ORD}[\\s-]*(?:of\\s+)?([a-z]{3,9})\\.?(?:[\\s,-]+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[2]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[1]); return d && { days: [d] }; });
-  take(new RegExp(`\\b([a-z]{3,9})\\.?\\s+(\\d{1,2})${ORD}(?:,?\\s+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[1]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[2]); return d && { days: [d] }; });
+  take(new RegExp(`\\b([a-z]{3,9})\\.?[\\s-]+(\\d{1,2})${ORD}(?:[,\\s-]+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[1]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[2]); return d && { days: [d] }; });   // Oct 27, Oct-27
   // no month: "from 27 to 29", "on 27, 28 and 31", "on the 10th", "10th"
   const here = n => dayOk(ctx.y, ctx.m, +n);
   take(new RegExp(`\\bfrom\\s+(?:the\\s+)?(\\d{1,2})${ORD}\\s*(?:-|to|till|until|through)\\s*(?:the\\s+)?(\\d{1,2})${ORD}\\b`, 'g'), a => { const d1 = here(a[1]), d2 = here(a[2]); return d1 && d2 && d1 <= d2 && { days: span(d1, d2), wide: true }; });
@@ -144,14 +176,42 @@ function fromRows(rows, ctx) {
       for (const [j, date] of dateCols) {
         const cell = r[j] || ''; if (!cell) continue;
         const v = valueOf(cell, true);
-        if (v) changes.push({ date, v: v.v, clear: !!v.clear, raw: cell }); else bad.push({ text: `${name}, ${date.slice(8)} ${MON3[+date.slice(5, 7) - 1]}: "${cell}"`, why: 'not a day value the tool knows (Absent, Attend, OFF, AL, SL, a leave, or late minutes)' });
+        if (v) changes.push({ date, v: v.v, exc: v.exc, why: v.why, clear: !!v.clear, raw: cell }); else bad.push({ text: `${name}, ${date.slice(8)} ${MON3[+date.slice(5, 7) - 1]}: "${cell}"`, why: 'not a day value the tool knows (Absent, Attend, OFF, AL, SL, a leave, or late minutes)' });
       }
     } else {
       const v = valueOf(yc >= 0 ? r[yc] : '', true), d1 = oneDay(dc >= 0 ? r[dc] : fc >= 0 ? r[fc] : '', ctx), d2 = tc >= 0 ? oneDay(r[tc], ctx) : null;
       if (!d1 || !v) { bad.push({ text: r.filter(Boolean).join(' · '), why: !d1 ? 'no day the tool can read' : 'no value the tool knows' }); continue; }
-      for (const date of d2 && d2 >= d1 ? span(d1, d2) : [d1]) changes.push({ date, v: v.v, clear: !!v.clear, raw: yc >= 0 ? r[yc] : '', wide: !!(d2 && d2 > d1) });
+      const vx = v.exc != null ? { ...v, ...(excOf(r.filter(Boolean).join(' ')) || {}) } : v;   // an exception's minutes may be in another cell
+      for (const date of d2 && d2 >= d1 ? span(d1, d2) : [d1]) changes.push({ date, v: vx.v, exc: vx.exc, why: vx.why, clear: !!v.clear, raw: yc >= 0 ? r[yc] : '', wide: !!(d2 && d2 > d1) });
     }
     if (changes.length) groups.push({ who, changes, src: 'table', text: [name, who.team, who.dep].filter(Boolean).join(' · ') });
+  }
+  return { groups, bad };
+}
+
+/** the names someone may be in a cell that goes on with a reason ("Name Approver-pc loading for 2 min"): the cell, the words before
+    the first hyphenated word, the words before an exception */
+function nameAlts(cell) {
+  const out = new Set(), a = cell.split(/\s+(?=\S*[A-Za-z]-[A-Za-z])/)[0], i = cell.search(EXC_RE);
+  if (a && a !== cell) out.add(a.trim());
+  if (i > 0) out.add(cell.slice(0, i).replace(/[\s\-:,]+$/, '').trim());
+  return [...out].filter(x => x && x !== cell);
+}
+/** rows with no header row: in each, a day, a name and what the day becomes (a code, late minutes, or an exception anywhere in it) */
+function fromLooseRows(rows, ctx) {
+  const groups = [], bad = [];
+  for (const r0 of rows || []) {
+    const r = (Array.isArray(r0) ? r0 : []).map(v => (v instanceof Date ? v.toISOString().slice(0, 10) : sp(v))).filter(Boolean); if (!r.length) continue;
+    let di = r.findIndex(c => oneDay(c, ctx)), dates = di >= 0 ? [oneDay(r[di], ctx)] : null, wide = false;
+    if (!dates) { const j = r.findIndex(c => daysOf(c, ctx).days.length && !/[a-z]{3,}\s+[a-z]{3,}/i.test(daysOf(c, ctx).rest.trim())); if (j >= 0) { const D = daysOf(r[j], ctx); dates = D.days; wide = D.wide; di = j; } }
+    const rest = r.filter((_, j) => j !== di), text = r.join(' · ');
+    let vi = -1, val = null;
+    for (let j = rest.length - 1; j >= 1 && !val; j--) { const v = valueOf(rest[j], true); if (v) { val = v; vi = j; } }
+    if (val && val.exc != null) val = { ...val, ...(excOf(rest.join(' ')) || {}) };   // the minutes may be with the name ("pc loading for 2 min")
+    if (!val) { const x = excOf(rest.slice(1).join(' ')) || excOf(rest.join(' ')); if (x) val = { v: undefined, exc: x.exc, why: x.why }; }
+    const name = rest.filter((_, j) => j !== vi)[0] || '';
+    if (!dates || !val || !name) { bad.push({ text, why: !dates ? 'no day the tool can read' : !val ? 'no value the tool knows (Absent, Attend, OFF, AL, SL, a leave, late minutes, or an exception)' : 'no name' }); continue; }
+    groups.push({ who: { name, alts: nameAlts(name), team: '', dep: '', id: '' }, changes: dates.map(date => ({ date, v: val.v, exc: val.exc, why: val.why, clear: !!val.clear, raw: text, wide })), src: 'table', text });
   }
   return { groups, bad };
 }
@@ -168,8 +228,12 @@ function command(line, ctx) {
   let s = ' ' + D.rest.replace(/[.,;:!?()"']/g, ' ').replace(/\s+/g, ' ') + ' ';
   let val = null, two = false;
   const late = s.match(/\b(?:late|tardy)\s+(?:by\s+|for\s+)?(\d{1,3})\s*(?:m|mins?|minutes?)?\b/) || s.match(/\b(\d{1,3})\s*(?:m|mins?|minutes?)\s+late\b/);
-  if (late && +late[1] > 0 && +late[1] <= 720) { val = { v: +late[1] }; s = s.replace(late[0], ' '); }
-  for (const [w, v] of PHRASES) {
+  const ex = excOf(raw);
+  if (ex) {   // an exception: the day excused (its words, its time and its minutes out of the name)
+    val = { v: undefined, exc: ex.exc, why: ex.why };
+    s = s.replace(new RegExp(WIN_RE.source, 'gi'), ' ').replace(new RegExp(EXC_RE.source, 'gi'), ' ').replace(/\b(?:late|tardy|by|for|only|of)\b/g, ' ').replace(/\b\d{1,3}\s*(?:m|mins?|minutes?|h|hrs?|hours?)\b/g, ' ').replace(/(\S)-(?=\s)/g, '$1 ').replace(/\s-(\S)/g, ' $1');
+  } else if (late && +late[1] > 0 && +late[1] <= 720) { val = { v: +late[1] }; s = s.replace(late[0], ' '); }
+  for (const [w, v] of ex ? [] : PHRASES) {
     if (w === 'al' && !/(?:^|[^A-Za-z])AL(?:[^A-Za-z]|$)/.test(raw)) continue;   // "Al" in a name (Al Qahtani); annual leave typed as AL
     const re = new RegExp(`\\s${w.replace(/ /g, '\\s+')}\\s`);
     if (!re.test(s)) continue;
@@ -188,7 +252,7 @@ function command(line, ctx) {
     : !val ? 'no value: say what the day becomes (absent, attend, SL, AL, off, a leave, late minutes, or clear)'
     : !D.days.length ? 'no day: name the day, like 10 Oct, 27-29 Oct or 27, 28 and 31 Oct' : !name ? 'no name: who is it for?' : '';
   if (why) return { bad: { text: raw, why } };
-  return { group: { who: { name, team, brand, dep: team, id: '' }, changes: D.days.map(date => ({ date, v: val.v, clear: !!val.clear, raw, wide: D.wide })), src: 'typed', text: raw } };
+  return { group: { who: { name, team, brand, dep: team, id: '' }, changes: D.days.map(date => ({ date, v: val.v, exc: val.exc, why: val.why, clear: !!val.clear, raw, wide: D.wide })), src: 'typed', text: raw } };
 }
 
 // ---------------------------------------------------------------- who
@@ -214,7 +278,8 @@ const brandKey = s => String(s || '').toLowerCase().replace(/\s+/g, '');
 function match(who, people) {
   const id = cid(who.id); if (id) { const p = people.find(x => x.nid && cid(x.nid) === id); if (p) return { pid: p.pid, cands: [p.pid], score: 1 }; }
   if (!who.name) return { pid: null, cands: [], why: 'no name' };
-  let L = people.map(p => ({ p, s: Math.max(fit(who.name, p.name), p.sys ? fit(who.name, p.sys) : 0) })).filter(x => x.s >= 0.6);
+  const names = [who.name, ...(who.alts || [])];
+  let L = people.map(p => ({ p, s: Math.max(...names.map(n => Math.max(fit(n, p.name), p.sys ? fit(n, p.sys) : 0))) })).filter(x => x.s >= 0.6);
   const b = brandKey(who.team && /virgin|friendi|pay/i.test(who.team) ? who.team : who.brand), t = String(who.dep || '').toUpperCase();
   const narrow = f => { const N = L.filter(f); if (N.length) L = N; };
   if (b) narrow(x => brandKey(x.p.brand) === b);
@@ -236,7 +301,9 @@ function match(who, people) {
 function parse(input, ctx) {
   const people = ctx.people || [], out = { groups: [], bad: [], table: false };
   const rows = input.rows || rowsOfText(input.text, ctx), T = rows ? fromRows(rows, ctx) : null;
+  const LR = !T && rows ? fromLooseRows(rows, ctx) : null;
   if (T && (T.groups.length || T.bad.length)) { out.table = true; out.groups = T.groups; out.bad = T.bad; }
+  else if (LR && LR.groups.length) { out.table = true; out.groups = LR.groups; out.bad = LR.bad; }
   else if (input.text != null) {
     for (const line of String(input.text).split(/\r?\n|;/)) { const r = command(line, ctx); if (!r) continue; if (r.bad) out.bad.push(r.bad); else out.groups.push(r.group); }
   }
@@ -284,6 +351,6 @@ function emlParts(bytes) {
   walk(latin, 0);
   return out;
 }
-return { parse, valueOf, oneDay, daysOf, rowsOfText, fromRows, command, match, fit, htmlRows, emlParts, label, MON3 };
+return { parse, valueOf, oneDay, daysOf, rowsOfText, fromRows, fromLooseRows, command, match, fit, htmlRows, emlParts, label, excOf, excLabel, winMin, MON3 };
 })(typeof Core !== 'undefined' ? Core : (typeof require !== 'undefined' ? require('./core.js') : null));
 if (typeof module !== 'undefined') module.exports = UpdParse;

@@ -507,7 +507,7 @@ async function build(ctx) {
     DE.set(r, 2, p ? mark + p.exp : '', st.aName, `IF($${RRd}${r}="","",IF(INDEX(${CALC('H')},$${RRd}${r})="Inactive","⛔ ",IF(OR($${SRd}${r}="",$${ARd}${r}=""),"⚠ ",""))&INDEX(${CALC('B')},$${RRd}${r}))`);
     DE.set(r, 3, p ? C.normSpace(p.brand) : '', st.aCell, `IF($${RRd}${r}="","",INDEX(Roster!$C:$C,$${RRd}${r})&"")`);
     DE.set(r, 4, p ? C.normSpace(p.team) : '', st.aCell, `IF($${RRd}${r}="","",INDEX(Roster!$D:$D,$${RRd}${r})&"")`);
-    const diffs = []; let tot = 0;
+    const diffs = [], X = ctx.dedExc && p && p._id != null ? ctx.dedExc.get(p._id) : null; let tot = 0;   // the exceptions sent after the review
     for (let d = 1; d <= ND; d++) {
       const c = E0 + (d - 1) * 3, rc = dayCol(d);
       const sv_ = p && p.schRow ? rawSched[p.schRow - 2].days[d - 1] : null, av = p && p.actRow ? rawAct[p.actRow - 2].days[d - 1] : null;
@@ -515,11 +515,13 @@ async function build(ctx) {
       DE.set(r, c, sv_ == null ? '' : sv_, cS, `IF($${SRd}${r}="","",IF(${Is}="","",${Is}))`);
       DE.set(r, c + 1, av == null ? '' : av, st.aCell, `IF($${ARd}${r}="","",IF(${Ia}="","",${Ia}))`);
       const sR = C.ref(r, c), aR = C.ref(r, c + 1);
-      const dv = sv_ == null || av == null ? '' : av === 0 ? 0 : Math.max(0, sv_ - av); if (typeof dv === 'number') tot += dv;
-      DE.set(r, c + 2, dv, cD, `IF(OR(${sR}="",${aR}=""),"",IF(${aR}=0,0,MAX(0,${sR}-${aR})))`); diffs.push(C.ref(r, c + 2));
+      const dv = sv_ == null || av == null ? '' : av === 0 ? 0 : Math.max(0, sv_ - av), xc = X ? X.exc[d - 1] : null;
+      if (typeof dv === 'number' && dv > 0 && xc != null) { const ex = Math.max(0, sv_ - excAct(sv_, av, xc)); tot += ex; DE.set(r, c + 2, ex, cD); }   // excused: a value, so it shows as typed over
+      else { if (typeof dv === 'number') tot += dv; DE.set(r, c + 2, dv, cD, `IF(OR(${sR}="",${aR}=""),"",IF(${aR}=0,0,MAX(0,${sR}-${aR})))`); }
+      diffs.push(C.ref(r, c + 2));
     }
     DE.set(r, TOT, p ? tot : '', cT, `IF($${RRd}${r}="","",SUM(${diffs.join(',')}))`);
-    DE.set(r, NOTE, null, st.aName); DE.heights[r] = 18;
+    DE.set(r, NOTE, X ? X.note : null, st.aName); DE.heights[r] = 18;
   }
   DE.addCF(`B${D0}:B${DLr}`, `LEFT(B${D0},1)="⚠"`, dx.red); DE.addCF(`B${D0}:B${DLr}`, `LEFT(B${D0},1)="⛔"`, dx.greyTxt);
   for (let d = 1; d <= ND; d++) {
@@ -684,6 +686,8 @@ function dedCounts(a) {
  * d: { y, m, att: [{ id, name, brand, team, days: [ND] (Attend, tardy minutes, OFF, AL, SL, Absent, other codes, null), tardy, sched, actual }],
  *      ded: [{ id, name, brand, team, sched: [ND] | null, act: [ND] | null, total }] } -> xlsx bytes
  */
+/** a day's Actual with an exception's minutes counted as worked (no more than the Sched.; the whole Sched. for 'day') */
+function excAct(sv, av, exc) { return sv == null || av == null || av === 0 || exc == null || av >= sv ? av : exc === 'day' ? sv : Math.min(sv, av + Math.max(0, +exc || 0)); }
 async function dedMail(d, opts = {}) {
   const S = new Styles(), NAVY = 'FF1F3864', WHITE = 'FFFFFFFF', GRID = 'FFD9D9D9', TAB = 'FF375623';
   const Y = d.y, M = d.m, ND = C.daysIn(Y, M), L = `${C.MON[M - 1]} - ${Y}`;
@@ -742,7 +746,7 @@ async function dedMail(d, opts = {}) {
       const dv = sv == null || av == null ? '' : av === 0 ? 0 : Math.max(0, sv - av); if (typeof dv === 'number') { tot += dv; any = true; }
       DE.set(r, c, sv ?? '', cC); DE.set(r, c + 1, av ?? '', cC); DE.set(r, c + 2, dv, cDiff);
     }
-    DE.set(r, TOT, any ? tot : x.total ?? '', cTot); DE.set(r, DN, null, cName);
+    DE.set(r, TOT, any ? tot : x.total ?? '', cTot); DE.set(r, DN, x.note || null, cName);
   });
   for (let k = 0; k < ND; k++) { const c = E0 + k * 3 + 2, a = ref(Q0, c); DE.addCF(`${a}:${ref(QL, c)}`, `AND(ISNUMBER(${a}),${a}>0)`, redB); }
   DE.freeze = [Q0, E0]; DE.filter = `A5:${ref(QL, DN)}`;

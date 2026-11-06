@@ -4,6 +4,8 @@
 // (.msg, .eml) or a sheet, or types them in plain words; UpdParse reads them; the box shows each day (now → new) for the person it
 // matched, or the names to choose from. Apply makes them the month's attendance corrections (att/<k>/edits, as a supervisor's, marked
 // as an update), so the workbook, the final email (its list of what changed) and the agent's page follow. Undo takes them back.
+// An exception (PC loading, an excuse, a time like 4:00 PM - 4:30 PM) is kept on the day as { x: 1, exc, why }: the day stays as the
+// data has it, its lateness excused, and its minutes (or the whole day) come off the conformance deduction in every sheet.
 Object.assign(state, { updText: '', updRes: null, updFrom: '', updPick: {}, updOn: {}, updNote: '', updBusy: false });
 const canUpd = () => canWfmMail();
 const updShown = () => state.ws === 'wfm' && state.wfmTab === 'emails' && state.mailSub !== 'daily' && canUpd();
@@ -29,7 +31,8 @@ function updRowsOf(R) {
     const pid = state.updPick[gi] || g.pid || '';
     return { g, gi, pid, rows: g.changes.map((c, ci) => {
       const k = c.date.slice(0, 7), day = +c.date.slice(8), lock = monthLocked(k), now = pid ? updNow(pid, k, day) : undefined;
-      const same = !c.clear && now !== undefined && now === c.v, offDay = c.wide && (now === 'OFF' || now === null);
+      const E = pid ? attEditsOf(k) : null, had = E && E.get(pid) && E.get(pid).days ? E.get(pid).days[day] : null, isX = c.exc != null;
+      const same = isX ? !!(had && had.x && had.exc === c.exc) : !c.clear && now !== undefined && now === c.v, offDay = isX ? now === 'OFF' : c.wide && (now === 'OFF' || now === null);
       const key = `${gi}:${ci}`, can = !!pid && !lock, def = can && !same && !offDay;
       return { c, key, k, day, now, lock, same, offDay, can, on: can && (key in state.updOn ? state.updOn[key] : def) };
     }) };
@@ -51,13 +54,14 @@ function renderUpd() {
         : g.cands && g.cands.length ? `<label class="updpick"><span class="sr">Who is “${esc(g.who.name)}”?</span><select class="cell" data-updwho="${gi}"><option value="">Choose who “${esc(g.who.name)}” is</option>${g.cands.map(c => { const q = state.roster.find(x => x._id === c); return q ? `<option value="${esc(c)}">${esc(supName(c) || q.name)} · ${esc([q.brand, q.team].filter(Boolean).join(' '))}</option>` : ''; }).join('')}</select></label>`
         : `<b dir="auto">${esc(g.who.name || g.who.id || '?')}</b><span class="sg bad">${esc(g.why || 'not found in the roster')}</span>`;
       const tr = rows.map(r => {
-        const note = r.lock ? `${ymLabel(r.k)} is final` : !pid ? '' : r.same ? 'already so' : r.offDay ? 'OFF that day: tick it to change' : r.now === undefined ? 'no days for them that month' : '';
-        return `<tr class="${r.on ? '' : 'off'}"><td class="chk"><input type="checkbox" data-updon="${r.key}"${r.on ? ' checked' : ''}${r.can ? '' : ' disabled'} aria-label="${esc(`${r.day} ${MON[+r.k.slice(5) - 1]}`)}"></td><td>${r.day} ${MON[+r.k.slice(5) - 1]}</td><td>${esc(updLabelNow(r.now))}</td><td class="updarrow" aria-hidden="true">→</td><td><b>${esc(r.c.clear ? 'as before the corrections' : UpdParse.label(r.c.v))}</b></td><td class="subtle">${esc(note)}</td></tr>`;
+        const note = r.lock ? `${ymLabel(r.k)} is final` : !pid ? '' : r.same ? 'already so' : r.offDay ? 'OFF that day: tick it to change' : r.now === undefined ? (r.c.exc != null ? 'no attendance that day: only the deduction' : 'no days for them that month') : '';
+        const nw = r.c.clear ? 'as before the corrections' : r.c.exc != null ? `${UpdParse.excLabel(r.c)}${typeof r.now === 'number' ? ' · late excused (Attend)' : ''}` : UpdParse.label(r.c.v);
+        return `<tr class="${r.on ? '' : 'off'}"><td class="chk"><input type="checkbox" data-updon="${r.key}"${r.on ? ' checked' : ''}${r.can ? '' : ' disabled'} aria-label="${esc(`${r.day} ${MON[+r.k.slice(5) - 1]}`)}"></td><td>${r.day} ${MON[+r.k.slice(5) - 1]}</td><td>${esc(updLabelNow(r.now))}</td><td class="updarrow" aria-hidden="true">→</td><td><b>${esc(nw)}</b></td><td class="subtle">${esc(note)}</td></tr>`;
       }).join('');
       return `<div class="updgrp"><div class="updwho">${who}</div><div class="tablewrap updtab"><table><thead><tr><th class="chk"><span class="sr">Change</span></th><th>Day</th><th>Now</th><th aria-hidden="true"></th><th>New</th><th><span class="sr">Note</span></th></tr></thead><tbody>${tr}</tbody></table></div></div>`;
     }).join('');
     const bad = R.bad.length ? `<details class="updbad" open><summary>${plural(R.bad.length, 'line')} not read</summary><ul>${R.bad.slice(0, 30).map(b => `<li><span dir="auto">${esc(b.text)}</span> <span class="subtle">${esc(b.why)}</span></li>`).join('')}</ul></details>` : '';
-    const none = !R.groups.length && !R.bad.length ? '<p class="hint">Nothing to change was found. Paste the table with its header row (Name and the days, like 27-Oct), or type a line like: set Nawaf as absent on 10 Oct.</p>' : '';
+    const none = !R.groups.length && !R.bad.length ? '<p class="hint">Nothing to change was found. Paste the table (Name and the days, like 27-Oct; or a day, a name and the reason on each line), or type a line like: set Nawaf as absent on 10 Oct.</p>' : '';
     prev = `<div class="updprev" aria-live="polite"><p class="hint">Read from ${esc(state.updFrom || 'the box')}: ${plural(R.groups.length, 'person', 'people')}${R.table ? ' from a table' : ''}. Untick a day to leave it as it is.</p>${grp}${bad}${none}
       <div class="acts updgo"><button class="btn primary" data-updapply${n && !lock ? '' : ' disabled'}>${n ? `Apply ${plural(n, 'change')}${people > 1 ? ` for ${people} people` : ''}` : 'Nothing to apply'}</button><button class="btn ghost" data-updclear>Clear</button></div></div>`;
   }
@@ -66,16 +70,16 @@ function renderUpd() {
   if (E) for (const [pid, body] of E) {
     const ds = Object.entries((body && body.days) || {}).filter(([, e]) => e && e.src === 'update').map(([d, e]) => ({ d: +d, ...e })).sort((a, b) => a.d - b.d);
     if (!ds.length) continue;
-    const byV = new Map(); ds.forEach(x => { const l = UpdParse.label(x.v); byV.set(l, (byV.get(l) || []).concat(x.d)); });
+    const byV = new Map(); ds.forEach(x => { const l = x.x ? `exception${x.why ? ` (${x.why}${typeof x.exc === 'number' ? `, ${x.exc} min` : ''})` : ''}` : UpdParse.label(x.v); byV.set(l, (byV.get(l) || []).concat(x.d)); });
     const last = ds.reduce((a, x) => (x.at > a.at ? x : a), ds[0]);
     done.push(`<li><span class="nm" dir="auto">${esc(supName(pid) || body.n || pid)}</span><span class="sg">${[...byV].map(([l, D]) => `${esc(D.join(', '))} ${MON[M.m - 1]}: ${esc(l)}`).join(' · ')} · ${esc(last.by || '')}${last.at ? `, ${esc(fmtWhen(last.at))}` : ''}</span>${lock ? '' : `<button class="btn sm ghost" data-updrm="${esc(pid)}">Remove</button>`}</li>`);
   }
   const src = !mailShared() && state.wb ? `<p class="hint warnline">The email takes its numbers from ${esc(state.wb.name)}: the corrections go to the month, not into that file. Choose <b>Shared month</b> above the email to see them in it.</p>` : '';
   host.innerHTML = `<section class="card updcard" aria-labelledby="updH">
     <div class="updhd"><h2 id="updH">Corrections after the review</h2><span class="pill info">${esc(ymLabel(M.k))}</span></div>
-    <p class="cap">When corrections come back after the deduction email, put them here: paste the table from the email, drop the email (.msg or .eml) or a sheet, or type them, one a line, like <i>set Nawaf as absent on 10 Oct</i> or <i>Sara K. SL 27-29 Oct</i>. You see each day first; <b>Apply</b> makes them the month's attendance corrections, so the workbook and the final email have them.</p>
+    <p class="cap">When corrections come back after the deduction email, put them here: paste the table from the email, drop the email (.msg or .eml) or a sheet, or type them, one a line, like <i>set Nawaf as absent on 10 Oct</i> or <i>Sara K. SL 27-29 Oct</i>. Exceptions too (a day, the name and the reason, like <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i> or <i>4:00 PM - 4:30 PM</i>): the day's lateness is excused and its minutes, or the whole day, come off the deduction. You see each day first; <b>Apply</b> makes them the month's corrections, so every sheet, the workbooks and the final email have them.</p>
     ${lock ? `<p class="hint warnline">${esc(ymLabel(M.k))} is final: its attendance can no longer change.</p>` : ''}${src}
-    <div class="upddrop" data-upddrop><textarea class="cell" data-updtext rows="4" spellcheck="false" placeholder="Paste the table from the email here, or type: set Nawaf as absent on 10 Oct">${esc(state.updText)}</textarea>
+    <div class="upddrop" data-upddrop><textarea class="cell" data-updtext rows="4" spellcheck="false" placeholder="Paste the table from the email here, or type: set Nawaf as absent on 10 Oct · Nawaf PC loading 5 min on 11 Oct">${esc(state.updText)}</textarea>
       <div class="acts updacts"><button class="btn" data-updread${state.updBusy ? ' disabled' : ''}>${state.updBusy ? '<span class="spin" aria-hidden="true"></span>Reading…' : 'Read'}</button><button class="btn ghost" data-updfile>Choose a file</button><span class="hint">or drop the email or the sheet here</span>
       <input type="file" hidden multiple data-updpick accept=".msg,.eml,.xlsx,.xlsm,.xls,.csv,.txt,.png,.jpg,.jpeg"></div></div>
     ${state.updNote ? `<p class="hint warnline">${esc(state.updNote)}</p>` : ''}${prev}
@@ -120,7 +124,7 @@ async function updFiles(list) {
 /** the ticked changes, ready to write */
 function updSelected() {
   const R = state.updRes; if (!R) return [];
-  return updRowsOf(R).flatMap(({ g, pid, rows }) => rows.filter(r => r.on).map(r => ({ pid, k: r.k, day: r.day, v: r.c.v, clear: r.c.clear, note: (g.src === 'typed' ? g.text : `${g.text} · from ${state.updFrom || 'an update'}`).slice(0, 200) })));
+  return updRowsOf(R).flatMap(({ g, pid, rows }) => rows.filter(r => r.on).map(r => ({ pid, k: r.k, day: r.day, v: r.c.v, exc: r.c.exc, why: r.c.why, clear: r.c.clear, note: (g.src === 'typed' ? g.text : `${g.text} · from ${state.updFrom || 'an update'}`).slice(0, 200) })));
 }
 function updApply() {
   if (!canUpd() || !state.updRes) return;
@@ -131,7 +135,12 @@ function updApply() {
     const [pid, k] = key.split('|'); if (monthLocked(k)) continue;
     watchAttEdits(k); if (!state.attEditsBy[k]) state.attEditsBy[k] = new Map();
     const E = state.attEditsBy[k], cur = E.get(pid), prev = cur ? JSON.parse(JSON.stringify(cur)) : null, days = { ...((cur && cur.days) || {}) };
-    for (const c of L) { if (c.clear) delete days[c.day]; else days[c.day] = { v: c.v, note: c.note, by: who, at, src: 'update' }; n++; }
+    for (const c of L) {
+      if (c.clear) delete days[c.day];
+      else if (c.exc != null) days[c.day] = { x: 1, exc: c.exc, why: String(c.why || '').slice(0, 80), note: c.note, by: who, at, src: 'update' };   // the day as it is, excused
+      else days[c.day] = { v: c.v, note: c.note, by: who, at, src: 'update' };
+      n++;
+    }
     const p = state.roster.find(x => x._id === pid), body = { days, n: supName(pid) || (p && p.name) || '' };
     E.set(pid, body); undo.push({ pid, k, prev }); ks.add(k); names.add(body.n);
     if (state.db) queueWrite(`att/${k}/edits/${pid}`, () => state.db.doc(`att/${k}/edits/${pid}`).set(body)).catch(e => toast(`Not saved (${(e && e.code) || 'error'}).`));
@@ -142,7 +151,7 @@ function updApply() {
   markFresh('attendance', `${[...names].slice(0, 2).join(', ')}${names.size > 2 ? ` and ${names.size - 2} more` : ''}: ${plural(n, 'day')}`);
   state.updRes = null; state.updText = ''; state.updPick = {}; state.updOn = {}; state.updNote = '';
   updAfter(ks);
-  toast(`Applied: ${plural(n, 'day')} for ${plural(names.size, 'person', 'people')}. The workbook and the final email have them.`, { label: 'Undo', fn: () => updRestore(undo, 'Undone: the days are as they were.') });
+  toast(`Applied: ${plural(n, 'day')} for ${plural(names.size, 'person', 'people')}. Every sheet, the workbooks and the final email have them.`, { label: 'Undo', fn: () => updRestore(undo, 'Undone: the days are as they were.') });
 }
 /** the corrections as they were before (Undo), or without the ones made from here (Remove) */
 function updRestore(L, msg) {

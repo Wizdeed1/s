@@ -549,6 +549,8 @@ function refresh(o = {}) {
       state.attRes = A ? withGenesys(R, A) : R;
     } else if (A) state.attRes = A;
     if (state.attRes) state.ctx.attendance = state.attRes.byPerson;
+    const EX = attEditsOf(monthKey()); state.ctx.dedExc = new Map();   // the exceptions sent after the review, for the workbook's Deduction sheet
+    if (EX) for (const [pid, ed] of EX) { const X = excOfEdits(ed, state.m); if (X) state.ctx.dedExc.set(pid, X); }
   }
   state.perf = perfNow();
   state.model = state.ctx ? computeModel(state.ctx) : null;
@@ -611,6 +613,7 @@ function computeModel(ctx) {
   const A = first(ctx.rawAdh), H = first(ctx.rawAht), S = first(ctx.rawSched), T = first(ctx.rawActual);
   const tl = new Set((state.slots.timeline ? state.slots.timeline.dets : []).flatMap(d => d.data.agents.map(normName)));
   const anyAdh = !!state.slots.adhGenesys, anyAht = !!state.slots.aht, anySch = !!state.slots.schedule, anyTl = !!state.slots.timeline, PF = state.perf;
+  const EX = attEditsOf(ymKey(ctx.year, ctx.month));   // the exceptions sent after the review: their minutes come off the deduction
   return ctx.roster.map(p => {
     const exp = normSpace(normSpace(p.sys) ? p.sys : p.name), ek = normName(exp);
     const a = A.get(ek), h = H.get(ek), s = S.get(ek), t = T.get(ek);
@@ -624,12 +627,13 @@ function computeModel(ctx) {
     const noSched = anySch && !(set.incFullAdhTeams || []).includes(normSpace(p.team)) && (!s || s.days.every(v => v == null)) && !(at && at.days && at.days.some(v => v != null && v !== ''));   // a team with no Genesys data (Settings) never
     const shown = (status !== 'Inactive' || attended >= set.inactiveMin) && !(noSched && set.hideNoSched !== false);
     const inDed = shown && set.dedBrands.includes(normSpace(p.brand)) && set.dedTeams.includes(normSpace(p.team));
-    const sch = s ? s.days : null, act = t ? t.days : null;
-    const diff = Array.from({ length: ND }, (_, i) => { const sv = sch ? sch[i] : null, av = act ? act[i] : null; return sv == null || av == null ? null : av === 0 ? 0 : Math.max(0, sv - av); });
+    const sch = s ? s.days : null, act = t ? t.days : null, X = EX ? excOfEdits(EX.get(p._id), ctx.month) : null;
+    const actX = act && X ? act.map((av, i) => excAct(sch ? sch[i] : null, av, X.exc[i])) : act;   // the Actual with the exceptions counted as worked (act stays as Genesys has it)
+    const diff = Array.from({ length: ND }, (_, i) => { const sv = sch ? sch[i] : null, av = actX ? actX[i] : null; return sv == null || av == null ? null : av === 0 ? 0 : Math.max(0, sv - av); });
     const ded = inDed ? diff.reduce((x, y) => x + (y || 0), 0) : null;
     const found = { adh: !!a, aht: !!h, sch: !!s, tl: tl.has(ek) };
     const pid = Core.cleanId(p.nid), pf = PF ? PF.byName.get(ek) || (pid && PF.byId.get(pid)) || PF.byName.get(normName(p.name)) || null : null;
-    return { p, exp, ek, adh, avg, days: valid.length, status, attended, shown, noSched, inDed, sch, act, diff, ded, aht: h ? h.sec : null, found, pf,
+    return { p, exp, ek, adh, avg, days: valid.length, status, attended, shown, noSched, inDed, sch, act, actX, exc: X, diff, ded, aht: h ? h.sec : null, found, pf,
       any: found.adh || found.aht || found.sch || found.tl, files: { adh: anyAdh, aht: anyAht, sch: anySch, tl: anyTl } };
   });
 }
@@ -966,7 +970,7 @@ function renderPerson() {
     : !m.found.sch ? `Not found in the Schedule export. ${schedCover()} ${GX.schedule}` : '';
   h += `<section class="sec"><h3>Sched. / Actual / Diff (min)</h3>${!m.inDed ? `<p class="subtle" style="margin:0 0 8px">${m.shown ? `Not in the deduction scope (${esc(set.dedBrands.join(', ') || 'no brand')} · ${esc(set.dedTeams.join(', ') || 'no team')}), so not in the Deduction sheet.` : 'Hidden, so not in the Deduction sheet.'}</p>` : ''}${dedNote ? `<p class="subtle">${esc(dedNote)}</p>` : `<div class="dedtab"><table><thead><tr><th></th>${Array.from({ length: ND }, (_, i) => `<th title="${wd(i + 1)}">${i + 1}<br><span class="subtle" style="font-weight:400">${wd(i + 1).slice(0, 2)}</span></th>`).join('')}<th>Total</th></tr></thead><tbody>
       <tr><td>Sched.</td>${Array.from({ length: ND }, (_, i) => `<td class="num">${m.sch && m.sch[i] != null ? m.sch[i] : ''}</td>`).join('')}<td></td></tr>
-      <tr><td>Actual</td>${Array.from({ length: ND }, (_, i) => `<td class="num">${m.act && m.act[i] != null ? m.act[i] : ''}</td>`).join('')}<td></td></tr>
+      <tr><td>Actual</td>${Array.from({ length: ND }, (_, i) => { const A = m.actX || m.act, x = m.exc && m.exc.exc[i] != null; return `<td class="num${x ? ' exc' : ''}"${x ? ` title="${esc(`Exception: ${m.exc.exc[i] === 'day' ? 'the day' : m.exc.exc[i] + ' min'} counted as worked`)}"` : ''}>${A && A[i] != null ? A[i] : ''}</td>`; }).join('')}<td></td></tr>
       <tr><td><b>Diff</b></td>${m.diff.map(v => `<td class="num ${v > 0 ? 'hot' : ''}">${v == null ? '' : v}</td>`).join('')}<td class="num"><b>${m.diff.reduce((x, y) => x + (y || 0), 0)}</b></td></tr></tbody></table></div>`}</section>`;
   h += attStripHtml(p._id);
   put(h);
@@ -2953,7 +2957,7 @@ function dedMailData() {
     for (const x of liveRows(k)) {
       const days = daysOfRow(x, ND), who = { id: idText(x.id), name: x.n, brand: normSpace(x.brand), team: normSpace(x.team) };
       if (days.some(v => v != null)) att.push({ ...who, days, tardy: x.tardy });   // the month's late minutes, also when they came as one total
-      if (inDed(x) && x.ded != null) ded.push({ ...who, sched: minutes(x.ds), act: minutes(x.da), total: Math.round(x.ded || 0) });
+      if (inDed(x) && x.ded != null) ded.push({ ...who, sched: minutes(x.ds), act: minutes(x.da), total: Math.round(x.ded || 0), note: x.dxn || '' });
     }
   } else if (r) {
     att = r.att.filter(a => a.shown && a.vals && a.vals.some(v => v != null)).map(a => ({ id: a.id, name: a.name, brand: a.brand, team: a.team, days: a.vals }));
@@ -2964,7 +2968,7 @@ function dedMailData() {
       if (!x.shown) continue;
       const who = { id: idText(x.p.nid), name: x.exp, brand: normSpace(x.p.brand), team: normSpace(x.p.team) }, a = A ? A.get(x.p._id) : null;
       if (a && a.days.some(v => v != null)) att.push({ ...who, days: a.days, tardyFile: a.tardyFile });
-      if (x.inDed) ded.push({ ...who, sched: x.sch, act: x.act, total: x.ded || 0 });
+      if (x.inDed) ded.push({ ...who, sched: x.sch, act: x.actX || x.act, total: x.ded || 0, note: x.exc ? x.exc.note : '' });
     }
   } else return null;
   const order = x => (DEP_ORDER.indexOf(x.team) + 1 || 99), byDep = (a, b) => order(a) - order(b) || a.name.localeCompare(b.name);
@@ -3543,13 +3547,13 @@ async function exportDailyAdh(pid) {
     if (cv != null) W.set(r, 3, cv, cv < set.target ? pcBad : pc); else W.set(r, 3, 'NA', na);
     W.set(r, 4, cv != null ? (cv < set.target ? 'Under target' : 'On target') : rv != null ? `NA: under ${pct(set.floor, 0)}` : m.adh ? 'NA: blank' : '', tx);
     W.set(r, 5, a == null ? '' : typeof a === 'number' ? `${a} min late` : a, isOff ? off : tx);
-    const sv = m.sch ? m.sch[i] : null, av = m.act ? m.act[i] : null, df = m.diff ? m.diff[i] : null;
+    const AX = m.actX || m.act, sv = m.sch ? m.sch[i] : null, av = AX ? AX[i] : null, df = m.diff ? m.diff[i] : null, xc = m.exc ? m.exc.exc[i] : null;   // the Actual with an exception's minutes
     W.set(r, 6, sv, num); W.set(r, 7, av, num); W.set(r, 8, df, num);
     if (w && !w.leave && !w.none) {
       W.set(r, 9, w.start != null ? clock(w.start) : '', num); W.set(r, 10, w.firstOn != null ? clock(w.firstOn) : '', num); W.set(r, 11, Math.round(w.logged || 0), num);
       W.set(r, 12, w.late ?? null, num); W.set(r, 13, w.short ?? null, num); W.set(r, 14, w.brk || null, num);
     }
-    const notes = !w ? '' : w.leave ? `Leave: ${w.leave}` : w.absent ? 'No sign-on' : [w.excused && `${w.excused} min late, excused (${w.code})`, w.off && 'worked outside the schedule'].filter(Boolean).join(' · ');
+    const notes = [!w ? '' : w.leave ? `Leave: ${w.leave}` : w.absent ? 'No sign-on' : [w.excused && `${w.excused} min late, excused (${w.code})`, w.off && 'worked outside the schedule'].filter(Boolean).join(' · '), xc != null ? `Exception after the review: ${xc === 'day' ? 'the day' : xc + ' min'} counted as worked` : ''].filter(Boolean).join(' · ');
     W.set(r, 15, notes, tx);
   }
   const a1 = r0 + 1, b1 = r0 + ND, rt = b1 + 1, col = c => `${Core.colName(c)}${a1}:${Core.colName(c)}${b1}`;
@@ -4313,7 +4317,7 @@ renderBrand();
 render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
-window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }), upd: () => ({ ctx: updCtx, read: updRead, files: updFiles, apply: updApply, now: updNow }), pr: () => ({ PR, read: prRead, files: prFiles }) };   // for testing
+window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }), upd: () => ({ ctx: updCtx, read: updRead, files: updFiles, apply: updApply, now: updNow }), pr: () => ({ PR, read: prRead, files: prFiles }), dedData: () => dedMailData() };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
 Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing

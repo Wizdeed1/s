@@ -8,6 +8,10 @@
 //    with no day, no value or two values is not read, with why; a greeting is left out.
 // 5. Who: by ID, the full name against a shorter one, a first name alone when only one person has it, the names to choose from
 //    when several do, brand and team narrowing; the same person twice is one list of days.
+// 6. Exceptions: rows with no header (a day, the name with the reason after it, what it was: "Pc loading", "Excuse", a time like
+//    4:00 PM - 4:30 PM), days written Oct-22, 11-oct or 22-Oct-2026, the minutes from the time or the text ("for 2 min", "1min only",
+//    "1 hour"), the whole day when none is given; typed lines; a header table's Type column; and the monthly workbook's Deduction
+//    sheet with them (each excused day's Diff, the total, the Review Notes).
 // Usage: node test/updparse.test.cjs
 const path = require('node:path');
 const U = require(path.join(__dirname, '../js/updparse.js'));
@@ -79,4 +83,28 @@ const P = U.emlParts(new TextEncoder().encode(eml));
 ok(/Rayan Alexample\tVirgin\tSL leaves/.test(P.text) && /<td>Absent<\/td>/.test(P.html), 'a saved email (.eml): its text (quoted-printable) and its HTML (base64)');
 ok(one(U.parse({ text: P.text }, ctx)) === 'p1: 10-27=SL', 'the table in its text read');
 ok(U.label('SL') === 'SL leave' && U.label(20) === 'Late 20 min' && U.label(null) === 'empty' && U.label('Absent') === 'Absent', 'labels as the Attendance Report writes them');
-console.log(bad ? `${bad} failed` : 'all passed'); process.exit(bad ? 1 : 0);
+// ---- 6. exceptions (made-up names; the approver a made-up word)
+const xs = c => `${c.date.slice(5)}=${c.exc != null ? 'x' + c.exc : c.v}`, xo = r => r.groups.map(g => `${g.pid}: ${g.changes.map(xs).join(' ')}`).join(' | ');
+const loose = ['22-Oct-2026\tOmar Al Demo\t4:00 PM - 4:30 PM Supervisorx', '11-oct\tNawal Sampleson Supervisorx-pc loading for 2 min\tPc loading', 'Oct-22\tNawal Sampleson Supervisorx-excuse\tExcuse', 'Oct-19\tNawal Sampleson Supervisorx-pc loading 1min only\tPc loading', 'Oct-29\tNawal Sampleson Supervisorx-excuse\tExcuse'].join('\n');
+const LX = U.parse({ text: loose }, ctx);
+ok(LX.table && !LX.bad.length && xo(LX) === 'p4: 10-22=x30 | p3: 10-11=x2 10-19=x1 10-22=xday 10-29=xday', `rows with no header, as the supervisors list exceptions: ${xo(LX)}`);
+ok(LX.groups[1].changes[0].why === 'PC loading' && LX.groups[1].changes[2].why === 'Excuse' && /^4:00 PM - 4:30 PM$/.test(LX.groups[0].changes[0].why) && LX.groups[1].who.alts.includes('Nawal Sampleson'), 'their reasons (PC loading, Excuse, the time), the name found before the approver and the reason');
+const TX = U.parse({ text: 'Omar al demo pc loading 5 min on 11 Oct\nexcuse Rayan Oct-22\nLina system down 1 hour 12 Oct\nRayan late 15 min on 3 Oct' }, ctx);
+ok(xo(TX) === 'p4: 10-11=x5 | p1: 10-03=15 10-22=xday | p5: 10-12=x60', `typed lines: an exception with its minutes or the whole day, an hour as 60 min, late minutes still late (${xo(TX)})`);
+const HX = U.parse({ text: 'Name\tDate\tType\tNotes\nRayan Alexample\t20-Oct\tExcuse\tlate 12 min, approved\nOmar Al Demo\t21-Oct\tSL\t' }, ctx);
+ok(xo(HX) === 'p1: 10-20=x12 | p4: 10-21=SL', `a table with a Type column: an exception (its minutes in the Notes) and a leave (${xo(HX)})`);
+ok(U.winMin('4:00 PM - 4:30 PM').min === 30 && U.winMin('11:45 am - 12:15 pm').min === 30 && U.winMin('13:00-13:20').min === 20 && U.excOf('Excuse').exc === 'day' && !U.excOf('Rayan Alexample'), 'a time window\'s minutes (across noon, 24-hour); an excuse with no time is the day; a name is not an exception');
+ok(U.label({ exc: 2, why: 'PC loading' }) === 'Exception: PC loading · 2 min excused' && U.label({ exc: 'day', why: 'Excuse' }) === 'Exception: Excuse · the day excused', 'an exception in words');
+// the monthly workbook's Deduction sheet: each excused day's Diff, the total and the Review Notes
+(async () => {
+  const W2 = require(path.join(__dirname, '../js/writer2.js')), Core = require(path.join(__dirname, '../js/core.js'));
+  const sched = Array.from({ length: 31 }, (_, i) => ([1, 8, 15, 22, 29].includes(i + 1) ? null : 480)), act = sched.map((v, i) => (v == null ? null : i === 10 ? 470 : i === 20 ? 420 : i === 27 ? 450 : 480));
+  const roster = [{ _id: 'p1', name: 'Huda S.', nid: '1000000001', brand: 'Virgin', team: 'CC', status: 'Active' }, { _id: 'p2', name: 'Sami K.', nid: '1000000002', brand: 'Virgin', team: 'CC', status: 'Active' }];
+  const note = 'Exceptions: 11 Oct PC loading (2 min); 21 Oct 4:00 PM - 4:30 PM (30 min); 28 Oct Excuse (the day)';
+  const wctx = { year: 2026, month: 10, settings: { target: 0.9, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'] }, roster, attendance: new Map(), rawAdh: [], rawAht: [], rawSched: roster.map(x => ({ name: x.name, days: sched })), rawActual: roster.map(x => ({ name: x.name, days: act })), logo: null, dedExc: new Map([['p1', { exc: { 10: 2, 20: 30, 27: 'day' }, note }]]) };
+  const de = (await Core.readXlsx(await W2.build(wctx))).find(x => x.name === 'Deduction'), rows = de.rows.filter(r => r && /Huda|Sami/.test(String(r[1] || '')));
+  const at = (r, d) => r[4 + (d - 1) * 3 + 2], tot = r => r[4 + 31 * 3], nt = r => r[4 + 31 * 3 + 1];
+  ok(rows.length === 2 && at(rows[0], 11) === 8 && at(rows[0], 21) === 30 && at(rows[0], 28) === 0 && tot(rows[0]) === 38 && nt(rows[0]) === note, `the monthly workbook: the excused days' Diff (8, 30, 0), the total ${tot(rows[0])} and the Review Notes`);
+  ok(at(rows[1], 11) === 10 && at(rows[1], 21) === 60 && tot(rows[1]) === 100 && !nt(rows[1]), 'someone with no exception: as Genesys has it (100)');
+  console.log(bad ? `${bad} failed` : 'all passed'); process.exit(bad ? 1 : 0);
+})().catch(e => { console.log('✗ ' + (e && e.stack || e)); process.exit(1); });

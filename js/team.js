@@ -462,7 +462,7 @@ function attGridHtml(items, k, canEdit) {
   const rows = L.sort(byExp).map(x => {
     const days = daysOfRow(x.r, ND), ed = edits.get(x.p._id), t = attTotals(days, k);   // as the incentive counts them (the month's rules)
     const cells = days.map((v, i) => {
-      const e = ed && ed.days && ed.days[i + 1], tip = `${i + 1} ${MON[m - 1]}: ${v == null ? 'nothing yet' : typeof v === 'number' ? `late ${v} min` : v}${e ? ` · changed by ${e.by || 'the supervisor'}${e.note ? ': ' + e.note : ''}` : ''}`;
+      const e = ed && ed.days && ed.days[i + 1], tip = `${i + 1} ${MON[m - 1]}: ${v == null ? 'nothing yet' : typeof v === 'number' ? `late ${v} min` : v}${e && e.x ? ` · exception${e.why ? ': ' + e.why : ''} (${typeof e.exc === 'number' ? `${e.exc} min` : 'the day'} off the deduction)` : ''}${e ? ` · changed by ${e.by || 'the supervisor'}${e.note ? ': ' + e.note : ''}` : ''}`;
       return `<td>${canEdit ? `<button class="ad ${ATT_CLS(v)}${e ? ' ed' : ''}" data-ad="${esc(x.p._id)}|${i + 1}" title="${esc(tip)}" aria-label="${esc(x.exp)}, ${esc(tip)}">${esc(ATT_SHORT(v))}</button>` : `<span class="ad ${ATT_CLS(v)}${e ? ' ed' : ''}" title="${esc(tip)}">${esc(ATT_SHORT(v))}</span>`}</td>`;
     }).join('');
     return `<tr><th class="an"><button class="linkbtn nm" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" dir="auto">${esc(x.exp)}</button></th>${cells}<td class="r num">${t.absent}</td><td class="r num">${t.tardy ? Math.round(t.tardy) : 0}</td><td class="r num">${t.al + t.sl + t.leave}</td><td class="r num">${t.sched ? `${t.attend}/${t.sched}` : '–'}</td></tr>`;

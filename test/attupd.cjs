@@ -7,6 +7,9 @@
 // 3. Typed lines: two people with the same first name (choose one), late minutes for a name with "Al", a range with a day not
 //    ticked, clear, a name nobody has, a line with no day; untick a day; Apply; Remove from the list, and Undo.
 // 4. Files: a saved email (.eml) chosen and one dropped on the box (read once), a picture refused with what to do instead.
+//    Exceptions, as the supervisors list them (a day, the name with the approver and the reason, what it was): each day shows the
+//    exception and its minutes; Apply keeps them on the days (a late day excused); the month's deduction comes down by their minutes,
+//    the email's total and its workbook's Monthly Deduction (Actual, Diff, total, Review Notes) follow; Undo takes them back.
 // 5. A final month cannot change; text from the email is shown as text; the senior manager has no box; no errors.
 // Usage: node test/attupd.cjs page.html outDir
 const { chromium } = require('playwright');
@@ -109,6 +112,33 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   ok(await p.evaluate(() => /^Read from Leave update 2\.eml/.test(document.querySelector('#wfmUpd .updprev .hint').textContent) && !document.querySelector('#recogPanel:not([hidden])')), 'a saved email dropped on the box: read once');
   await p.setInputFiles('#wfmUpd [data-updpick]', [pic]); await p.waitForTimeout(400);
   ok(await p.evaluate(() => /update\.png is a picture.*copy it \(Ctrl\+C\) and paste it/.test(document.querySelector('#wfmUpd .warnline').textContent)), 'a picture: what to do instead (copy the table and paste it, or drop the email)');
+  // exceptions: Omar's deduction by day (Sched. 480; Actual 470 on the 11th, 479 on the 19th, 420 on the 22nd, 450 on the 29th, 300 on the 24th)
+  await p.click('#wfmUpd [data-updclear]');
+  await p.evaluate(() => {
+    const S = window.__mc.state, r = S.history['2026-10'].rows[1], A = { 11: 470, 19: 479, 22: 420, 29: 450, 24: 300 };
+    const sch = Array.from({ length: 31 }, (_, i) => ([2, 9, 16, 23, 30].includes(i + 1) ? null : 480)), act = sch.map((v, i) => (v == null ? null : A[i + 1] || 480));
+    Object.assign(r, { ds: sch.map(v => (v == null ? '' : v)).join(','), da: act.map(v => (v == null ? '' : v)).join(','), ded: 10 + 1 + 60 + 30 + 180 }); S.histVer++; window.__mc.renderWs();
+  });
+  const xin = ['Oct-5\tOmar Al Demo Supervisorx-excuse\tExcuse', '11-oct\tOmar Al Demo Supervisorx-pc loading for 2 min\tPc loading', 'Oct-19\tOmar Al Demo Supervisorx-pc loading 1min only\tPc loading', '22-Oct-2026\tOmar Al Demo\t4:00 PM - 4:30 PM Supervisorx', 'Oct-29\tOmar Al Demo Supervisorx-excuse\tExcuse'].join('\n');
+  await p.fill('#wfmUpd [data-updtext]', xin); await p.click('#wfmUpd [data-updread]'); await p.waitForTimeout(250);
+  V = await pv();
+  ok(V.who.length === 1 && /^Omar Al Demo/.test(V.who[0]) && V.rows.join(' | ') === '5 Oct Late 20 min → Exception: Excuse · the day excused · late excused (Attend) ✓ | 11 Oct Attend → Exception: PC loading · 2 min excused ✓ | 19 Oct Attend → Exception: PC loading · 1 min excused ✓ | 22 Oct Attend → Exception: 4:00 PM - 4:30 PM · 30 min excused ✓ | 29 Oct Attend → Exception: Excuse · the day excused ✓', `the exceptions read, each day with its minutes: ${V.rows.join(' | ')}`);
+  const dedBefore = await p.evaluate(() => { const r = window.__mc.rowsByPid('2026-10').get(window.__T.pids[1]); return r.ded; });
+  await p.click('#wfmUpd [data-updapply]'); await p.waitForTimeout(300);
+  const xe = await edits(T[1]), xr = await p.evaluate(pid => { const r = window.__mc.rowsByPid('2026-10').get(pid); return { ded: r.ded, da: r.da.split(','), d: r.d, dxn: r.dxn }; }, T[1]);
+  ok(xe[5].x === 1 && xe[5].exc === 'day' && xe[5].v === undefined && xe[11].exc === 2 && xe[11].why === 'PC loading' && xe[22].exc === 30 && xe[29].exc === 'day' && xe[11].src === 'update', 'Apply: the exceptions kept on the days (the 5th\'s late 20 min replaced by its excuse)');
+  ok(dedBefore === 281 && xr.ded === 218 && xr.da[10] === '472' && xr.da[18] === '480' && xr.da[21] === '450' && xr.da[28] === '480' && xr.da[23] === '300' && xr.d[4] === 'A', `the month's deduction ${dedBefore} → ${xr.ded} min (11th 8, 19th 0, 22nd 30, 29th 0, the 24th's 180 as it was); the 5th attended`);
+  ok(/^Exceptions: 5 Oct Excuse \(the day\); 11 Oct PC loading \(2 min\); 19 Oct PC loading \(1 min\); 22 Oct 4:00 PM - 4:30 PM \(30 min\); 29 Oct Excuse \(the day\)$/.test(xr.dxn), `their note: ${xr.dxn}`);
+  const mt = await p.evaluate(() => (window.__mc.curMail().md.dedFull.find(x => /Omar/.test(x.name)) || {}).total);
+  ok(mt === 218, `the deduction email's total for Omar: ${mt}`);
+  const wb = await p.evaluate(async () => { const b = await Writer2.dedMail(window.__mc.dedData()); let s = ''; const u = new Uint8Array(b); for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); });
+  const Core = require('../js/core.js'), md = (await Core.readXlsx(Buffer.from(wb, 'base64'))).find(x => x.name === 'Monthly Deduction'), om = md.rows.find(r => r && r[0] === 'Omar Al Demo');
+  const cell = (d, k) => om[3 + (d - 1) * 3 + k];
+  ok(om && cell(11, 1) === 472 && cell(11, 2) === 8 && cell(22, 2) === 30 && cell(29, 2) === 0 && cell(24, 2) === 180 && om[3 + 31 * 3] === 218 && /^Exceptions: 5 Oct Excuse/.test(om[3 + 31 * 3 + 1]), `the email's workbook: Monthly Deduction with the Actual and Diff excused, total ${om && om[3 + 31 * 3]}, the Review Notes`);
+  const xd = await p.evaluate(() => [...document.querySelectorAll('#wfmUpd .upddone li')].map(li => li.textContent.replace(/\s+/g, ' ')).find(t => /Omar/.test(t)) || '');
+  ok(/5, 29 Oct: exception \(Excuse\)/.test(xd) && /11, 19 Oct: exception \(PC loading, 2 min\)|11 Oct: exception \(PC loading, 2 min\)/.test(xd), `the list of corrections made from here names them: ${xd.slice(0, 160)}`);
+  await p.click('#toastAct'); await p.waitForTimeout(300);
+  ok((await p.evaluate(pid => window.__mc.rowsByPid('2026-10').get(pid).ded, T[1])) === 281 && (await edits(T[1]))[5].v === 20, 'Undo: the deduction as it was (281), the 5th late 20 min again');
   // ---- 5. a final month; text shown as text; another role
   await p.fill('#wfmUpd [data-updtext]', 'Name\t27-Oct\n<img src=x onerror="window.__x=1">Rayan Alexample\tAbsent'); await p.click('#wfmUpd [data-updread]'); await p.waitForTimeout(150);
   ok(await p.evaluate(() => !document.querySelector('#wfmUpd img') && !window.__x && /img src=x/.test(document.querySelector('#wfmUpd .updwho').textContent)), 'text from the email is shown as text');

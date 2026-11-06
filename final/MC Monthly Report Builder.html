@@ -11247,7 +11247,7 @@ async function build(ctx) {
     DE.set(r, 2, p ? mark + p.exp : '', st.aName, `IF($${RRd}${r}="","",IF(INDEX(${CALC('H')},$${RRd}${r})="Inactive","⛔ ",IF(OR($${SRd}${r}="",$${ARd}${r}=""),"⚠ ",""))&INDEX(${CALC('B')},$${RRd}${r}))`);
     DE.set(r, 3, p ? C.normSpace(p.brand) : '', st.aCell, `IF($${RRd}${r}="","",INDEX(Roster!$C:$C,$${RRd}${r})&"")`);
     DE.set(r, 4, p ? C.normSpace(p.team) : '', st.aCell, `IF($${RRd}${r}="","",INDEX(Roster!$D:$D,$${RRd}${r})&"")`);
-    const diffs = []; let tot = 0;
+    const diffs = [], X = ctx.dedExc && p && p._id != null ? ctx.dedExc.get(p._id) : null; let tot = 0;   // the exceptions sent after the review
     for (let d = 1; d <= ND; d++) {
       const c = E0 + (d - 1) * 3, rc = dayCol(d);
       const sv_ = p && p.schRow ? rawSched[p.schRow - 2].days[d - 1] : null, av = p && p.actRow ? rawAct[p.actRow - 2].days[d - 1] : null;
@@ -11255,11 +11255,13 @@ async function build(ctx) {
       DE.set(r, c, sv_ == null ? '' : sv_, cS, `IF($${SRd}${r}="","",IF(${Is}="","",${Is}))`);
       DE.set(r, c + 1, av == null ? '' : av, st.aCell, `IF($${ARd}${r}="","",IF(${Ia}="","",${Ia}))`);
       const sR = C.ref(r, c), aR = C.ref(r, c + 1);
-      const dv = sv_ == null || av == null ? '' : av === 0 ? 0 : Math.max(0, sv_ - av); if (typeof dv === 'number') tot += dv;
-      DE.set(r, c + 2, dv, cD, `IF(OR(${sR}="",${aR}=""),"",IF(${aR}=0,0,MAX(0,${sR}-${aR})))`); diffs.push(C.ref(r, c + 2));
+      const dv = sv_ == null || av == null ? '' : av === 0 ? 0 : Math.max(0, sv_ - av), xc = X ? X.exc[d - 1] : null;
+      if (typeof dv === 'number' && dv > 0 && xc != null) { const ex = Math.max(0, sv_ - excAct(sv_, av, xc)); tot += ex; DE.set(r, c + 2, ex, cD); }   // excused: a value, so it shows as typed over
+      else { if (typeof dv === 'number') tot += dv; DE.set(r, c + 2, dv, cD, `IF(OR(${sR}="",${aR}=""),"",IF(${aR}=0,0,MAX(0,${sR}-${aR})))`); }
+      diffs.push(C.ref(r, c + 2));
     }
     DE.set(r, TOT, p ? tot : '', cT, `IF($${RRd}${r}="","",SUM(${diffs.join(',')}))`);
-    DE.set(r, NOTE, null, st.aName); DE.heights[r] = 18;
+    DE.set(r, NOTE, X ? X.note : null, st.aName); DE.heights[r] = 18;
   }
   DE.addCF(`B${D0}:B${DLr}`, `LEFT(B${D0},1)="⚠"`, dx.red); DE.addCF(`B${D0}:B${DLr}`, `LEFT(B${D0},1)="⛔"`, dx.greyTxt);
   for (let d = 1; d <= ND; d++) {
@@ -11424,6 +11426,8 @@ function dedCounts(a) {
  * d: { y, m, att: [{ id, name, brand, team, days: [ND] (Attend, tardy minutes, OFF, AL, SL, Absent, other codes, null), tardy, sched, actual }],
  *      ded: [{ id, name, brand, team, sched: [ND] | null, act: [ND] | null, total }] } -> xlsx bytes
  */
+/** a day's Actual with an exception's minutes counted as worked (no more than the Sched.; the whole Sched. for 'day') */
+function excAct(sv, av, exc) { return sv == null || av == null || av === 0 || exc == null || av >= sv ? av : exc === 'day' ? sv : Math.min(sv, av + Math.max(0, +exc || 0)); }
 async function dedMail(d, opts = {}) {
   const S = new Styles(), NAVY = 'FF1F3864', WHITE = 'FFFFFFFF', GRID = 'FFD9D9D9', TAB = 'FF375623';
   const Y = d.y, M = d.m, ND = C.daysIn(Y, M), L = `${C.MON[M - 1]} - ${Y}`;
@@ -11482,7 +11486,7 @@ async function dedMail(d, opts = {}) {
       const dv = sv == null || av == null ? '' : av === 0 ? 0 : Math.max(0, sv - av); if (typeof dv === 'number') { tot += dv; any = true; }
       DE.set(r, c, sv ?? '', cC); DE.set(r, c + 1, av ?? '', cC); DE.set(r, c + 2, dv, cDiff);
     }
-    DE.set(r, TOT, any ? tot : x.total ?? '', cTot); DE.set(r, DN, null, cName);
+    DE.set(r, TOT, any ? tot : x.total ?? '', cTot); DE.set(r, DN, x.note || null, cName);
   });
   for (let k = 0; k < ND; k++) { const c = E0 + k * 3 + 2, a = ref(Q0, c); DE.addCF(`${a}:${ref(QL, c)}`, `AND(ISNUMBER(${a}),${a}>0)`, redB); }
   DE.freeze = [Q0, E0]; DE.filter = `A5:${ref(QL, DN)}`;
@@ -14137,7 +14141,12 @@ if (typeof module !== 'undefined') module.exports = WcDeck;
      "Absent" …), or a Date (or From and To) column with a Type column; tab-separated as pasted from Outlook or Excel, one cell a
      line as an email's text has it, or the rows of a sheet;
    - lines typed in plain words: "set Nawaf as absent on 10 Oct", "Sara K. SL 27-29 Oct", "Omar late 20 min on 3 Oct",
-     "clear Nawaf 10 Oct" (the correction taken away).
+     "clear Nawaf 10 Oct" (the correction taken away);
+   - rows with no header, as the supervisors list their exceptions: a day, a name (with the reason after it) and what it was
+     ("22-Oct-2026 · Name · 4:00 PM - 4:30 PM", "Oct-22 · Name Approver-excuse · Excuse", "11-oct · Name Approver-pc loading for
+     2 min · Pc loading").
+   An exception (an excuse, PC loading, a system or network issue, a meeting, training, a permission, or a time like 4:00 PM - 4:30
+   PM) excuses the day: its lateness, and its minutes (the time, "2 min", or the whole day when none is given) off the deduction.
    parse() gives each person's days (matched to the people of the month by ID or name, or the names to choose from when it is not
    clear) and what it could not read, with why. Nothing here changes anything: the page shows it first. */
 'use strict';
@@ -14161,6 +14170,32 @@ const PHRASES = [
   ['unpaid', 'Unpaid'], ['exam', 'Exam'], ['marriage', 'Marriage'], ['maternity', 'ML'], ['ml', 'ML'], ['paternity', 'Paternity'],
   ['compassionate', 'Compassionate Leave'], ['bereavement', 'Compassionate Leave'],
 ];
+// an exception the supervisor approved: the words that say so, and a time window (4:00 PM - 4:30 PM)
+const EXC_RE = /\b(excuse[ds]?|exception|pc[\s-]*(?:loading|issue|problem|restart(?:ed)?|hang(?:ed|ing)?|slow)|system[\s-]*(?:issue|down|problem|error|slow)|technical[\s-]*(?:issue|problem)|network[\s-]*(?:issue|problem|down)|internet[\s-]*(?:issue|problem|down)|login[\s-]*(?:issue|problem)|power[\s-]*(?:cut|outage|issue)|meeting|training|coaching|permission|approved)\b/i;
+const WIN_RE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|–|—|to)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b|\b(\d{1,2}):(\d{2})\s*(?:-|–|—|to)\s*(\d{1,2}):(\d{2})\b/i;
+const EXC_NAME = { pc: 'PC loading', system: 'System issue', technical: 'Technical issue', network: 'Network issue', internet: 'Internet issue', login: 'Login issue', power: 'Power cut' };
+/** the minutes of a time window (4:00 PM - 4:30 PM: 30), or null */
+function winMin(t) {
+  const m = String(t || '').match(WIN_RE); if (!m) return null;
+  const hm = (h, mi, ap) => { let x = +h % 12 + (ap && /pm/i.test(ap) ? 12 : 0); if (!ap) x = +h; return x * 60 + (+mi || 0); };
+  let a, b;
+  if (m[1] != null) { b = hm(m[4], m[5], m[6]); a = hm(m[1], m[2], m[3] || m[6]); } else { a = hm(m[7], m[8]); b = hm(m[9], m[10]); }
+  let d = b - a; if (d <= 0) d += 12 * 60; if (d <= 0 || d > 12 * 60) return null;
+  return { min: d, text: m[0].replace(/\s+/g, ' ').trim() };
+}
+/** an exception in some text: { exc: minutes or 'day', why } (the time window's minutes, "for 2 min", "1 hour", else the whole day) */
+function excOf(text) {
+  const t = sp(text); if (!t) return null;
+  const w = winMin(t), e = t.match(EXC_RE); if (!w && !e) return null;
+  let why = '';
+  if (e) { const k = e[1].toLowerCase().split(/[\s-]/)[0]; why = EXC_NAME[k] || (/^excuse/i.test(e[1]) ? 'Excuse' : e[1].charAt(0).toUpperCase() + e[1].slice(1).toLowerCase()); }
+  if (w) return { exc: w.min, why: why ? `${why}, ${w.text}` : w.text };
+  const mm = t.match(/\b(\d{1,3})\s*(?:m|mins?|minutes?)\b/i), hh = t.match(/\b(\d{1,2}(?:\.\d+)?)\s*(?:h|hrs?|hours?)\b/i);
+  const n = mm ? +mm[1] : hh ? Math.round(+hh[1] * 60) : null;
+  return { exc: n != null && n > 0 && n <= 720 ? n : 'day', why };
+}
+/** what an exception does, in words */
+const excLabel = c => `Exception${c.why ? `: ${c.why}` : ''} · ${c.exc === 'day' ? 'the day excused' : `${c.exc} min excused`}`;
 // in a table cell only: a single letter, and Eid (a family name too, so a typed line says "Eid holiday")
 const CELL = { a: 'Absent', o: 'OFF', p: 'Attend', x: 'Absent', eid: 'Eid' };
 const CLEAR = /^(?:clear|reset|undo|original)$/i;
@@ -14176,10 +14211,11 @@ function valueOf(s, inTable) {
   }
   const p = PHRASES.find(([w]) => w === t); if (p) return { v: p[1] };
   if (inTable && /\bleaves?\b/.test(t)) return { v: sp(s).replace(/\s*\bleaves?\b\s*/i, ' ').trim().replace(/^./, c => c.toUpperCase()) || 'Other leave' };   // another leave, as written
+  const x = excOf(s); if (x) return { v: undefined, exc: x.exc, why: x.why };   // an exception: the day excused
   return null;
 }
 /** the label a value shows with (as the Attendance Report writes it) */
-const label = v => (v === undefined ? '?' : v === null ? 'empty' : typeof v === 'number' ? `Late ${v} min` : { AL: 'AL leave', SL: 'SL leave', ML: 'Maternity leave', Exam: 'Exam leave', Unpaid: 'Unpaid leave', Marriage: 'Marriage leave', Paternity: 'Paternity leave' }[v] || v);
+const label = v => (v && typeof v === 'object' && v.exc != null ? excLabel(v) : v === undefined ? '?' : v === null ? 'empty' : typeof v === 'number' ? `Late ${v} min` : { AL: 'AL leave', SL: 'SL leave', ML: 'Maternity leave', Exam: 'Exam leave', Unpaid: 'Unpaid leave', Marriage: 'Marriage leave', Paternity: 'Paternity leave' }[v] || v);
 
 // ---------------------------------------------------------------- days
 /** the year of a day given without one: the one nearest the month the corrections are for */
@@ -14226,7 +14262,7 @@ function daysOf(line, ctx) {
   });
   // 27 Oct, 27th of October 2026, Oct 27
   take(new RegExp(`\\b(\\d{1,2})${ORD}[\\s-]*(?:of\\s+)?([a-z]{3,9})\\.?(?:[\\s,-]+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[2]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[1]); return d && { days: [d] }; });
-  take(new RegExp(`\\b([a-z]{3,9})\\.?\\s+(\\d{1,2})${ORD}(?:,?\\s+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[1]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[2]); return d && { days: [d] }; });
+  take(new RegExp(`\\b([a-z]{3,9})\\.?[\\s-]+(\\d{1,2})${ORD}(?:[,\\s-]+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[1]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[2]); return d && { days: [d] }; });   // Oct 27, Oct-27
   // no month: "from 27 to 29", "on 27, 28 and 31", "on the 10th", "10th"
   const here = n => dayOk(ctx.y, ctx.m, +n);
   take(new RegExp(`\\bfrom\\s+(?:the\\s+)?(\\d{1,2})${ORD}\\s*(?:-|to|till|until|through)\\s*(?:the\\s+)?(\\d{1,2})${ORD}\\b`, 'g'), a => { const d1 = here(a[1]), d2 = here(a[2]); return d1 && d2 && d1 <= d2 && { days: span(d1, d2), wide: true }; });
@@ -14278,14 +14314,42 @@ function fromRows(rows, ctx) {
       for (const [j, date] of dateCols) {
         const cell = r[j] || ''; if (!cell) continue;
         const v = valueOf(cell, true);
-        if (v) changes.push({ date, v: v.v, clear: !!v.clear, raw: cell }); else bad.push({ text: `${name}, ${date.slice(8)} ${MON3[+date.slice(5, 7) - 1]}: "${cell}"`, why: 'not a day value the tool knows (Absent, Attend, OFF, AL, SL, a leave, or late minutes)' });
+        if (v) changes.push({ date, v: v.v, exc: v.exc, why: v.why, clear: !!v.clear, raw: cell }); else bad.push({ text: `${name}, ${date.slice(8)} ${MON3[+date.slice(5, 7) - 1]}: "${cell}"`, why: 'not a day value the tool knows (Absent, Attend, OFF, AL, SL, a leave, or late minutes)' });
       }
     } else {
       const v = valueOf(yc >= 0 ? r[yc] : '', true), d1 = oneDay(dc >= 0 ? r[dc] : fc >= 0 ? r[fc] : '', ctx), d2 = tc >= 0 ? oneDay(r[tc], ctx) : null;
       if (!d1 || !v) { bad.push({ text: r.filter(Boolean).join(' · '), why: !d1 ? 'no day the tool can read' : 'no value the tool knows' }); continue; }
-      for (const date of d2 && d2 >= d1 ? span(d1, d2) : [d1]) changes.push({ date, v: v.v, clear: !!v.clear, raw: yc >= 0 ? r[yc] : '', wide: !!(d2 && d2 > d1) });
+      const vx = v.exc != null ? { ...v, ...(excOf(r.filter(Boolean).join(' ')) || {}) } : v;   // an exception's minutes may be in another cell
+      for (const date of d2 && d2 >= d1 ? span(d1, d2) : [d1]) changes.push({ date, v: vx.v, exc: vx.exc, why: vx.why, clear: !!v.clear, raw: yc >= 0 ? r[yc] : '', wide: !!(d2 && d2 > d1) });
     }
     if (changes.length) groups.push({ who, changes, src: 'table', text: [name, who.team, who.dep].filter(Boolean).join(' · ') });
+  }
+  return { groups, bad };
+}
+
+/** the names someone may be in a cell that goes on with a reason ("Name Approver-pc loading for 2 min"): the cell, the words before
+    the first hyphenated word, the words before an exception */
+function nameAlts(cell) {
+  const out = new Set(), a = cell.split(/\s+(?=\S*[A-Za-z]-[A-Za-z])/)[0], i = cell.search(EXC_RE);
+  if (a && a !== cell) out.add(a.trim());
+  if (i > 0) out.add(cell.slice(0, i).replace(/[\s\-:,]+$/, '').trim());
+  return [...out].filter(x => x && x !== cell);
+}
+/** rows with no header row: in each, a day, a name and what the day becomes (a code, late minutes, or an exception anywhere in it) */
+function fromLooseRows(rows, ctx) {
+  const groups = [], bad = [];
+  for (const r0 of rows || []) {
+    const r = (Array.isArray(r0) ? r0 : []).map(v => (v instanceof Date ? v.toISOString().slice(0, 10) : sp(v))).filter(Boolean); if (!r.length) continue;
+    let di = r.findIndex(c => oneDay(c, ctx)), dates = di >= 0 ? [oneDay(r[di], ctx)] : null, wide = false;
+    if (!dates) { const j = r.findIndex(c => daysOf(c, ctx).days.length && !/[a-z]{3,}\s+[a-z]{3,}/i.test(daysOf(c, ctx).rest.trim())); if (j >= 0) { const D = daysOf(r[j], ctx); dates = D.days; wide = D.wide; di = j; } }
+    const rest = r.filter((_, j) => j !== di), text = r.join(' · ');
+    let vi = -1, val = null;
+    for (let j = rest.length - 1; j >= 1 && !val; j--) { const v = valueOf(rest[j], true); if (v) { val = v; vi = j; } }
+    if (val && val.exc != null) val = { ...val, ...(excOf(rest.join(' ')) || {}) };   // the minutes may be with the name ("pc loading for 2 min")
+    if (!val) { const x = excOf(rest.slice(1).join(' ')) || excOf(rest.join(' ')); if (x) val = { v: undefined, exc: x.exc, why: x.why }; }
+    const name = rest.filter((_, j) => j !== vi)[0] || '';
+    if (!dates || !val || !name) { bad.push({ text, why: !dates ? 'no day the tool can read' : !val ? 'no value the tool knows (Absent, Attend, OFF, AL, SL, a leave, late minutes, or an exception)' : 'no name' }); continue; }
+    groups.push({ who: { name, alts: nameAlts(name), team: '', dep: '', id: '' }, changes: dates.map(date => ({ date, v: val.v, exc: val.exc, why: val.why, clear: !!val.clear, raw: text, wide })), src: 'table', text });
   }
   return { groups, bad };
 }
@@ -14302,8 +14366,12 @@ function command(line, ctx) {
   let s = ' ' + D.rest.replace(/[.,;:!?()"']/g, ' ').replace(/\s+/g, ' ') + ' ';
   let val = null, two = false;
   const late = s.match(/\b(?:late|tardy)\s+(?:by\s+|for\s+)?(\d{1,3})\s*(?:m|mins?|minutes?)?\b/) || s.match(/\b(\d{1,3})\s*(?:m|mins?|minutes?)\s+late\b/);
-  if (late && +late[1] > 0 && +late[1] <= 720) { val = { v: +late[1] }; s = s.replace(late[0], ' '); }
-  for (const [w, v] of PHRASES) {
+  const ex = excOf(raw);
+  if (ex) {   // an exception: the day excused (its words, its time and its minutes out of the name)
+    val = { v: undefined, exc: ex.exc, why: ex.why };
+    s = s.replace(new RegExp(WIN_RE.source, 'gi'), ' ').replace(new RegExp(EXC_RE.source, 'gi'), ' ').replace(/\b(?:late|tardy|by|for|only|of)\b/g, ' ').replace(/\b\d{1,3}\s*(?:m|mins?|minutes?|h|hrs?|hours?)\b/g, ' ').replace(/(\S)-(?=\s)/g, '$1 ').replace(/\s-(\S)/g, ' $1');
+  } else if (late && +late[1] > 0 && +late[1] <= 720) { val = { v: +late[1] }; s = s.replace(late[0], ' '); }
+  for (const [w, v] of ex ? [] : PHRASES) {
     if (w === 'al' && !/(?:^|[^A-Za-z])AL(?:[^A-Za-z]|$)/.test(raw)) continue;   // "Al" in a name (Al Qahtani); annual leave typed as AL
     const re = new RegExp(`\\s${w.replace(/ /g, '\\s+')}\\s`);
     if (!re.test(s)) continue;
@@ -14322,7 +14390,7 @@ function command(line, ctx) {
     : !val ? 'no value: say what the day becomes (absent, attend, SL, AL, off, a leave, late minutes, or clear)'
     : !D.days.length ? 'no day: name the day, like 10 Oct, 27-29 Oct or 27, 28 and 31 Oct' : !name ? 'no name: who is it for?' : '';
   if (why) return { bad: { text: raw, why } };
-  return { group: { who: { name, team, brand, dep: team, id: '' }, changes: D.days.map(date => ({ date, v: val.v, clear: !!val.clear, raw, wide: D.wide })), src: 'typed', text: raw } };
+  return { group: { who: { name, team, brand, dep: team, id: '' }, changes: D.days.map(date => ({ date, v: val.v, exc: val.exc, why: val.why, clear: !!val.clear, raw, wide: D.wide })), src: 'typed', text: raw } };
 }
 
 // ---------------------------------------------------------------- who
@@ -14348,7 +14416,8 @@ const brandKey = s => String(s || '').toLowerCase().replace(/\s+/g, '');
 function match(who, people) {
   const id = cid(who.id); if (id) { const p = people.find(x => x.nid && cid(x.nid) === id); if (p) return { pid: p.pid, cands: [p.pid], score: 1 }; }
   if (!who.name) return { pid: null, cands: [], why: 'no name' };
-  let L = people.map(p => ({ p, s: Math.max(fit(who.name, p.name), p.sys ? fit(who.name, p.sys) : 0) })).filter(x => x.s >= 0.6);
+  const names = [who.name, ...(who.alts || [])];
+  let L = people.map(p => ({ p, s: Math.max(...names.map(n => Math.max(fit(n, p.name), p.sys ? fit(n, p.sys) : 0))) })).filter(x => x.s >= 0.6);
   const b = brandKey(who.team && /virgin|friendi|pay/i.test(who.team) ? who.team : who.brand), t = String(who.dep || '').toUpperCase();
   const narrow = f => { const N = L.filter(f); if (N.length) L = N; };
   if (b) narrow(x => brandKey(x.p.brand) === b);
@@ -14370,7 +14439,9 @@ function match(who, people) {
 function parse(input, ctx) {
   const people = ctx.people || [], out = { groups: [], bad: [], table: false };
   const rows = input.rows || rowsOfText(input.text, ctx), T = rows ? fromRows(rows, ctx) : null;
+  const LR = !T && rows ? fromLooseRows(rows, ctx) : null;
   if (T && (T.groups.length || T.bad.length)) { out.table = true; out.groups = T.groups; out.bad = T.bad; }
+  else if (LR && LR.groups.length) { out.table = true; out.groups = LR.groups; out.bad = LR.bad; }
   else if (input.text != null) {
     for (const line of String(input.text).split(/\r?\n|;/)) { const r = command(line, ctx); if (!r) continue; if (r.bad) out.bad.push(r.bad); else out.groups.push(r.group); }
   }
@@ -14418,7 +14489,7 @@ function emlParts(bytes) {
   walk(latin, 0);
   return out;
 }
-return { parse, valueOf, oneDay, daysOf, rowsOfText, fromRows, command, match, fit, htmlRows, emlParts, label, MON3 };
+return { parse, valueOf, oneDay, daysOf, rowsOfText, fromRows, fromLooseRows, command, match, fit, htmlRows, emlParts, label, excOf, excLabel, winMin, MON3 };
 })(typeof Core !== 'undefined' ? Core : (typeof require !== 'undefined' ? require('./core.js') : null));
 if (typeof module !== 'undefined') module.exports = UpdParse;
 
@@ -16516,6 +16587,8 @@ function refresh(o = {}) {
       state.attRes = A ? withGenesys(R, A) : R;
     } else if (A) state.attRes = A;
     if (state.attRes) state.ctx.attendance = state.attRes.byPerson;
+    const EX = attEditsOf(monthKey()); state.ctx.dedExc = new Map();   // the exceptions sent after the review, for the workbook's Deduction sheet
+    if (EX) for (const [pid, ed] of EX) { const X = excOfEdits(ed, state.m); if (X) state.ctx.dedExc.set(pid, X); }
   }
   state.perf = perfNow();
   state.model = state.ctx ? computeModel(state.ctx) : null;
@@ -16578,6 +16651,7 @@ function computeModel(ctx) {
   const A = first(ctx.rawAdh), H = first(ctx.rawAht), S = first(ctx.rawSched), T = first(ctx.rawActual);
   const tl = new Set((state.slots.timeline ? state.slots.timeline.dets : []).flatMap(d => d.data.agents.map(normName)));
   const anyAdh = !!state.slots.adhGenesys, anyAht = !!state.slots.aht, anySch = !!state.slots.schedule, anyTl = !!state.slots.timeline, PF = state.perf;
+  const EX = attEditsOf(ymKey(ctx.year, ctx.month));   // the exceptions sent after the review: their minutes come off the deduction
   return ctx.roster.map(p => {
     const exp = normSpace(normSpace(p.sys) ? p.sys : p.name), ek = normName(exp);
     const a = A.get(ek), h = H.get(ek), s = S.get(ek), t = T.get(ek);
@@ -16591,12 +16665,13 @@ function computeModel(ctx) {
     const noSched = anySch && !(set.incFullAdhTeams || []).includes(normSpace(p.team)) && (!s || s.days.every(v => v == null)) && !(at && at.days && at.days.some(v => v != null && v !== ''));   // a team with no Genesys data (Settings) never
     const shown = (status !== 'Inactive' || attended >= set.inactiveMin) && !(noSched && set.hideNoSched !== false);
     const inDed = shown && set.dedBrands.includes(normSpace(p.brand)) && set.dedTeams.includes(normSpace(p.team));
-    const sch = s ? s.days : null, act = t ? t.days : null;
-    const diff = Array.from({ length: ND }, (_, i) => { const sv = sch ? sch[i] : null, av = act ? act[i] : null; return sv == null || av == null ? null : av === 0 ? 0 : Math.max(0, sv - av); });
+    const sch = s ? s.days : null, act = t ? t.days : null, X = EX ? excOfEdits(EX.get(p._id), ctx.month) : null;
+    const actX = act && X ? act.map((av, i) => excAct(sch ? sch[i] : null, av, X.exc[i])) : act;   // the Actual with the exceptions counted as worked (act stays as Genesys has it)
+    const diff = Array.from({ length: ND }, (_, i) => { const sv = sch ? sch[i] : null, av = actX ? actX[i] : null; return sv == null || av == null ? null : av === 0 ? 0 : Math.max(0, sv - av); });
     const ded = inDed ? diff.reduce((x, y) => x + (y || 0), 0) : null;
     const found = { adh: !!a, aht: !!h, sch: !!s, tl: tl.has(ek) };
     const pid = Core.cleanId(p.nid), pf = PF ? PF.byName.get(ek) || (pid && PF.byId.get(pid)) || PF.byName.get(normName(p.name)) || null : null;
-    return { p, exp, ek, adh, avg, days: valid.length, status, attended, shown, noSched, inDed, sch, act, diff, ded, aht: h ? h.sec : null, found, pf,
+    return { p, exp, ek, adh, avg, days: valid.length, status, attended, shown, noSched, inDed, sch, act, actX, exc: X, diff, ded, aht: h ? h.sec : null, found, pf,
       any: found.adh || found.aht || found.sch || found.tl, files: { adh: anyAdh, aht: anyAht, sch: anySch, tl: anyTl } };
   });
 }
@@ -16933,7 +17008,7 @@ function renderPerson() {
     : !m.found.sch ? `Not found in the Schedule export. ${schedCover()} ${GX.schedule}` : '';
   h += `<section class="sec"><h3>Sched. / Actual / Diff (min)</h3>${!m.inDed ? `<p class="subtle" style="margin:0 0 8px">${m.shown ? `Not in the deduction scope (${esc(set.dedBrands.join(', ') || 'no brand')} · ${esc(set.dedTeams.join(', ') || 'no team')}), so not in the Deduction sheet.` : 'Hidden, so not in the Deduction sheet.'}</p>` : ''}${dedNote ? `<p class="subtle">${esc(dedNote)}</p>` : `<div class="dedtab"><table><thead><tr><th></th>${Array.from({ length: ND }, (_, i) => `<th title="${wd(i + 1)}">${i + 1}<br><span class="subtle" style="font-weight:400">${wd(i + 1).slice(0, 2)}</span></th>`).join('')}<th>Total</th></tr></thead><tbody>
       <tr><td>Sched.</td>${Array.from({ length: ND }, (_, i) => `<td class="num">${m.sch && m.sch[i] != null ? m.sch[i] : ''}</td>`).join('')}<td></td></tr>
-      <tr><td>Actual</td>${Array.from({ length: ND }, (_, i) => `<td class="num">${m.act && m.act[i] != null ? m.act[i] : ''}</td>`).join('')}<td></td></tr>
+      <tr><td>Actual</td>${Array.from({ length: ND }, (_, i) => { const A = m.actX || m.act, x = m.exc && m.exc.exc[i] != null; return `<td class="num${x ? ' exc' : ''}"${x ? ` title="${esc(`Exception: ${m.exc.exc[i] === 'day' ? 'the day' : m.exc.exc[i] + ' min'} counted as worked`)}"` : ''}>${A && A[i] != null ? A[i] : ''}</td>`; }).join('')}<td></td></tr>
       <tr><td><b>Diff</b></td>${m.diff.map(v => `<td class="num ${v > 0 ? 'hot' : ''}">${v == null ? '' : v}</td>`).join('')}<td class="num"><b>${m.diff.reduce((x, y) => x + (y || 0), 0)}</b></td></tr></tbody></table></div>`}</section>`;
   h += attStripHtml(p._id);
   put(h);
@@ -18920,7 +18995,7 @@ function dedMailData() {
     for (const x of liveRows(k)) {
       const days = daysOfRow(x, ND), who = { id: idText(x.id), name: x.n, brand: normSpace(x.brand), team: normSpace(x.team) };
       if (days.some(v => v != null)) att.push({ ...who, days, tardy: x.tardy });   // the month's late minutes, also when they came as one total
-      if (inDed(x) && x.ded != null) ded.push({ ...who, sched: minutes(x.ds), act: minutes(x.da), total: Math.round(x.ded || 0) });
+      if (inDed(x) && x.ded != null) ded.push({ ...who, sched: minutes(x.ds), act: minutes(x.da), total: Math.round(x.ded || 0), note: x.dxn || '' });
     }
   } else if (r) {
     att = r.att.filter(a => a.shown && a.vals && a.vals.some(v => v != null)).map(a => ({ id: a.id, name: a.name, brand: a.brand, team: a.team, days: a.vals }));
@@ -18931,7 +19006,7 @@ function dedMailData() {
       if (!x.shown) continue;
       const who = { id: idText(x.p.nid), name: x.exp, brand: normSpace(x.p.brand), team: normSpace(x.p.team) }, a = A ? A.get(x.p._id) : null;
       if (a && a.days.some(v => v != null)) att.push({ ...who, days: a.days, tardyFile: a.tardyFile });
-      if (x.inDed) ded.push({ ...who, sched: x.sch, act: x.act, total: x.ded || 0 });
+      if (x.inDed) ded.push({ ...who, sched: x.sch, act: x.actX || x.act, total: x.ded || 0, note: x.exc ? x.exc.note : '' });
     }
   } else return null;
   const order = x => (DEP_ORDER.indexOf(x.team) + 1 || 99), byDep = (a, b) => order(a) - order(b) || a.name.localeCompare(b.name);
@@ -19510,13 +19585,13 @@ async function exportDailyAdh(pid) {
     if (cv != null) W.set(r, 3, cv, cv < set.target ? pcBad : pc); else W.set(r, 3, 'NA', na);
     W.set(r, 4, cv != null ? (cv < set.target ? 'Under target' : 'On target') : rv != null ? `NA: under ${pct(set.floor, 0)}` : m.adh ? 'NA: blank' : '', tx);
     W.set(r, 5, a == null ? '' : typeof a === 'number' ? `${a} min late` : a, isOff ? off : tx);
-    const sv = m.sch ? m.sch[i] : null, av = m.act ? m.act[i] : null, df = m.diff ? m.diff[i] : null;
+    const AX = m.actX || m.act, sv = m.sch ? m.sch[i] : null, av = AX ? AX[i] : null, df = m.diff ? m.diff[i] : null, xc = m.exc ? m.exc.exc[i] : null;   // the Actual with an exception's minutes
     W.set(r, 6, sv, num); W.set(r, 7, av, num); W.set(r, 8, df, num);
     if (w && !w.leave && !w.none) {
       W.set(r, 9, w.start != null ? clock(w.start) : '', num); W.set(r, 10, w.firstOn != null ? clock(w.firstOn) : '', num); W.set(r, 11, Math.round(w.logged || 0), num);
       W.set(r, 12, w.late ?? null, num); W.set(r, 13, w.short ?? null, num); W.set(r, 14, w.brk || null, num);
     }
-    const notes = !w ? '' : w.leave ? `Leave: ${w.leave}` : w.absent ? 'No sign-on' : [w.excused && `${w.excused} min late, excused (${w.code})`, w.off && 'worked outside the schedule'].filter(Boolean).join(' · ');
+    const notes = [!w ? '' : w.leave ? `Leave: ${w.leave}` : w.absent ? 'No sign-on' : [w.excused && `${w.excused} min late, excused (${w.code})`, w.off && 'worked outside the schedule'].filter(Boolean).join(' · '), xc != null ? `Exception after the review: ${xc === 'day' ? 'the day' : xc + ' min'} counted as worked` : ''].filter(Boolean).join(' · ');
     W.set(r, 15, notes, tx);
   }
   const a1 = r0 + 1, b1 = r0 + ND, rt = b1 + 1, col = c => `${Core.colName(c)}${a1}:${Core.colName(c)}${b1}`;
@@ -21836,16 +21911,34 @@ const keptCount = (t, k) => ({ kat: t.attend, kr: t.runs, ...(t.kab !== t.absent
 /** the day rules a row was counted with, kept on the row only when they are not the defaults */
 const kdrOf = k => { const x = Kpi.dayRulesKey(countFor(k)); return x === KDR0 ? {} : { kdr: x }; };
 const DAYCH = v => (v == null ? '-' : typeof v === 'number' || v === 'Attend' ? 'A' : v === 'OFF' ? 'O' : v === 'AL' ? 'L' : v === 'SL' ? 'S' : v === 'Absent' ? 'X' : 'V');
+/** a day with a correction on it: the value set, or (an exception sent after the review, e.x) the day as it is, its lateness excused */
+const editedDay = (cur, e) => (!e ? cur : e.x ? (typeof cur === 'number' ? 'Attend' : cur) : e.v === '' ? null : e.v);
+/** a day's Actual with an exception's minutes counted as worked, as Genesys counts an exception: no more than the Sched., the whole
+    Sched. for 'day'; a day with no sign-on (Actual 0) has no deduction to excuse */
+function excAct(sv, av, exc) { return sv == null || av == null || av === 0 || exc == null || av >= sv ? av : exc === 'day' ? sv : Math.min(sv, av + Math.max(0, +exc || 0)); }
+/** the exceptions of a person's corrections: { [day index]: minutes | 'day' } and their note for the deduction's Review Notes */
+function excOfEdits(ed, m) {
+  const exc = {}, notes = [];
+  for (const [d, e] of Object.entries((ed && ed.days) || {}).sort((a, b) => +a[0] - +b[0])) if (e && e.exc != null) { exc[+d - 1] = e.exc; notes.push(`${+d} ${MON[m - 1]} ${e.why || 'exception'}${typeof e.exc === 'number' ? ` (${e.exc} min)` : ' (the day)'}`); }
+  return notes.length ? { exc, note: `Exceptions: ${notes.join('; ')}` } : null;
+}
 /** a saved row with the supervisor's corrections applied (draft months only), counted with the month's rules */
 function withEdits(r, edits, ND, k) {
   if (!edits || !edits.days || !Object.keys(edits.days).length) return r;
   const days = daysOfRow(r, ND), byDay = days.some(v => typeof v === 'number');   // a month whose late minutes were never by day (an attendance sheet's Tardy column) keeps its total
-  for (const [d, e] of Object.entries(edits.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = e.v === '' ? null : e.v; }
+  for (const [d, e] of Object.entries(edits.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = editedDay(days[i], e); }
   const t = attTotals(days, k), dx = {};
   if (!byDay) t.tardy += +r.tardy || 0;   // the sheet's total, plus any late minutes the supervisor typed on a day
   days.forEach((v, i) => { if (v != null && (typeof v === 'number' || !['Attend', 'OFF', 'AL', 'SL', 'Absent'].includes(v))) dx[i + 1] = v; });
   const { kdr, kab, ...rest } = r;
-  return { ...rest, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, ...keptCount(t, k), _edited: Object.keys(edits.days).length };
+  // the exceptions: their minutes off each day's deduction (Sched. - Actual), the Actual shown with them, the month's total again
+  const X = excOfEdits(edits, +k.slice(5)), dd = {};
+  if (X && r.ds != null && r.da != null) {
+    const L = v => String(v).split(',').map(x => (x === '' ? null : +x)), S = L(r.ds), A = L(r.da).map((av, i) => excAct(S[i], av, X.exc[i]));
+    let ded = 0, base = 0; S.forEach((sv, i) => { const av = A[i]; if (sv == null || av == null || av === 0) return; ded += Math.max(0, sv - av); base += sv; });
+    Object.assign(dd, { ded, da: A.map(v => (v == null ? '' : Math.round(v))).join(','), dxn: X.note }, base > 0 ? { conf: Math.round((1 - ded / base) * 1e4) / 1e4 } : {});
+  } else if (X) dd.dxn = X.note;
+  return { ...rest, d: days.map(DAYCH).join(''), dx, worked: t.worked, absent: t.absent, al: t.al, sl: t.sl, off: t.off, leave: t.leave, tardy: t.tardy, ks: t.sched, ka: t.attend, ...keptCount(t, k), ...dd, _edited: Object.keys(edits.days).length };
 }
 function leaveCode(c) {
   const s = String(c || '');
@@ -21886,7 +21979,7 @@ function autoAttendance(ctx) {
       for (let i = 0; i < last; i++) if (auto[i] == null) auto[i] = 'OFF';
     }
     for (let i = 0; i < ND; i++) days[i] = auto[i];
-    if (ed && ed.days) for (const [d, e] of Object.entries(ed.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = e.v === '' ? null : e.v; }
+    if (ed && ed.days) for (const [d, e] of Object.entries(ed.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = editedDay(days[i], e); }
     const t = days.reduce((a, v) => a + (typeof v === 'number' ? v : 0), 0);
     byPerson.set(p._id, { days, auto, tardyFile: null, dayTardy: t, srcs: ['Genesys'], filled: days.filter(v => v != null).length, edited: ed ? Object.keys(ed.days || {}).length : 0 });
     people++;
@@ -21914,7 +22007,7 @@ function overlayAttEdits(byPerson) {
   for (const [pid, ed] of E) {
     if (!ed || !ed.days) continue;
     const cur = byPerson.get(pid) || { days: new Array(ND).fill(null), tardyFile: null, dayTardy: 0, srcs: [], filled: 0 };
-    const days = cur.days.slice(); for (const [d, e] of Object.entries(ed.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = e.v === '' ? null : e.v; }
+    const days = cur.days.slice(); for (const [d, e] of Object.entries(ed.days)) { const i = +d - 1; if (i >= 0 && i < ND) days[i] = editedDay(days[i], e); }
     byPerson.set(pid, { ...cur, days, dayTardy: days.reduce((a, v) => a + (typeof v === 'number' ? v : 0), 0), filled: days.filter(v => v != null).length, edited: Object.keys(ed.days).length, srcs: [...(cur.srcs || []), 'supervisor'] });
   }
 }
@@ -23087,7 +23180,7 @@ function attGridHtml(items, k, canEdit) {
   const rows = L.sort(byExp).map(x => {
     const days = daysOfRow(x.r, ND), ed = edits.get(x.p._id), t = attTotals(days, k);   // as the incentive counts them (the month's rules)
     const cells = days.map((v, i) => {
-      const e = ed && ed.days && ed.days[i + 1], tip = `${i + 1} ${MON[m - 1]}: ${v == null ? 'nothing yet' : typeof v === 'number' ? `late ${v} min` : v}${e ? ` · changed by ${e.by || 'the supervisor'}${e.note ? ': ' + e.note : ''}` : ''}`;
+      const e = ed && ed.days && ed.days[i + 1], tip = `${i + 1} ${MON[m - 1]}: ${v == null ? 'nothing yet' : typeof v === 'number' ? `late ${v} min` : v}${e && e.x ? ` · exception${e.why ? ': ' + e.why : ''} (${typeof e.exc === 'number' ? `${e.exc} min` : 'the day'} off the deduction)` : ''}${e ? ` · changed by ${e.by || 'the supervisor'}${e.note ? ': ' + e.note : ''}` : ''}`;
       return `<td>${canEdit ? `<button class="ad ${ATT_CLS(v)}${e ? ' ed' : ''}" data-ad="${esc(x.p._id)}|${i + 1}" title="${esc(tip)}" aria-label="${esc(x.exp)}, ${esc(tip)}">${esc(ATT_SHORT(v))}</button>` : `<span class="ad ${ATT_CLS(v)}${e ? ' ed' : ''}" title="${esc(tip)}">${esc(ATT_SHORT(v))}</span>`}</td>`;
     }).join('');
     return `<tr><th class="an"><button class="linkbtn nm" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" dir="auto">${esc(x.exp)}</button></th>${cells}<td class="r num">${t.absent}</td><td class="r num">${t.tardy ? Math.round(t.tardy) : 0}</td><td class="r num">${t.al + t.sl + t.leave}</td><td class="r num">${t.sched ? `${t.attend}/${t.sched}` : '–'}</td></tr>`;
@@ -26375,6 +26468,8 @@ async function wsDrop(files) {
 // (.msg, .eml) or a sheet, or types them in plain words; UpdParse reads them; the box shows each day (now → new) for the person it
 // matched, or the names to choose from. Apply makes them the month's attendance corrections (att/<k>/edits, as a supervisor's, marked
 // as an update), so the workbook, the final email (its list of what changed) and the agent's page follow. Undo takes them back.
+// An exception (PC loading, an excuse, a time like 4:00 PM - 4:30 PM) is kept on the day as { x: 1, exc, why }: the day stays as the
+// data has it, its lateness excused, and its minutes (or the whole day) come off the conformance deduction in every sheet.
 Object.assign(state, { updText: '', updRes: null, updFrom: '', updPick: {}, updOn: {}, updNote: '', updBusy: false });
 const canUpd = () => canWfmMail();
 const updShown = () => state.ws === 'wfm' && state.wfmTab === 'emails' && state.mailSub !== 'daily' && canUpd();
@@ -26400,7 +26495,8 @@ function updRowsOf(R) {
     const pid = state.updPick[gi] || g.pid || '';
     return { g, gi, pid, rows: g.changes.map((c, ci) => {
       const k = c.date.slice(0, 7), day = +c.date.slice(8), lock = monthLocked(k), now = pid ? updNow(pid, k, day) : undefined;
-      const same = !c.clear && now !== undefined && now === c.v, offDay = c.wide && (now === 'OFF' || now === null);
+      const E = pid ? attEditsOf(k) : null, had = E && E.get(pid) && E.get(pid).days ? E.get(pid).days[day] : null, isX = c.exc != null;
+      const same = isX ? !!(had && had.x && had.exc === c.exc) : !c.clear && now !== undefined && now === c.v, offDay = isX ? now === 'OFF' : c.wide && (now === 'OFF' || now === null);
       const key = `${gi}:${ci}`, can = !!pid && !lock, def = can && !same && !offDay;
       return { c, key, k, day, now, lock, same, offDay, can, on: can && (key in state.updOn ? state.updOn[key] : def) };
     }) };
@@ -26422,13 +26518,14 @@ function renderUpd() {
         : g.cands && g.cands.length ? `<label class="updpick"><span class="sr">Who is “${esc(g.who.name)}”?</span><select class="cell" data-updwho="${gi}"><option value="">Choose who “${esc(g.who.name)}” is</option>${g.cands.map(c => { const q = state.roster.find(x => x._id === c); return q ? `<option value="${esc(c)}">${esc(supName(c) || q.name)} · ${esc([q.brand, q.team].filter(Boolean).join(' '))}</option>` : ''; }).join('')}</select></label>`
         : `<b dir="auto">${esc(g.who.name || g.who.id || '?')}</b><span class="sg bad">${esc(g.why || 'not found in the roster')}</span>`;
       const tr = rows.map(r => {
-        const note = r.lock ? `${ymLabel(r.k)} is final` : !pid ? '' : r.same ? 'already so' : r.offDay ? 'OFF that day: tick it to change' : r.now === undefined ? 'no days for them that month' : '';
-        return `<tr class="${r.on ? '' : 'off'}"><td class="chk"><input type="checkbox" data-updon="${r.key}"${r.on ? ' checked' : ''}${r.can ? '' : ' disabled'} aria-label="${esc(`${r.day} ${MON[+r.k.slice(5) - 1]}`)}"></td><td>${r.day} ${MON[+r.k.slice(5) - 1]}</td><td>${esc(updLabelNow(r.now))}</td><td class="updarrow" aria-hidden="true">→</td><td><b>${esc(r.c.clear ? 'as before the corrections' : UpdParse.label(r.c.v))}</b></td><td class="subtle">${esc(note)}</td></tr>`;
+        const note = r.lock ? `${ymLabel(r.k)} is final` : !pid ? '' : r.same ? 'already so' : r.offDay ? 'OFF that day: tick it to change' : r.now === undefined ? (r.c.exc != null ? 'no attendance that day: only the deduction' : 'no days for them that month') : '';
+        const nw = r.c.clear ? 'as before the corrections' : r.c.exc != null ? `${UpdParse.excLabel(r.c)}${typeof r.now === 'number' ? ' · late excused (Attend)' : ''}` : UpdParse.label(r.c.v);
+        return `<tr class="${r.on ? '' : 'off'}"><td class="chk"><input type="checkbox" data-updon="${r.key}"${r.on ? ' checked' : ''}${r.can ? '' : ' disabled'} aria-label="${esc(`${r.day} ${MON[+r.k.slice(5) - 1]}`)}"></td><td>${r.day} ${MON[+r.k.slice(5) - 1]}</td><td>${esc(updLabelNow(r.now))}</td><td class="updarrow" aria-hidden="true">→</td><td><b>${esc(nw)}</b></td><td class="subtle">${esc(note)}</td></tr>`;
       }).join('');
       return `<div class="updgrp"><div class="updwho">${who}</div><div class="tablewrap updtab"><table><thead><tr><th class="chk"><span class="sr">Change</span></th><th>Day</th><th>Now</th><th aria-hidden="true"></th><th>New</th><th><span class="sr">Note</span></th></tr></thead><tbody>${tr}</tbody></table></div></div>`;
     }).join('');
     const bad = R.bad.length ? `<details class="updbad" open><summary>${plural(R.bad.length, 'line')} not read</summary><ul>${R.bad.slice(0, 30).map(b => `<li><span dir="auto">${esc(b.text)}</span> <span class="subtle">${esc(b.why)}</span></li>`).join('')}</ul></details>` : '';
-    const none = !R.groups.length && !R.bad.length ? '<p class="hint">Nothing to change was found. Paste the table with its header row (Name and the days, like 27-Oct), or type a line like: set Nawaf as absent on 10 Oct.</p>' : '';
+    const none = !R.groups.length && !R.bad.length ? '<p class="hint">Nothing to change was found. Paste the table (Name and the days, like 27-Oct; or a day, a name and the reason on each line), or type a line like: set Nawaf as absent on 10 Oct.</p>' : '';
     prev = `<div class="updprev" aria-live="polite"><p class="hint">Read from ${esc(state.updFrom || 'the box')}: ${plural(R.groups.length, 'person', 'people')}${R.table ? ' from a table' : ''}. Untick a day to leave it as it is.</p>${grp}${bad}${none}
       <div class="acts updgo"><button class="btn primary" data-updapply${n && !lock ? '' : ' disabled'}>${n ? `Apply ${plural(n, 'change')}${people > 1 ? ` for ${people} people` : ''}` : 'Nothing to apply'}</button><button class="btn ghost" data-updclear>Clear</button></div></div>`;
   }
@@ -26437,16 +26534,16 @@ function renderUpd() {
   if (E) for (const [pid, body] of E) {
     const ds = Object.entries((body && body.days) || {}).filter(([, e]) => e && e.src === 'update').map(([d, e]) => ({ d: +d, ...e })).sort((a, b) => a.d - b.d);
     if (!ds.length) continue;
-    const byV = new Map(); ds.forEach(x => { const l = UpdParse.label(x.v); byV.set(l, (byV.get(l) || []).concat(x.d)); });
+    const byV = new Map(); ds.forEach(x => { const l = x.x ? `exception${x.why ? ` (${x.why}${typeof x.exc === 'number' ? `, ${x.exc} min` : ''})` : ''}` : UpdParse.label(x.v); byV.set(l, (byV.get(l) || []).concat(x.d)); });
     const last = ds.reduce((a, x) => (x.at > a.at ? x : a), ds[0]);
     done.push(`<li><span class="nm" dir="auto">${esc(supName(pid) || body.n || pid)}</span><span class="sg">${[...byV].map(([l, D]) => `${esc(D.join(', '))} ${MON[M.m - 1]}: ${esc(l)}`).join(' · ')} · ${esc(last.by || '')}${last.at ? `, ${esc(fmtWhen(last.at))}` : ''}</span>${lock ? '' : `<button class="btn sm ghost" data-updrm="${esc(pid)}">Remove</button>`}</li>`);
   }
   const src = !mailShared() && state.wb ? `<p class="hint warnline">The email takes its numbers from ${esc(state.wb.name)}: the corrections go to the month, not into that file. Choose <b>Shared month</b> above the email to see them in it.</p>` : '';
   host.innerHTML = `<section class="card updcard" aria-labelledby="updH">
     <div class="updhd"><h2 id="updH">Corrections after the review</h2><span class="pill info">${esc(ymLabel(M.k))}</span></div>
-    <p class="cap">When corrections come back after the deduction email, put them here: paste the table from the email, drop the email (.msg or .eml) or a sheet, or type them, one a line, like <i>set Nawaf as absent on 10 Oct</i> or <i>Sara K. SL 27-29 Oct</i>. You see each day first; <b>Apply</b> makes them the month's attendance corrections, so the workbook and the final email have them.</p>
+    <p class="cap">When corrections come back after the deduction email, put them here: paste the table from the email, drop the email (.msg or .eml) or a sheet, or type them, one a line, like <i>set Nawaf as absent on 10 Oct</i> or <i>Sara K. SL 27-29 Oct</i>. Exceptions too (a day, the name and the reason, like <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i> or <i>4:00 PM - 4:30 PM</i>): the day's lateness is excused and its minutes, or the whole day, come off the deduction. You see each day first; <b>Apply</b> makes them the month's corrections, so every sheet, the workbooks and the final email have them.</p>
     ${lock ? `<p class="hint warnline">${esc(ymLabel(M.k))} is final: its attendance can no longer change.</p>` : ''}${src}
-    <div class="upddrop" data-upddrop><textarea class="cell" data-updtext rows="4" spellcheck="false" placeholder="Paste the table from the email here, or type: set Nawaf as absent on 10 Oct">${esc(state.updText)}</textarea>
+    <div class="upddrop" data-upddrop><textarea class="cell" data-updtext rows="4" spellcheck="false" placeholder="Paste the table from the email here, or type: set Nawaf as absent on 10 Oct · Nawaf PC loading 5 min on 11 Oct">${esc(state.updText)}</textarea>
       <div class="acts updacts"><button class="btn" data-updread${state.updBusy ? ' disabled' : ''}>${state.updBusy ? '<span class="spin" aria-hidden="true"></span>Reading…' : 'Read'}</button><button class="btn ghost" data-updfile>Choose a file</button><span class="hint">or drop the email or the sheet here</span>
       <input type="file" hidden multiple data-updpick accept=".msg,.eml,.xlsx,.xlsm,.xls,.csv,.txt,.png,.jpg,.jpeg"></div></div>
     ${state.updNote ? `<p class="hint warnline">${esc(state.updNote)}</p>` : ''}${prev}
@@ -26491,7 +26588,7 @@ async function updFiles(list) {
 /** the ticked changes, ready to write */
 function updSelected() {
   const R = state.updRes; if (!R) return [];
-  return updRowsOf(R).flatMap(({ g, pid, rows }) => rows.filter(r => r.on).map(r => ({ pid, k: r.k, day: r.day, v: r.c.v, clear: r.c.clear, note: (g.src === 'typed' ? g.text : `${g.text} · from ${state.updFrom || 'an update'}`).slice(0, 200) })));
+  return updRowsOf(R).flatMap(({ g, pid, rows }) => rows.filter(r => r.on).map(r => ({ pid, k: r.k, day: r.day, v: r.c.v, exc: r.c.exc, why: r.c.why, clear: r.c.clear, note: (g.src === 'typed' ? g.text : `${g.text} · from ${state.updFrom || 'an update'}`).slice(0, 200) })));
 }
 function updApply() {
   if (!canUpd() || !state.updRes) return;
@@ -26502,7 +26599,12 @@ function updApply() {
     const [pid, k] = key.split('|'); if (monthLocked(k)) continue;
     watchAttEdits(k); if (!state.attEditsBy[k]) state.attEditsBy[k] = new Map();
     const E = state.attEditsBy[k], cur = E.get(pid), prev = cur ? JSON.parse(JSON.stringify(cur)) : null, days = { ...((cur && cur.days) || {}) };
-    for (const c of L) { if (c.clear) delete days[c.day]; else days[c.day] = { v: c.v, note: c.note, by: who, at, src: 'update' }; n++; }
+    for (const c of L) {
+      if (c.clear) delete days[c.day];
+      else if (c.exc != null) days[c.day] = { x: 1, exc: c.exc, why: String(c.why || '').slice(0, 80), note: c.note, by: who, at, src: 'update' };   // the day as it is, excused
+      else days[c.day] = { v: c.v, note: c.note, by: who, at, src: 'update' };
+      n++;
+    }
     const p = state.roster.find(x => x._id === pid), body = { days, n: supName(pid) || (p && p.name) || '' };
     E.set(pid, body); undo.push({ pid, k, prev }); ks.add(k); names.add(body.n);
     if (state.db) queueWrite(`att/${k}/edits/${pid}`, () => state.db.doc(`att/${k}/edits/${pid}`).set(body)).catch(e => toast(`Not saved (${(e && e.code) || 'error'}).`));
@@ -26513,7 +26615,7 @@ function updApply() {
   markFresh('attendance', `${[...names].slice(0, 2).join(', ')}${names.size > 2 ? ` and ${names.size - 2} more` : ''}: ${plural(n, 'day')}`);
   state.updRes = null; state.updText = ''; state.updPick = {}; state.updOn = {}; state.updNote = '';
   updAfter(ks);
-  toast(`Applied: ${plural(n, 'day')} for ${plural(names.size, 'person', 'people')}. The workbook and the final email have them.`, { label: 'Undo', fn: () => updRestore(undo, 'Undone: the days are as they were.') });
+  toast(`Applied: ${plural(n, 'day')} for ${plural(names.size, 'person', 'people')}. Every sheet, the workbooks and the final email have them.`, { label: 'Undo', fn: () => updRestore(undo, 'Undone: the days are as they were.') });
 }
 /** the corrections as they were before (Undo), or without the ones made from here (Remove) */
 function updRestore(L, msg) {
@@ -29411,7 +29513,7 @@ const DEPT = [
     '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one.',
     '<b>Export › Smart-Link attendance</b>: first, <b>Set Smart-Link\'s list from its file</b> once (any of Smart-Link\'s attendance files: its ID and Name columns), so the file holds exactly Smart-Link\'s agents, the SM agents and those on Virgin too. Then the month\'s attendance of those agents in Smart-Link\'s own file (Smart-Link Attendance -Sep 2026.xlsx): each day\'s code, the late minutes and the counts with Smart-Link\'s formulas, and the National IDs, as Smart-Link\'s file has them. It is made from the shared month, with the supervisors\' corrections, and kept in Saved workbooks; send it to Smart-Link yourself.',
     '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs.',
-    '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s attendance corrections, so the workbook and the final email have them. Undo, or Remove in the list, takes them back.',
+    '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
     '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
@@ -29422,7 +29524,7 @@ const DEPT = [
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',
-    '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s attendance corrections, so the workbook and the final email have them. Undo, or Remove in the list, takes them back.',
+    '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
     'When a WFM analyst is on vacation, tick their name under <b>Vacation cover</b> on the WFM team page: you then have their tabs (Import, Review, Export, Report builder) until you untick it.',
     '<b>WFM team › Data</b>: export all the data to one file locked with a password, or import such a file. Accounts and passwords are never in it.',
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
@@ -30886,7 +30988,7 @@ renderBrand();
 render();
 initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
-window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }), upd: () => ({ ctx: updCtx, read: updRead, files: updFiles, apply: updApply, now: updNow }), pr: () => ({ PR, read: prRead, files: prFiles }) };   // for testing
+window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }), upd: () => ({ ctx: updCtx, read: updRead, files: updFiles, apply: updApply, now: updNow }), pr: () => ({ PR, read: prRead, files: prFiles }), dedData: () => dedMailData() };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
 Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing

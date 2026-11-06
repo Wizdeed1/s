@@ -126,25 +126,20 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
     await shot(p, 'viewas', { wait: 300 });
     await ctx.close();
   }
-  // ---- phones: a supervisor's team, the dashboard, the agent's page in English and Arabic
+  // ---- every role's own page, on a computer: a supervisor's team, and an agent's own page in Arabic
   {
-    const { ctx, p } = await open('spv', { w: 390, h: 844, dpr: 3 });
-    await p.evaluate(() => { window.__mc.setWs('team'); window.__mc.renderWs(); }); await shot(p, 'phone-team', { wait: 900 }); await ctx.close();
+    const { ctx, p } = await open('spv');
+    await p.evaluate(() => { window.__mc.setWs('team'); window.__mc.renderWs(); }); await shot(p, 'team', { wait: 900 }); await ctx.close();
   }
   {
-    const { ctx, p } = await open('wfm', { w: 390, h: 844, dpr: 3, dark: true });
-    await p.evaluate(() => { window.__mc.setWs('dash'); }); await shot(p, 'phone-dash-dark', { wait: 900 }); await ctx.close();
-  }
-  for (const lang of ['en', 'ar']) {
-    const { ctx, p } = await open('agent', { w: 390, h: 844, dpr: 3, lang });
-    await p.evaluate(lang => {
+    const { ctx, p } = await open('agent', { lang: 'ar' });
+    await p.evaluate(() => {
       const M = window.__mc, F = window.__FIX__, per = F.roster[20], months = {};
       for (const k of ['2026-06', '2026-07', '2026-08', '2026-09']) { const r = F.history[k].rows.find(x => x.id === per.nid) || F.history[k].rows[0]; months[k] = { status: k <= '2026-08' ? 'final' : 'draft', row: r, at: k + '-28T09:00:00Z', by: 'Noura B.' }; }
       M.state.me = { prof: { name: per.name, brand: per.brand, team: per.team, nid: per.nid, spvName: 'Ghada S.' }, months, forms: {} };
-      if (lang === 'ar') M.state.lang = 'ar';
-      M.setWs('me'); M.renderWs();
-    }, lang);
-    await p.waitForSelector('#meBar .monthbox'); await shot(p, 'phone-agent-' + lang, { wait: 900 }); await ctx.close();
+      M.state.lang = 'ar'; M.setWs('me'); M.renderWs();
+    });
+    await p.waitForSelector('#meBar .monthbox'); await shot(p, 'agent-ar', { wait: 900 }); await ctx.close();
   }
   console.log(errs.length ? errs.join('\n') : 'no errors'); await b.close();
 })().catch(e => { console.log('✗ ' + (e && e.stack || e)); process.exit(1); });

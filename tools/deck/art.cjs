@@ -1,4 +1,4 @@
-// The deck's pictures: the screenshots (tools/deck/shots.cjs) in device frames, and the tool's own line icons (white, and the
+// The deck's pictures: the screenshots (tools/deck/shots.cjs) in window and laptop frames, and the tool's own line icons (white, and the
 // Beyond One template's blue and black), as transparent PNGs.
 // Usage: node tools/deck/art.cjs shotsDir outDir [formPng] [xlsxPng]
 const { chromium } = require('playwright');
@@ -51,18 +51,10 @@ const CSS = `* { box-sizing: border-box; margin: 0; } body { background: transpa
   .url { position: absolute; left: 50%; transform: translateX(-50%); width: 560px; height: 28px; border-radius: 8px; background: #e6e6eb; color: #6e6e73; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .win.dark .url { background: #3a3a3c; color: #a8a8ad; }
   .win img.sc { width: 100%; display: block; }
-  .phone { width: 420px; height: 900px; border-radius: 66px; background: #1d1d1f; padding: 13px; box-shadow: inset 0 0 0 2px #48484a, inset 0 0 0 6px #111; position: relative; }
-  .phone .scr { width: 100%; height: 100%; border-radius: 54px; overflow: hidden; background: #f2f2f7; display: flex; flex-direction: column; } .phone .scr img { width: 100%; flex: 1; min-height: 0; object-fit: cover; object-position: top; display: block; }
-  .phone .sb { height: 54px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 6px 34px 0; font: 600 17px/1 Inter, Arial, sans-serif; color: #1d1d1f; }
-  .phone.dark .scr { background: #0b0b0c; } .phone.dark .sb { color: #f5f5f7; }
-  .sb i { display: inline-block; width: 26px; height: 12px; border: 1.6px solid currentColor; border-radius: 4px; position: relative; margin-left: 6px; } .sb i::after { content: ''; position: absolute; inset: 1.5px 5px 1.5px 1.5px; background: currentColor; border-radius: 1.5px; }
-  .phone .island { position: absolute; top: 25px; left: 50%; width: 118px; height: 34px; margin-left: -59px; border-radius: 20px; background: #000; }
   .paper { width: 860px; background: #fff; border-radius: 4px; box-shadow: 0 0 0 1px rgba(0,0,0,.06); } .paper img { width: 100%; display: block; border-radius: 4px; }
-  .fan { display: flex; align-items: center; } .fan .phone { margin: 0 -40px; }
   .zoom { position: relative; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.08); } .zoom img { width: 100%; display: block; }
   .zoom.fade::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 140px; background: linear-gradient(rgba(255,255,255,0), #fff 85%); }`;
 const winHtml = (src, title, dark) => `<div class="win${dark ? ' dark' : ''}"><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">${svg('lock', dark ? '#a8a8ad' : '#8e8e93', 14)}${title}</span></div><img class="sc" src="${src}"></div>`;
-const phoneHtml = (src, style = '', dark = false) => `<div class="phone${dark ? ' dark' : ''}" style="${style}"><div class="scr"><div class="sb"><span>10:30</span><span>5G<i></i></span></div><img src="${src}"></div><span class="island"></span></div>`;
 const laptopHtml = (src, dark) => `<div class="laptop"><div class="lid"><div class="screen"><img src="${src}"></div></div><div class="base${dark ? ' dark' : ''}"></div></div>`;
 (async () => {
   const b = await chromium.launch(), ctx = await b.newContext({ deviceScaleFactor: 1, viewport: { width: 2400, height: 1600 } }), p = await ctx.newPage();
@@ -80,10 +72,8 @@ const laptopHtml = (src, dark) => `<div class="laptop"><div class="lid"><div cla
   console.log('✓ icons', ICONS.length);
   await render('laptop-dark', laptopHtml(shot('dash-dark'), true));
   await render('laptop-light', laptopHtml(shot('dash-light'), false));
-  for (const [n, t] of [['import', 'Import'], ['checks', 'Review › Checks'], ['export', 'Export'], ['emails', 'Emails'], ['templates', 'Attendance templates'], ['how', 'How this was counted'], ['cycle', 'Supervisors'], ['builder', 'Report builder'], ['data', 'Data']])
+  for (const [n, t] of [['import', 'Import'], ['checks', 'Review › Checks'], ['export', 'Export'], ['emails', 'Emails'], ['templates', 'Attendance templates'], ['how', 'How this was counted'], ['cycle', 'Supervisors'], ['builder', 'Report builder'], ['data', 'Data'], ['team', 'My team'], ['agent-ar', 'My page']])
     await render('win-' + n, winHtml(shot(n), `MC Monthly Report Builder · ${t}`));
-  for (const n of ['phone-team', 'phone-agent-en', 'phone-agent-ar', 'phone-dash-dark']) await render('m-' + n, phoneHtml(shot(n), '', /dark/.test(n)));
-  await render('phones-fan', `<div class="fan">${phoneHtml(shot('phone-team'), 'transform: rotate(-7deg) translateY(30px)')}${phoneHtml(shot('phone-agent-en'), 'z-index:2; transform: translateY(-10px)')}${phoneHtml(shot('phone-agent-ar'), 'transform: rotate(7deg) translateY(30px)')}</div>`, { pad: 120 });
   if (formPng && fs.existsSync(formPng)) await render('paper-form', `<div class="paper"><img src="${img(formPng)}"></div>`, { style: 'transform: rotate(-3deg)', pad: 110 });
   if (xlsxPng && fs.existsSync(xlsxPng)) await render('win-xlsx', winHtml(img(xlsxPng), 'Attendance - Oct 2026 - TS.xlsx'));
   // the line figures at rest: on white for the light slides, on the dark grey for the dark ones (their faces take the ground's colour)

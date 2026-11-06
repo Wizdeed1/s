@@ -48,7 +48,7 @@ const T = (s, text, o) => s.addText(text, { isTextBox: true, margin: 0, fontFace
 const ALT = { 'laptop-dark': 'The dashboard, in dark, on a laptop', 'hero-dash': 'The dashboard: shortcuts, the month at a glance, the month close and the bell',
   'z-import': 'Import: the four Genesys exports recognised and ready', 'z-checks': 'Review, Checks: what needs a decision before the build', 'z-email': 'The deduction email for review, ready to copy into Outlook',
   'z-templates': 'Attendance templates: one for each department', 'z-how': 'How this was counted, for one agent: each KPI, its band, ranking and points', 'win-xlsx': 'An attendance template open on How to fill',
-  'win-builder': 'WFM team, Report builder', 'win-showcase': 'The Showcase, presented full screen', 'win-viewas': 'View as a supervisor: their team, National IDs hidden', 'phones-fan': 'A supervisor\'s team and an agent\'s page in English and Arabic, on phones', 'paper-form': 'A one-to-one form on one A4 page' };
+  'win-builder': 'WFM team, Report builder', 'win-showcase': 'The Showcase, presented full screen', 'win-viewas': 'View as a supervisor: their team, National IDs hidden', 'win-team': 'A supervisor\'s own team', 'win-agent-ar': 'An agent\'s own page, in Arabic', 'paper-form': 'A one-to-one form on one A4 page' };
 /** a picture whose visible part (inside `pad` transparent pixels kept for its shadow) is put at x, y with width w (or height h) */
 function pic(s, n, b, pad, name) {
   const z = size(A(n)), vw = z.w - 2 * pad, vh = z.h - 2 * pad, k = b.w ? b.w / vw : b.h / vh;
@@ -269,7 +269,7 @@ pres.addSection({ title: 'How it works' });
 // =============================================================================================== 11. every role
 pres.addSection({ title: 'Everyone' });
 {
-  const s = add('LIGHT', 'Everyone', 'Every role signs in to its own page and sees only what is theirs. The WFM analysts build the month and the daily emails; the WFM manager sends them; the senior manager keeps the rules and finalizes the month; supervisors see their team and their one-to-ones; the quality team brings the Final EVAL; agents see their own results and forms, in English or Arabic, on a phone too.');
+  const s = add('LIGHT', 'Everyone', 'Every role signs in to its own page and sees only what is theirs. The WFM analysts build the month and the daily emails; the WFM manager sends them; the senior manager keeps the rules and finalizes the month; supervisors see their team and their one-to-ones; the quality team brings the Final EVAL; agents see their own results and forms, in English or Arabic.');
   eyebrow(s, 'Every role');
   title(s, 'A page for *every role*');
   const roles = [['up', 'WFM analyst', 'Builds the month and the daily emails'], ['mail', 'WFM manager', 'Sends the emails; sees the analytics'],
@@ -282,8 +282,9 @@ pres.addSection({ title: 'Everyone' });
     T(s, h, { x: M + 0.72, y, w: 1.9, h: 0.58, fontSize: 15, bold: true, color: C.ink, valign: 'middle', objectName: `up|${d}|h` });
     T(s, t, { x: M + 2.65, y, w: cw - 2.8, h: 0.58, fontSize: 13, color: C.muted, valign: 'middle', objectName: `up|${d}|t` });
   });
-  const fz = size(A('phones-fan')), fw = R - 7.55, fh = fw * (fz.h - 240) / (fz.w - 240);
-  pic(s, 'phones-fan', { x: 7.55, y: 1.95 + (4.6 - fh) / 2, w: fw }, 120, 'up|450|phones');
+  // two of the roles' own pages, one over the other: a supervisor's team, and an agent's page in Arabic
+  pic(s, 'win-team', { x: 7.55, y: 1.95, w: 4.6 }, 90, 'up|450|team');
+  pic(s, 'win-agent-ar', { x: R - 4.6, y: 3.6, w: 4.6 }, 90, 'up|650|agent');
 }
 
 // =============================================================================================== 12. the coaching loop
@@ -355,10 +356,10 @@ pres.addSection({ title: 'Trust' });
 
 // =============================================================================================== 16. proof
 {
-  const s = add('LIGHT', 'Trust', 'It is tested like a product. Every counting rule runs over ten thousand synthetic people with the expected results. Thirty-five automated browser test suites run before every change ships. Every role is checked on a computer and a phone, in light and dark.');
+  const s = add('LIGHT', 'Trust', 'It is tested like a product. Every counting rule runs over ten thousand synthetic people with the expected results. Thirty-five automated browser test suites run before every change ships. Every role\'s pages are checked, in light and dark.');
   eyebrow(s, 'Built to be right');
   title(s, 'Tested like a *product*');
-  const stats = [['10,000', 'synthetic people', 'run through every counting rule, with the expected results'], ['35', 'browser test suites', 'run before every change ships'], ['7', 'roles', 'checked on a computer and a phone, light and dark']];
+  const stats = [['10,000', 'synthetic people', 'run through every counting rule, with the expected results'], ['35', 'browser test suites', 'run before every change ships'], ['7', 'roles', 'every page checked,\nin light and dark']];
   const cw = (R - M - 0.7) / 3;
   stats.forEach(([n, h, t], i) => {
     const x = M + i * (cw + 0.35), d = 300 + i * 200, on = i === 0;
@@ -389,19 +390,21 @@ pres.addSection({ title: 'Launch plan' });
 
 // =============================================================================================== 18. how we start
 {
-  const s = add('END', 'Launch plan', 'Three steps to start: put the HTML in the common folder next to MC Data, read-only for everyone but its owner; open it in Edge or Chrome; each person makes an account and the admin gives the roles. Thank you, and questions.');
+  const s = add('END', 'Launch plan', 'Three steps to start: put the HTML in the common folder next to MC Data, read-only for everyone but its owner; open it in Edge or Chrome on a computer; each person makes an account and the admin gives the roles. Next: opening it from anywhere, phones included. Thank you, and questions.');
   pixels(s, [[11.95, 1.08, 0.40, C.red], [12.55, 1.72, 0.16, C.pink], [6.80, 5.98, 0.28, C.lav], [12.32, 5.84, 0.22, C.orange], [7.08, 1.38, 0.14, C.blue]], 120);
   pic(s, 'laptop-dark', { x: 7.0, y: 1.95, w: 5.6 }, 90, 'up|250|laptop');
   eyebrow(s, 'Next steps', true);
   title(s, 'Ready for *the next close*');
-  [['Put the HTML in the common folder', 'next to MC Data, read-only for everyone but its owner.'], ['Open it in Edge or Chrome', 'nothing to install, no server.'], ['Everyone makes an account', 'the admin gives each person their role.']].forEach(([h, t], i) => {
-    const y = 3.0 + i * 1.02, d = 300 + i * 160;
+  [['Put the HTML in the common folder', 'next to MC Data, read-only for everyone but its owner.'], ['Open it in Edge or Chrome', 'on a computer: nothing to install, no server.'], ['Everyone makes an account', 'the admin gives each person their role.']].forEach(([h, t], i) => {
+    const y = 2.9 + i * 0.98, d = 300 + i * 160;
     s.addShape(pres.shapes.RECTANGLE, { x: M, y, w: 0.52, h: 0.52, fill: { color: i === 0 ? C.blue : C.edge }, line: { type: 'none' }, objectName: `up|${d}|n${i}` });
     T(s, String(i + 1), { x: M, y, w: 0.52, h: 0.52, fontSize: 15, bold: true, color: C.white, align: 'center', valign: 'middle', objectName: `up|${d}|n${i}t` });
     T(s, h, { x: M + 0.75, y: y - 0.04, w: 5.4, h: 0.34, fontSize: 16, bold: true, color: C.white, objectName: `up|${d}|h${i}` });
     T(s, t, { x: M + 0.75, y: y + 0.3, w: 5.4, h: 0.32, fontSize: 13, color: C.dmuted, objectName: `up|${d}|t${i}` });
   });
-  T(s, runs('Thank *you*'), { x: M, y: 6.3, w: 4, h: 0.5, fontSize: 22, color: C.white, objectName: 'fade|900|thanks' });
+  dot(s, 'globe', M + 0.06, 5.8, 0.4, C.edge, 'white', 800);
+  T(s, [{ text: 'Next: ', options: { bold: true, color: C.white } }, { text: 'open it from anywhere, phones included.', options: { color: C.dmuted } }], { x: M + 0.75, y: 5.8, w: 5.4, h: 0.4, fontSize: 13, valign: 'middle', objectName: 'up|800|next' });
+  T(s, runs('Thank *you*'), { x: M, y: 6.42, w: 4, h: 0.5, fontSize: 22, color: C.white, objectName: 'fade|950|thanks' });
 }
 
 // ---- write, then the theme, the transitions and the motion (pptxgenjs writes neither)

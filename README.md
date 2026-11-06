@@ -240,6 +240,14 @@ The **MC KPIs workbook** is the one the team's charts are linked to (*BeyondOne_
 GSAP 3.15.0 is built into the file from `vendor/` (see `vendor/README.md` for the licence), and Geist from `js/fonts.css`, so
 the page still works offline.
 
+## Skills in this repo
+
+Claude Code loads these from `.claude/skills/` in every session on this repository:
+
+- `mc-security-review`: the security review above.
+- `claude-council`: a four-agent council (Believer, Skeptic, Investor, Judge) that stress-tests an idea and rules BUILD,
+  FIX FIRST or KILL. It keeps every verdict in `council/council.md` and each session in `council/sessions/`.
+
 ## Building
 
 ```bash

@@ -25528,6 +25528,7 @@ function wcPasteRows(text, ref) {
 // ---------------------------------------------------------------- the page
 function renderWeeklyWs() {
   const body = $('wfmBody'); if (!body || state.ws !== 'wfm' || state.wfmTab !== 'weekly') return;
+  const dp = body.querySelector('details.wcpaste'), ds = body.querySelector('details.wcset'); if (dp) WC.open.paste = dp.open; if (ds) WC.open.set = ds.open;   // as they are on the page now (a box opened just before is kept open)
   if (!canWeekly()) { $('wfmBar').innerHTML = '<div class="wsacts"></div>'; body.innerHTML = emptyCard('Only the WFM team', 'The WFM manager and the WFM analysts make the weekly presentation.'); return; }
   if (!WC.ready) {
     $('wfmBar').innerHTML = '<div class="wsacts"></div>';

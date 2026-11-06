@@ -162,7 +162,7 @@ function pic(s, L, x, y, w, h, o = {}) {
 /** the brands' logos: the official ones built in (assets/brand), else the ones taken from one of the team's decks */
 const logos = o => { const G = { ...(o.logos || {}) }; for (const k of ['virgin', 'friendi', 'fpay']) if (K.logo(k)) G[k] = K.logo(k); if (G.virgin) G.postpaid = G.virgin; return G; };
 /** Beyond One's logo at the top left, as the template has it */
-function logoTop(s) { K.img(s, K.logo('stackedBlack'), 0.40, 0.30, 0.42, 0.64, { descr: 'Beyond One', name: 'Logo' }); }
+function logoTop(s) { K.img(s, K.logo('stackedBlackAnim') || K.logo('stackedBlack'), 0.40, 0.30, 0.42, 0.64, { descr: 'Beyond One', name: 'Logo' }); }
 function head(s, o, m, title, sub) {
   K.top(s, `${o.kicker || 'Weekly Commercial Presentation'}  ·  ${deckDate(m.date)}`);
   K.title(s, 0.45, 1.04, 8.10, title, sub);

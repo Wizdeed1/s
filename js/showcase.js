@@ -46,7 +46,7 @@ function showStripHtml() {
 function showHtml() {
   const S = {
     hero: `<div class="shhero">
-        <div class="shherotext shrise"><div class="eyebrow">MC Monthly Report Builder · Member Care</div>
+        <div class="shherotext shrise"><span class="bologo on-light shlogo" aria-hidden="true"></span><div class="eyebrow">MC Monthly Report Builder · Member Care</div>
           <h2 class="shbig">Member Care's month end, <b>in one place.</b></h2>
           <p class="shlead">One offline file turns the month's Genesys exports into the monthly workbook, the incentive data, the emails and the one-to-ones. Every number is checked before it is built, every bonus explains itself, and every role has its own page.</p>
           <div class="shcta"><button class="btn primary" data-showpresent>Present</button><button class="btn" data-showgo="roles">See every role</button></div>

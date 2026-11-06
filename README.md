@@ -34,9 +34,10 @@ the only ornament. Numbers come first and decoration last.
 | Colour | The template's theme: ink 080808 and white, its blue 0D76BD for links, focus, selection and the current place, and its pixel colours (red, pink, lavender, orange, teal, teal blue) for the series of the charts and as small squares. The brands keep their own colours where a brand is named. Every text colour is at least 4.5:1 on its background in light and in dark, secondary text about 7:1. |
 | Type | **Poppins**, the template's typeface (built in from `vendor/fonts`, SIL Open Font License 1.1), for headings, the greeting, KPI figures and the small-capital labels; **Geist** for text and tables, as before. The greeting is light with the name in bold, as the template writes its titles. |
 | Navigation | A black sidebar in light and in dark with the white Beyond One logo at its top (the mark alone on the icon rail); the current page has a blue edge. The top bar is solid, with a hairline under it. |
+| The moving logo | The logo moves as the company's own animated logo does: its mosaic steps through its eleven frames every 400 ms while the words stay, in the sidebar (and the rail), on the sign-in screen (the panel and the card) and on the Showcase. The frames are a strip the CSS steps through, so the words stay sharp and the logo keeps still on its first frame (the logo as printed) for anyone whose system asks for reduced motion. |
 | Surfaces | White cards with a hairline and 12 px corners on a light grey page (in dark, near-black cards on black). No blur, no glow, almost no shadow. Sections are marked by small capitals with a blue square before them. |
 | Controls | White buttons with a border and one main action in black (white in dark); a 3 px blue focus ring on every field and control; square chips and pills; buttons press in a little; table rows tint on hover. |
-| Sign-in | On a computer, the template's title slide: a black panel with the logo and the pixel squares beside the sign-in card. |
+| Sign-in | On a computer, the template's title slide: a black panel with the moving logo and the pixel squares beside the sign-in card. |
 | Report builder | Each brand box carries its brand's logo (Virgin Mobile, FRiENDi mobile, FRiENDi pay), and each brand's tab has a pixel of its colour. |
 | System settings | Reduced motion, Windows contrast themes (forced colours) and printing are handled; the toolbar colour follows the page (`theme-color`). |
 
@@ -45,8 +46,10 @@ template (`js/bodeck.js`, the kit the tool's decks share). The cover is the temp
 logo, the title in a box of colour among the pixel squares. Every other slide has the logo at the top left, the deck's name (or
 the slide's section) in small capitals beside a black square at the top right, and CONFIDENTIAL and the slide's number at the
 foot. Titles are in capitals with the last word bold, key numbers sit in a flat box of colour, tables have a black heading and
-charts are flat in the template's colours. The official logos of Beyond One, Virgin Mobile, FRiENDi mobile and FRiENDi pay are
-built in (`assets/brand`, turned into `js/bologos.js` and `js/ui6/05_brand.css` by `python3 js/make_brand.py`).
+charts are flat in the template's colours. The Beyond One logo on the slides moves too: the template's stacked logo with the
+company's moving mosaic, as a GIF, which PowerPoint plays (`js/pptx.js` now writes GIF pictures as well as PNG). The official logos
+of Beyond One, Virgin Mobile, FRiENDi mobile and FRiENDi pay are built in (`assets/brand`, turned into `js/bologos.js` and
+`js/ui6/05_brand.css` by `python3 js/make_brand.py`).
 
 **Left as they were, on purpose.** The emails (their templates byte for byte), the Excel workbooks and the KPI cards keep
 their look, and the tool's logo setting (`js/brand_src.html`, Settings › Logo) stays empty, so none of those outputs change.
@@ -301,7 +304,10 @@ GitHub Actions runs both on every push, see `.github/workflows/node.js.yml`).
 serves it, SIL Open Font License 1.1 in `tools/fontsrc/GEIST-OFL.txt`). It needs only Python.
 
 `python3 js/make_brand.py` rebuilds `js/ui6/05_brand.css` (Poppins and the logos for the pages) and `js/bologos.js` (the logos
-for the decks) from `assets/brand` and `vendor/fonts`. Run it after changing a logo; `npm run build` then picks both up.
+for the decks) from `assets/brand` and `vendor/fonts`. Run it after changing a logo; `npm run build` then picks both up. The moving
+logo comes from the company's animated logos, `assets/brand/beyond-one-white.gif` and `beyond-one-black.gif`:
+`python3 js/make_logo_frames.py` (needs Pillow) makes from them the mosaic's frame strip, the still words and the moving stacked
+logos for the decks, before `make_brand.py`.
 
 ### Parts the document described but did not print
 

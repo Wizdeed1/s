@@ -14,7 +14,7 @@ const ROOT = path.join(__dirname, '..', '..');
 const Core = require(path.join(ROOT, 'js', 'core.js'));
 const [artDir, outFile] = process.argv.slice(2);
 const A = n => path.join(artDir, n.endsWith('.png') ? n : n + '.png');
-const LOGO = n => path.join(ROOT, 'assets', 'brand', `beyond-one-${n}.png`);   // the template's own logos
+const LOGO = n => path.join(ROOT, 'assets', 'brand', `beyond-one-${n}.gif`);   // the template's stacked logo, moving as the company's own (a GIF PowerPoint plays)
 const size = f => { const b = fs.readFileSync(f); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) }; };
 
 // the template's colours (its theme "Beyond") and its dark grey, with the greys the tool's pages use beside them
@@ -425,7 +425,7 @@ function motion(xml) {
   return xml.replace('</p:sld>', `${trans}${list.length ? timing(list, [...new Set(sps)]) : ''}</p:sld>`);
 }
 /** the logo on the layouts is described as the logo, not by its file's name */
-const layout = xml => xml.replace(/ descr="[^"]*beyond-one-[^"]*\.png"/g, ' descr="Beyond One"');
+const layout = xml => xml.replace(/ descr="[^"]*beyond-one-[^"]*\.(png|gif)"/g, ' descr="Beyond One"');
 function theme(xml) {
   const c = THEME.colors;
   xml = xml.replace(/<a:clrScheme name="[^"]*">[\s\S]*?<\/a:clrScheme>/, `<a:clrScheme name="${THEME.name}"><a:dk1><a:srgbClr val="${c.dk1}"/></a:dk1><a:lt1><a:srgbClr val="${c.lt1}"/></a:lt1>${['dk2', 'lt2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink'].map(k => `<a:${k}><a:srgbClr val="${c[k]}"/></a:${k}>`).join('')}</a:clrScheme>`);

@@ -1,5 +1,6 @@
 /* MC Monthly Report Builder - Beyond One's look for every deck the tool makes, after the Beyond One template the team's decks are
-   made with (theme "Beyond": 080808 ink, 0D76BD blue and the pixel colours; Poppins). The cover is the template's title slide (the
+   made with (theme "Beyond": 080808 ink, 0D76BD blue and the pixel colours; Poppins). The logo moves as the company's own does (a
+   GIF PowerPoint plays: the mosaic changes, the words stay). The cover is the template's title slide (the
    black panel with the white logo, the title in a box of colour among the pixel squares); every other slide has the logo at the
    top left, the deck's name in small capitals with a black square at the top right, CONFIDENTIAL and the slide's number at the
    foot; titles in capitals with the last word bold; key numbers in a flat box of colour (the template's "15%"); tables with a black
@@ -28,7 +29,7 @@ const pixels = (s, list) => list.forEach(([x, y, w, c]) => s.rect(x, y, w, w, { 
 /** the top of a slide: the logo at the top left, the deck's name in small capitals and a square at the top right */
 function top(s, label, o = {}) {
   const ink = o.dark ? C.white : C.ink;
-  img(s, logo(o.dark ? 'stackedWhite' : 'stackedBlack'), 0.40, 0.30, 0.42, 0.64, { descr: 'Beyond One', name: 'Logo' });
+  img(s, logo(o.dark ? 'stackedWhiteAnim' : 'stackedBlackAnim') || logo(o.dark ? 'stackedWhite' : 'stackedBlack'), 0.40, 0.30, 0.42, 0.64, { descr: 'Beyond One', name: 'Logo' });
   if (label) box(s, 5.30, 0.30, 7.32, 0.22, label, { size: 7, font: HEAD, caps: true, spc: 1.4, color: ink, align: 'right', name: 'Section' });
   s.rect(12.76, 0.335, 0.15, 0.15, { fill: ink, name: 'Square' });
 }
@@ -65,7 +66,7 @@ const frame = (o = {}) => ({ border: undefined, fill: undefined, gridColor: C.li
 /** the cover: the template's title slide */
 function cover(s, o = {}) {
   s.rect(0, 0, 4.25, 7.5, { fill: C.ink, name: 'Panel' });
-  img(s, logo('stackedWhite'), 1.30, 2.70, 1.65, 2.10, { center: true, middle: true, descr: 'Beyond One' });
+  img(s, logo('stackedWhiteAnim') || logo('stackedWhite'), 1.30, 2.70, 1.65, 2.10, { center: true, middle: true, descr: 'Beyond One' });
   s.rect(5.05, 1.30, 5.70, 3.95, { fill: C.lav, name: 'Title box' });
   pixels(s, [[4.60, 0.88, 0.52, C.red], [9.10, 0.60, 0.26, C.pink], [4.52, 4.78, 0.86, C.tealBlue], [11.40, 5.70, 0.32, C.teal], [12.20, 1.62, 0.13, C.blue], [11.05, 4.98, 0.17, C.orange]]);
   s.rect(12.76, 0.335, 0.15, 0.15, { fill: C.ink, name: 'Square' });
@@ -77,7 +78,7 @@ function cover(s, o = {}) {
 }
 /** the last slide: dark, the logo, the pixels, thank you */
 function closing(s, o = {}) {
-  img(s, logo('stackedWhite'), 0.40, 0.30, 0.42, 0.64, { descr: 'Beyond One' });
+  img(s, logo('stackedWhiteAnim') || logo('stackedWhite'), 0.40, 0.30, 0.42, 0.64, { descr: 'Beyond One' });
   s.rect(12.76, 0.335, 0.15, 0.15, { fill: C.white, name: 'Square' });
   pixels(s, [[10.10, 1.20, 0.72, C.red], [11.30, 0.95, 0.32, C.pink], [10.95, 2.30, 0.46, C.tealBlue], [9.55, 4.55, 0.30, C.lav], [12.10, 3.45, 0.22, C.orange], [10.65, 5.55, 0.56, C.teal], [12.40, 5.95, 0.14, C.white]]);
   box(s, 0.90, 2.62, 8.40, 1.05, runs(o.title || 'Thank You'), { size: 44, font: HEAD, caps: true, color: C.white, name: 'Title' });

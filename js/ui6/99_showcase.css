@@ -49,6 +49,8 @@
 .shlead { font-size: clamp(15px, 1.3vw, 17.5px); line-height: 1.6; color: var(--muted); margin: 14px 0 0; max-width: 68ch; }
 
 /* the hero */
+.shlogo { --h: 52px; margin-bottom: 26px; }   /* the company's moving logo opens the story */
+body.presenting .shlogo { --h: 64px; }
 .shhero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--sh-gap); align-items: center; }
 .shbig { font-size: clamp(34px, 4.6vw, 60px); }
 .shcta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }

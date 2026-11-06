@@ -67,7 +67,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'ok ' : '✗ ') + m); if 
 
   // the admin: the build first, and its step bar still works next to the page steps
   ({ p, ctx } = await open({ id: 'u0', name: 'Sara K.', username: 'sara.k', role: 'admin' }));
-  ok(await side(p) === 'dash,wfm,quality,cycle,team,results', `admin: the month's order (${await side(p)})`);
+  ok(await side(p) === 'dash,wfm,quality,cycle,team,results,show', `admin: the month's order, then the Showcase (${await side(p)})`);
   await p.evaluate(() => { window.__mc.setWs('cycle'); window.__mc.renderWs(); }); await p.waitForSelector('#cycleBody .flow');
   await p.evaluate(() => { window.__mc.setWs('build'); window.__mc.setStep('review'); });
   await p.evaluate(() => { window.__mc.setWs('cycle'); window.__mc.renderWs(); }); await p.waitForSelector('#cycleBody .flow');

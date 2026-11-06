@@ -10,6 +10,8 @@ const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
 const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const fill = c => (c ? `<a:solidFill><a:srgbClr val="${c}"/></a:solidFill>` : '<a:noFill/>');
 const lineOf = (c, w = 0.75) => (c ? `<a:ln w="${Math.round(w * 12700)}">${fill(c)}</a:ln>` : '<a:ln><a:noFill/></a:ln>');
+/** a picture's file type from its first bytes: GIF, else PNG */
+const picExt = b => (b && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 ? 'gif' : 'png');
 /** one run's properties: size in pt, colour, bold, italic, capitals (shown, the words kept as written), the font (a script font for Arabic and the like too) */
 function rPr(o, tag = 'a:rPr') {
   const f = o.font || 'Calibri';
@@ -106,7 +108,7 @@ class Slide {
       + `<p:txBody><a:bodyPr wrap="square" lIns="${ix}" tIns="${iy}" rIns="${ix}" bIns="${iy}" rtlCol="0" anchor="${an}">${o.shrink ? '<a:normAutofit/>' : '<a:noAutofit/>'}</a:bodyPr><a:lstStyle/>${paras(content, o)}</p:txBody></p:sp>`);
     return this;
   }
-  /** a picture: PNG bytes */
+  /** a picture: PNG bytes, or GIF (PowerPoint plays a moving one: the Beyond One logo) */
   image(x, y, w, h, png, o = {}) {
     const id = this.nid(), rid = this.rel('image', this.deck.media(png));
     this.items.push(`<p:pic><p:nvPicPr><p:cNvPr id="${id}" name="${esc(o.name || 'Picture ' + id)}" descr="${esc(o.descr || '')}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr>${this.frame(x, y, w, h)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`);
@@ -167,10 +169,10 @@ class Deck {
   constructor(o = {}) { Object.assign(this, { w: o.w || 13.333, h: o.h || 7.5, slides: [], charts: [], images: [], fonts: { head: o.headFont || 'Georgia', body: o.bodyFont || 'Calibri' } }); }
   slide(o = {}) { const s = new Slide(this, o); this.slides.push(s); return s; }
   chartN(ch) { this.charts.push(ch); return this.charts.length; }
-  media(png) { let i = this.images.indexOf(png); if (i < 0) { this.images.push(png); i = this.images.length - 1; } return `../media/image${i + 1}.png`; }   // the same picture once, however many slides show it
+  media(png) { let i = this.images.indexOf(png); if (i < 0) { this.images.push(png); i = this.images.length - 1; } return `../media/image${i + 1}.${picExt(png)}`; }   // the same picture once, however many slides show it
   async bytes() {
     const f = [], add = (name, data) => f.push({ name, data }), S = this.slides, n = S.length;
-    add('[Content_Types].xml', `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="xlsx" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>`
+    add('[Content_Types].xml', `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="gif" ContentType="image/gif"/><Default Extension="xlsx" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>`
       + '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>'
       + '<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/><Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/><Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/>'
       + '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>'
@@ -196,7 +198,7 @@ class Deck {
       add(`ppt/charts/_rels/chart${i + 1}.xml.rels`, `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/package" Target="../embeddings/Microsoft_Excel_Worksheet${i + 1}.xlsx"/></Relationships>`);
       add(`ppt/embeddings/Microsoft_Excel_Worksheet${i + 1}.xlsx`, await chartBook(this.charts[i]));
     }
-    this.images.forEach((png, i) => add(`ppt/media/image${i + 1}.png`, png));
+    this.images.forEach((png, i) => add(`ppt/media/image${i + 1}.${picExt(png)}`, png));
     return C.writeZip(f);
   }
 }

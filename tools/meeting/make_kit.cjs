@@ -92,7 +92,7 @@ const KIT = [
   ['Before', '02', 'Who is in the room', 'Each person\'s worry, the sentence that answers it, and the screen that proves it.', '02 Who is in the room.pdf'],
   ['Before', '03', 'Demo run sheet', 'Twenty minutes, minute by minute: what to click, what to say, and the way round each failure.', '03 Demo run sheet.pdf'],
   ['Before', '04', 'Hard questions', 'Twenty-two questions managers ask, each with a short and true answer.', '04 Hard questions.pdf'],
-  ['During', '05', 'Demo file', 'The tool on a made-up month: opens on any computer, no folder, no sign-in, nothing saved; every page, every role, View as and the Showcase.', '05 MC Monthly Report Builder - Demo.html'],
+  ['During', '05', 'Demo file', 'The tool on a made-up month: opens on any computer, no folder, no sign-in, nothing saved; every page, every role, View as and the Showcase.', '05 Cadence - Demo.html'],
   ['During', '06', 'Live drop pack', 'The month\'s four Genesys exports, made up, to drop on Import in front of the room.', '06 Live drop pack (made-up, Sep 2026)'],
   ['During', '07', 'Spotlight and zoom', 'S lights the part you are talking about, Z enlarges where you point, + and - change the size, Esc takes them off.', 'In the tool (admin only)'],
   ['During', '08', 'What it gives back', 'The room types its own hours; the Showcase turns them into hours and working days back a year.', 'Showcase (admin only)'],
@@ -233,7 +233,7 @@ const hard = doc('Presenter only', 'Hard *questions*', 'Twenty-two questions man
   <div class="box ink" style="margin-top:5mm"><p><b>When you do not know:</b> "Good question. I will check and send the answer with the follow-up email." Then write it down where they can see you do it.</p></div>`);
 
 // ================================================================================================ 10 leave-behind (for the room)
-const leave = doc('Member Care · WFM team', 'MC Monthly Report *Builder*', '**Member Care\'s month end, in one place.** One offline file turns the month\'s Genesys exports into the monthly workbook, the incentive data, the emails and the one-to-ones.',
+const leave = doc('Member Care · WFM team', '*Cadence* · Member Care performance', '**Member Care\'s month end, in one place.** One offline file turns the month\'s Genesys exports into the monthly workbook, the incentive data, the emails and the one-to-ones.',
   `${pixels(15, 30)}
   <div class="grid3">
     <div class="box blue"><h3>Checked before it is built</h3><p class="small">Nothing goes out until the checks are decided.</p></div>
@@ -260,7 +260,7 @@ const leave = doc('Member Care · WFM team', 'MC Monthly Report *Builder*', '**M
   <p class="foot">The KPIs are worked out in the tool. Tested before every change: 10,000 made-up people through every counting rule and 36 browser test suites.</p>`);
 
 // ================================================================================================ 11 IT and security (for the room)
-const it = doc('For IT and information security', 'MC Monthly Report Builder: *IT and security*', 'One HTML file (about 4 MB), opened in Edge or Chrome from the common folder. No installation, no server, no add-ins, no network calls.',
+const it = doc('For IT and information security', 'Cadence: *IT and security*', 'One HTML file of about 4 MB, opened in Edge or Chrome from the common folder. Nothing is installed, and it makes no network calls.',
   `<h2>Where the data goes</h2>
   <div class="flow">
     <div class="node"><b>The month's files</b><span class="muted small">Genesys exports, attendance templates, the IDs file, the quality Final EVAL</span></div>
@@ -299,7 +299,7 @@ const it = doc('For IT and information security', 'MC Monthly Report Builder: *I
 
 // ================================================================================================ 12 pilot proposal (for the room)
 const DAYS = [['Day 2', '2 Dec', 'Month built from the Genesys exports', 'WFM analysts'], ['Day 3', '3 Dec', 'Final EVAL in, every name linked', 'Quality team'], ['Day 5', '5 Dec', 'Results on the agents\' pages; the "one-to-ones are ready" email', 'Senior manager'], ['Day 8', '8 Dec', 'Agents\' objections answered', 'Supervisors'], ['Day 9', '9 Dec', 'One-to-ones held; results for review sent to the VP', 'Supervisors, senior manager'], ['Day 10', '10 Dec', 'Month finalized; the final result form and the deduction and absences email', 'Senior manager, WFM manager']];
-const pilot = doc('Proposal', 'The ask: *the November close*', '**Run the November 2026 close in the MC Monthly Report Builder**, with the team\'s usual checks beside it, then decide whether it becomes the way Member Care closes every month.',
+const pilot = doc('Proposal', 'The ask: *the November close*', '**Run the November 2026 close in Cadence**, with the team\'s usual checks beside it, then decide whether it becomes the way Member Care closes every month.',
   `<h2>The close, step by step (December 2026)</h2>
   <table><thead><tr><th style="width:16mm">Due</th><th style="width:16mm">Date</th><th>Step</th><th style="width:48mm">Who</th></tr></thead><tbody>
     ${DAYS.map(([d, dt, s, w]) => `<tr><td class="t">${d}</td><td class="muted">${dt}</td><td>${esc(s)}</td><td class="muted">${esc(w)}</td></tr>`).join('')}</tbody></table>
@@ -355,7 +355,7 @@ function eml(attach) {
   const B = 'mc-kit-' + Buffer.from('meeting').toString('hex'), crlf = s => s.replace(/\r?\n/g, '\r\n');
   const parts = [`--${B}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n${crlf(MAIL)}`];
   for (const [name, file] of attach) parts.push(`--${B}\r\nContent-Type: application/pdf; name="${name}"\r\nContent-Disposition: attachment; filename="${name}"\r\nContent-Transfer-Encoding: base64\r\n\r\n${fs.readFileSync(file).toString('base64').replace(/.{76}/g, '$&\r\n')}`);
-  return `MIME-Version: 1.0\r\nX-Unsent: 1\r\nTo: \r\nSubject: MC Monthly Report Builder: summary and next steps\r\nContent-Type: multipart/mixed; boundary="${B}"\r\n\r\n${parts.join('\r\n')}\r\n--${B}--\r\n`;
+  return `MIME-Version: 1.0\r\nX-Unsent: 1\r\nTo: \r\nSubject: Cadence: summary and next steps\r\nContent-Type: multipart/mixed; boundary="${B}"\r\n\r\n${parts.join('\r\n')}\r\n--${B}--\r\n`;
 }
 
 (async () => {
@@ -368,6 +368,6 @@ function eml(attach) {
     console.log('✓', name);
   }
   await b.close();
-  fs.writeFileSync(path.join(OUT, '12 Follow-up email.eml'), eml([['MC Monthly Report Builder - One page.pdf', path.join(OUT, '10 Leave-behind.pdf')], ['MC Monthly Report Builder - Pilot proposal.pdf', path.join(OUT, '12 Pilot proposal.pdf')]]));
+  fs.writeFileSync(path.join(OUT, '12 Follow-up email.eml'), eml([['Cadence - One page.pdf', path.join(OUT, '10 Leave-behind.pdf')], ['Cadence - Pilot proposal.pdf', path.join(OUT, '12 Pilot proposal.pdf')]]));
   console.log('✓ 12 Follow-up email.eml');
 })().catch(e => { console.log('✗ ' + (e && e.stack || e)); process.exit(1); });

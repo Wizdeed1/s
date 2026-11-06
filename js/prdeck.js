@@ -1,4 +1,4 @@
-/* MC Monthly Report Builder - the Member Care Performance Review: the deck made from the "MC performance Review" email the
+/* Cadence - the Member Care Performance Review: the deck made from the "MC performance Review" email the
    Control and Complaint team sends (its tables: Rebooking TKTs, Network Issues TKTs, Web + App TKTs, Social Media issue TKTs, Vnet
    Complaints, and any other one), with the brands' slides of the weekly presentation.
    tablesOf(): the email's tables from its text (an Outlook .msg keeps one cell a line; a table copied from Outlook comes
@@ -204,7 +204,7 @@ function chartSeries(xml) {
  */
 async function deckCallsOf(z) {
   const out = { otp: null, term: null };
-  if (/<Application>MC Monthly Report Builder<\/Application>/.test((await z.text('docProps/app.xml')) || '')) return { ...out, own: true };
+  if (/<Application>(?:Cadence|MC Monthly Report Builder)<\/Application>/.test((await z.text('docProps/app.xml')) || '')) return { ...out, own: true };
   const charts = z.names().filter(n => /^ppt\/charts\/chart\d+\.xml$/.test(n)).sort((a, b) => +a.match(/(\d+)\.xml$/)[1] - +b.match(/(\d+)\.xml$/)[1]);
   for (const n of charts) {
     for (const S of chartSeries(await z.text(n))) {

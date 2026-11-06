@@ -1,4 +1,4 @@
-/* MC Monthly Report Builder - formula workbook writer (no dependencies) */
+/* Cadence - formula workbook writer (no dependencies) */
 'use strict';
 const Writer2 = ((C) => {
 const esc = s => String(s).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

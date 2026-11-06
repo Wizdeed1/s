@@ -2,7 +2,7 @@
 const { chromium } = require('playwright');
 const path = require('node:path');
 (async () => {
-const file = process.argv[2] || path.resolve('final/MC Monthly Report Builder.html');
+const file = process.argv[2] || path.resolve('final/Cadence.html');
 const shot = process.argv[3] || '/tmp/smoke.png';
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1440, height: 900 } });

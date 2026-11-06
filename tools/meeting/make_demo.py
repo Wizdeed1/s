@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The demo file for the meeting: the tool itself (the normal build), opened as a made-up admin on a made-up month.
 
-  python3 tools/meeting/make_demo.py out/mc.html "final/Meeting kit/05 MC Monthly Report Builder - Demo.html"
+  python3 tools/meeting/make_demo.py out/mc.html "final/Meeting kit/05 Cadence - Demo.html"
 
 Made-up people only (test/fixture.js: first names and an initial, made-up IDs), no shared folder, no sign-in, and nothing saved:
 not in a folder and not in the browser (its storage is swapped for one that lives only while the page is open, so the demo never
@@ -112,7 +112,7 @@ START = r"""<script id="demoStart">
 boot = BOOT.replace('%FIXTURE%', fixture.strip())
 csp_end = page.index('</script>', page.index('<script id="cspBoot">')) + len('</script>')
 page = page[:csp_end] + '\n' + boot + page[csp_end:]
-page = page.replace('<title>MC Monthly Report Builder</title>', '<title>MC Monthly Report Builder · Demo</title>', 1)
+page = page.replace('<title>Cadence</title>', '<title>Cadence · Demo</title>', 1)
 end = page.rindex('<i id="mcEnd" hidden></i>')
 page = page[:end] + START + page[end:]
 os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)

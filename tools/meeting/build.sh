@@ -8,7 +8,7 @@ K="final/Meeting kit"; T="$(mktemp -d)"
 export NODE_PATH="$(npm root -g)"
 npm run build >/dev/null
 mkdir -p "$K"
-python3 tools/meeting/make_demo.py out/mc.html "$K/05 MC Monthly Report Builder - Demo.html"
+python3 tools/meeting/make_demo.py out/mc.html "$K/05 Cadence - Demo.html"
 node test/exports.cjs "$T/exports" >/dev/null
 D="$K/06 Live drop pack (made-up, Sep 2026)"; mkdir -p "$D"
 for f in "Monthly Adherence - Sep.csv" "Agents Performance Summary.csv" "Schedule activities.csv" "Agent Status Timeline Details.csv"; do cp "$T/exports/$f" "$D/$f"; done

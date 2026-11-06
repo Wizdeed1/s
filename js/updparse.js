@@ -1,4 +1,4 @@
-/* MC Monthly Report Builder - the corrections the WFM team receives after the deduction email, read into days per person:
+/* Cadence - the corrections the WFM team receives after the deduction email, read into days per person:
    - a table, as it comes in the email or a sheet: Name (Team, Dep, ID) and a column per day ("27-Oct" … with "SL leaves",
      "Absent" …), or a Date (or From and To) column with a Type column; tab-separated as pasted from Outlook or Excel, one cell a
      line as an email's text has it, or the rows of a sheet;

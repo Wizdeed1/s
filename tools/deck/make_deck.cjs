@@ -1,4 +1,4 @@
-// The launch deck: the MC Monthly Report Builder introduced as a new product, for the management team. It follows a product-demo
+// The launch deck: Cadence introduced as a new product, for the management team. It follows a product-demo
 // arc (the hook, the job month end asks for, the answer, how it works feature by feature, every role, trust,
 // proof, what it means, and the call to action), with a messaging framework (the main message, the value proposition, key
 // messages with their proof, a message for every role) and plain copy. It speaks only of the product as it is.
@@ -26,7 +26,7 @@ const THEME = { name: 'Beyond', head: 'Poppins', body: 'Poppins',
   colors: { dk1: C.ink, lt1: C.white, dk2: C.blue, lt2: C.pink, accent1: C.lav, accent2: C.orange, accent3: C.teal, accent4: C.tealBlue, accent5: C.red, accent6: C.lilac, hlink: '00DFED', folHlink: '778DA5' } };
 const W = 13.333, M = 0.45, R = W - M, FONT = 'Poppins', LIGHT = 'Poppins Light';
 const pres = new Pptx(); pres.layout = 'LAYOUT_WIDE';
-pres.title = 'MC Monthly Report Builder'; pres.subject = 'Introducing the MC Monthly Report Builder: Member Care\'s month end, in one place'; pres.author = 'Member Care WFM team'; pres.company = 'Member Care';
+pres.title = 'Cadence'; pres.subject = 'Introducing Cadence: Member Care\'s month end, in one place'; pres.author = 'Member Care WFM team'; pres.company = 'Member Care';
 pres.theme = { headFontFace: THEME.head, bodyFontFace: THEME.body };
 
 // ---- layouts, as the template has them: light and dark content slides (the title in the same place on every one), a split slide
@@ -106,10 +106,10 @@ const fig = (s, name, b, dark, t) => pic(s, `fig-${name}-${dark ? 'dark' : 'ligh
 // =============================================================================================== 1. cover: the template's title slide
 pres.addSection({ title: 'Launch' });
 {
-  const s = add('COVER', 'Launch', 'Introducing the MC Monthly Report Builder: Member Care\'s month end, in one place. One offline file that takes the month from the Genesys exports to the last email, with a page for every role. In the next minutes: what it does, how a month runs in it, who uses it, why it can be trusted, and how we start.');
+  const s = add('COVER', 'Launch', 'Introducing Cadence: Member Care\'s month end, in one place. One offline file that takes the month from the Genesys exports to the last email, with a page for every role. In the next minutes: what it does, how a month runs in it, who uses it, why it can be trusted, and how we start.');
   s.addShape(pres.shapes.RECTANGLE, { x: 5.05, y: 1.30, w: 5.70, h: 3.95, fill: { color: C.lav }, line: { type: 'none' }, objectName: 'fade|0|title-box' });
   pixels(s, [[4.60, 0.88, 0.52, C.red], [9.10, 0.60, 0.26, C.pink], [4.52, 4.78, 0.86, C.tealBlue], [11.40, 5.70, 0.32, C.teal], [12.20, 1.62, 0.13, C.blue], [11.05, 4.98, 0.17, C.orange]], 150);
-  T(s, [{ text: 'INTRODUCING', options: { fontSize: 13, bold: true, charSpacing: 3, breakLine: true } }, ...runs('the MC Monthly Report *Builder*').map(r => ({ text: r.text, options: { ...r.options, fontSize: 30 } }))], { x: 5.42, y: 1.62, w: 5.0, h: 2.2, color: C.white, valign: 'top', lineSpacingMultiple: 1.0, objectName: 'up|120|name' });
+  T(s, [{ text: 'INTRODUCING', options: { fontSize: 13, bold: true, charSpacing: 3, breakLine: true } }, { text: 'CADENCE', options: { fontSize: 50, bold: true, breakLine: true } }, { text: 'MEMBER CARE PERFORMANCE', options: { fontSize: 13, charSpacing: 2 } }], { x: 5.42, y: 1.62, w: 5.0, h: 2.2, color: C.white, valign: 'top', lineSpacingMultiple: 1.0, objectName: 'up|120|name' });
   T(s, 'Member Care\'s month end, in one place.', { x: 5.42, y: 3.95, w: 5.0, h: 1.05, fontSize: 14, color: C.white, valign: 'bottom', objectName: 'up|260|sub' });
   T(s, 'November 2026', { x: 6.2, y: 6.18, w: 6.7, h: 0.32, fontSize: 12, bold: true, color: C.ink, align: 'right', objectName: 'fade|600|date' });
   T(s, 'Member Care · WFM team', { x: 6.2, y: 6.52, w: 6.7, h: 0.3, fontSize: 10, color: C.muted, align: 'right', objectName: 'fade|600|who' });
@@ -117,7 +117,7 @@ pres.addSection({ title: 'Launch' });
 
 // =============================================================================================== 2. the product in one line
 {
-  const s = add('LIGHT', 'Launch', 'The product in one line: Member Care\'s month end, in one place. One offline file turns the month\'s Genesys exports into the monthly workbook, the incentive data, the emails and the one-to-ones. Three promises: every number is checked before it is built, every bonus explains itself, and every role has its own page.');
+  const s = add('LIGHT', 'Launch', 'The product in one line: Member Care\'s month end, in one place. One offline file turns the month\'s Genesys exports into the monthly workbook, the incentive data, the emails and the one-to-ones. Three promises. Nothing is built until the checks are decided. Any bonus can be traced back, KPI by KPI. And each role sees only its own page.');
   eyebrow(s, 'The product');
   title(s, 'Member Care\'s month end, *in one place*');
   lead(s, 'One offline file turns the month\'s Genesys exports into the monthly workbook, the incentive data, the emails and the one-to-ones.', false, { w: 5.7, h: 1.0 });

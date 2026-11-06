@@ -1,6 +1,6 @@
 ---
 name: mc-security-review
-description: Security review of the MC Monthly Report Builder, the offline HTML tool in this repository. Covers injection into the page, the email drafts and the CSV/xlsx files; trust in the shared MC Data folder (accounts, roles, keys); the encryption; the no-network rule; privacy of names and National IDs; and the supply chain. Use it before shipping a build, when a change touches js/auth.js, js/store.js, js/backup.js, anything that writes HTML, emails, CSV or xlsx, the build scripts or the CI workflow, or when asked for a security review. Adapted for this project from Claude Code Cybersecurity Skills by Riyan Pratama (Masriyan / sudo3rs), MIT; see Credits.
+description: Security review of Cadence (formerly the MC Monthly Report Builder), the offline HTML tool in this repository. Covers injection into the page, the email drafts and the CSV/xlsx files; trust in the shared MC Data folder (accounts, roles, keys); the encryption; the no-network rule; privacy of names and National IDs; and the supply chain. Use it before shipping a build, when a change touches js/auth.js, js/store.js, js/backup.js, anything that writes HTML, emails, CSV or xlsx, the build scripts or the CI workflow, or when asked for a security review. Adapted for this project from Claude Code Cybersecurity Skills by Riyan Pratama (Masriyan / sudo3rs), MIT; see Credits.
 ---
 
 # MC security review
@@ -213,7 +213,7 @@ file, so they are left out. These include exploit development, red team, malware
 who need them can install the original pack (see Credits).
 
 ## Credits
-Adapted for the MC Monthly Report Builder from **Claude Code Cybersecurity Skills** by **Riyan Pratama (Masriyan /
+Adapted for Cadence (the MC Monthly Report Builder) from **Claude Code Cybersecurity Skills** by **Riyan Pratama (Masriyan /
 sudo3rs)**, <https://github.com/Masriyan/Claude-Code-CyberSecurity-Skill> (commit `3aa77d8`). It is used under the MIT
 License with the author's attribution terms; the LICENSE and NOTICE files in this folder are the original ones,
 unchanged.

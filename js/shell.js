@@ -58,7 +58,7 @@ function syncHead() {
   const t = pageTitleNow(), r = roleNow(), u = Auth.user();
   $('pageTitle').textContent = t;
   const tag = $('roleTag'); tag.hidden = !u || r === 'pending'; tag.textContent = ROLE_NAME[r] || '';
-  document.title = t ? `${t} · MC Monthly Report Builder` : 'MC Monthly Report Builder';
+  document.title = t ? `${t} · Cadence` : 'Cadence';
   renderPeriod();
 }
 // ---- the reporting period (D13): every page except Build, where the month comes from the exports

@@ -1,4 +1,4 @@
-/* MC Monthly Report Builder - the Weekly Commercial Presentation (Member Care Performance Review), every week for the commercial
+/* Cadence - the Weekly Commercial Presentation (Member Care Performance Review), every week for the commercial
    meeting. model(): each brand's numbers for the month to date - the service level and the daily and monthly trends from the
    brands' history (as the daily brand emails keep it), the top call reasons from the month's call history export, the complaints
    and tickets from the month's tickets export (FRiENDi Pay's from its tickets sheet when the export has none), and the outages the

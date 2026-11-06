@@ -82,7 +82,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const glide = async (x, y, steps = 22) => p.mouse.move(x, y, { steps });
 
   // ---- 1. the title, then the month at a glance (the WFM analyst's dashboard)
-  await open('user', () => { window.__mc.setWs('dash'); }, ['MC Monthly Report <b>Builder</b>', 'Member Care\'s month end, in one place · made-up people, no real data']);
+  await open('user', () => { window.__mc.setWs('dash'); }, ['Introducing <b>Cadence</b>', 'Member Care\'s month end, in one place · made-up people, no real data']);
   await wait(3400); await card('', '', false); await wait(600);
   await cap('The month at a glance: every number with its trend, and the steps of the close.');
   await glide(330, 300); await wait(600); await glide(760, 300); await wait(600); await to('.dclose'); await wait(1600);
@@ -131,7 +131,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await glide(860, 300); await wait(900); await glide(640, 470); await wait(2600);
 
   // ---- 8. the end
-  await cap(''); await card('Ready for <b>the next close</b>', 'MC Monthly Report Builder · Member Care · WFM team'); await wait(3400);
+  await cap(''); await card('Ready for <b>the next close</b>', 'Cadence · Member Care · WFM team'); await wait(3400);
 
   const vid = p.video(); await ctx.close(); const webm = await vid.path(); await b.close();
   const sel = cuts.map(([a, z]) => `between(t,${a.toFixed(2)},${z.toFixed(2)})`).join('+');

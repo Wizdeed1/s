@@ -148,6 +148,8 @@ const ref = { y: 2026, m: 11 };
   }
   const own = await PrDeck.deckCallsOf(await Core.readZip(bytes));
   ok(own.own && !own.otp && !own.term, 'a deck the tool made: not read for its numbers (they are the ones the tool keeps)');
+  const ownBefore = await PrDeck.deckCallsOf(await oldDeck(true, 'MC Monthly Report Builder'));
+  ok(ownBefore.own && !ownBefore.otp, '  and one it made before it was called Cadence: the same');
   const B0 = PrDeck.baseOf(await PrDeck.deckCallsOf(await oldDeck(true)));
   ok(B0.term['2026-10'].end === '2026-10-08' && B0.term['2026-09'].end === '2026-09-30' && B0.otp['2026-10-08'] === 40 + (49 % 9), 'kept as they are: October to the deck\'s last day (8 Oct), the months before whole');
   const late = { '2026-10-09': CH.days['2026-11-01'], '2026-10-10': CH.days['2026-11-02'], '2026-11-01': CH.days['2026-11-01'], '2026-11-02': CH.days['2026-11-02'], '2026-11-03': CH.days['2026-11-03'], '2026-10-08': { ...CH.days['2026-11-01'], otp: 999, term: 999 } };

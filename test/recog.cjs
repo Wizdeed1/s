@@ -9,7 +9,7 @@ const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
 const { oldBooks } = require('./oldbooks.cjs');
 const { evalBook } = require('./evalbook.cjs');
-const page0 = path.resolve(process.argv[2] || 'final/MC Monthly Report Builder.html'), exp = path.resolve(process.argv[3] || '/tmp/exports');
+const page0 = path.resolve(process.argv[2] || 'final/Cadence.html'), exp = path.resolve(process.argv[3] || '/tmp/exports');
 const out = path.resolve(process.argv[4] || 'test/shots'); fs.mkdirSync(out, { recursive: true });
 const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');
 const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; } else console.log('✓ ' + m); };

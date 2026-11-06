@@ -1,4 +1,4 @@
-/* MC Monthly Report Builder - Beyond One's look for every deck the tool makes, after the Beyond One template the team's decks are
+/* Cadence - Beyond One's look for every deck the tool makes, after the Beyond One template the team's decks are
    made with (theme "Beyond": 080808 ink, 0D76BD blue and the pixel colours; Poppins). The logo moves as the company's own does (a
    GIF PowerPoint plays: the mosaic changes, the words stay). The cover is the template's title slide (the
    black panel with the white logo, the title in a box of colour among the pixel squares); every other slide has the logo at the

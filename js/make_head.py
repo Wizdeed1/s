@@ -9,7 +9,7 @@ for f in sorted(glob.glob(os.path.join(here, 'ui6', '*.css'))):
 boot = open(os.path.join(here, 'head_boot.html'), encoding='utf-8').read()
 theme = open(os.path.join(here, 'theme_boot.html'), encoding='utf-8').read()   # light or dark before the first paint
 csp = open(os.path.join(here, 'csp_boot.html'), encoding='utf-8').read()   # the browser refuses any web address (a file only)
-out = ('<title>MC Monthly Report Builder</title>\n'
+out = ('<title>Cadence</title>\n'
        + csp.rstrip('\n') + '\n'
        '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f4f5">\n'
        '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0c0c0e">\n'

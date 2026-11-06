@@ -1,6 +1,6 @@
 #!/bin/bash
 # The stakeholder deck from the current build, with synthetic data only:
-#   bash tools/deck/build.sh [workDir]   ->   final/MC Monthly Report Builder - Overview.pptx
+#   bash tools/deck/build.sh [workDir]   ->   final/Cadence - Overview.pptx
 # Needs: Playwright with Chromium, LibreOffice (soffice) and pdftoppm, and pptxgenjs (npm i pptxgenjs in workDir, or on NODE_PATH).
 set -e
 cd "$(dirname "$0")/../.."
@@ -16,4 +16,4 @@ node tools/deck/docs.cjs "$W/docs"
   && pdftoppm -r 130 -f 1 -l 1 -png template.pdf xlsx)
 python3 -I -c "import sys; from PIL import Image; im = Image.open(sys.argv[1]); w, h = im.size; im.crop((40, 60, w - 40, int(h * .93))).save(sys.argv[2])" "$W/docs/xlsx-01.png" "$W/docs/xlsx-crop.png"
 node tools/deck/art.cjs "$W/shots" "$W/art" "$W/docs/form-1.png" "$W/docs/xlsx-crop.png"
-node tools/deck/make_deck.cjs "$W/art" "final/MC Monthly Report Builder - Overview.pptx"
+node tools/deck/make_deck.cjs "$W/art" "final/Cadence - Overview.pptx"

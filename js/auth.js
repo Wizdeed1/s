@@ -727,7 +727,7 @@ const Auth = (() => {
       .map(a => ({ ...(a.email ? { email: normEmail(a.email) } : {}), ...(a.username ? { username: normUser(a.username) } : {}), name: a.name, algo: a.algo, iter: a.iter, salt: a.salt, hash: a.hash, pwSetAt: a.pwSetAt, createdAt: a.createdAt }));
     const team = { v: 2, madeAt: new Date().toISOString(), madeBy: user.name, admins, ...(userOnly ? { usernameOnly: true } : {}), ...(state.logo ? { logo: state.logo } : {}) };
     const html = teamCopyHtml(team);
-    await save('MC Monthly Report Builder - team copy.html', new Blob([html], { type: 'text/html' }));
+    await save('Cadence - team copy.html', new Blob([html], { type: 'text/html' }));
   }
   // activity + timer
   const touch = () => { lastActive = Date.now(); };

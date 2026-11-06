@@ -3,7 +3,7 @@
 // Usage: node test/shots.cjs [page.html] [outDir] [filter]
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
-const page0 = path.resolve(process.argv[2] || 'final/MC Monthly Report Builder.html');
+const page0 = path.resolve(process.argv[2] || 'final/Cadence.html');
 const out = path.resolve(process.argv[3] || 'test/shots'); fs.mkdirSync(out, { recursive: true });
 const only = process.argv[4] ? new RegExp(process.argv[4]) : null;
 const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');

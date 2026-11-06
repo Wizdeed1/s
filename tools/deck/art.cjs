@@ -73,7 +73,7 @@ const laptopHtml = (src, dark) => `<div class="laptop"><div class="lid"><div cla
   await render('laptop-dark', laptopHtml(shot('dash-dark'), true));
   await render('laptop-light', laptopHtml(shot('dash-light'), false));
   for (const [n, t] of [['import', 'Import'], ['checks', 'Review › Checks'], ['export', 'Export'], ['emails', 'Emails'], ['templates', 'Attendance templates'], ['how', 'How this was counted'], ['cycle', 'Supervisors'], ['builder', 'Report builder'], ['data', 'Data'], ['team', 'My team'], ['agent-ar', 'My page']])
-    await render('win-' + n, winHtml(shot(n), `MC Monthly Report Builder · ${t}`));
+    await render('win-' + n, winHtml(shot(n), `Cadence · ${t}`));
   if (formPng && fs.existsSync(formPng)) await render('paper-form', `<div class="paper"><img src="${img(formPng)}"></div>`, { style: 'transform: rotate(-3deg)', pad: 110 });
   if (xlsxPng && fs.existsSync(xlsxPng)) await render('win-xlsx', winHtml(img(xlsxPng), 'Attendance - Oct 2026 - TS.xlsx'));
   // the line figures at rest: on white for the light slides, on the dark grey for the dark ones (their faces take the ground's colour)
@@ -85,7 +85,7 @@ const laptopHtml = (src, dark) => `<div class="laptop"><div class="lid"><div cla
   }
   console.log('✓ figures', FIGS.length * 2);
   // the dashboard large, for the slide that points at its parts (make_deck.cjs reads hero.json to place the numbers), and close-ups
-  await render('hero-dash', winHtml(shot('dash-light'), 'MC Monthly Report Builder · Dashboard'));
+  await render('hero-dash', winHtml(shot('dash-light'), 'Cadence · Dashboard'));
   fs.writeFileSync(path.join(out, 'hero.json'), JSON.stringify({ pad: 90, winW: 1500, bar: 46, boxes: JSON.parse(fs.readFileSync(path.join(shots, 'dash-light.json'), 'utf8')) }));
   for (const [n, fade] of [['z-import', 0], ['z-checks', 0], ['z-email', 1], ['z-templates', 1], ['z-how', 1]]) {
     const f = path.join(shots, n + '.png'), w = fs.readFileSync(f).readUInt32BE(16);

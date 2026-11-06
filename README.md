@@ -1,6 +1,6 @@
-# MC Monthly Report Builder
+# Cadence
 
-The Member Care Workforce Management tool: one offline HTML file that turns the month's Genesys Cloud exports and the
+**Cadence** (Member Care performance; until November 2026 the *MC Monthly Report Builder*) is the Member Care Workforce Management tool: one offline HTML file that turns the month's Genesys Cloud exports and the
 supervisors' attendance sheets into the monthly report, the incentive data and everything that follows (KPI results,
 one-to-ones, objections, the senior manager's review and final, the month close, the daily Member Care reports).
 
@@ -14,7 +14,7 @@ that the admin can view every role's interface (a preview that saves nothing) an
 The tool still sends nothing and makes no network request; opened as a file, the browser itself now refuses any web
 address (see the security review below).
 
-**The built file:** [`final/MC Monthly Report Builder.html`](final/MC%20Monthly%20Report%20Builder.html). Open it in
+**The built file:** [`final/Cadence.html`](final/MC%20Monthly%20Report%20Builder.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
 
 ## Beyond One (November 2026)
@@ -66,6 +66,24 @@ The admin can open every role's interface, and has a page that tells the tool's 
 | Showcase (admin only) | **Showcase** in the admin's navigation (`js/showcase.js`): the tool's story in ten sections, built on a messaging framework: the main message, the challenge (10+ files, 7 roles, 1 deadline), the answer as a value proposition with the month's four steps, five key messages with their proof, a page for every role (before and now, with View), today's figures (the dashboard's cards and a few counts from the shared data: totals only, never a name), trust, what changes, what it gives back (the room's own hours, typed in), and how to start. **Present** shows it full screen, one section at a time: ← and →, Home and End, **N** for the speaker notes, Esc to end. A role's View opens that interface live, out of the presentation. Other roles do not have the page; a link to `#/show` says it is not one of theirs. |
 | Line figures | The Showcase's animated line figures (an app in layers, a tray of files, sieves for the checks, lines snapping square for the workbook, a relay for the emails, a hub for the roles, a vault, a laptop) are [hairline](https://www.npmjs.com/package/@lucasmarkes/hairline) 0.5.1 (MIT), built into the file from `vendor/hairline.js`, its SHA-256 checked by `npm test` like GSAP's. They are drawn only while the Showcase is open, answer the pointer, and keep still with reduced motion. |
 | How it was written | The brand skill's messaging framework gave the structure; the copy follows plain-language rules (no slogans, numbers that can be checked); hairline gave the figures; Beyond One's look and Poppins carry over from the rest of the tool. |
+
+## The name: Cadence (November 2026)
+
+The tool is now **Cadence** · Member Care performance: in the page title, the sign-in page, the sidebar, the footer, the
+Showcase, the decks it makes (their application name; a deck made before the rename is still recognised as the tool's own),
+the launch deck (*final/Cadence - Overview.pptx*), the meeting kit, the demo file and the video. The file is
+*final/Cadence.html*. Unchanged on purpose: the data folder and every stored key (*MC Data*, `mc-report-builder`,
+`mc-theme`), the names of the workbooks and emails (*MC Monthly Report*, *MC Monthly Deduction*…) and every email template.
+
+## unslop (November 2026)
+
+[unslop](https://github.com/MohamedAbdallah-14/unslop) (MIT) is installed for Claude Code: its six skills (`unslop`,
+`unslop-file`, `unslop-commit`, `unslop-review`, `unslop-reasoning`, `unslop-help`) and its command-line checker
+(`unslop --deterministic`), pinned to commit eaa3b92 in the environment's setup script; its always-on hooks are not installed.
+Applied to the tool: every string of the page went through the checker (about 1,300 of them are sentences), and it found no
+AI tell in the interface, so the wording stays. The judgment pass the skill describes changed three lines: the Showcase's
+opening (three "every" clauses in a row), the same promise in the launch deck's notes, and the IT note's list of four
+"no"s. "Showcase" is on unslop's word list but stays, because it is the page's name.
 
 ## The KPIs worked out in the tool (November 2026)
 
@@ -181,7 +199,7 @@ Option A was chosen from three samples and built by the rules of Apple's Human I
 | One-to-one form | The PDF fits on **one A4 page**: the same parts (details, results, follow-up, discussion with the root cause and the agent's comments side by side, actions, the supervisor's final, signatures), tighter; a form with very long writing shrinks a little, and only one that still does not fit runs on to a second page, so nothing is cut. The final form is as it was. |
 | No IDs in the email attachments | The deduction email's workbook has no ID column (Name, Team and Dep first). The incentive email's workbook is the saved incentive file (or Build's) without the ID column (Build's own export keeps it); a dropped incentive workbook is attached with its ID columns emptied. The email bodies are as before. |
 | Still reading | After the sign-in a pill under the toolbar says **Reading the shared data… N files** until the first read is in, **Putting Oct 2026 back in Build** while the saved uploads are opened, and **Reading 3 files…** while dropped files are read; the dashboard, Team and Supervisors pages say they are still reading instead of "No months yet". |
-| Overview deck | **final/MC Monthly Report Builder - Overview.pptx**: 17 slides that launch the tool to the management team as a product, told only as it is today. A product-demo story: the cover, the product and its three promises, the job month end asks for (10+ files, 7 roles, 1 deadline), the answer (the dashboard with its parts pointed out), a month in four steps, then feature by feature (import, the checks, attendance from exceptions only, every bonus explained, the emails), every role (a supervisor's team and an agent's page in Arabic, on a computer), the coaching loop, daily reporting, privacy (each person sees only what their role allows), how it is tested, what it means for Member Care, and how to start (in Edge or Chrome on a computer; opening it from anywhere, phones included, is named as what comes next). The words follow a messaging framework (one main message, the value proposition, key messages each with its proof, a line for every role) in plain language. On the Beyond One template (its title slide as the cover; the moving logo, the section in small capitals, CONFIDENTIAL and the number on every other slide; titles in capitals; flat boxes in its colours; dark slides for the emails, for privacy and to close), with hairline's line figures as illustrations, close-ups of the tool large enough to read, a fade between slides and every part rising in, one after another; speaker notes on every slide. The screenshots are made from the synthetic test data; `bash tools/deck/build.sh` makes the deck again from the current build. |
+| Overview deck | **final/Cadence - Overview.pptx**: 17 slides that launch the tool to the management team as a product, told only as it is today. A product-demo story: the cover, the product and its three promises, the job month end asks for (10+ files, 7 roles, 1 deadline), the answer (the dashboard with its parts pointed out), a month in four steps, then feature by feature (import, the checks, attendance from exceptions only, every bonus explained, the emails), every role (a supervisor's team and an agent's page in Arabic, on a computer), the coaching loop, daily reporting, privacy (each person sees only what their role allows), how it is tested, what it means for Member Care, and how to start (in Edge or Chrome on a computer; opening it from anywhere, phones included, is named as what comes next). The words follow a messaging framework (one main message, the value proposition, key messages each with its proof, a line for every role) in plain language. On the Beyond One template (its title slide as the cover; the moving logo, the section in small capitals, CONFIDENTIAL and the number on every other slide; titles in capitals; flat boxes in its colours; dark slides for the emails, for privacy and to close), with hairline's line figures as illustrations, close-ups of the tool large enough to read, a fade between slides and every part rising in, one after another; speaker notes on every slide. The screenshots are made from the synthetic test data; `bash tools/deck/build.sh` makes the deck again from the current build. |
 
 ## October 2026, security review
 
@@ -329,7 +347,7 @@ Claude Code loads these from `.claude/skills/` in every session on this reposito
 ```bash
 cd js
 python3 combine.py > ../out/combined_main.js && node --check ../out/combined_main.js     # the main script parses
-bash assemble_standalone.sh "../final/MC Monthly Report Builder.html"                   # the common-folder file
+bash assemble_standalone.sh "../final/Cadence.html"                   # the common-folder file
 bash assemble3.sh ../out/mc-report-builder.html                                         # the online page
 ```
 
@@ -366,42 +384,42 @@ The visual tests use only synthetic people (first name and initial, made-up IDs,
 
 ```bash
 export NODE_PATH=$(npm root -g)                     # Playwright
-node test/shots.cjs  "final/MC Monthly Report Builder.html" test/shots           # every role, light and dark (as the system is set), desktop, laptop, tablet, phone
+node test/shots.cjs  "final/Cadence.html" test/shots           # every role, light and dark (as the system is set), desktop, laptop, tablet, phone
 node test/exports.cjs /tmp/exports                                                # synthetic September 2026 Genesys exports
-node test/buildflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # Import → Checks → Link → Build → Email
-node test/overlays.cjs "final/MC Monthly Report Builder.html" test/shots          # menus, search, More sheet, blocked page, sign-in
-node test/motion.cjs "final/MC Monthly Report Builder.html" test/shots            # the dashboard moment, KPI rows level, Supervisors bars, the More sheet swipe, Team table speed
-node test/quality.cjs "final/MC Monthly Report Builder.html" test/shots           # Final EVAL template, DRC-CSAT box, scorecards
-node test/signin.cjs "final/MC Monthly Report Builder.html" test/shots            # sign-in, lock and unlock
-node test/agent.cjs "final/MC Monthly Report Builder.html" test/shots             # the agent's page and its month box, English and Arabic
-node test/recon.cjs "final/MC Monthly Report Builder.html" test/shots             # Results › Reconcile on synthetic old workbooks (test/oldbooks.cjs)
-node test/recog.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # nine files in one drop, the Recognise files panel
-node test/caps.cjs "final/MC Monthly Report Builder.html"                         # title-style capitalization on buttons, menus, tabs and headings
-node test/theme.cjs "final/MC Monthly Report Builder.html" test/shots             # the appearance: System, Light, Dark, kept and applied before the first paint
-node test/wfmteam.cjs "final/MC Monthly Report Builder.html" test/shots           # the WFM team page and its tabs per role, the vacation cover, the month close, the removed boxes
-node test/uploads.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # saved uploads: kept, back after a reload, moved, deleted, Undo
-node test/folder.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots    # the shared data folder end to end (a browser-kept folder): locked uploads, MC Reports, sign in again
-node test/accounts.cjs "final/MC Monthly Report Builder.html" test/shots          # Manage accounts in the data folder: every record, search, roles, Edit, records with no account
-node test/nosched.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # no schedule: the model, the workbook, the setting, the Attendance tab's chips
-node test/peek.cjs "final/MC Monthly Report Builder.html" test/shots              # the brand box's email preview on hover and focus
-node test/rounding.cjs "final/MC Monthly Report Builder.html" test/shots /tmp/exports   # 94.99% counts as 95%, How this was counted, the rules' rounding, the exact days %, the Build month's KPI tab
-node test/attflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots    # attendance templates out and back, CC and SM from Genesys, the two-sheet attachment, no Month close card
-node test/datafolder.cjs "final/MC Monthly Report Builder.html" test/shots           # a cancelled, slow, silent or unreadable data folder, allowing it again; WFM team › Data export and import; the reading pill
-node test/xss.cjs "final/MC Monthly Report Builder.html" test/shots               # HTML planted in every name: nothing runs on any page, preview or email; Outlook headers; CSV formulas; the no-network rule
-node test/trust.cjs "final/MC Monthly Report Builder.html" test/shots             # accounts planted in the shared folder ("builtIn", "role") get no key, no role and no place in a team copy
-node test/tenure.cjs "final/MC Monthly Report Builder.html" test/shots           # months in the job (joined 18 Jan: from Jul), roster import and Edit of the joining date, the absence penalty of 4 days per Absent day
-node test/depts.cjs "final/MC Monthly Report Builder.html" test/shots exportsDir  # every department: the SPVs' card (Team Performance, month figures, typed by hand, its own base), a role's card from the person's page, NA ranks 5, Review › KPI results boxes, the card's base
-node test/dailyhist.cjs "final/MC Monthly Report Builder.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
-node test/incmail.cjs "final/MC Monthly Report Builder.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see); the final result form with only those who earned it
-node test/steps.cjs "final/MC Monthly Report Builder.html" test/shots            # every page in the month's order: the sidebar, the numbered steps (Supervisors, Quality), the dashboard's priority, the agent's waiting one-to-one first
-node test/ctflow.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # the CT team's incentive workbook on Import: its days, its Utilization in the CT scorecard (the KPI file wins), never the IDs file, Remove and Undo
-node test/smartlink.cjs "final/MC Monthly Report Builder.html" /tmp/exports test/shots   # Export › Smart-Link attendance: FRiENDi and FRiENDi Pay only, Smart-Link's sheet and formulas, a late day as Attend with its minutes, the shared month's corrections, Saved workbooks
-node test/absgrid.cjs "final/MC Monthly Report Builder.html" test/shots           # the deduction email's Absenteeism table: every cell on one line at any window width, fixed widths, the email as wide as the table
-node test/weekly.cjs "final/MC Monthly Report Builder.html" test/shots           # WFM team › Weekly commercial: the month from the history, the sheet read (another file refused, a drop read once), the exports' numbers, outages typed, pasted and undone, settings, the deck and the email to the VP, another day, the shared settings and outages, the senior manager without the tab, phone width
-node test/attupd.cjs "final/MC Monthly Report Builder.html" test/shots           # Emails › Deduction and absences › Corrections after the review: a champion's table pasted, typed lines (choose between two people, a range's OFF day, clear), exceptions as the supervisors list them (the deduction, the email and its workbook follow), Apply, Undo, Remove, an .eml chosen and dropped, a picture refused, a final month, text as text, the senior manager without the box
-node test/perfrev.cjs "final/MC Monthly Report Builder.html" test/shots          # WFM team › Performance Review: a made-up .msg chosen and one dropped, its tables listed, the deck and the email to the VP, a made-up Call history (.xlsx, and an .xls) counted and kept with the shared days, what counts, Clear and Undo, a pasted text, a picture refused, the senior manager without the tab, phone width
-node test/viewas.cjs "final/MC Monthly Report Builder.html" test/shots           # the admin's View as (every role, a supervisor's team, an agent's page, nothing saved while viewing) and the Showcase (sections, figures, Present)
-node test/meeting.cjs "final/Meeting kit/05 MC Monthly Report Builder - Demo.html" "final/Meeting kit/06 Live drop pack (made-up, Sep 2026)" test/shots   # the demo file (opens anywhere, nothing stored), no KPI file asked for, the bell's buttons, How on Results, the calculator, the presenter's keys, View as an agent, Import
+node test/buildflow.cjs "final/Cadence.html" /tmp/exports test/shots   # Import → Checks → Link → Build → Email
+node test/overlays.cjs "final/Cadence.html" test/shots          # menus, search, More sheet, blocked page, sign-in
+node test/motion.cjs "final/Cadence.html" test/shots            # the dashboard moment, KPI rows level, Supervisors bars, the More sheet swipe, Team table speed
+node test/quality.cjs "final/Cadence.html" test/shots           # Final EVAL template, DRC-CSAT box, scorecards
+node test/signin.cjs "final/Cadence.html" test/shots            # sign-in, lock and unlock
+node test/agent.cjs "final/Cadence.html" test/shots             # the agent's page and its month box, English and Arabic
+node test/recon.cjs "final/Cadence.html" test/shots             # Results › Reconcile on synthetic old workbooks (test/oldbooks.cjs)
+node test/recog.cjs "final/Cadence.html" /tmp/exports test/shots   # nine files in one drop, the Recognise files panel
+node test/caps.cjs "final/Cadence.html"                         # title-style capitalization on buttons, menus, tabs and headings
+node test/theme.cjs "final/Cadence.html" test/shots             # the appearance: System, Light, Dark, kept and applied before the first paint
+node test/wfmteam.cjs "final/Cadence.html" test/shots           # the WFM team page and its tabs per role, the vacation cover, the month close, the removed boxes
+node test/uploads.cjs "final/Cadence.html" /tmp/exports test/shots   # saved uploads: kept, back after a reload, moved, deleted, Undo
+node test/folder.cjs "final/Cadence.html" /tmp/exports test/shots    # the shared data folder end to end (a browser-kept folder): locked uploads, MC Reports, sign in again
+node test/accounts.cjs "final/Cadence.html" test/shots          # Manage accounts in the data folder: every record, search, roles, Edit, records with no account
+node test/nosched.cjs "final/Cadence.html" /tmp/exports test/shots   # no schedule: the model, the workbook, the setting, the Attendance tab's chips
+node test/peek.cjs "final/Cadence.html" test/shots              # the brand box's email preview on hover and focus
+node test/rounding.cjs "final/Cadence.html" test/shots /tmp/exports   # 94.99% counts as 95%, How this was counted, the rules' rounding, the exact days %, the Build month's KPI tab
+node test/attflow.cjs "final/Cadence.html" /tmp/exports test/shots    # attendance templates out and back, CC and SM from Genesys, the two-sheet attachment, no Month close card
+node test/datafolder.cjs "final/Cadence.html" test/shots           # a cancelled, slow, silent or unreadable data folder, allowing it again; WFM team › Data export and import; the reading pill
+node test/xss.cjs "final/Cadence.html" test/shots               # HTML planted in every name: nothing runs on any page, preview or email; Outlook headers; CSV formulas; the no-network rule
+node test/trust.cjs "final/Cadence.html" test/shots             # accounts planted in the shared folder ("builtIn", "role") get no key, no role and no place in a team copy
+node test/tenure.cjs "final/Cadence.html" test/shots           # months in the job (joined 18 Jan: from Jul), roster import and Edit of the joining date, the absence penalty of 4 days per Absent day
+node test/depts.cjs "final/Cadence.html" test/shots exportsDir  # every department: the SPVs' card (Team Performance, month figures, typed by hand, its own base), a role's card from the person's page, NA ranks 5, Review › KPI results boxes, the card's base
+node test/dailyhist.cjs "final/Cadence.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
+node test/incmail.cjs "final/Cadence.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see); the final result form with only those who earned it
+node test/steps.cjs "final/Cadence.html" test/shots            # every page in the month's order: the sidebar, the numbered steps (Supervisors, Quality), the dashboard's priority, the agent's waiting one-to-one first
+node test/ctflow.cjs "final/Cadence.html" /tmp/exports test/shots   # the CT team's incentive workbook on Import: its days, its Utilization in the CT scorecard (the KPI file wins), never the IDs file, Remove and Undo
+node test/smartlink.cjs "final/Cadence.html" /tmp/exports test/shots   # Export › Smart-Link attendance: FRiENDi and FRiENDi Pay only, Smart-Link's sheet and formulas, a late day as Attend with its minutes, the shared month's corrections, Saved workbooks
+node test/absgrid.cjs "final/Cadence.html" test/shots           # the deduction email's Absenteeism table: every cell on one line at any window width, fixed widths, the email as wide as the table
+node test/weekly.cjs "final/Cadence.html" test/shots           # WFM team › Weekly commercial: the month from the history, the sheet read (another file refused, a drop read once), the exports' numbers, outages typed, pasted and undone, settings, the deck and the email to the VP, another day, the shared settings and outages, the senior manager without the tab, phone width
+node test/attupd.cjs "final/Cadence.html" test/shots           # Emails › Deduction and absences › Corrections after the review: a champion's table pasted, typed lines (choose between two people, a range's OFF day, clear), exceptions as the supervisors list them (the deduction, the email and its workbook follow), Apply, Undo, Remove, an .eml chosen and dropped, a picture refused, a final month, text as text, the senior manager without the box
+node test/perfrev.cjs "final/Cadence.html" test/shots          # WFM team › Performance Review: a made-up .msg chosen and one dropped, its tables listed, the deck and the email to the VP, a made-up Call history (.xlsx, and an .xls) counted and kept with the shared days, what counts, Clear and Undo, a pasted text, a picture refused, the senior manager without the tab, phone width
+node test/viewas.cjs "final/Cadence.html" test/shots           # the admin's View as (every role, a supervisor's team, an agent's page, nothing saved while viewing) and the Showcase (sections, figures, Present)
+node test/meeting.cjs "final/Meeting kit/05 Cadence - Demo.html" "final/Meeting kit/06 Live drop pack (made-up, Sep 2026)" test/shots   # the demo file (opens anywhere, nothing stored), no KPI file asked for, the bell's buttons, How on Results, the calculator, the presenter's keys, View as an agent, Import
 bash tools/meeting/build.sh                                                        # the meeting kit from the current build (made-up data; needs ffmpeg)
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)
 npm test                                                                          # unit checks, the counting rules against v33 (test/ref), the reconcile engine, the recogniser, the attendance template, the CT incentive workbook, Smart-Link's attendance file, the weekly presentation's numbers and PowerPoint, the corrections read after the deduction email, the performance review's tables and deck, the emails' workbooks, the one-page one-to-one, the supply chain (GSAP's SHA-256, no npm code, the CI token, no web address in the page)

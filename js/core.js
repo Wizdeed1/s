@@ -1,4 +1,4 @@
-/* MC Monthly Report Builder - engine (no dependencies; runs in browsers and Node 18+) */
+/* Cadence - engine (no dependencies; runs in browsers and Node 18+) */
 'use strict';
 const Core = (() => {
 

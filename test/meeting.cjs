@@ -45,7 +45,18 @@ let fails = 0; const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if
   await howBtn.click(); await p.waitForTimeout(500);
   const how = await p.evaluate(() => document.getElementById('howBody').innerText);
   ok(howK === '2026-09' && /DRC-CSAT/.test(how) && /Quality Observations/.test(how) && /Final %/.test(how) && !/No KPI results/.test(how), `Results › How explains ${howK}: each KPI from the quality numbers, then the final %`);
+  const fitHow = await p.evaluate(() => { const b = document.querySelector('#dHow .body'); return { ok: b.scrollWidth <= b.clientWidth + 1, marks: [...document.querySelectorAll('#dHow .howchk li')].every(li => getComputedStyle(li, '::before').content === 'none' && (li.textContent.match(/[✓✗]/g) || []).length <= 1) }; });
+  ok(fitHow.ok && fitHow.marks, '  the How drawer fits its width (nothing scrolls sideways), and each line of Who earns it has one mark');
   await p.screenshot({ path: path.join(out, 'meeting-how.png') });
+  await p.keyboard.press('Escape'); await p.waitForTimeout(250);
+  // the agent's panel (Team › a row) with How this was counted open: the KPI table fits the 600 px panel, the text wraps inside it
+  await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(500);
+  await p.locator('#teamBody [data-open]').first().click(); await p.waitForTimeout(600);
+  const fitP = await p.evaluate(() => { const dr = document.getElementById('dPerson'), d = dr.querySelector('details.howdet'); if (!d) return null; d.open = true;
+    const b = dr.querySelector('.body'), t = d.querySelector('.howtab table'), right = dr.getBoundingClientRect().right;
+    return { panel: b.scrollWidth <= b.clientWidth + 1, table: t.getBoundingClientRect().right <= right, text: [...d.querySelectorAll('p')].every(x => x.getBoundingClientRect().right <= right) }; });
+  ok(fitP && fitP.panel && fitP.table && fitP.text, `  the agent's panel with How this was counted open: ${fitP ? 'no sideways scroll, the table and the text inside it' : 'no How'}`);
+  await p.screenshot({ path: path.join(out, 'meeting-person-how.png') });
   await p.keyboard.press('Escape'); await p.waitForTimeout(250);
 
   // ---- 6. the Showcase and What it gives back

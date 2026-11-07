@@ -1621,12 +1621,22 @@ td[data-c="badges"] .dupmk { margin-inline-start: 6px; vertical-align: middle; }
 .howtab table td, .howtab table th { padding-block: 6px; }
 .howchk { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .howchk li { display: flex; gap: 8px; align-items: baseline; }
-.howchk .good::before { content: "✓"; color: var(--good); font-weight: 700; }
-.howchk .bad::before { content: "✗"; color: var(--bad); font-weight: 700; }
+.howchk li > span[aria-hidden] { font-weight: 700; }   /* the page writes each mark once */
+.howchk .good > span[aria-hidden] { color: var(--good); } .howchk .bad > span[aria-hidden] { color: var(--bad); }
 .hownote { color: var(--muted); font-size: 12.5px; }
 .howrules { font-size: 12.5px; color: var(--muted); }
 .howdet { margin-top: var(--s3); }
 .howdet > summary { cursor: pointer; color: var(--accent-text); font-weight: 600; }
+/* How this was counted fits the panel it opens in (the agent's panel is 600 px, the How drawer 680 px): the steps may shrink
+   (a grid item is otherwise as wide as its widest content), the KPI table is compact and wraps its KPI names and its headings,
+   and on a phone only the table scrolls sideways, never the panel or the text */
+.howsteps > li, .howdet { min-width: 0; max-width: 100%; }
+.howtab { max-width: 100%; max-height: none; }
+.howtab table { font-size: 12.5px; }
+.howtab th, .howtab td { padding-inline: 8px; }
+.howtab thead th { white-space: normal; height: auto; line-height: 1.25; vertical-align: bottom; }
+.howtab td:first-child { white-space: normal; min-width: 7.5em; overflow-wrap: break-word; }
+.howtab td:first-child small { display: block; }
 .howlink { margin-inline-start: 6px; font-size: 12px; }
 /* inside the rules drawer the generic field rules would stretch these: numbers stay short and sit in the sentence */
 .cntrules.field { display: block; gap: 0; }

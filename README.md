@@ -97,6 +97,7 @@ No KPI file is uploaded: the tool works every KPI out itself, and nothing asks f
 | The bell | A line with both **Mark done** and **Open** keeps both buttons whole, side by side; Open used to fall into the dot's column and was cut. |
 | Results › How | Explains the month on the screen; it opened the month in Build before, so another month said there was nothing to explain. |
 | Showcase | "1 month of history", not "1 months". |
+| How this was counted | Fits the agent's panel (600 px) and the How drawer: the steps may shrink, the KPI names and headings wrap, and on a phone only the table scrolls sideways; **Who earns it** shows each mark once (it showed ✓ ✓ and ✗ ✗). |
 
 ## The meeting kit (November 2026)
 

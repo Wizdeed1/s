@@ -1625,6 +1625,10 @@ td[data-c="badges"] .dupmk { margin-inline-start: 6px; vertical-align: middle; }
 .howchk .good > span[aria-hidden] { color: var(--good); } .howchk .bad > span[aria-hidden] { color: var(--bad); }
 .hownote { color: var(--muted); font-size: 12.5px; }
 .howrules { font-size: 12.5px; color: var(--muted); }
+/* each step reads as its title with its lines right under it */
+.howsteps > li > p { margin: 3px 0 0; }
+.howsteps > li > .tablewrap, .howsteps > li > .howchk { margin-top: 6px; }
+.howsteps > li > .tablewrap + p, .howsteps > li > .howchk + p { margin-top: 8px; }
 .howdet { margin-top: var(--s3); }
 .howdet > summary { cursor: pointer; color: var(--accent-text); font-weight: 600; }
 /* How this was counted fits the panel it opens in (the agent's panel is 600 px, the How drawer 680 px): the steps may shrink
@@ -27189,7 +27193,7 @@ function peopleBasesClick(e) {
 
 // ---------------------------------------------------------------- how this was counted: one person's month, step by step
 /** where a KPI's value came from, when not from its own source */
-const HOW_FROM = { hand: '(typed by hand)', fig: "(the month's figure)", team: '(their team\'s average final %)' };
+const HOW_FROM = { hand: '(typed by hand)', fig: "(month's figure)", team: "(team's average final %)" };
 /** a Build-month KPI result (state.kpi) as a month row, for the explanation */
 function kpiRowOfK(K) {
   const res = K.res;
@@ -27206,16 +27210,23 @@ function howDaysText(cd, cfg) {
   const other = Object.entries(cd.other || {}).map(([v, n]) => `${v} ${n}`);
   return bits.join(' · ') + (other.length ? `; not scheduled: ${other.join(' · ')}` : '');
 }
+/** what was rounded before ranking, in one sentence: ' Percent KPIs are rounded to a whole % and seconds to whole seconds before ranking.' */
+function howRoundText(x, T, kOf) {
+  if (!x) return '';
+  const pct = x.vd >= 0 && T.some((t, i) => { const q = kOf(t[0], i); return !q || q.unit === 'pct'; }) ? `to ${x.vd ? plural(x.vd, 'decimal') : 'a whole %'}` : '';
+  const sec = x.vr && T.some((t, i) => { const q = kOf(t[0], i); return q && q.unit === 'sec' && x.vr[q.id] !== undefined; }) ? `to ${x.sd ? plural(x.sd, 'decimal') : 'whole seconds'}` : '';
+  return pct && sec ? ` Percent KPIs are rounded ${pct} and seconds ${sec} before ranking.` : pct ? ` Percent KPIs are rounded ${pct} before ranking.` : sec ? ` Seconds are rounded ${sec} before ranking.` : '';
+}
 /**
  * "How this was counted" for one person's month: each KPI's value, band, ranking and points, the final ranking and final %, the days
  * (scheduled, attended, the absence penalty, counted), the base, target and earned SR, the eligibility checks, the senior manager's
  * changes and the rules used. r: a row of the month (or kpiRowOfK for the Build month). o: { p, cd (the month's day count), sr }.
  */
 function howHtml(r, k, o = {}) {
-  if (!r || !(r.kpi && r.kpi.length) && r.fr == null && r.fin == null) return '<p class="subtle">No KPI results for this month, so there is nothing to explain.</p>';
+  if (!r || !(r.kpi && r.kpi.length) && r.fr == null && r.fin == null) return '<p class="subtle">No KPI results this month.</p>';
   const sr = o.sr !== undefined ? o.sr : !srHidden(), x = r.kx || null, R = rulesFor(k), cfg = R.count, p = o.p || null, T = r.kpi || [], fin = monthLocked(k), out = [];
   const step = (t, body) => out.push(`<li><b>${esc(t)}</b>${body}</li>`);
-  if (!x) out.push(`<li class="hownote">${esc(fin ? 'This month was finalized' : 'This month was saved')} before each step was kept, so the steps below are rebuilt from the saved numbers.</li>`);
+  if (!x) out.push(`<li class="hownote">Rebuilt from the saved numbers: this month was ${fin ? 'finalized' : 'saved'} before the steps were kept.</li>`);
   // 1. each KPI: value, band, ranking, weight and points
   const mm = x ? x.mm : 'scale', miss = T.filter(t => t[4] == null).map(t => t[0]);
   if (T.length) {
@@ -27226,53 +27237,60 @@ function howHtml(r, k, o = {}) {
       const pts = rk != null ? f2(rk * w / 100) : mm === 'rank1' && val !== 'N/A' ? f2(w / 100) : '–', from = (kk && x && x.vs && HOW_FROM[x.vs[kk.id]]) || (kk && kk.src === 'team' ? HOW_FROM.team : '');
       return `<tr><td>${esc(name)}${from ? ` <small class="subtle">${esc(from)}</small>` : ''}</td><td class="r num">${vr != null ? `${esc(raw != null ? Kpi.fmtVal(kk, raw) : val)} <small>→ ${esc(Kpi.fmtVal(kk, vr))}</small>` : esc(val)}</td><td>${rk == null ? `<span class="subtle">${val === 'N/A' ? 'N/A, left out' : 'no value'}</span>` : esc(band || '–')}</td><td class="r">${rankChip(rk)}</td><td class="r num">${esc(w)}%</td><td class="r num">${pts}</td></tr>`; }).join('');
     step('Each KPI', `<div class="tablewrap howtab"><table><thead><tr><th>KPI</th><th class="r">Result</th><th>Band reached</th><th class="r">Ranking</th><th class="r">Weight</th><th class="r">Points</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <p>Points = ranking × weight.${x && x.vd >= 0 ? ` Percent KPIs are rounded to ${x.vd ? plural(x.vd, 'decimal') : 'a whole %'} before they are ranked.` : ''}${x && x.vr && T.some((t, i) => { const q = kOf(t[0], i); return q && q.unit === 'sec' && x.vr[q.id] !== undefined; }) ? ` Seconds are rounded to ${x.sd ? plural(x.sd, 'decimal') : 'whole seconds'} before they are ranked.` : ''}${x && x.na ? ` A KPI marked N/A ${x.na === 'scale' ? 'is left out' : 'counts as ranking 5'}.` : ''}${x && x.ed === 'out' ? ' A value exactly on a band gets the ranking below.' : ''}</p>
-      ${miss.length ? `<p class="hownote">${esc(andList(miss))} had no value: ${mm === 'rank1' ? `${miss.length > 1 ? 'they count' : 'it counts'} as ranking 1.` : mm === 'none' ? 'no final % until every KPI has one.' : `${miss.length > 1 ? 'they are' : 'it is'} left out, and the other weights (${esc(pct1(x ? x.ws : T.filter(t => t[4] != null).reduce((a, t) => a + t[1] / 100, 0)))}) count as 100%.`}</p>` : ''}`);
+      <p>Points = ranking × weight.${howRoundText(x, T, kOf)}${x && x.na ? ` N/A ${x.na === 'scale' ? 'is left out' : 'counts as ranking 5'}.` : ''}${x && x.ed === 'out' ? ' A value on a band edge gets the ranking below.' : ''}</p>
+      ${miss.length ? `<p class="hownote">No value for ${esc(andList(miss))}: ${mm === 'rank1' ? 'counted as ranking 1.' : mm === 'none' ? 'no final % until every KPI has one.' : `left out; the other weights (${esc(pct1(x ? x.ws : T.filter(t => t[4] != null).reduce((a, t) => a + t[1] / 100, 0)))}) count as 100%.`}</p>` : ''}`);
   }
   // 2. final ranking and final %
   const fr = r.fr != null ? r.fr : x ? x.fr : null;
   if (fr != null) {
-    const div = x ? (mm === 'rank1' ? x.wt : x.ws) : null, sum = x && x.rr != null && div ? x.rr * div : null, r3 = x && x.rr != null ? String(Math.round(x.rr * 1000) / 1000) : '';
-    const how = sum == null ? 'From the KPIs' : Math.abs(div - 1) < 1e-9 ? `The points add up to ${esc(r3)}` : `${f2(sum)} points ÷ ${esc(pct1(div))} (the weight of the KPIs counted) = ${esc(r3)}`;
-    step('Final ranking', `<p>${how} → <b class="num">${esc(f2(fr))}</b>${x ? ` (${esc(x.rd >= 0 ? `rounded to ${plural(x.rd, 'decimal')}` : 'not rounded')})` : ''}.</p>`);
-    const pctLine = x && x.po === 'table' ? (x.tr ? `${esc(f2(fr))} reaches the row "${esc(String(x.tr.min))} or more" of the final % table: ${esc(pct1(x.tr.pct))}` : `${esc(f2(fr))} is below every row of the final % table: 0%`) : `${esc(f2(fr))} ÷ 5 = ${esc(pct1(fr / 5))}`;
-    step('Final %', `<p>${pctLine}${x && x.pd >= 0 ? `, ${esc(pctDpText(x.pd))}` : ''} → <b class="num">${esc(pct1(x ? x.fp : r.fin))}</b>.${r._adj && r._adj.fin != null ? ` The senior manager set it to <b>${esc(pct1(r._adj.fin))}</b>.` : ''}</p>`);
-  } else if (mm === 'none' && miss.length) step('Final %', '<p>None yet: every KPI needs a value first.</p>');
+    // a value shows 'before → after' only when the rounding changed it
+    const div = x ? (mm === 'rank1' ? x.wt : x.ws) : null, sum = x && x.rr != null && div ? x.rr * div : null, d3 = v => String(Math.round(v * 1000) / 1000);
+    const frs = x && x.rd < 0 ? d3(fr) : f2(fr), moved = x && x.rr != null && x.rd >= 0 && Math.abs(x.rr - fr) > 1e-9;
+    const lead = sum == null ? '' : Math.abs(div - 1) < 1e-9 ? 'Points add up to ' : `${f2(sum)} points ÷ ${esc(pct1(div))} (weights counted) = `;
+    // 'before' has two more decimals than 'after', so it never seems to round the wrong way (4.1149 → 4.11, not 4.115 → 4.11)
+    step('Final ranking', `<p>${lead}${moved ? `${esc(String(+x.rr.toFixed(x.rd + 2)))} → ` : ''}<b class="num">${esc(frs)}</b>${moved ? ` (rounded to ${plural(x.rd, 'decimal')})` : ''}${lead || moved ? '.' : ''}</p>`);
+    // a final % set by hand is in r.fin: a month without its steps then shows the calculated value, and the hand value after it
+    const fp = x ? x.fp : r._adj && r._adj.fin != null ? fr / 5 : r.fin, tab = x && x.po === 'table', raw = tab ? (x.tr ? x.tr.pct : 0) : fr / 5, moved2 = fp != null && Math.abs(raw - fp) >= 5e-5;
+    const lead2 = !tab ? `${esc(frs)} ÷ 5 = ` : x.tr ? `${esc(frs)} reaches the row "${esc(String(x.tr.min))} or more" of the final % table: ` : `${esc(frs)} is below every row of the final % table: `;
+    step('Final %', `<p>${lead2}${moved2 ? `${esc(`${+(raw * 100).toFixed(2)}%`)} → ` : ''}<b class="num">${esc(pct1(fp))}</b>${moved2 && x && x.pd >= 0 ? ` (${esc(pctDpText(x.pd))})` : ''}.${r._adj && r._adj.fin != null ? ` The senior manager set it to <b>${esc(pct1(r._adj.fin))}</b>.` : ''}</p>`);
+  } else if (mm === 'none' && miss.length) step('Final %', '<p>None yet: every KPI needs a value.</p>');
   // 3. days
   const s = x ? x.s : r.ks, a = x ? x.a : (r.kat ?? r.ka), c = x ? x.c : r.ka, dp = x ? x.dp : (s ? c / s : null);
-  if (s == null) step('Days', '<p>No attendance for this month, so there is no days % and no incentive to calculate.</p>');
+  if (s == null) step('Days', '<p>No attendance this month: no days % and no incentive.</p>');
   else {
     let cd = o.cd || null;
     if (!cd && (r.d || r.dx)) { const t = Kpi.countDays(daysOfRow(r, Core.daysIn(+k.slice(0, 4), +k.slice(5))), cfg); if (t.sched === s && t.attended === a) cd = t; }
     const bd = howDaysText(cd, cfg), P = x && x.pen;
-    const pen = x && x.ex ? `; absence penalty: ${P.per === 'run' ? `${plural(x.ru, 'run')} of absence` : `${plural(x.ab, 'absent day')}`} × ${P.k}${P.flat ? ` + ${P.flat} once` : ''} = ${plural(x.ex, 'day')} off${P.min ? `, never below ${P.min}` : ''}, so <b>${c}</b> count` : '';
-    step('Days', `<p>Scheduled <b class="num">${s}</b>${bd ? ` <span class="subtle">(${esc(bd)})</span>` : ''}; attended <b class="num">${a ?? '–'}</b>${pen}.</p>
-      <p>Days % = ${x && x.df === 'full' ? '100%, as there are scheduled days' : `${c ?? '–'} ÷ ${s} = <b class="num">${esc(pct1(dp))}</b>`}.</p>`);
+    const pen = x && x.ex ? `<p>Absence penalty: ${P.per === 'run' ? `${plural(x.ru, 'run')} of absence` : `${plural(x.ab, 'absent day')}`} × ${P.k}${P.flat ? ` + ${P.flat} once` : ''} = ${plural(x.ex, 'day')} off → <b class="num">${c}</b> counted${P.min ? ` (never below ${P.min})` : ''}.</p>` : '';
+    step('Days', `<p>Scheduled <b class="num">${s}</b>${bd ? ` <span class="subtle">(${esc(bd)})</span>` : ''}; attended <b class="num">${a ?? '–'}</b>.</p>${pen}
+      <p>Days % = ${x && x.df === 'full' ? '<b class="num">100%</b> (days count in full)' : `${c ?? '–'} ÷ ${s} = <b class="num">${esc(pct1(dp))}</b>`}.</p>`);
   }
   // 4. base, target and earned (not for the roles that do not see SR)
   if (sr && s != null) {
     const b = x ? x.b : r.base, why = p ? baseWhy(p, r, k).text : '', e = x ? x.e : r.earnedCalc ?? r.earned, t = x ? x.t : r.kt, mo = x ? x.mo : 'round', fpx = x ? x.fp : r.fin;
+    const raw = b != null && dp != null && fpx != null ? b * dp * fpx : null, moved = raw != null && e != null && Math.abs(raw - e) >= 0.005;
     step('Incentive', `<p>Base <b class="num">${b ?? '–'} SR</b>${why ? ` <span class="subtle">(${esc(why)})</span>` : ''}.</p>
-      <p>Target = ${b ?? '–'} × ${esc(pct1(dp))} = <b class="num">${t ?? '–'} SR</b>; earned = ${b ?? '–'} × ${esc(pct1(dp))} × ${esc(pct1(fpx))}${b != null && dp != null && fpx != null ? ` = ${(b * dp * fpx).toFixed(2)}` : ''} → <b class="num">${e ?? '–'} SR</b> (${esc(CNT_MONEY[mo] || 'rounded')}).</p>`);
+      <p>Target = ${b ?? '–'} × ${esc(pct1(dp))} = <b class="num">${t ?? '–'} SR</b>.</p>
+      <p>Earned = ${b ?? '–'} × ${esc(pct1(dp))} × ${esc(pct1(fpx))} = ${moved ? `${raw.toFixed(2)} → ` : ''}<b class="num">${e ?? '–'} SR</b>${moved ? ` (${esc(CNT_MONEY[mo] || 'rounded')})` : ''}.</p>`);
   }
   // 5. who earns it
   const el = r._el;
   if (el) {
     const E = R.elig, why = el.why || [], bad = re => why.some(w => re.test(w)), dw = cfg.eligDays === 'counted' ? 'counted days' : 'days attended', dv = cfg.eligDays === 'counted' ? c : a;
     const chk = (okv, t) => `<li class="${okv ? 'good' : 'bad'}"><span aria-hidden="true">${okv ? '✓' : '✗'}</span> ${t}</li>`;
-    const L = [chk(!bad(/^final /), `final ${esc(pct1(r.fin))} ${bad(/^final /) ? 'is under' : 'reaches'} ${esc(pct1(E.minFinal))}`)];
-    if (cfg.attitude || bad(/^attitude/)) L.push(chk(!bad(/^attitude/), bad(/^attitude/) ? 'an attitude critical error from the quality team' : 'no attitude critical error'));
-    if (s != null) L.push(chk(!bad(/days (attended|counted)$/), `${dv ?? '–'} ${dw}, ${bad(/days (attended|counted)$/) ? 'fewer than' : 'at least'} ${E.minDays}`));
-    if (E.minMonths > 0 && p) { const fr = eligFrom(p, E.minMonths); L.push(fr ? chk(!bad(/^joined /), `joined ${esc(Forms.fmtDate(p.joined))}: ${E.minMonths} months in the job, earns from ${esc(ymLabel(fr))}`) : `<li class="subtle"><span aria-hidden="true">–</span> no joining date on the roster, so ${E.minMonths} months in the job is not checked</li>`); }
-    const paid = !el.ok && sr && r.earnedCalc != null ? ` Calculated ${r.earnedCalc} SR, paid 0 SR.` : '';
-    step('Who earns it', `<ul class="howchk">${L.join('')}</ul><p>${el.forced ? `The senior manager decided: ${el.ok ? 'eligible' : 'not eligible'}.` : el.ok ? 'Eligible.' : 'Not eligible.'}${esc(paid)}${fin ? ' As decided when the month was finalized.' : ''}</p>`);
+    const L = [chk(!bad(/^final /), `final ${esc(pct1(r.fin))} (needs ${esc(pct1(E.minFinal))})`)];
+    if (cfg.attitude || bad(/^attitude/)) L.push(chk(!bad(/^attitude/), bad(/^attitude/) ? 'attitude critical error (quality team)' : 'no attitude critical error'));
+    if (s != null) L.push(chk(!bad(/days (attended|counted)$/), `${dv ?? '–'} ${dw} (needs ${E.minDays})`));
+    if (E.minMonths > 0 && p) { const fr = eligFrom(p, E.minMonths); L.push(fr ? chk(!bad(/^joined /), `joined ${esc(Forms.fmtDate(p.joined))}: earns from ${esc(ymLabel(fr))} (${E.minMonths} months in the job)`) : '<li class="subtle"><span aria-hidden="true">–</span> no joining date on the roster: months in the job not checked</li>'); }
+    const paid = !el.ok && sr && r.earnedCalc != null ? ` 0 SR paid (${r.earnedCalc} SR calculated).` : '';
+    step('Who earns it', `<ul class="howchk">${L.join('')}</ul><p>${el.ok ? 'Eligible' : 'Not eligible'}${el.forced ? ': decided by the senior manager.' : paid ? ':' : '.'}${esc(paid)}${fin ? ' Locked when the month was finalized.' : ''}</p>`);
   }
   // 6. changes by hand
   const A = r._adj;
   if (A) step('Changed by hand', `<p>${esc([A.elig === true ? 'eligible (decided)' : A.elig === false ? 'not eligible (decided)' : '', A.fin != null ? `final % set to ${pct1(A.fin)}` : '', A.earned != null && sr ? `earned set to ${A.earned} SR` : '', A.note ? `note: ${A.note}` : ''].filter(Boolean).join(' · ') || 'changed')}${A.by ? ` · ${esc(A.by)}` : ''}${A.at ? ` · ${esc(fmtWhen(A.at))}` : ''}.</p>`);
   // 7. the rules
-  const diff = [...new Set(Object.keys(Kpi.countDiff(cfg)).map(f => CNT_LBL[cntGroup(f)]))];
-  out.push(`<li class="howrules">Counted with ${esc(R.from ? `the rules from ${ymLabel(R.from)}` : 'the first rules')}${diff.length ? `, which count ${esc(andList(diff.map(l => l.toLowerCase())))} differently from the tool's default` : ''}. <button type="button" class="linkbtn" data-rulesopen data-rulesset="${esc(R.from)}">See the rules</button></li>`);
+  const diff = [...new Set(Object.keys(Kpi.countDiff(cfg)).map(f => CNT_LBL[cntGroup(f)]).filter(Boolean))];
+  out.push(`<li class="howrules">Counted with ${esc(R.from ? `the rules from ${ymLabel(R.from)}` : 'the first rules')}.${diff.length ? ` Changed from the default: ${esc(andList(diff.map(l => l[0].toLowerCase() + l.slice(1))))}.` : ''} <button type="button" class="linkbtn" data-rulesopen data-rulesset="${esc(R.from)}">See the rules</button></li>`);
   return `<ol class="howsteps">${out.join('')}</ol>`;
 }
 /** the 'How' link next to a person's final % (Results, WFM team › Review › KPI results) */
@@ -37786,6 +37804,7 @@ initStorage();
 if (window.__mcBoot) window.__mcBoot.ran = true;   // the start guard: the page's script ran to its end
 window.__mc = { state, renderWs, setWs, setStep, setTab, renderDash, startViewAs, endViewAs, viewing, queueWrite, showGo, impLog: () => IMP_LOG.slice(), askBuild, openPerson, spvScore, monthFromDays, interAgg, formHash, liveRows, refresh, renderHistory, histAll, renderKpiTab, kpiEmailHtml, usesWorker: () => !!worker, pwCheck: Auth.check, curMail, incMailModel, mailModel, formPdf, openForm, snapNow, emlFile, openNotes, openRules, rulesFor, calSteps, objList, mtdProj, todayItems, fuBuild, fuStats, rowsByPid, teamReady, incListNow, incRows, srHidden, formFlow, replyNew, storeDay, rbAgentsDayOf: M => { RB.agentsModel = null; if (window.WFM) window.WFM._state.model = M; rbAgentsDay(); }, dmUnsent, qRow, eligFrom, rb: () => RB, wc: () => ({ WC, model: wcModel, deckBytes: wcDeckBytes, addFiles: wcAddFiles, paste: wcPasteRows }), upd: () => ({ ctx: updCtx, read: updRead, files: updFiles, apply: updApply, now: updNow }), pr: () => ({ PR, read: prRead, files: prFiles }), dedData: () => dedMailData() };   // for testing
 Object.assign(window.__mc, { cmpFiles, rcRun, rcPasted });   // reconcile: for testing
+Object.assign(window.__mc, { howHtml });   // How this was counted: for testing
 Object.assign(window.__mc, { recogFiles, recogOpen, recogUse, recogForget, recog: (name, tables) => Recog.recognise(name, tables, recogOpts()) });   // recognise: for testing
 Object.assign(window.__mc, { sysPropose, openMatch, applySysMatches, undoSysMatches, dupGroups, combinePlan, combineApply, dupSure, mergePeople, useSysNames, genesysNames, idRegistry, fillSysList, openDups, persistNameMemo, loadNameMemo, linkPeople, autoLinkNames, addPerson, updatePerson, removePeople, restorePeople });   // names: for testing
 })();

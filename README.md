@@ -98,6 +98,7 @@ No KPI file is uploaded: the tool works every KPI out itself, and nothing asks f
 | Results › How | Explains the month on the screen; it opened the month in Build before, so another month said there was nothing to explain. |
 | Showcase | "1 month of history", not "1 months". |
 | How this was counted | Fits the agent's panel (600 px) and the How drawer: the steps may shrink, the KPI names and headings wrap, and on a phone only the table scrolls sideways; **Who earns it** shows each mark once (it showed ✓ ✓ and ✗ ✗). |
+| How this was counted, in fewer words | Each step is a short line or two. A number reads *before → after* only when the rounding changed it: *Points add up to 3.90* (was *The points add up to 3.9 → 3.90 (rounded to 2 decimals)*), *3.90 ÷ 5 = 78%* (was *78%, rounded to a whole % → 78%*), *Earned = 1000 × 95.5% × 78% = 744.55 → 745 SR (rounded)*. The checks say what they need (*final 78% (needs 80%)*, *21 days attended (needs 5)*), the result says *Not eligible: 0 SR paid (745 SR calculated)*, and the lines of each step sit right under its title. Nothing is counted differently. |
 
 ## The meeting kit (November 2026)
 
@@ -403,7 +404,7 @@ node test/folder.cjs "final/Cadence.html" /tmp/exports test/shots    # the share
 node test/accounts.cjs "final/Cadence.html" test/shots          # Manage accounts in the data folder: every record, search, roles, Edit, records with no account
 node test/nosched.cjs "final/Cadence.html" /tmp/exports test/shots   # no schedule: the model, the workbook, the setting, the Attendance tab's chips
 node test/peek.cjs "final/Cadence.html" test/shots              # the brand box's email preview on hover and focus
-node test/rounding.cjs "final/Cadence.html" test/shots /tmp/exports   # 94.99% counts as 95%, How this was counted, the rules' rounding, the exact days %, the Build month's KPI tab
+node test/rounding.cjs "final/Cadence.html" test/shots /tmp/exports   # 94.99% counts as 95%, How this was counted (and its rarer steps in few words), the rules' rounding, the exact days %, the Build month's KPI tab
 node test/attflow.cjs "final/Cadence.html" /tmp/exports test/shots    # attendance templates out and back, CC and SM from Genesys, the two-sheet attachment, no Month close card
 node test/datafolder.cjs "final/Cadence.html" test/shots           # a cancelled, slow, silent or unreadable data folder, allowing it again; WFM team › Data export and import; the reading pill
 node test/xss.cjs "final/Cadence.html" test/shots               # HTML planted in every name: nothing runs on any page, preview or email; Outlook headers; CSV formulas; the no-network rule

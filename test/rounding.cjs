@@ -3,7 +3,8 @@
 // (ranking 5, final 100%, 1000 SR); "not rounded" in the rules gives ranking 4 (98%, 980 SR) and Undo brings 1000 back. "How this
 // was counted" reads 94.96% → 95%, the rules drawer shows the defaults, and the days % stays exact (20 of 22 days: 909 SR, not 910).
 // With the synthetic exports (test/exports.cjs), the Build month too: the KPI tab shows each adherence as it was ranked, and its
-// "How this was counted" shows what it was. Usage: node test/rounding.cjs [page.html] [outDir] [exportsDir]
+// "How this was counted" shows what it was. The rarer steps of How (a penalty, no value, the final % table, a decision by hand) read in
+// few words, with 'before → after' only where the rounding changed a number. Usage: node test/rounding.cjs [page.html] [outDir] [exportsDir]
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
 const page0 = path.resolve(process.argv[2] || 'final/Cadence.html');
@@ -36,9 +37,35 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   await p.waitForSelector('#dHow:not([hidden]) #howBody table');
   const how = await p.$eval('#howBody', el => ({ adh: [...el.querySelectorAll('tbody tr')].map(tr => [...tr.cells].map(c => c.textContent.replace(/\s+/g, ' ').trim())).find(c => c[0] === 'Adherence'), text: el.textContent.replace(/\s+/g, ' ') }));
   ok(how.adh && how.adh[1] === '94.96% → 95%' && how.adh[2] === '≥ 95%' && how.adh[3] === '5', `How this was counted: ${JSON.stringify(how.adh)}`);
-  ok(/Percent KPIs are rounded to a whole % before they are ranked/.test(how.text), 'it says percent KPIs are rounded to a whole % before they are ranked');
+  ok(/Percent KPIs are rounded to a whole % before ranking/.test(how.text), 'it says percent KPIs are rounded to a whole % before ranking');
   await p.screenshot({ path: path.join(out, 'rounding-how.png') });
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+
+  // the rarer steps in few words, from made-up rows: a value reads 'before → after' only when the rounding changed it
+  const H = await p.evaluate(() => {
+    const how = window.__mc.howHtml, T = [['Adherence', 50, '≥ 95%', '96%', 5, '≥ 95%'], ['AHT', 30, '≤ 150', '–', null, null], ['Tardiness', 20, '≤ 4', 'N/A', null, null]];
+    const x = { rr: 4.237, ws: 0.5, wt: 1, mm: 'scale', rd: 2, fr: 4.24, po: 'rank5', tr: null, pd: 2, fp: 0.85, vd: 0, ed: 'out', na: 'scale', s: 22, a: 20, ab: 2, ru: 1, ex: 6,
+      pen: { k: 3, per: 'day', flat: 0, min: 1 }, c: 14, df: 'ratio', dp: 14 / 22, b: 1000, mo: 'round', t: 636, e: 541 };
+    const row = (kx, more) => ({ kpi: T, kx, fr: kx ? kx.fr : 3.93, fin: kx ? kx.fp : 0.79, ks: 22, ka: 14, kat: 20, kt: 636, earnedCalc: 541, earned: 0, base: 1000, _el: { ok: false, why: ['final 79% is under 80%'] }, ...more });
+    const text = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.replace(/\s+/g, ' '); };
+    return {
+      a: text(how(row(x), '2026-09', { sr: true })),
+      b: text(how(row({ ...x, mm: 'rank1', rd: -1, rr: 4.2367, fr: 4.2367, po: 'table', tr: { min: 4, pct: 0.9 }, fp: 0.9, pen: { k: 2, per: 'run', flat: 2, min: 0 }, ex: 4, c: 16, dp: 16 / 22, e: 655 }, { _el: { ok: true, forced: true, why: [] } }), '2026-09', { sr: true })),
+      c: text(how(row({ ...x, ws: 1, rr: 4.2, fr: 4.2, fp: 0.84, na: undefined, ed: 'in', a: 22, ab: 0, ex: 0, pen: null, c: 22, dp: 1, t: 1000, e: 840 },
+        { kpi: [['Adherence', 60, '≥ 95%', '96%', 5, '≥ 95%'], ['Tardiness', 40, '≤ 4', '6', 3, '≤ 6']], _el: { ok: true, why: [] } }), '2026-09', { sr: true })),
+      d: text(how(row(null), '2026-09', { sr: false })),
+      f: text(how(row(null, { fin: 0.95, _adj: { fin: 0.95, by: 'Rasha K.' } }), '2026-09', { sr: false })),
+      e: text(how({}, '2026-09', {})) };
+  });
+  ok([/2\.12 points ÷ 50% \(weights counted\) = 4\.237 → 4\.24 \(rounded to 2 decimals\)\./, /4\.24 ÷ 5 = 84\.8% → 85% \(rounded to a whole %\)\./, /No value for AHT and Tardiness: left out; the other weights \(50%\) count as 100%\./,
+    /N\/A is left out\. A value on a band edge gets the ranking below\./, /Absence penalty: 2 absent days × 3 = 6 days off → 14 counted \(never below 1\)\./, /Earned = 1000 × 63\.6% × 85% = 540\.91 → 541 SR \(rounded\)\./,
+    /Not eligible: 0 SR paid \(541 SR calculated\)\./].every(re => re.test(H.a)), 'How, rounding that changes the numbers, a penalty, no value');
+  ok([/Points add up to 4\.237\./, /4\.237 reaches the row "4 or more" of the final % table: 90%\./, /No value for AHT and Tardiness: counted as ranking 1\./, /1 run of absence × 2 \+ 2 once = 4 days off → 16 counted\./,
+    /Eligible: decided by the senior manager\./].every(re => re.test(H.b)), 'How, not rounded, the final % table, a run of absence, decided by the senior manager');
+  ok([/Points add up to 4\.20\./, /4\.20 ÷ 5 = 84%\./, /Days % = 22 ÷ 22 = 100%\./, /Earned = 1000 × 100% × 84% = 840 SR\./, /Eligible\./].every(re => re.test(H.c)) && !/→/.test(H.c), 'How, nothing moved by rounding: no arrows, one number per step');
+  ok(/^ ?Rebuilt from the saved numbers: this month was saved before the steps were kept\./.test(H.d) && /3\.93 ÷ 5 = 78\.6% → 79%\./.test(H.d) && /Not eligible\./.test(H.d) && !/SR/.test(H.d), 'How, rebuilt from the saved numbers, without SR');
+  ok(H.e === 'No KPI results this month.', `How with nothing to show: ${H.e}`);
+  ok(/3\.93 ÷ 5 = 78\.6%\. The senior manager set it to 95%\./.test(H.f) && !/→ 95%/.test(H.f), 'How, a final % set by hand in a month without its steps: the calculated value, then the hand value, no arrow');
 
   // the rules drawer: the defaults, whole % first, a hint for each rounding
   await p.evaluate(() => window.__mc.openRules());
@@ -59,6 +86,8 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   const t1 = await p.$eval('#toastMsg', el => el.textContent);
   ok(R.adh && R.adh[0] === '94.96%' && R.adh[1] === 4 && R.fin === 0.98 && R.earned === 980, `not rounded: ${JSON.stringify(R)}`);
   ok(/Percent KPIs before ranking: rounded to a whole % → not rounded/.test(t1), `the change in words: ${t1}`);
+  const rulesLine = await p.evaluate(() => { const d = document.createElement('div'); d.innerHTML = window.__mc.howHtml({ fr: 4.9, fin: 0.98 }, '2026-09', { sr: false }); return d.querySelector('.howrules').textContent.replace(/\s+/g, ' ').trim(); });
+  ok(/^Counted with the (first rules|rules from \w{3} \d{4})\. Changed from the default: percent KPIs before ranking\. See the rules$/.test(rulesLine), `How's last line: ${rulesLine}`);
   const pill2 = await p.$eval('#dScore details.cntrules summary .pill', el => el.textContent.trim());
   ok(pill2 === '1 setting changed', `the pill: ${pill2}`);
   await p.click('#toastAct');

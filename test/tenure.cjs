@@ -55,7 +55,7 @@ const ok = (c, m) => { if (!c) { console.log('✗ ' + m); process.exitCode = 1; 
   await p.evaluate(w => { const x = document.createElement('button'); x.dataset.how = w.pid; x.dataset.howk = '2026-09'; document.body.append(x); x.click(); x.remove(); }, who);
   await p.waitForSelector('#dHow:not([hidden]) #howBody');
   const how = await p.$eval('#howBody', el => el.textContent.replace(/\s+/g, ' '));
-  ok(/✗ joined 2 Apr 2026: 6 months in the job, earns from Oct 2026/.test(how) && /Not eligible\. Calculated 1000 SR, paid 0 SR\./.test(how), 'How this was counted: the joining date, the month it earns from, paid 0 SR');
+  ok(/✗ joined 2 Apr 2026: earns from Oct 2026 \(6 months in the job\)/.test(how) && /Not eligible: 0 SR paid \(1000 SR calculated\)\./.test(how), 'How this was counted: the joining date, the month it earns from, paid 0 SR');
   await p.screenshot({ path: path.join(out, 'tenure-how.png') });
   await p.keyboard.press('Escape');
 

@@ -32,6 +32,10 @@
 .howchk .good > span[aria-hidden] { color: var(--good); } .howchk .bad > span[aria-hidden] { color: var(--bad); }
 .hownote { color: var(--muted); font-size: 12.5px; }
 .howrules { font-size: 12.5px; color: var(--muted); }
+/* each step reads as its title with its lines right under it */
+.howsteps > li > p { margin: 3px 0 0; }
+.howsteps > li > .tablewrap, .howsteps > li > .howchk { margin-top: 6px; }
+.howsteps > li > .tablewrap + p, .howsteps > li > .howchk + p { margin-top: 8px; }
 .howdet { margin-top: var(--s3); }
 .howdet > summary { cursor: pointer; color: var(--accent-text); font-weight: 600; }
 /* How this was counted fits the panel it opens in (the agent's panel is 600 px, the How drawer 680 px): the steps may shrink

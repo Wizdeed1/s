@@ -29,7 +29,7 @@ function renderCoverNote() {
   const nm = a => a.name || a.username || 'Someone', since = x => x ? ` since ${fmtWhen(x.at)}${x.byName && x.by !== meId() ? `, ticked by ${x.byName}` : ''}` : '';
   const away = L.filter(a => A[a.id]);
   const lead = mine ? `You are marked as on vacation${since(mine)}. Your colleague has your tabs until you are back.`
-    : cov ? `${away.map(nm).join(' and ')} ${away.length > 1 ? 'are' : 'is'} on vacation${away.length === 1 ? since(A[away[0].id]) : ''}: you have their work too (${COVER_GETS[cov]}) until you untick it.`
+    : cov ? `${away.map(nm).join(' and ')} ${away.length > 1 ? 'are' : 'is'} on vacation${away.length === 1 ? since(A[away[0].id]) : ''}: you have their work too (${cov === 'user' && !dailyShown() ? 'Import, Review and Export, with the analysts\' permissions' : COVER_GETS[cov]}) until you untick it.`
     : 'Vacation cover';
   const on = !!(cov || mine); el.hidden = false; el.classList.toggle('on', on);
   el.title = on ? '' : 'Tick a colleague who is on vacation: you then have their work too, with their permissions, until you untick it. Everyone sees the tick.';

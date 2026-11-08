@@ -355,13 +355,16 @@ const DEPT = [
     'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome. Opening the shared data shows what it waits for: if it is slow on a computer, MC Data is often in OneDrive or SharePoint with its files not downloaded yet. Right-click it in File Explorer and choose <b>Always keep on this device</b>.']],
 ];
 let deptSel = '', deptRole = '';
+/** a preview (View as) says nothing of the WFM team's daily report: its steps left out, the steps that name it in passing without it */
+const deptSteps = L => (dailyShown() ? L : L.filter(t => !/Report builder<\/b>|Daily brand emails/.test(t))
+  .map(t => t.replace('the four daily brand emails and the month\'s deduction and absences emails', 'the month\'s deduction and absences emails').replace('(Import, Review, Export, Report builder)', '(Import, Review, Export)')));
 function renderDeptGuide(force) {
   const tabs = $('deptTabs'), body = $('deptBody'); if (!tabs || !body) return;
-  const r = roleNow(); if (!force && deptRole === r && tabs.childElementCount) return;
-  if (deptRole !== r) { deptRole = r; deptSel = DEPT.some(d => d[0] === r) ? r : 'user'; }
+  const r = roleNow(), key = r + (dailyShown() ? '' : ':preview'); if (!force && deptRole === key && tabs.childElementCount) return;   // a preview's steps differ
+  if (deptRole !== key) { deptRole = key; deptSel = DEPT.some(d => d[0] === r) ? r : 'user'; }
   const D = DEPT.find(d => d[0] === deptSel) || DEPT[0], ar = deptSel === 'agent' && langNow() === 'ar' && D[3];
   tabs.innerHTML = DEPT.map(([id, l]) => `<button type="button" role="tab" data-dept="${id}" aria-selected="${id === deptSel}" aria-pressed="${id === deptSel}"${id === deptSel ? '' : ' tabindex="-1"'}>${esc(l)}${id === r ? ' <small>you</small>' : ''}</button>`).join('');
-  body.innerHTML = `<ol class="deptsteps"${ar ? ' dir="rtl" lang="ar"' : ''}>${(ar ? D[3] : D[2]).map(t => `<li>${t}</li>`).join('')}</ol>${D[3] && !ar ? `<details class="deptar"><summary>بالعربية</summary><ol class="deptsteps" dir="rtl" lang="ar">${D[3].map(t => `<li>${t}</li>`).join('')}</ol></details>` : ''}`;
+  body.innerHTML = `<ol class="deptsteps"${ar ? ' dir="rtl" lang="ar"' : ''}>${deptSteps(ar ? D[3] : D[2]).map(t => `<li>${t}</li>`).join('')}</ol>${D[3] && !ar ? `<details class="deptar"><summary>بالعربية</summary><ol class="deptsteps" dir="rtl" lang="ar">${D[3].map(t => `<li>${t}</li>`).join('')}</ol></details>` : ''}`;
 }
 $('deptTabs').addEventListener('click', e => { const b = e.target.closest('[data-dept]'); if (!b) return; deptSel = b.dataset.dept; renderDeptGuide(true); const n = $('deptTabs').querySelector(`[data-dept="${deptSel}"]`); if (n) n.focus(); });
 $('deptTabs').addEventListener('keydown', e => {

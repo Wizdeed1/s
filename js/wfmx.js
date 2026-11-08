@@ -13,7 +13,7 @@ const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['
     the month's deduction and absences emails. Both can edit them and send them (the tool copies them or opens them in Outlook). */
 const canWfmMail = () => hasRole('admin', 'wfm', 'user');
 Object.assign(state, { mailSub: '' });
-function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'weekly' || t === 'perf' ? canWeekly() : t === 'data' ? canBackup() : true)); }
+function wfmTabsFor() { return WFM_TABS.filter(([t]) => ((t === 'daily' || t === 'builder') && !dailyShown() ? false : t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'weekly' || t === 'perf' ? canWeekly() : t === 'data' ? canBackup() : true)); }
 /** the tab now on screen: a step of the month's build, or a WFM tab */
 const wfmTabNow = () => (state.ws === 'build' ? (WFM_STEPS.includes(state.step) ? state.step : 'import') : state.wfmTab);
 /** the WFM team page's header: the title, the tabs of the role (with what each needs), and the actions of the tab */
@@ -59,16 +59,18 @@ const WFM_LEAD = {
   perf: 'The Member Care Performance Review for the VP: drop the "MC performance Review" email (.msg) and the tool reads its tables (Rebooking, Network issues, Web + App, Social media, Vnet) and makes the PowerPoint in the weekly presentation\'s look, with the brands\' slides, the OTP and final termination calls from the Call history export, and the email with it attached; it never sends anything itself.',
   data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
+const WFM_LEAD_MONTHMAIL = 'The month\'s deduction and absences emails, in one place for the WFM manager and the analysts. Edit them here and send them from Outlook; the tool never sends anything itself. The incentive email is the senior manager\'s (Supervisors › Incentive email), with the incentive file you build on Export.';
 function renderWfmWs() {
   if (state.wfmTab === 'dmail' || state.wfmTab === 'mail') { state.mailSub = state.wfmTab === 'dmail' ? 'daily' : 'month'; state.wfmTab = 'emails'; }   // older links: the two email pages are one now
   const r = roleNow(), tabs = wfmTabsFor().filter(x => !WFM_STEPS.includes(x[0])), t = tabs.some(x => x[0] === state.wfmTab) ? state.wfmTab : (tabs[0] || ['analytics'])[0]; state.wfmTab = t;
   const unsent = canDailyMail() ? (dmUnsent()[0] || { left: [] }).left.length : 0;
-  if (!['daily', 'month'].includes(state.mailSub)) state.mailSub = unsent || Object.keys(state.dmail || {}).length ? 'daily' : 'month';   // the daily emails first when there are some
+  if (!dailyShown()) state.mailSub = 'month';   // a preview: only the deduction and absences emails
+  else if (!['daily', 'month'].includes(state.mailSub)) state.mailSub = unsent || Object.keys(state.dmail || {}).length ? 'daily' : 'month';   // the daily emails first when there are some
   renderWfmHead();
   const ro = r === 'senior' ? 'View only: the WFM team keeps this page current; you see every number.' : !hasRole('admin', 'wfm') && t === 'inter' ? 'View only: the WFM manager adds the interactions export.' : '';
   const vo = $('wfmRo'); if (vo) { vo.hidden = !ro; const sp = vo.querySelector('span'); if (sp) sp.textContent = ro; }
   $('wfmLead').hidden = false;
-  $('wfmLead').textContent = r === 'senior' && t === 'inter' ? 'The interactions export the WFM manager adds: when customers call, what happens to their calls, and each agent\'s calls.' : WFM_LEAD[t];
+  $('wfmLead').textContent = r === 'senior' && t === 'inter' ? 'The interactions export the WFM manager adds: when customers call, what happens to their calls, and each agent\'s calls.' : t === 'emails' && !dailyShown() ? WFM_LEAD_MONTHMAIL : WFM_LEAD[t];
   const builder = t === 'builder', em = t === 'emails', dm = em && state.mailSub === 'daily', mm = em && !dm;
   $('wfmRb').hidden = !builder; $('wfmDm').hidden = !dm; $('wfmBody').hidden = builder || dm || mm;
   if (!mm) mountMail(false);
@@ -79,6 +81,7 @@ function renderWfmWs() {
 }
 /** the two kinds of email on the Emails page */
 function mailSubHtml(unsent) {
+  if (!dailyShown()) return '';   // a preview has only the deduction and absences emails
   return `<div class="seg mailsub" role="group" aria-label="Which emails"><button data-mailsub="daily" aria-pressed="${state.mailSub === 'daily'}">Daily brand emails${unsent ? ` <span class="cnt warn">${unsent}</span>` : ''}</button><button data-mailsub="month" aria-pressed="${state.mailSub === 'month'}">Deduction and absences</button></div>`;
 }
 $('wfmBar').addEventListener('click', e => { const b = e.target.closest('[data-mailsub]'); if (!b) return; state.mailSub = b.dataset.mailsub; renderWs(); const n = $('wfmBar').querySelector(`[data-mailsub="${state.mailSub}"]`); if (n) n.focus(); });

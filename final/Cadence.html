@@ -28723,7 +28723,7 @@ function renderFresh() {
   const el = $('freshBar'); if (!el) return;
   const r = roleNow(), show = Auth.user() && r !== 'pending' && r !== 'agent' && Object.keys(state.fresh).length;
   if (!show) { el.hidden = true; return; }
-  const chips = FRESH_KINDS.filter(([k]) => state.fresh[k] && (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool())).map(([k, l]) => {
+  const chips = FRESH_KINDS.filter(([k]) => state.fresh[k] && (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool()) && (dailyShown() || !['daily', 'dailymail', 'dayagents'].includes(k))).map(([k, l]) => {
     const f = state.fresh[k], age = (Date.now() - new Date(f.at).getTime()) / 86400000, cls = age <= 1.2 ? 'ok' : age <= 7 ? '' : 'old';
     return `<span class="fc ${cls}" data-tt="${esc(`${l}: ${f.what || ''} · ${new Date(f.at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}${f.by ? ' by ' + f.by : ''}`)}"><i></i><b>${esc(l)}</b> ${esc(f.what ? f.what + ' · ' : '')}${esc(ago(f.at))}</span>`;
   });
@@ -30811,9 +30811,9 @@ Object.assign(state, { dhist: null, dhistAt: '', dhistBy: '', daily: {}, dailyVe
 
 // ---------------------------------------------------------------- who does what with the daily data
 /** the WFM analysts make the day's emails (the admin can stand in) */
-const canDailyTool = () => hasRole('admin', 'user');
+const canDailyTool = () => hasRole('admin', 'user') && dailyShown();
 /** the WFM manager sends the four brand emails (the admin can stand in) */
-const canDailyMail = () => hasRole('admin', 'wfm', 'user');   // the WFM manager and the analysts share the daily emails: both edit and send them
+const canDailyMail = () => hasRole('admin', 'wfm', 'user') && dailyShown();   // the WFM manager and the analysts share the daily emails: both edit and send them
 /** who writes the daily data: the analysts building, the manager choosing an ASA */
 const canDailySave = () => hasRole('admin', 'user', 'wfm');
 
@@ -32288,7 +32288,7 @@ function renderWeeklyWs() {
     <button class="btn" data-wcdeck${busy ? ' disabled' : ''}>${busy === 'deck' ? '<span class="spin" aria-hidden="true"></span>Making the deck…' : '<svg width="16" height="16" aria-hidden="true"><use href="#i-down"/></svg>Download deck'}</button>
     <button class="btn primary" data-wcmail${busy ? ' disabled' : ''}>${busy === 'mail' ? '<span class="spin" aria-hidden="true"></span>Making the email…' : 'Email with the deck'}</button></div>`;
   const histHtml = `<div class="wchist">${histRows.map(({ B, n, miss }) => `<span class="pill ${n && !miss.length ? 'good' : n ? 'warn' : 'bad'}" title="${esc(miss.length ? 'Missing: ' + rbShortDays(miss) : 'Every day is in the history')}"><i class="wcdot" style="background:#${B.color}"></i>${esc(B.short)} · ${n}/${want.length} days</span>`).join('')}</div>
-    ${histOk ? '' : `<p class="hint">${histRows.filter(x => x.miss.length).map(({ B, miss }) => `<b>${esc(B.short)}</b> has no ${esc(rbShortDays(miss))}`).join(' · ')}. Drop those days' exports on WFM team › Report builder, or import the brands' history on Emails › Daily brand emails.</p>`}`;
+    ${histOk ? '' : `<p class="hint">${histRows.filter(x => x.miss.length).map(({ B, miss }) => `<b>${esc(B.short)}</b> has no ${esc(rbShortDays(miss))}`).join(' · ')}${dailyShown() ? '. Drop those days\' exports on WFM team › Report builder, or import the brands\' history on Emails › Daily brand emails' : ''}.</p>`}`;
   const files = WC.files.length ? `<div class="rbfiles">${WC.files.map(f => `<div class="rbfile${f.bad ? ' bad' : ''}"><span class="fname" title="${esc(f.name)}">${esc(f.name)}</span><span class="ftag">${esc(f.label)}</span></div>`).join('')}</div><div class="rbmini"><button class="btn sm ghost" data-wcclear>Clear files</button></div>` : '<p class="hint">No files yet.</p>';
   const drop = `<div class="drop rbdrop" data-wcdrop role="button" tabindex="0" aria-label="Drop the month's exports, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month-to-date files</strong><span>The Call history export from Crystal (.xls) and the complaints email (the answer to "Weekly commercial meeting", .msg or .eml); or the Tickets export (.xls) and FRiENDi Pay's tickets sheet (.xlsx or .csv). Or click to choose them</span></div><input type="file" multiple accept=".xls,.xlsx,.csv,.msg,.eml,.txt,.htm,.html" hidden data-wcpick>${files}`;
   const lo = O.from + '-01', inRange = x => x.date >= lo && x.date <= date;
@@ -32316,7 +32316,7 @@ function renderWeeklyWs() {
       <label class="field"><span class="lbl">Resolved on time: closed within (hours)</span><input class="cell" type="number" min="1" max="1440" step="1" data-wcset="onTimeH" value="${esc(c.onTimeH)}"></label></div>
       <p class="hint">Kept for the whole WFM team. Empty To and Cc take the VP and the final result form's contact from the senior manager's contacts.</p></details>`;
   const L4 = [
-    { id: 'wcs-hist', title: 'The month in the brands\' history', short: 'History', cap: `The service level and the daily and monthly trends: ${esc(span)} (the month up to the day before the presentation), from the history the daily brand emails keep.`, body: histHtml },
+    { id: 'wcs-hist', title: 'The month in the brands\' history', short: 'History', cap: `The service level and the daily and monthly trends: ${esc(span)} (the month up to the day before the presentation), from ${dailyShown() ? 'the history the daily brand emails keep' : 'the brands\' history'}.`, body: histHtml },
     { id: 'wcs-files', title: 'Drop the month\'s exports', short: 'Exports', cap: 'Call history for the top call reasons; the complaints email for the complaints logged, resolved on time, still open and the top tickets (the Tickets export where the email has none). Read in this browser; nothing is kept.', body: drop },
     { id: 'wcs-out', title: 'Outages', short: 'Outages', cap: `The last 3 months (${esc(O.span)}) go in the deck. The list is kept for the whole WFM team: add each outage once.`, body: outHtml },
     { id: 'wcs-send', title: 'The deck and the email', short: 'Deck', cap: 'What the slides show. "–" where a file is missing.', body: sum, acts: `<button class="btn sm" data-wcdeck${busy ? ' disabled' : ''}>Download deck</button><button class="btn sm primary" data-wcmail${busy ? ' disabled' : ''}>Email with the deck</button>` },
@@ -32634,7 +32634,7 @@ function renderPerfWs() {
   if (!hasC) mWarn.push('No Call history for the month yet: the Top Call Reasons show "–".'); else if (!nC) mWarn.push(`The Call history dropped has no calls in ${span}: the Top Call Reasons show "–". Drop this month's.`);
   if (!hasT && !WC.mail) mWarn.push('No complaints email or Tickets export for the month yet: Complaints logged, Closed tickets resolved on time, Tickets still open and the Top Complaint Drivers show "–".'); else if (!WC.mail && !nT) mWarn.push(`The Tickets export dropped has no tickets in ${span}: the complaints and tickets show "–". Drop this month's.`);
   if (WC.mail) mWarn.push(...m.notes.filter(n => /^The complaints email is for|^(Virgin Mobile|FRiENDi Mobile): not in the complaints email/.test(n)));
-  const brand = `${pills}<p class="hint">The service level and the trends: the month to date (${esc(span)}) and the months before, from the history the daily brand emails keep.</p>
+  const brand = `${pills}<p class="hint">The service level and the trends: the month to date (${esc(span)}) and the months before, from ${dailyShown() ? 'the history the daily brand emails keep' : 'the brands\' history'}.</p>
     <div class="drop rbdrop" data-prdrop="month" role="button" tabindex="0" aria-label="Drop the month's Call history export and the complaints email, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month's Call history export and the complaints email</strong><span>The Call history from Crystal (.xls) for the Top Call Reasons; the complaints email (the answer to "Weekly commercial meeting", .msg or .eml) for the complaints, resolved on time, still open and the Top Complaint Drivers, or the Tickets export (.xls). Read in this browser and not kept; they count on Weekly commercial too.</span></div><input type="file" hidden multiple accept=".xls,.msg,.eml" data-prpick="month">
     ${reading}${mFiles.length ? `<div class="rbfiles">${mFiles.map(x => `<div class="rbfile"><span class="fname" title="${esc(x.name)}">${esc(x.name)}</span><span class="ftag">${esc(x.label)}</span></div>`).join('')}</div><div class="rbmini"><button class="btn sm ghost" data-prmonthclear>Clear files</button></div>` : ''}
     ${mWarn.map(t => `<p class="hint warnline">${esc(t)}</p>`).join('')}`;
@@ -32989,7 +32989,7 @@ const WFM_GROUPS = [['This month', ['import', 'review', 'export', 'emails']], ['
     the month's deduction and absences emails. Both can edit them and send them (the tool copies them or opens them in Outlook). */
 const canWfmMail = () => hasRole('admin', 'wfm', 'user');
 Object.assign(state, { mailSub: '' });
-function wfmTabsFor() { return WFM_TABS.filter(([t]) => (t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'weekly' || t === 'perf' ? canWeekly() : t === 'data' ? canBackup() : true)); }
+function wfmTabsFor() { return WFM_TABS.filter(([t]) => ((t === 'daily' || t === 'builder') && !dailyShown() ? false : t === 'builder' || WFM_STEPS.includes(t) ? isBuilder() : t === 'emails' ? canWfmMail() : t === 'weekly' || t === 'perf' ? canWeekly() : t === 'data' ? canBackup() : true)); }
 /** the tab now on screen: a step of the month's build, or a WFM tab */
 const wfmTabNow = () => (state.ws === 'build' ? (WFM_STEPS.includes(state.step) ? state.step : 'import') : state.wfmTab);
 /** the WFM team page's header: the title, the tabs of the role (with what each needs), and the actions of the tab */
@@ -33035,16 +33035,18 @@ const WFM_LEAD = {
   perf: 'The Member Care Performance Review for the VP: drop the "MC performance Review" email (.msg) and the tool reads its tables (Rebooking, Network issues, Web + App, Social media, Vnet) and makes the PowerPoint in the weekly presentation\'s look, with the brands\' slides, the OTP and final termination calls from the Call history export, and the email with it attached; it never sends anything itself.',
   data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
+const WFM_LEAD_MONTHMAIL = 'The month\'s deduction and absences emails, in one place for the WFM manager and the analysts. Edit them here and send them from Outlook; the tool never sends anything itself. The incentive email is the senior manager\'s (Supervisors › Incentive email), with the incentive file you build on Export.';
 function renderWfmWs() {
   if (state.wfmTab === 'dmail' || state.wfmTab === 'mail') { state.mailSub = state.wfmTab === 'dmail' ? 'daily' : 'month'; state.wfmTab = 'emails'; }   // older links: the two email pages are one now
   const r = roleNow(), tabs = wfmTabsFor().filter(x => !WFM_STEPS.includes(x[0])), t = tabs.some(x => x[0] === state.wfmTab) ? state.wfmTab : (tabs[0] || ['analytics'])[0]; state.wfmTab = t;
   const unsent = canDailyMail() ? (dmUnsent()[0] || { left: [] }).left.length : 0;
-  if (!['daily', 'month'].includes(state.mailSub)) state.mailSub = unsent || Object.keys(state.dmail || {}).length ? 'daily' : 'month';   // the daily emails first when there are some
+  if (!dailyShown()) state.mailSub = 'month';   // a preview: only the deduction and absences emails
+  else if (!['daily', 'month'].includes(state.mailSub)) state.mailSub = unsent || Object.keys(state.dmail || {}).length ? 'daily' : 'month';   // the daily emails first when there are some
   renderWfmHead();
   const ro = r === 'senior' ? 'View only: the WFM team keeps this page current; you see every number.' : !hasRole('admin', 'wfm') && t === 'inter' ? 'View only: the WFM manager adds the interactions export.' : '';
   const vo = $('wfmRo'); if (vo) { vo.hidden = !ro; const sp = vo.querySelector('span'); if (sp) sp.textContent = ro; }
   $('wfmLead').hidden = false;
-  $('wfmLead').textContent = r === 'senior' && t === 'inter' ? 'The interactions export the WFM manager adds: when customers call, what happens to their calls, and each agent\'s calls.' : WFM_LEAD[t];
+  $('wfmLead').textContent = r === 'senior' && t === 'inter' ? 'The interactions export the WFM manager adds: when customers call, what happens to their calls, and each agent\'s calls.' : t === 'emails' && !dailyShown() ? WFM_LEAD_MONTHMAIL : WFM_LEAD[t];
   const builder = t === 'builder', em = t === 'emails', dm = em && state.mailSub === 'daily', mm = em && !dm;
   $('wfmRb').hidden = !builder; $('wfmDm').hidden = !dm; $('wfmBody').hidden = builder || dm || mm;
   if (!mm) mountMail(false);
@@ -33055,6 +33057,7 @@ function renderWfmWs() {
 }
 /** the two kinds of email on the Emails page */
 function mailSubHtml(unsent) {
+  if (!dailyShown()) return '';   // a preview has only the deduction and absences emails
   return `<div class="seg mailsub" role="group" aria-label="Which emails"><button data-mailsub="daily" aria-pressed="${state.mailSub === 'daily'}">Daily brand emails${unsent ? ` <span class="cnt warn">${unsent}</span>` : ''}</button><button data-mailsub="month" aria-pressed="${state.mailSub === 'month'}">Deduction and absences</button></div>`;
 }
 $('wfmBar').addEventListener('click', e => { const b = e.target.closest('[data-mailsub]'); if (!b) return; state.mailSub = b.dataset.mailsub; renderWs(); const n = $('wfmBar').querySelector(`[data-mailsub="${state.mailSub}"]`); if (n) n.focus(); });
@@ -33445,7 +33448,7 @@ function renderCoverNote() {
   const nm = a => a.name || a.username || 'Someone', since = x => x ? ` since ${fmtWhen(x.at)}${x.byName && x.by !== meId() ? `, ticked by ${x.byName}` : ''}` : '';
   const away = L.filter(a => A[a.id]);
   const lead = mine ? `You are marked as on vacation${since(mine)}. Your colleague has your tabs until you are back.`
-    : cov ? `${away.map(nm).join(' and ')} ${away.length > 1 ? 'are' : 'is'} on vacation${away.length === 1 ? since(A[away[0].id]) : ''}: you have their work too (${COVER_GETS[cov]}) until you untick it.`
+    : cov ? `${away.map(nm).join(' and ')} ${away.length > 1 ? 'are' : 'is'} on vacation${away.length === 1 ? since(A[away[0].id]) : ''}: you have their work too (${cov === 'user' && !dailyShown() ? 'Import, Review and Export, with the analysts\' permissions' : COVER_GETS[cov]}) until you untick it.`
     : 'Vacation cover';
   const on = !!(cov || mine); el.hidden = false; el.classList.toggle('on', on);
   el.title = on ? '' : 'Tick a colleague who is on vacation: you then have their work too, with their permissions, until you untick it. Everyone sees the tick.';
@@ -34158,8 +34161,8 @@ function findPages(role) {
   if (W.includes('results')) add('compare', 'Reconcile with the old Excel: why an earned SR differs', 'compare|old excel|parallel run|reconcile|reconciliation|differences|check against excel|final result|earned different|why different|email table|paste', 'Results', () => { setWs('results'); scrollTo_('#reconCard'); });
   if (W.includes('wfm')) {
     for (const [t, l] of wfmTabsFor().filter(x => !WFM_STEPS.includes(x[0]))) add('wfm-' + t, `WFM team › ${l}`, t === 'emails' ? 'emails tab|emails|daily emails|deduction email|absences email|send email' : t === 'inter' ? 'interactions|interactions export|calls page' : t === 'agents' ? 'agents table|all agents|agent analytics' : t === 'daily' ? 'daily|daily dashboard|daily data' : t === 'builder' ? 'report builder|member care report builder|daily files|drop daily|daily exports' : t === 'dmail' ? 'daily emails|brand emails|send daily' : 'analytics|charts|dashboard', 'WFM', wfm(t));
-    if (hasRole('admin', 'user')) add('rbuild', 'Report builder: drop the day\'s exports (MC Leaders, WFM Daily Review; the brand emails go to the WFM manager)', 'report builder|daily report|daily files|leaders email|mc leaders|wfm daily review|daily review|upload daily|drop daily', 'WFM team › Report builder', wfm('builder'));
-    if (hasRole('admin', 'wfm', 'user')) add('dailymail', 'Daily emails to send (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay)', 'daily emails|daily email|daily report|postpaid email|virgin email|friendi email|friendi pay email|brand emails|send daily', 'WFM team › Daily emails', wfm('dmail'));
+    if (hasRole('admin', 'user') && dailyShown()) add('rbuild', 'Report builder: drop the day\'s exports (MC Leaders, WFM Daily Review; the brand emails go to the WFM manager)', 'report builder|daily report|daily files|leaders email|mc leaders|wfm daily review|daily review|upload daily|drop daily', 'WFM team › Report builder', wfm('builder'));
+    if (hasRole('admin', 'wfm', 'user') && dailyShown()) add('dailymail', 'Daily emails to send (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay)', 'daily emails|daily email|daily report|postpaid email|virgin email|friendi email|friendi pay email|brand emails|send daily', 'WFM team › Daily emails', wfm('dmail'));
     if (hasRole('admin', 'wfm', 'user')) add('dedmail', 'Deduction email (conformance deduction and absences)', 'deduction email|absences email|conformance email|for review email|deduction for review', 'WFM team › Emails', wfm('mail'));
   }
   if (W.includes('quality')) {
@@ -34366,8 +34369,8 @@ function findAnswer(P, X) {
   if (sp === 'onetoone' && P.one) return fAnsForm(P.one, k, X);
   if (sp && sp !== 'onetoone' && sp !== 'sign') { const A = fAnsSpecial(sp, P, X, k); if (A) return A; }
   if ((sp === 'onetoone' || sp === 'sign') && !P.one) { const A = fAnsSpecial(sp === 'sign' ? 'unsigned' : 'onetoone', P, X, k); if (A) return A; }
-  if (P.metric && P.metric.brandM) return fAnsBrand(P, X);
-  if (P.day && fWfm(role)) return fAnsDay(P, X);
+  if (P.metric && P.metric.brandM && dailyShown()) return fAnsBrand(P, X);   // the daily data: not in a preview
+  if (P.day && fWfm(role) && dailyShown()) return fAnsDay(P, X);
   if (P.one) return P.metric ? fAnsPersonMetric(P.one, P.metric, k, X, P) : fAnsPerson(P.one, k, X);
   const near = P.people.filter(o => o.s >= 0.78);
   if (P.metric && near.length > 1 && !P.spv) return fAnsRank(P.metric, k, X, { ...P, only: new Set(near.map(o => o.x.id)) });
@@ -34598,7 +34601,7 @@ function findItems(q, P, X, A) {
     for (const [qq] of rec) add({ key: 'r:' + qq, kind: 'recent', icon: 'clock', title: qq, sub: 'Recent', run: setQ(qq), keep: true });
     const fav = Object.entries(M.e).filter(([k]) => k.startsWith('p:')).sort((a, b) => b[1].n - a[1].n).slice(0, 3);
     for (const [k] of fav) { const x = X.people.find(z => 'p:' + z.id === k); if (x) add({ key: k, kind: 'p', icon: 'user', title: x.name, sub: x.unit, run: () => { findClose(); openPerson(x.id); } }); }
-    for (const s of F_START[role] || []) add({ key: 'try:' + s, kind: 'try', icon: 'search', title: s, sub: 'Try', run: setQ(s), keep: true });
+    for (const s of (F_START[role] || []).filter(x => dailyShown() || !/daily/.test(x))) add({ key: 'try:' + s, kind: 'try', icon: 'search', title: s, sub: 'Try', run: setQ(s), keep: true });   // a preview: nothing of the daily report
     for (const g of X.pages.slice().sort((a, b) => fBoost(b.key) - fBoost(a.key)).slice(0, 3)) add({ key: g.key, kind: 'g', icon: 'grid', title: g.title, sub: g.sub, run: g.run });
     return L;
   }
@@ -34823,7 +34826,7 @@ function calSteps(k) {
   const R = spvList(), doneL = R.map(s => state.spvDone[`${k}_${s.pid}`]).filter(Boolean);
   return CAL_STEPS.map(s => {
     const due = calDue(k, s.id); let done = null, note = '';
-    if (s.id === 'built') { if (H && !H.daily) done = { at: H.at, by: H.by || '' }; else if (H) note = 'only the daily data so far'; }
+    if (s.id === 'built') { if (H && !H.daily) done = { at: H.at, by: H.by || '' }; else if (H && dailyShown()) note = 'only the daily data so far'; }
     if (s.id === 'eval' && Q) { const n = (Q.unmatched || []).length; if (n) note = `${plural(n, 'name')} still to link`; else done = { at: Q.at, by: Q.by || '' }; }
     if ((s.id === 'ready' || s.id === 'review') && sent[s.id]) done = sent[s.id];
     if (s.id === 'shared' && pages) done = { at: pages.at, by: pages.by || '' };   // "Update the agents' pages" (also from before the month close came in)
@@ -36322,13 +36325,16 @@ const DEPT = [
     'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome. Opening the shared data shows what it waits for: if it is slow on a computer, MC Data is often in OneDrive or SharePoint with its files not downloaded yet. Right-click it in File Explorer and choose <b>Always keep on this device</b>.']],
 ];
 let deptSel = '', deptRole = '';
+/** a preview (View as) says nothing of the WFM team's daily report: its steps left out, the steps that name it in passing without it */
+const deptSteps = L => (dailyShown() ? L : L.filter(t => !/Report builder<\/b>|Daily brand emails/.test(t))
+  .map(t => t.replace('the four daily brand emails and the month\'s deduction and absences emails', 'the month\'s deduction and absences emails').replace('(Import, Review, Export, Report builder)', '(Import, Review, Export)')));
 function renderDeptGuide(force) {
   const tabs = $('deptTabs'), body = $('deptBody'); if (!tabs || !body) return;
-  const r = roleNow(); if (!force && deptRole === r && tabs.childElementCount) return;
-  if (deptRole !== r) { deptRole = r; deptSel = DEPT.some(d => d[0] === r) ? r : 'user'; }
+  const r = roleNow(), key = r + (dailyShown() ? '' : ':preview'); if (!force && deptRole === key && tabs.childElementCount) return;   // a preview's steps differ
+  if (deptRole !== key) { deptRole = key; deptSel = DEPT.some(d => d[0] === r) ? r : 'user'; }
   const D = DEPT.find(d => d[0] === deptSel) || DEPT[0], ar = deptSel === 'agent' && langNow() === 'ar' && D[3];
   tabs.innerHTML = DEPT.map(([id, l]) => `<button type="button" role="tab" data-dept="${id}" aria-selected="${id === deptSel}" aria-pressed="${id === deptSel}"${id === deptSel ? '' : ' tabindex="-1"'}>${esc(l)}${id === r ? ' <small>you</small>' : ''}</button>`).join('');
-  body.innerHTML = `<ol class="deptsteps"${ar ? ' dir="rtl" lang="ar"' : ''}>${(ar ? D[3] : D[2]).map(t => `<li>${t}</li>`).join('')}</ol>${D[3] && !ar ? `<details class="deptar"><summary>بالعربية</summary><ol class="deptsteps" dir="rtl" lang="ar">${D[3].map(t => `<li>${t}</li>`).join('')}</ol></details>` : ''}`;
+  body.innerHTML = `<ol class="deptsteps"${ar ? ' dir="rtl" lang="ar"' : ''}>${deptSteps(ar ? D[3] : D[2]).map(t => `<li>${t}</li>`).join('')}</ol>${D[3] && !ar ? `<details class="deptar"><summary>بالعربية</summary><ol class="deptsteps" dir="rtl" lang="ar">${D[3].map(t => `<li>${t}</li>`).join('')}</ol></details>` : ''}`;
 }
 $('deptTabs').addEventListener('click', e => { const b = e.target.closest('[data-dept]'); if (!b) return; deptSel = b.dataset.dept; renderDeptGuide(true); const n = $('deptTabs').querySelector(`[data-dept="${deptSel}"]`); if (n) n.focus(); });
 $('deptTabs').addEventListener('keydown', e => {
@@ -37457,7 +37463,7 @@ function dashClose(k) {
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-dopenbell]')) openBell(); });
 // ---- data status: how old each source is; no green without a source date
 function dashData() {
-  const K = FRESH_KINDS.filter(([k]) => (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool()));
+  const K = FRESH_KINDS.filter(([k]) => (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool()) && (dailyShown() || !['daily', 'dailymail', 'dayagents'].includes(k)));   // a preview: nothing of the daily report
   const row = ([k, l]) => {
     const f = state.fresh[k]; if (!f || !f.at) return `<li class="ds none"><span class="dsd" aria-hidden="true"></span><span class="dl"><b>${esc(l)}</b><small>No date recorded yet</small></span><span class="dw">Not recorded</span></li>`;
     const age = (Date.now() - new Date(f.at).getTime()) / 86400000, cls = age <= 1.2 ? 'ok' : age <= 7 ? 'mid' : 'old', w = cls === 'ok' ? 'Fresh' : cls === 'mid' ? `${Math.round(age)} days old` : 'Old';
@@ -37478,7 +37484,8 @@ function renderDash() {
   const u = Auth.user() || {}, r = roleNow(), months = wsMonths(), k = wsMonthNow(), first = firstName(u.name || u.username || '');
   const d = new Date(), date = `${{ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[Core.weekday(d.getFullYear(), d.getMonth() + 1, d.getDate())]} ${d.getDate()} ${MONTH_LONG[d.getMonth()]} ${d.getFullYear()}`;
   const st = k ? (monthLocked(k) ? `<span class="pill"><svg width="11" height="11" aria-hidden="true"><use href="#i-lock"/></svg>Final</span>` : '<span class="pill info">Draft</span>') : '';
-  const acts = [...new Map(rolesNow().flatMap(x => DASH_ACTS[x] || []).map(x => [x[2], x])).values()].slice(0, 5).filter(([, , go]) => { const kind = go.split(':')[0], x = go.split(':')[1]; const W = wsOfNow(); return kind === 'accounts' ? Auth.isAdmin() || r === 'admin' : kind === 'step' ? W.includes('build') : kind === 'wfm' ? W.includes('wfm') && (x !== 'dmail' || canDailyMail()) && (x !== 'builder' || canDailyTool()) && (x !== 'mail' || canDailyMail()) : W.includes(x); });
+  const acts = [...new Map(rolesNow().flatMap(x => DASH_ACTS[x] || []).map(x => [x[2], x])).values()].slice(0, 5).filter(([, , go]) => { const kind = go.split(':')[0], x = go.split(':')[1]; const W = wsOfNow(); return kind === 'accounts' ? Auth.isAdmin() || r === 'admin' : kind === 'step' ? W.includes('build') : kind === 'wfm' ? W.includes('wfm') && (x !== 'dmail' || canDailyMail()) && (x !== 'builder' || canDailyTool()) && (x !== 'daily' || dailyShown()) && (x !== 'mail' || canDailyMail()) : W.includes(x); })
+    .map(a => (a[2] === 'wfm:emails' && !dailyShown() ? [a[0], 'Deduction and absences: edit and send', a[2], a[3]] : a));   // a preview: nothing of the daily report
   const head = `<div class="dhead"><div class="greet"><h2 class="gt">${esc(greetWord())}${first ? ', <b>' + esc(first) + '</b>' : ''}</h2><p class="gs"><span>${esc(date)}</span>${k ? `<span>Showing ${esc(ymLabel(k))} ${st}</span>` : ''}</p></div>
     ${acts.length ? `<nav class="qacts" aria-label="Quick actions">${acts.map(([t, s, go, ico]) => `<button class="qa" data-tgo="${esc(go)}"><svg aria-hidden="true"><use href="#${ico}"/></svg><span><b>${esc(t)}</b><small>${esc(s)}</small></span></button>`).join('')}</nav>` : ''}</div>`;
   if ($('today').closest('#dashBody')) $('main').prepend($('today'));   // Today lives in the dashboard's side column; kept safe while it is drawn again
@@ -37566,6 +37573,9 @@ const VIEW_ROLES = [
 Object.assign(state, { viewFrom: '', viewRefused: 0, viewPick: {} });
 /** the admin is previewing another role (hoisted, and safe before Auth exists: queueWrite asks it) */
 function viewing() { try { return !!(Auth.viewAs && Auth.viewAs()); } catch (e) { return false; } }
+/** the WFM team's daily report (Daily, Report builder, the daily brand emails and their data) is for the real WFM accounts: a
+    preview (View as, from the Showcase or the account menu) never shows it, whatever role it shows */
+function dailyShown() { return !viewing(); }
 function realAdmin() { try { return ((Auth.realUser && Auth.realUser()) || {}).role === 'admin'; } catch (e) { return false; } }
 function viewLabel(v = Auth.viewAs()) {
   if (!v) return '';

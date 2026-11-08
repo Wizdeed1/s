@@ -15,6 +15,9 @@ const VIEW_ROLES = [
 Object.assign(state, { viewFrom: '', viewRefused: 0, viewPick: {} });
 /** the admin is previewing another role (hoisted, and safe before Auth exists: queueWrite asks it) */
 function viewing() { try { return !!(Auth.viewAs && Auth.viewAs()); } catch (e) { return false; } }
+/** the WFM team's daily report (Daily, Report builder, the daily brand emails and their data) is for the real WFM accounts: a
+    preview (View as, from the Showcase or the account menu) never shows it, whatever role it shows */
+function dailyShown() { return !viewing(); }
 function realAdmin() { try { return ((Auth.realUser && Auth.realUser()) || {}).role === 'admin'; } catch (e) { return false; } }
 function viewLabel(v = Auth.viewAs()) {
   if (!v) return '';

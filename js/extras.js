@@ -338,7 +338,7 @@ function renderFresh() {
   const el = $('freshBar'); if (!el) return;
   const r = roleNow(), show = Auth.user() && r !== 'pending' && r !== 'agent' && Object.keys(state.fresh).length;
   if (!show) { el.hidden = true; return; }
-  const chips = FRESH_KINDS.filter(([k]) => state.fresh[k] && (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool())).map(([k, l]) => {
+  const chips = FRESH_KINDS.filter(([k]) => state.fresh[k] && (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool()) && (dailyShown() || !['daily', 'dailymail', 'dayagents'].includes(k))).map(([k, l]) => {
     const f = state.fresh[k], age = (Date.now() - new Date(f.at).getTime()) / 86400000, cls = age <= 1.2 ? 'ok' : age <= 7 ? '' : 'old';
     return `<span class="fc ${cls}" data-tt="${esc(`${l}: ${f.what || ''} · ${new Date(f.at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}${f.by ? ' by ' + f.by : ''}`)}"><i></i><b>${esc(l)}</b> ${esc(f.what ? f.what + ' · ' : '')}${esc(ago(f.at))}</span>`;
   });

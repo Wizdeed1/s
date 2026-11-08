@@ -153,7 +153,7 @@ function dashClose(k) {
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-dopenbell]')) openBell(); });
 // ---- data status: how old each source is; no green without a source date
 function dashData() {
-  const K = FRESH_KINDS.filter(([k]) => (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool()));
+  const K = FRESH_KINDS.filter(([k]) => (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool()) && (dailyShown() || !['daily', 'dailymail', 'dayagents'].includes(k)));   // a preview: nothing of the daily report
   const row = ([k, l]) => {
     const f = state.fresh[k]; if (!f || !f.at) return `<li class="ds none"><span class="dsd" aria-hidden="true"></span><span class="dl"><b>${esc(l)}</b><small>No date recorded yet</small></span><span class="dw">Not recorded</span></li>`;
     const age = (Date.now() - new Date(f.at).getTime()) / 86400000, cls = age <= 1.2 ? 'ok' : age <= 7 ? 'mid' : 'old', w = cls === 'ok' ? 'Fresh' : cls === 'mid' ? `${Math.round(age)} days old` : 'Old';
@@ -174,7 +174,8 @@ function renderDash() {
   const u = Auth.user() || {}, r = roleNow(), months = wsMonths(), k = wsMonthNow(), first = firstName(u.name || u.username || '');
   const d = new Date(), date = `${{ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[Core.weekday(d.getFullYear(), d.getMonth() + 1, d.getDate())]} ${d.getDate()} ${MONTH_LONG[d.getMonth()]} ${d.getFullYear()}`;
   const st = k ? (monthLocked(k) ? `<span class="pill"><svg width="11" height="11" aria-hidden="true"><use href="#i-lock"/></svg>Final</span>` : '<span class="pill info">Draft</span>') : '';
-  const acts = [...new Map(rolesNow().flatMap(x => DASH_ACTS[x] || []).map(x => [x[2], x])).values()].slice(0, 5).filter(([, , go]) => { const kind = go.split(':')[0], x = go.split(':')[1]; const W = wsOfNow(); return kind === 'accounts' ? Auth.isAdmin() || r === 'admin' : kind === 'step' ? W.includes('build') : kind === 'wfm' ? W.includes('wfm') && (x !== 'dmail' || canDailyMail()) && (x !== 'builder' || canDailyTool()) && (x !== 'mail' || canDailyMail()) : W.includes(x); });
+  const acts = [...new Map(rolesNow().flatMap(x => DASH_ACTS[x] || []).map(x => [x[2], x])).values()].slice(0, 5).filter(([, , go]) => { const kind = go.split(':')[0], x = go.split(':')[1]; const W = wsOfNow(); return kind === 'accounts' ? Auth.isAdmin() || r === 'admin' : kind === 'step' ? W.includes('build') : kind === 'wfm' ? W.includes('wfm') && (x !== 'dmail' || canDailyMail()) && (x !== 'builder' || canDailyTool()) && (x !== 'daily' || dailyShown()) && (x !== 'mail' || canDailyMail()) : W.includes(x); })
+    .map(a => (a[2] === 'wfm:emails' && !dailyShown() ? [a[0], 'Deduction and absences: edit and send', a[2], a[3]] : a));   // a preview: nothing of the daily report
   const head = `<div class="dhead"><div class="greet"><h2 class="gt">${esc(greetWord())}${first ? ', <b>' + esc(first) + '</b>' : ''}</h2><p class="gs"><span>${esc(date)}</span>${k ? `<span>Showing ${esc(ymLabel(k))} ${st}</span>` : ''}</p></div>
     ${acts.length ? `<nav class="qacts" aria-label="Quick actions">${acts.map(([t, s, go, ico]) => `<button class="qa" data-tgo="${esc(go)}"><svg aria-hidden="true"><use href="#${ico}"/></svg><span><b>${esc(t)}</b><small>${esc(s)}</small></span></button>`).join('')}</nav>` : ''}</div>`;
   if ($('today').closest('#dashBody')) $('main').prepend($('today'));   // Today lives in the dashboard's side column; kept safe while it is drawn again

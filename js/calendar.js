@@ -36,7 +36,7 @@ function calSteps(k) {
   const R = spvList(), doneL = R.map(s => state.spvDone[`${k}_${s.pid}`]).filter(Boolean);
   return CAL_STEPS.map(s => {
     const due = calDue(k, s.id); let done = null, note = '';
-    if (s.id === 'built') { if (H && !H.daily) done = { at: H.at, by: H.by || '' }; else if (H) note = 'only the daily data so far'; }
+    if (s.id === 'built') { if (H && !H.daily) done = { at: H.at, by: H.by || '' }; else if (H && dailyShown()) note = 'only the daily data so far'; }
     if (s.id === 'eval' && Q) { const n = (Q.unmatched || []).length; if (n) note = `${plural(n, 'name')} still to link`; else done = { at: Q.at, by: Q.by || '' }; }
     if ((s.id === 'ready' || s.id === 'review') && sent[s.id]) done = sent[s.id];
     if (s.id === 'shared' && pages) done = { at: pages.at, by: pages.by || '' };   // "Update the agents' pages" (also from before the month close came in)

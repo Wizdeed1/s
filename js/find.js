@@ -201,8 +201,8 @@ function findPages(role) {
   if (W.includes('results')) add('compare', 'Reconcile with the old Excel: why an earned SR differs', 'compare|old excel|parallel run|reconcile|reconciliation|differences|check against excel|final result|earned different|why different|email table|paste', 'Results', () => { setWs('results'); scrollTo_('#reconCard'); });
   if (W.includes('wfm')) {
     for (const [t, l] of wfmTabsFor().filter(x => !WFM_STEPS.includes(x[0]))) add('wfm-' + t, `WFM team › ${l}`, t === 'emails' ? 'emails tab|emails|daily emails|deduction email|absences email|send email' : t === 'inter' ? 'interactions|interactions export|calls page' : t === 'agents' ? 'agents table|all agents|agent analytics' : t === 'daily' ? 'daily|daily dashboard|daily data' : t === 'builder' ? 'report builder|member care report builder|daily files|drop daily|daily exports' : t === 'dmail' ? 'daily emails|brand emails|send daily' : 'analytics|charts|dashboard', 'WFM', wfm(t));
-    if (hasRole('admin', 'user')) add('rbuild', 'Report builder: drop the day\'s exports (MC Leaders, WFM Daily Review; the brand emails go to the WFM manager)', 'report builder|daily report|daily files|leaders email|mc leaders|wfm daily review|daily review|upload daily|drop daily', 'WFM team › Report builder', wfm('builder'));
-    if (hasRole('admin', 'wfm', 'user')) add('dailymail', 'Daily emails to send (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay)', 'daily emails|daily email|daily report|postpaid email|virgin email|friendi email|friendi pay email|brand emails|send daily', 'WFM team › Daily emails', wfm('dmail'));
+    if (hasRole('admin', 'user') && dailyShown()) add('rbuild', 'Report builder: drop the day\'s exports (MC Leaders, WFM Daily Review; the brand emails go to the WFM manager)', 'report builder|daily report|daily files|leaders email|mc leaders|wfm daily review|daily review|upload daily|drop daily', 'WFM team › Report builder', wfm('builder'));
+    if (hasRole('admin', 'wfm', 'user') && dailyShown()) add('dailymail', 'Daily emails to send (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay)', 'daily emails|daily email|daily report|postpaid email|virgin email|friendi email|friendi pay email|brand emails|send daily', 'WFM team › Daily emails', wfm('dmail'));
     if (hasRole('admin', 'wfm', 'user')) add('dedmail', 'Deduction email (conformance deduction and absences)', 'deduction email|absences email|conformance email|for review email|deduction for review', 'WFM team › Emails', wfm('mail'));
   }
   if (W.includes('quality')) {
@@ -409,8 +409,8 @@ function findAnswer(P, X) {
   if (sp === 'onetoone' && P.one) return fAnsForm(P.one, k, X);
   if (sp && sp !== 'onetoone' && sp !== 'sign') { const A = fAnsSpecial(sp, P, X, k); if (A) return A; }
   if ((sp === 'onetoone' || sp === 'sign') && !P.one) { const A = fAnsSpecial(sp === 'sign' ? 'unsigned' : 'onetoone', P, X, k); if (A) return A; }
-  if (P.metric && P.metric.brandM) return fAnsBrand(P, X);
-  if (P.day && fWfm(role)) return fAnsDay(P, X);
+  if (P.metric && P.metric.brandM && dailyShown()) return fAnsBrand(P, X);   // the daily data: not in a preview
+  if (P.day && fWfm(role) && dailyShown()) return fAnsDay(P, X);
   if (P.one) return P.metric ? fAnsPersonMetric(P.one, P.metric, k, X, P) : fAnsPerson(P.one, k, X);
   const near = P.people.filter(o => o.s >= 0.78);
   if (P.metric && near.length > 1 && !P.spv) return fAnsRank(P.metric, k, X, { ...P, only: new Set(near.map(o => o.x.id)) });
@@ -641,7 +641,7 @@ function findItems(q, P, X, A) {
     for (const [qq] of rec) add({ key: 'r:' + qq, kind: 'recent', icon: 'clock', title: qq, sub: 'Recent', run: setQ(qq), keep: true });
     const fav = Object.entries(M.e).filter(([k]) => k.startsWith('p:')).sort((a, b) => b[1].n - a[1].n).slice(0, 3);
     for (const [k] of fav) { const x = X.people.find(z => 'p:' + z.id === k); if (x) add({ key: k, kind: 'p', icon: 'user', title: x.name, sub: x.unit, run: () => { findClose(); openPerson(x.id); } }); }
-    for (const s of F_START[role] || []) add({ key: 'try:' + s, kind: 'try', icon: 'search', title: s, sub: 'Try', run: setQ(s), keep: true });
+    for (const s of (F_START[role] || []).filter(x => dailyShown() || !/daily/.test(x))) add({ key: 'try:' + s, kind: 'try', icon: 'search', title: s, sub: 'Try', run: setQ(s), keep: true });   // a preview: nothing of the daily report
     for (const g of X.pages.slice().sort((a, b) => fBoost(b.key) - fBoost(a.key)).slice(0, 3)) add({ key: g.key, kind: 'g', icon: 'grid', title: g.title, sub: g.sub, run: g.run });
     return L;
   }

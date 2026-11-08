@@ -8,6 +8,8 @@
 //    the save line shows no error; the record is not in the folder. After Back to Admin writes go through again, and the refused
 //    change is said, with Reload.
 // 5. The account menu: View as another role for the admin; while viewing, Back to Admin, and no Manage accounts.
+//    The daily report (Daily, Report builder, the daily brand emails, their data) on the admin's own page, never in a preview of
+//    the WFM manager or the WFM analyst (tabs, Emails, Last data, shortcuts, How to use); there again after Back to Admin.
 // 6. Only the admin: a supervisor cannot start a preview or open the Showcase.
 // Usage: node test/viewas.cjs page.html outDir
 const { chromium } = require('playwright');
@@ -146,6 +148,32 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   await p.click('#dViewAs [data-vago="wfm"]'); await p.waitForFunction(() => window.__mc.viewing() && window.__mc.state.ws === 'dash', null, { timeout: 10000 });
   ok((await bar()).includes('Viewing as WFM manager'), 'from the menu: the WFM manager\'s dashboard, with the banner');
   await p.click('#viewBar [data-vbback]');
+
+  // ---- 5b. the daily report is the real WFM accounts': a preview never shows it, whatever role it shows
+  const wfmTabs = () => p.evaluate(() => [...document.querySelectorAll('#wfmTabs [data-wt]')].map(x => x.dataset.wt).join(','));
+  const freshDaily = () => p.evaluate(() => { const now = new Date().toISOString(); Object.assign(window.__mc.state.fresh, { daily: { at: now, what: 'brands up to 1 Nov' }, dailymail: { at: now, what: 'Wed 28 Oct 2026' }, dayagents: { at: now, what: '1 Nov' }, quality: { at: now, what: 'Aug 2026' } }); });
+  const chipsNow = () => p.evaluate(() => [...document.querySelectorAll('#freshBar .fc b')].map(x => x.textContent).join(','));
+  await freshDaily(); await p.evaluate(() => { const M = window.__mc; M.state.wfmTab = 'emails'; M.setWs('wfm'); }); await p.waitForTimeout(300);
+  const realTabs = await wfmTabs(), realChips = await chipsNow();
+  ok(/\bdaily\b/.test(realTabs) && /\bbuilder\b/.test(realTabs) && /Daily data/.test(realChips) && /Daily emails/.test(realChips), `the admin's own page: Daily and Report builder (${realTabs}); Last data: ${realChips}`);
+  for (const [r, label] of [['wfm', 'WFM manager'], ['user', 'WFM analyst']]) {
+    await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector(`#showBody [data-vago="${r}"]`);
+    await p.click(`#showBody .shroles [data-vago="${r}"]`); await p.waitForFunction(() => window.__mc.viewing(), null, { timeout: 10000 }); await p.waitForTimeout(250);
+    await freshDaily(); await p.evaluate(() => window.__mc.renderWs()); await p.waitForTimeout(200);
+    const acts = await p.evaluate(() => [...document.querySelectorAll('#dashBody .qacts .qa')].map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+    await p.evaluate(() => { const M = window.__mc; M.state.wfmTab = 'emails'; M.setWs('wfm'); }); await p.waitForTimeout(300);
+    const v = await p.evaluate(() => ({ groups: [...document.querySelectorAll('#wfmTabs .wfmgrp small')].map(x => x.textContent).join(','), sub: document.querySelectorAll('#wfmBar [data-mailsub]').length, lead: document.getElementById('wfmLead').textContent, badge: !!document.querySelector('#wfmTabs [data-wt="emails"] .cnt') }));
+    const tabs = await wfmTabs(), chips = await chipsNow();
+    ok(!/\bdaily\b|\bbuilder\b/.test(tabs) && !/every day/i.test(v.groups) && !v.sub && /^The month's deduction and absences emails/.test(v.lead) && !/Daily|Agents' days/.test(chips) && /Quality EVAL/.test(chips) && !v.badge && !acts.some(a => /Report builder|Daily data|Daily brand/.test(a)),
+      `View as ${label}: no Daily or Report builder tab (${tabs}); Emails is the deduction and absences only; Last data without the daily (${chips}); shortcuts: ${acts.map(a => a.split(' ')[0]).join(', ')}`);
+    await p.click('[data-sb="help"]'); await p.waitForSelector('#dHelp:not([hidden]) #deptBody li');
+    const how = await p.evaluate(() => document.getElementById('deptBody').textContent);
+    ok(!/Report builder|daily brand emails/i.test(how) && /deduction and absences/i.test(how), `  How to use (${label}): no step about the daily report`);
+    await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+    await p.click('#viewBar [data-vbback]'); await p.waitForTimeout(250);
+  }
+  await freshDaily(); await p.evaluate(() => { const M = window.__mc; M.state.wfmTab = 'emails'; M.setWs('wfm'); }); await p.waitForTimeout(300);
+  ok(/\bdaily\b/.test(await wfmTabs()) && /Daily data/.test(await chipsNow()) && await p.evaluate(() => document.querySelectorAll('#wfmBar [data-mailsub]').length === 2), 'Back to Admin: the daily report is there again');
 
   // ---- 6. only the admin: a supervisor (here in the page's test mode) asking for another role's interface gets nothing
   {

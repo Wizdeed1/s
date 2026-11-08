@@ -7,9 +7,9 @@ Object.assign(state, { dhist: null, dhistAt: '', dhistBy: '', daily: {}, dailyVe
 
 // ---------------------------------------------------------------- who does what with the daily data
 /** the WFM analysts make the day's emails (the admin can stand in) */
-const canDailyTool = () => hasRole('admin', 'user');
+const canDailyTool = () => hasRole('admin', 'user') && dailyShown();
 /** the WFM manager sends the four brand emails (the admin can stand in) */
-const canDailyMail = () => hasRole('admin', 'wfm', 'user');   // the WFM manager and the analysts share the daily emails: both edit and send them
+const canDailyMail = () => hasRole('admin', 'wfm', 'user') && dailyShown();   // the WFM manager and the analysts share the daily emails: both edit and send them
 /** who writes the daily data: the analysts building, the manager choosing an ASA */
 const canDailySave = () => hasRole('admin', 'user', 'wfm');
 

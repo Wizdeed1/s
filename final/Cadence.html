@@ -3462,7 +3462,9 @@ body.presenting.shownotes .shnotes p { margin: 2px 0 0; }
 .shcalc { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr); gap: var(--sh-gap); align-items: start; }
 .shcalctab { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
 .shctab { width: 100%; border-collapse: collapse; font-size: 14.5px; table-layout: fixed; }
-.shctab th:first-child { width: 30%; } .shctab th:nth-child(2) { width: 16%; }
+.shctab th:first-child { width: 34%; } .shctab th:nth-child(2) { width: 24%; } .shctab th:nth-child(3) { width: 16%; }
+.shctab td.per { color: var(--muted); }
+.shctab td.mo { font: 600 14.5px/1.3 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .shctab th, .shctab td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 .shctab thead th { background: var(--nav); color: var(--nav-ink); font: 600 11.5px/1.25 var(--display); letter-spacing: .08em; text-transform: uppercase; border-bottom: 0; vertical-align: bottom; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 .shctab tbody th { font: 600 14.5px/1.3 var(--display); color: var(--ink); }
@@ -37594,7 +37596,8 @@ document.addEventListener('change', e => { const s = e.target.closest('[data-vap
 // One page the admin opens in front of the management team. It follows a messaging framework: the main message, the problem,
 // the answer as a value proposition, the key messages with their proof, a message for every role (each with View, which opens
 // that role's interface live through viewas.js), today's figures from the shared data (totals only, never a name), trust,
-// what changes, what it gives back (the room's own hours, typed in), and what comes next. It tells the idea and its benefits,
+// what changes, the time back for Member Care (the hours each role gets back, as the team set them), and what comes next. It tells
+// the idea and its benefits (never the WFM team's own daily reports),
 // never how files go in or out. Present turns it into slides: full screen,
 // one section at a time, the arrow keys, speaker notes on N. The line figures are hairline's (vendor/hairline.js), drawn only while
 // the page is open. For the admin, anywhere in the tool: S a spotlight that follows the pointer, Z a zoom where it points, Esc off.
@@ -37614,7 +37617,7 @@ const SHOW_SECTIONS = [
   { id: 'live', name: 'Today\'s data', notes: 'These are today\'s numbers from the shared data, the same cards the dashboard shows: totals only, never a name.' },
   { id: 'trust', name: 'Trust', notes: 'The data is the most sensitive Member Care has. It stays on our own computers, encrypted, and only accounts made in the tool can read it. Nothing is sent anywhere. A security review was done, its findings fixed and tested, and every change is tested before it ships.' },
   { id: 'change', name: 'What changes', notes: 'In one view, what changes: time moves from assembling to coaching, mistakes are settled before anything goes out, questions about pay are answered in a click, the whole month is visible to every role, and the month no longer rests on one person.' },
-  { id: 'gives', name: 'What it gives back', notes: 'Ask the room, role by role: how many people do month end work, and how many hours a month does it take each of them today? Type their answers. Then ask how many hours they expect with Cadence, or use the hours measured in the first month. The totals are the room\'s own numbers, not ours, and the last line turns them into people.' },
+  { id: 'gives', name: 'What it gives back', notes: 'Time back for Member Care, role by role: the WFM analyst gets five hours back every working day and the WFM manager three; each QA, CT and TS supervisor and manager gets two hours a month. That is 188 hours a month: 2,256 hours, or 282 working days, a year, more than one full-time person, every month. If the room sees a number differently, change it here: the totals follow.' },
   { id: 'start', name: 'What\'s next', notes: 'Three steps: run the next month end in Cadence with the old way beside it for one month; measure what it gives back, hours, corrections and questions about pay, against the month before; then make it how Member Care closes every month. Thank you, and questions.' },
 ];
 const SHOW_ROLES = [
@@ -37638,24 +37641,31 @@ function showStripHtml() {
   const k = wsMonthNow();
   return [k ? ymLabel(k) : '', `${rosterRows().length} people`, `${plural(wsMonths().length, 'month')} of history`, 'works offline'].filter(Boolean).map(x => `<li>${esc(x)}</li>`).join('');
 }
-/** What it gives back: the room's own numbers, typed in while presenting (kept only while the page is open, never saved) */
-const GIVE_ROLES = ['WFM analysts', 'WFM manager', 'Senior manager', 'Supervisors', 'Quality team'];
-const giveVals = GIVE_ROLES.map(() => ({ n: '', a: '', b: '' }));
+/** Time back for Member Care: the hours Cadence gives back, role by role, as the team set them. A presenter can change a number while
+    presenting; it is kept only while the page is open, never saved. A month has 22 working days of 8 hours. */
+const GIVE_DAYS = 22, GIVE_FTE = GIVE_DAYS * 8;
+const GIVE_ROLES = [['WFM analyst', 5, 'day'], ['WFM manager', 3, 'day'], ['QA supervisor', 2, 'month'], ['QA manager', 2, 'month'], ['CT supervisor', 2, 'month'], ['CT manager', 2, 'month'], ['TS supervisor', 2, 'month'], ['TS manager', 2, 'month']];
+const giveVals = GIVE_ROLES.map(([, h]) => String(h));
+const giveNum = x => (Math.round(x * 10) / 10).toLocaleString('en-US');
+/** one role's hours back in a month, or null when its box is empty */
+function giveMonthOf(i) { const v = giveVals[i]; return v === '' ? null : (+v) * (GIVE_ROLES[i][2] === 'day' ? GIVE_DAYS : 1); }
+const giveMoText = i => { const m = giveMonthOf(i); return m == null ? '–' : `${giveNum(m)} h`; };
+/** the hours back in a month with the hours as set (the benefits card says it before the section is reached) */
+const giveSetMonth = () => GIVE_ROLES.reduce((a, [, h, per]) => a + h * (per === 'day' ? GIVE_DAYS : 1), 0);
 function giveSum() {
   let month = 0, any = false;
-  for (const v of giveVals) { if (v.n === '' || v.a === '' || v.b === '') continue; any = true; month += (+v.n) * Math.max(0, (+v.a) - (+v.b)); }
+  GIVE_ROLES.forEach((r, i) => { const m = giveMonthOf(i); if (m == null) return; any = true; month += m; });
   return any ? month : null;
 }
 function giveHtml() {
   const m = giveSum(), f = x => Math.round(x).toLocaleString('en-US');
   const tiles = [[m == null ? '–' : f(m), 'hours back a month'], [m == null ? '–' : f(m * 12), 'hours back a year'], [m == null ? '–' : f(m * 12 / 8), 'working days back a year']];
   return `<div class="shgtiles">${tiles.map(([n, l], i) => `<div${i === 2 ? ' class="hot"' : ''}><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('')}</div>
-    <p class="shgnote">${m == null ? 'Type the room\'s numbers: the people in a role, and the hours each gives month end in a month, today and with Cadence.' : `The room's own numbers: people × (hours today − hours with Cadence), for 12 months, in 8-hour working days. <b>${m >= 176 ? `As many hours as ${(m / 176).toFixed(1)} full-time people` : `${Math.round(m / 176 * 100)}% of a full-time person`}, every month, back to coaching and service.</b>`}</p>`;
+    <p class="shgnote">${m == null ? 'Type the hours each role gets back.' : `A month of ${GIVE_DAYS} working days; a working day of 8 hours. <b>${m >= GIVE_FTE ? `As many hours as ${(m / GIVE_FTE).toFixed(1)} full-time people` : `${Math.round(m / GIVE_FTE * 100)}% of a full-time person`}, every month, back to coaching and service.</b>`}</p>`;
 }
 function giveTableHtml() {
-  const lab = { n: 'people', a: 'hours each a month, today', b: 'hours each a month, with Cadence' }, eg = { n: 'e.g. 3', a: 'e.g. 40', b: 'e.g. 12' };
-  return `<table class="shctab"><thead><tr><th scope="col">Role</th><th scope="col">People</th><th scope="col">Hours each a month, today</th><th scope="col">Hours each, with Cadence</th></tr></thead>
-    <tbody>${GIVE_ROLES.map((r, i) => `<tr><th scope="row">${esc(r)}</th>${['n', 'a', 'b'].map(c => `<td><input type="number" inputmode="decimal" min="0" max="9999" step="any" data-give="${i}:${c}" value="${esc(giveVals[i][c])}"${i ? '' : ` placeholder="${eg[c]}"`} aria-label="${esc(r)}: ${lab[c]}"></td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  return `<table class="shctab"><thead><tr><th scope="col">Role</th><th scope="col">Hours back</th><th scope="col">Per</th><th scope="col">A month</th></tr></thead>
+    <tbody>${GIVE_ROLES.map(([r, , per], i) => `<tr><th scope="row">${esc(r)}</th><td><input type="number" inputmode="decimal" min="0" max="9999" step="any" data-give="${i}" value="${esc(giveVals[i])}" aria-label="${esc(r)}: hours back a ${per}"></td><td class="per">${per}</td><td class="mo" data-givemo="${i}">${giveMoText(i)}</td></tr>`).join('')}</tbody></table>`;
 }
 function showHtml() {
   const S = {
@@ -37672,7 +37682,7 @@ function showHtml() {
     idea: `${shHead('The idea', 'One shared truth, <b>a page for every role.</b>', 'Cadence brings the whole month to one place every role opens: the same numbers for everyone, settled before they count, explained to everyone, at a pace everyone can see.')}
         <ol class="shsteps pillars shrise">${[['One source of truth', 'Every role works from the same numbers, the same day. No versions to reconcile.', 'stack', 'Layers settling into one stack: one source of truth'], ['Right before it counts', 'Questions are settled before a number reaches a payslip or an email.', 'sieve', 'Sieves over a pan: settled before it counts'], ['Every number explained', 'Anyone can see how a result was reached, down to the rounding.', 'loupe', 'A magnifying glass: every number explained'], ['A rhythm everyone sees', 'The month close moves step by step, and everyone knows whose turn it is.', 'plot', 'A chart drawing itself: the month, seen by everyone']].map(([h, t, f, l]) => `<li class="shstep">${shFig(f, l)}<b>${h}</b><p>${t}</p></li>`).join('')}</ol>`,
     gets: `${shHead('What Member Care gets', 'What Member Care <b>gets.</b>', '')}
-        <div class="shcards six shrise">${[['Time back for people', 'The hours that went into assembling numbers go back to coaching, quality and service.', 'Hours back'], ['Fewer errors and disputes', 'Problems are settled before anything goes out, so fewer corrections follow the emails.', ''], ['Fairness people can see', 'Every bonus explains itself, the same rules apply to everyone, and agents see their own.', '94.96% → 95%'], ['The month at a glance', 'Managers see where the close stands, what is late and who is next, without chasing anyone.', ''], ['No single point of failure', 'The month is shared, saved and covered during holidays: it never rests on one person.', ''], ['Private by design', 'The data stays on our own computers, encrypted, and each role sees only what is theirs.', '0 web requests']].map(([h, t, big], i) => `<div class="shcard${big ? ' stat' : ''}">${big ? `<em>${esc(big)}</em>` : `<span class="shno">0${i + 1}</span>`}<b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
+        <div class="shcards six shrise">${[['Time back for Member Care', 'Hours back every month, role by role, for coaching, quality and service.', `${giveSetMonth()} hours a month`], ['Fewer errors and disputes', 'Problems are settled before anything goes out, so fewer corrections follow the emails.', ''], ['Fairness people can see', 'Every bonus explains itself, the same rules apply to everyone, and agents see their own.', '94.96% → 95%'], ['The month at a glance', 'Managers see where the close stands, what is late and who is next, without chasing anyone.', ''], ['No single point of failure', 'The month is shared, saved and covered during holidays: it never rests on one person.', ''], ['Private by design', 'The data stays on our own computers, encrypted, and each role sees only what is theirs.', '0 web requests']].map(([h, t, big], i) => `<div class="shcard${big ? ' stat' : ''}">${big ? `<em>${esc(big)}</em>` : `<span class="shno">0${i + 1}</span>`}<b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
     roles: `${shHead('Every role', 'A better month for <b>every role.</b>', 'Press View to open that page live, on today\'s data, exactly as its role sees it. Nothing is saved and National IDs are hidden while you view; Back to Admin returns here.')}
         <div class="shroles shrise">${SHOW_ROLES.map(([r, name, before, now, ico]) => { const R = VIEW_ROLES.find(x => x[0] === r), kind = R && R[3]; return `<div class="shrole"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#${ico}"/></svg></span><b>${esc(name)}</b></div>
             <p class="was"><span>Before</span>${esc(before)}</p><p class="now"><span>Now</span>${esc(now)}</p>
@@ -37685,8 +37695,8 @@ function showHtml() {
           ${shFig('vault', 'A vault door: the shared data, encrypted')}</div>`,
     change: `${shHead('What it means', 'What changes for <b>Member Care.</b>', '')}
         <div class="shtable shrise"><table><thead><tr><th></th><th>Before</th><th class="hot">With Cadence</th></tr></thead><tbody>${[['Time', 'Spent assembling and re-checking numbers', 'Spent on coaching and service'], ['Accuracy', 'Mistakes found after the emails went out', 'Settled before anything goes out'], ['Questions about pay', 'Worked out again on request', 'Answered in a click, the same for everyone'], ['Visibility', 'Status gathered by email and calls', 'The whole month at a glance, for every role'], ['Continuity', 'The month lived in one person\'s files', 'Shared, saved and covered during holidays']].map(([a, b, c]) => `<tr><th scope="row">${a}</th><td>${b}</td><td>${c}</td></tr>`).join('')}</tbody></table></div>`,
-    gives: `${shHead('What it gives back', 'Time back for <b>Member Care.</b>', 'The room\'s own numbers: how many people give month end their hours today, and how many it takes with Cadence. What comes back is time for people.')}
-        <div class="shcalc shrise"><div class="shcalctab">${giveTableHtml()}<button class="btn sm ghost" data-giveclear>Clear the numbers</button></div>
+    gives: `${shHead('What it gives back', 'Time back for <b>Member Care.</b>', 'Hours back, role by role: every working day for the WFM team, every month for the QA, CT and TS supervisors and managers. What comes back is time for people.')}
+        <div class="shcalc shrise"><div class="shcalctab">${giveTableHtml()}<button class="btn sm ghost" data-givereset>Reset the hours</button></div>
           <div class="shgive" id="showGive" aria-live="polite">${giveHtml()}</div></div>`,
     start: `<div class="shend">
         <div class="shendtext">${shHead('What\'s next', 'Ready for <b>the next close.</b>', '')}
@@ -37776,14 +37786,16 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('input', e => {
   const t = e.target.closest && e.target.closest('[data-give]'); if (!t) return;
-  const [i, c] = t.dataset.give.split(':'), v = t.value.trim();
-  giveVals[+i][c] = v !== '' && Number.isFinite(+v) && +v >= 0 ? v : '';
+  const i = +t.dataset.give, v = t.value.trim();
+  giveVals[i] = v !== '' && Number.isFinite(+v) && +v >= 0 ? v : '';
+  const mo = document.querySelector(`[data-givemo="${i}"]`); if (mo) mo.textContent = giveMoText(i);
   const g = $('showGive'); if (g) g.innerHTML = giveHtml();
 });
 document.addEventListener('click', e => {
-  if (!e.target.closest('[data-giveclear]')) return;
-  giveVals.forEach(v => { v.n = ''; v.a = ''; v.b = ''; });
-  document.querySelectorAll('[data-give]').forEach(x => { x.value = ''; });
+  if (!e.target.closest('[data-givereset]')) return;
+  GIVE_ROLES.forEach(([, h], i) => { giveVals[i] = String(h); });
+  document.querySelectorAll('[data-give]').forEach(x => { x.value = giveVals[+x.dataset.give]; });
+  document.querySelectorAll('[data-givemo]').forEach(x => { x.textContent = giveMoText(+x.dataset.givemo); });
   const g = $('showGive'); if (g) g.innerHTML = giveHtml();
 });
 document.addEventListener('keydown', e => {

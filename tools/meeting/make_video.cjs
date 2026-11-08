@@ -30,7 +30,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const p = await ctx.newPage(), errs = [], t0 = Date.now(), now = () => (Date.now() - t0) / 1000, cuts = []; p.on('pageerror', e => errs.push(e.message));
 
   /** open the tool as a role, with the made-up months (September the close under way, the months before it final) and the quality numbers */
-  async function open(role, setup, first) {   // first: the title card, shown at once over the first page
+  async function open(role, setup, first, hold) {   // first: the title card, shown at once over the first page; hold: keep it black (shown later)
     const tA = now();
     await p.goto('file://' + path.resolve(page0) + '?as=' + role); await p.waitForFunction(() => window.__mc && window.__mc.state.rosterReady);
     await p.evaluate(() => {
@@ -53,7 +53,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     });
     if (setup) await p.evaluate(setup);
     await p.waitForTimeout(400);
-    await p.evaluate(([LOGO, first]) => {
+    await p.evaluate(([LOGO, first, hold]) => {
       const s = document.createElement('style');
       s.textContent = `#toast, #busy { display: none !important; } *, *::before, *::after { caret-color: transparent !important; }
         .vcap { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 2147483600; max-width: 80%; padding: 12px 22px; border-radius: 12px; background: rgba(8, 8, 8, .88);
@@ -71,30 +71,32 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       if (first) { v.style.transition = 'none'; v.querySelector('h1').innerHTML = first[0]; v.querySelector('p').textContent = first[1]; v.classList.add('on'); setTimeout(() => { v.style.transition = ''; }, 60); }
       document.addEventListener('mousemove', e => { k.style.left = e.clientX + 'px'; k.style.top = e.clientY + 'px'; }, true);
       document.addEventListener('mousedown', () => k.classList.add('dn'), true); document.addEventListener('mouseup', () => k.classList.remove('dn'), true);
-      const cur = document.getElementById('vidCurtain'); document.body.style.transition = 'opacity .45s ease'; if (cur) cur.remove(); document.body.style.opacity = '1';
-    }, [LOGO, first || null]);
+      if (!hold) { const cur = document.getElementById('vidCurtain'); document.body.style.transition = 'opacity .45s ease'; if (cur) cur.remove(); document.body.style.opacity = '1'; }
+    }, [LOGO, first || null, !!hold]);
+    if (hold) return tA;   // the caller shows the page, and cuts the wait
     const tB = now(); if (first) cuts.push([0, Math.max(0, tB - 0.05)]); else if (tB - tA > 0.9) cuts.push([tA + 0.35, tB - 0.1]);   // keep a short black between scenes
     await p.waitForTimeout(first ? 100 : 450);
     if (process.env.VDEBUG) { await p.screenshot({ path: path.join(process.env.VDEBUG, role + '.png') }); console.log(role, JSON.stringify(await p.evaluate(() => ({ op: getComputedStyle(document.body).opacity, ws: window.__mc.state.ws, cur: !!document.getElementById('vidCurtain'), html: getComputedStyle(document.documentElement).backgroundColor })))); }
   }
+  const show = () => p.evaluate(() => { const cur = document.getElementById('vidCurtain'); document.body.style.transition = 'opacity .45s ease'; if (cur) cur.remove(); document.body.style.opacity = '1'; });
   const cap = t => p.evaluate(t => { const c = document.querySelector('.vcap'); if (!t) { c.classList.remove('on'); return; } c.textContent = t; c.classList.add('on'); }, t || '');
   const card = (h, s, on = true) => p.evaluate(([h, s, on]) => { const v = document.querySelector('.vcard'); v.querySelector('h1').innerHTML = h; v.querySelector('p').textContent = s; v.classList.toggle('on', on); }, [h, s, on]);
   const to = async (sel, o = {}) => { const e = await p.$(sel); if (!e) return; const r = await e.boundingBox(); if (!r) return; await p.mouse.move(r.x + (o.dx ?? r.width / 2), r.y + (o.dy ?? r.height / 2), { steps: o.steps || 22 }); };
   const glide = async (x, y, steps = 22) => p.mouse.move(x, y, { steps });
 
-  // ---- 1. the title, then the month at a glance (the WFM analyst's dashboard)
-  await open('user', () => { window.__mc.setWs('dash'); }, ['Introducing <b>Cadence</b>', 'Member Care\'s month, in one place · made-up people, no real data']);
+  // ---- 1. the title, then the month at a glance (the senior manager's dashboard)
+  await open('senior', () => { window.__mc.setWs('dash'); }, ['Introducing <b>Cadence</b>', 'Member Care\'s month, in one place · made-up people, no real data']);
   await wait(3400); await card('', '', false); await wait(600);
   await cap('The month at a glance: every number with its trend, and the steps of the close.');
   await glide(330, 300); await wait(600); await glide(760, 300); await wait(600); await to('.dclose'); await wait(1600);
 
-  // ---- 2. settled before it counts: the month's files go in off camera (that stretch is cut), then the checks
-  await cap(''); const tA = now();
-  await p.evaluate(() => { document.documentElement.style.background = '#080808'; document.body.style.opacity = '0'; const M = window.__mc, F = window.__FIX__; M.state.history = Object.fromEntries(Object.entries(F.history).filter(([k]) => k !== '2026-09')); M.state.histVer++; M.setWs('build'); M.setStep('import'); scrollTo(0, 0); });
+  // ---- 2. settled before it counts: the WFM analyst's checks; the month's files go in off camera (that stretch is cut)
+  await cap('');
+  const tA = await open('user', () => { const M = window.__mc, F = window.__FIX__; M.state.history = Object.fromEntries(Object.entries(F.history).filter(([k]) => k !== '2026-09')); M.state.histVer++; M.setWs('build'); M.setStep('import'); scrollTo(0, 0); }, null, true);
   await p.setInputFiles('#picker', ['Monthly Adherence - Sep.csv', 'Agents Performance Summary.csv', 'Schedule activities.csv', 'Agent Status Timeline Details.csv'].map(f => path.join(exp, f)));
   await p.waitForFunction(() => !window.__mc.state.pending.length && Object.keys(window.__mc.state.slots).length >= 4, null, { timeout: 60000 });
   await p.evaluate(() => { window.__mc.setStep('review'); if (window.__mc.setTab) window.__mc.setTab('checks'); scrollTo(0, 0); });
-  await wait(500); await p.evaluate(() => { document.body.style.opacity = ''; document.documentElement.style.background = ''; }); cuts.push([tA + 0.35, now() - 0.1]);
+  await wait(500); await show(); cuts.push([tA + 0.35, now() - 0.1]); await wait(450);
   await wait(300); await cap('Settled before it counts: every question decided, and every decision kept.');
   await to('#checksTiles'); await wait(1200); await to('#checksBody'); await wait(2400);
 

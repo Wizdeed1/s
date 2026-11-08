@@ -95,7 +95,7 @@ const KIT = [
   ['During', '05', 'Demo file', 'The tool on a made-up month: opens on any computer, no folder, no sign-in, nothing saved; every page, every role, View as and the Showcase.', '05 Cadence - Demo.html'],
   ['During', '06', 'Live drop pack', 'A spare: the month\'s four exports, made up, only if someone asks how the numbers get in.', '06 Live drop pack (made-up, Sep 2026)'],
   ['During', '07', 'Spotlight and zoom', 'S lights the part you are talking about, Z enlarges where you point, + and - change the size, Esc takes them off.', 'In the tool (admin only)'],
-  ['During', '08', 'What it gives back', 'The room types its own hours; the Showcase turns them into hours and working days back a year.', 'Showcase (admin only)'],
+  ['During', '08', 'Time back', 'The hours each role gets back (5 a day for the WFM analyst, 3 a day for the WFM manager, 2 a month for each QA, CT and TS supervisor and manager): 188 hours a month, 2,256 a year. Change a number live; the totals follow.', 'Showcase (admin only)'],
   ['During', '09', 'Backup video', 'A month in the tool in under two minutes, with captions, for a room where nothing works.', '09 Backup demo video.mp4'],
   ['After', '10', 'Leave-behind', 'One page: the idea, what Member Care and each role get, how the data stays private, what comes next.', '10 Leave-behind.pdf'],
   ['After', '11', 'IT and security note', 'One page for IT: what runs where, what is encrypted, the review, and the limits.', '11 IT and security.pdf'],
@@ -108,7 +108,7 @@ const start = doc('Presenter only', 'Your meeting kit: *twelve weapons*', 'Every
   <div class="grid4">
     <div class="box"><h3>Keep them hidden</h3><p class="small">Nothing in the deck, the leave-behind or the email names your tools. Open them when the moment comes.</p></div>
     <div class="box"><h3>Show made-up people</h3><p class="small">Use the demo file whenever the room is wider than the people who may see the data.</p></div>
-    <div class="box"><h3>Let them say the number</h3><p class="small">Ask the room for its hours and type them (08). A number they gave is a number they believe.</p></div>
+    <div class="box"><h3>Let the hours speak</h3><p class="small">188 hours a month back to Member Care (08). If the room sees a number differently, change it live: the totals follow.</p></div>
     <div class="box blue"><h3>End with the ask</h3><p class="small">Close on the pilot (12) and a date for the decision. Send the email the same day.</p></div>
   </div>`);
 
@@ -154,8 +154,8 @@ const checklist = doc('Presenter only', 'Meeting-room *checklist*', 'Ten minutes
 const WHO = [
   ['Head of Member Care', 'The month closed on time, no surprises, no escalations about money.', 'Nothing goes out until the checks are decided, and every bonus explains itself.', 'Review › Checks, then How this was counted for one agent.', 'Who answers if a number is wrong? The senior manager finalizes, and every change is logged with a name and a time.'],
   ['Senior manager', 'Control of the rules and the final say.', 'You keep the rules, and nothing is final until you finalize it.', 'The month close on the Supervisors page; the scorecards in Settings.', 'Can I change a rule? Yes; the change is logged and the month counts with it.'],
-  ['WFM manager', 'The emails right and on time; the analytics.', 'The emails are written and checked in the tool; you send them from Outlook.', 'Emails: deduction, absences, incentive, and the four daily brand emails.', 'Does it send by itself? Never. It prepares drafts; people send.'],
-  ['WFM analysts', 'Less copy and paste, fewer late nights at month end.', 'The month\'s numbers come together and are checked for you; your time goes to analysis.', 'The dashboard: the month at a glance and the month close.', 'What if a file is new? It is read by its columns, not its name; anything unclear is asked about.'],
+  ['WFM manager', 'The emails right and on time; the analytics.', 'Three hours a day back: the emails are written and checked in the tool, and you send them from Outlook.', 'Emails: deduction, absences and incentive.', 'Does it send by itself? Never. It prepares drafts; people send.'],
+  ['WFM analysts', 'Less copy and paste, fewer late nights at month end.', 'The month\'s numbers come together and are checked for you: five hours a day back for analysis.', 'The dashboard: the month at a glance and the month close.', 'What if a file is new? It is read by its columns, not its name; anything unclear is asked about.'],
   ['Supervisors', 'Less time on attendance; one-to-ones that are quick to prepare.', 'Exceptions only: late, absent, leave and days off. Every other day counts as worked.', 'View as a supervisor: their own team; the one-to-one on one page.', 'Do we fill a sheet every day? No: one template a month, exceptions only.'],
   ['Quality team', 'Scores entered once and used everywhere.', 'The Final EVAL goes in once and feeds every scorecard that needs it.', 'The Quality page, every name matched.', 'And DRC-CSAT? One number for the month, typed once.'],
   ['HR', 'Privacy, fairness and records.', 'No National IDs in attachments; each person sees only what their role allows; every change logged.', 'View as an agent: their own page only, the ID hidden.', 'Where is the data? In MC Data, encrypted; no web service.'],
@@ -171,13 +171,13 @@ const who = doc('Presenter only', 'Who is *in the room*', 'Write the names in be
 const RUN = [
   ['0:00', 'Open', 'Deck, slide 1.', 'Member Care\'s month, in one place.', '–'],
   ['0:30', 'The idea', 'Slides 2 to 4.', 'Month end ran on people and spreadsheets. Now every role works from one shared truth.', '–'],
-  ['3:00', 'What we get', 'Slides 5 and 6.', 'Time back, fewer errors, fairness people can see, the month at a glance, no single point of failure, privacy.', '–'],
+  ['3:00', 'What we get', 'Slides 5 and 6.', 'Time back, 188 hours a month; fewer errors; fairness people can see; the month at a glance; no single point of failure; privacy.', '–'],
   ['4:30', 'Go live', 'Alt+Tab to the demo file; F11.', 'Let me show you. These are made-up people, so nobody\'s data is on the screen.', 'Browser closed: double-click the demo file.'],
   ['5:00', 'The month at a glance', 'The dashboard: S on the month close, then the bell.', 'Everyone opens the same month: what is next, what is late, whose turn it is.', 'Talk over slide 4 instead.'],
   ['6:30', 'Settled first', 'WFM team › Review › Checks; open one Please check line.', 'Nothing counts until the questions that matter are decided, and every decision is kept.', 'Skip to How.'],
   ['8:00', 'Every bonus explained', 'Results › How next to one final %; Z on the KPI table.', '94.96% counts as 95%, the same for everyone. Every point has its working.', 'Panel empty: choose another person.'],
   ['9:30', 'Every role', 'Showcase › Every role: View on a supervisor, then an agent (English, then Arabic).', 'Each role sees only its own page; IDs are hidden while I show you.', 'Slow: Back to Admin and go on.'],
-  ['12:00', 'What it gives back', 'Showcase › What it gives back. Ask the room for people and hours; type them.', 'These are your numbers, not mine.', 'Nobody answers: give one role\'s hours yourself.'],
+  ['12:00', 'Time back', 'Showcase › What it gives back: the hours back, role by role. Change one if the room asks.', '188 hours a month back to Member Care: more than one full-time person, every month.', 'Say it from slide 6.'],
   ['13:30', 'Coaching and trust', 'Back to the deck: slides 10 to 13.', 'The coaching loop closed; the month never waits on one person; 0 web requests, AES-256, 37 browser test suites.', '–'],
   ['15:00', 'The ask', 'Slides 14 and 15, then the pilot proposal (12).', 'We start with the next close. Can we decide by [date]?', '–'],
   ['16:00', 'Questions', 'Hard questions (04) on the table.', 'Good question: I will send the answer with the follow-up email.', '–'],
@@ -187,7 +187,7 @@ const run = doc('Presenter only', 'Demo *run sheet*', 'Twenty minutes: the idea 
     ${RUN.map(([t, b, d, s, f]) => `<tr><td class="t">${t}</td><td class="k">${esc(b)}</td><td>${esc(d)}</td><td><b>"${esc(s)}"</b></td><td class="small muted">${esc(f)}</td></tr>`).join('')}</tbody></table>
   <div class="grid3" style="margin-top:3mm">
     <div class="box"><h3>Keys</h3><p class="small"><b>Deck:</b> F5 start · → next · B black · 10 then Enter jumps to slide 10 · Esc.<br><b>Showcase:</b> Present · → ← · Home End · N notes · Esc.<br><b>Anywhere (admin):</b> S spotlight · Z zoom · + - size · Esc off.<br><b>Browser:</b> F11 full screen · Ctrl+0 zoom 100% · Alt+Tab.</p></div>
-    <div class="box"><h3>The three moments that win the room</h3><p class="small">1. The whole month on one screen, for everyone.<br>2. One agent's bonus explained, point by point.<br>3. The room's own hours turned into days back a year.</p></div>
+    <div class="box"><h3>The three moments that win the room</h3><p class="small">1. The whole month on one screen, for everyone.<br>2. One agent's bonus explained, point by point.<br>3. 188 hours a month back to Member Care, role by role.</p></div>
     <div class="box blue"><h3>Ten minutes only?</h3><p class="small">Slides 2 and 5, then How this was counted, View as an agent, and slide 15. Leave the rest for questions.</p></div>
   </div>`);
 
@@ -239,7 +239,7 @@ const leave = doc('Member Care · WFM team', '*Cadence* · Member Care performan
     <div class="box ink"><h3>A page for every role</h3><p class="small">Seven roles on one set of data, in English or Arabic.</p></div>
   </div>
   <h2>What Member Care gets</h2>
-  <div class="grid4">${[['Time back', 'The hours that went into assembling numbers go back to coaching, quality and service.'], ['The month at a glance', 'Managers see where the close stands, what is late and who is next.'], ['No single point of failure', 'Shared, saved and covered during holidays: never one person\'s spreadsheet.'], ['Coaching on the same facts', 'One-to-ones filled from the month\'s numbers; questions answered in one place.']].map(([h, t]) => `<div class="box"><h3>${esc(h)}</h3><p class="small">${esc(t)}</p></div>`).join('')}</div>
+  <div class="grid4">${[['Time back', '188 hours a month: 5 a day for the WFM analyst, 3 a day for the WFM manager, 2 a month for each QA, CT and TS supervisor and manager.'], ['The month at a glance', 'Managers see where the close stands, what is late and who is next.'], ['No single point of failure', 'Shared, saved and covered during holidays: never one person\'s spreadsheet.'], ['Coaching on the same facts', 'One-to-ones filled from the month\'s numbers; questions answered in one place.']].map(([h, t]) => `<div class="box"><h3>${esc(h)}</h3><p class="small">${esc(t)}</p></div>`).join('')}</div>
   <div class="grid2" style="margin-top:1mm"><div>
     <h2>Every role</h2>
     <table><tbody>${[['WFM analyst', 'Time for analysis, not assembling'], ['WFM manager', 'Checked numbers, sent on time'], ['Senior manager', 'The whole close; the final say on the rules'], ['Supervisor', 'More coaching, less paperwork'], ['Quality team', 'Quality entered once, counted everywhere'], ['Agent', 'Own results, understood, in English or Arabic'], ['Admin', 'Each person in their role']].map(([r, t]) => `<tr><td class="k">${r}</td><td>${t}</td></tr>`).join('')}</tbody></table>
@@ -308,7 +308,7 @@ const pilot = doc('Proposal', 'The ask: *the November close*', '**Run the Novemb
       <tr><td>Differences from the usual workbook left unexplained in Reconcile</td><td>0</td></tr>
       <tr><td>Emails corrected after they were sent</td><td>0</td></tr>
       <tr><td>Objections answered by day 8</td><td>All</td></tr>
-      <tr><td>Hours the WFM team spends on the close</td><td><span class="blank" style="min-width:14mm"></span> h</td></tr>
+      <tr><td>Hours back in the month (set: 188)</td><td><span class="blank" style="min-width:14mm"></span> h</td></tr>
     </tbody></table>
   </div><div>
     <h2>What it needs</h2>
@@ -333,7 +333,7 @@ const MAIL = `Hello all,
 Thank you for your time today. A short summary of what we saw:
 
 - Cadence puts Member Care's month in one place: one shared truth every role works from, settled before it counts and explained to the person it touches.
-- Time back: the hours that went into assembling numbers go back to coaching, quality and service.
+- Time back: about 188 hours a month for Member Care (5 hours a day for the WFM analyst, 3 for the WFM manager, 2 a month for each QA, CT and TS supervisor and manager), back to coaching, quality and service.
 - Fewer errors and disputes: problems are decided before anything goes out, and every bonus shows how it was counted.
 - No single point of failure: the month is shared, saved and covered during holidays.
 - Private by design: each role has its own page, and National IDs never leave the tool in an email.

@@ -170,10 +170,10 @@ pres.addSection({ title: 'Launch' });
 // =============================================================================================== 5. what Member Care gets
 pres.addSection({ title: 'Benefits' });
 {
-  const s = add('LIGHT', 'Benefits', 'What Member Care gets, in six parts: time back for people; fewer errors and fewer disputes; fairness everyone can see; the month at a glance for every manager; no single point of failure; and privacy by design. Each is something the team can feel in the first month.');
+  const s = add('LIGHT', 'Benefits', 'What Member Care gets, in six parts: time back, 188 hours a month; fewer errors and fewer disputes; fairness everyone can see; the month at a glance for every manager; no single point of failure; and privacy by design. Each is something the team can feel in the first month.');
   eyebrow(s, 'What Member Care gets');
   title(s, 'What Member Care *gets*');
-  const L = [['clock', 'Time back for people', 'The hours that went into assembling numbers go back to coaching, quality and service.'],
+  const L = [['clock', 'Time back for Member Care', '188 hours a month go back to coaching, quality and service.'],
     ['target', 'Fewer errors and disputes', 'Problems are settled before anything goes out, so fewer corrections follow.'],
     ['eye', 'Fairness people can see', 'Every bonus explains itself; the same rules for everyone; agents see their own.'],
     ['chart', 'The month at a glance', 'Managers see where the close stands, what is late and who is next.'],
@@ -189,26 +189,33 @@ pres.addSection({ title: 'Benefits' });
   });
 }
 
-// =============================================================================================== 6. time back
+// =============================================================================================== 6. time back, as the team set it
 {
-  const s = add('DARK', 'Benefits', 'Time back is the first thing the team will feel. The measure is simple: the people in a role, times the hours each gives month end today, minus the hours with Cadence. We measure it with the team\'s own numbers in the first month. Analysts move from assembling to analysis, supervisors from paperwork to coaching, managers from chasing to deciding.');
+  const s = add('DARK', 'Benefits', 'Time back for Member Care, role by role: the WFM analyst gets five hours back every working day and the WFM manager three; each QA, CT and TS supervisor and manager gets two hours a month. That is 188 hours a month: 2,256 hours, or 282 working days, a year, more than one full-time person, every month. A month here has 22 working days of 8 hours.');
   eyebrow(s, 'Time back', true);
-  title(s, 'Time back for *people*');
-  lead(s, 'Measured with the team\'s own numbers in the first month.', true, { w: 7.0, h: 0.5 });
-  card(s, M, 2.6, R - M, 1.25, { dark: true, fill: C.ink, t: 300 });
-  T(s, [{ text: 'Hours back  =  ', options: { bold: true, color: C.white } }, { text: 'people  ×  ( hours today  −  hours with Cadence )', options: { color: C.dmuted } }], { x: M + 0.4, y: 2.6, w: R - M - 0.8, h: 1.25, fontSize: 24, valign: 'middle', objectName: 'up|300|formula' });
-  const L = [['team', 'WFM analysts', 'From assembling', 'to analysis', 'The month\'s numbers come together and are checked for them.'],
-    ['pen', 'Supervisors', 'From paperwork', 'to coaching', 'The one-to-one fills itself from the month\'s numbers.'],
-    ['star', 'Managers', 'From chasing', 'to deciding', 'Where the close stands and who is next, at a glance.']];
-  const cw = (R - M - 0.5) / 3;
-  L.forEach(([icon, who, a, b, more], i) => {
-    const x = M + i * (cw + 0.25), d = 500 + i * 160, on = i === 0;
-    card(s, x, 4.15, cw, 2.55, { dark: true, fill: on ? C.blue : C.ink, t: d });
-    dot(s, icon, x + 0.3, 4.45, 0.5, on ? C.white : C.edge, on ? 'blue' : 'white', d);
-    T(s, who, { x: x + 0.3, y: 5.1, w: cw - 0.6, h: 0.4, fontSize: 18, bold: true, color: C.white, objectName: `up|${d}|w` });
-    T(s, [{ text: a + ' ', options: { color: on ? C.white : C.dmuted } }, { text: b, options: { bold: true, color: C.white } }], { x: x + 0.3, y: 5.55, w: cw - 0.6, h: 0.4, fontSize: 16, valign: 'top', objectName: `up|${d}|t` });
-    T(s, more, { x: x + 0.3, y: 6.02, w: cw - 0.6, h: 0.55, fontSize: 12.5, color: on ? C.white : C.dmuted, valign: 'top', lineSpacingMultiple: 1.05, objectName: `up|${d}|more` });
+  title(s, 'Time back for *Member Care*');
+  lead(s, 'Hours back, role by role: every working day for the WFM team, every month for the supervisors and managers.', true, { w: 11.5, h: 0.5 });
+  // the totals, with the hours as set: 5 a day and 3 a day over 22 working days, and 6 people at 2 a month
+  const DAYS = 22, month = 5 * DAYS + 3 * DAYS + 6 * 2, f = n => n.toLocaleString('en-US');
+  const tiles = [[f(month), 'hours back a month'], [f(month * 12), 'hours back a year'], [f(month * 12 / 8), 'working days back a year']];
+  const tw = (R - M - 0.5) / 3;
+  tiles.forEach(([n, l], i) => {
+    const x = M + i * (tw + 0.25), d = 300 + i * 140, on = i === 2;
+    card(s, x, 2.35, tw, 1.35, { dark: true, fill: on ? C.blue : C.ink, t: d });
+    T(s, n, { x: x + 0.32, y: 2.47, w: tw - 0.64, h: 0.72, fontSize: 38, bold: true, color: C.white, valign: 'top', objectName: `up|${d}|n` });
+    T(s, l, { x: x + 0.32, y: 3.2, w: tw - 0.64, h: 0.34, fontSize: 13, color: on ? C.white : C.dmuted, objectName: `up|${d}|l` });
   });
+  const L = [['team', 'WFM analyst', '5 h a day', `${5 * DAYS} hours a month, from assembling to analysis.`], ['star', 'WFM manager', '3 h a day', `${3 * DAYS} hours a month, from chasing to deciding.`],
+    ['pen', 'Supervisors and managers', '2 h a month each', 'QA, CT and TS: 12 hours a month, from paperwork to coaching.']];
+  L.forEach(([icon, who, big, more], i) => {
+    const x = M + i * (tw + 0.25), d = 700 + i * 160;
+    card(s, x, 3.95, tw, 2.45, { dark: true, fill: C.ink, t: d });
+    dot(s, icon, x + 0.3, 4.22, 0.48, C.edge, 'white', d);
+    T(s, who, { x: x + 0.3, y: 4.86, w: tw - 0.6, h: 0.36, fontSize: 15, bold: true, color: C.white, objectName: `up|${d}|w` });
+    T(s, big, { x: x + 0.3, y: 5.22, w: tw - 0.6, h: 0.52, fontSize: 24, bold: true, color: C.white, objectName: `up|${d}|b` });
+    T(s, more, { x: x + 0.3, y: 5.78, w: tw - 0.6, h: 0.5, fontSize: 12.5, color: C.dmuted, valign: 'top', lineSpacingMultiple: 1.05, objectName: `up|${d}|t` });
+  });
+  T(s, `A month of ${DAYS} working days; a working day of 8 hours. About ${(month / (DAYS * 8)).toFixed(1)} full-time people's hours, every month.`, { x: M, y: 6.55, w: R - M, h: 0.3, fontSize: 11, color: C.dmuted, objectName: 'fade|1200|basis' });
 }
 
 // =============================================================================================== 7. right the first time

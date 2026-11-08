@@ -240,16 +240,21 @@ applyRail();
 /** one numbered step of a page: its number on a line down the left, its title, its state (done, next, or still to come), a short
     note (done when and by whom, how far it is), its actions, what it is for, then its own cards. title and note are text; cap,
     acts and body are HTML the caller made safe. short: the step's name in the page's "On this page" list */
-function stepHtml(n, { id, title, short, cap = '', st = '', note = '', acts = '', body = '' }) {
-  const hid = `sth-${id || n}`, chip = st === 'done' ? '<span class="pill good">Done</span>' : st === 'next' ? '<span class="pill info">Next</span>' : '';
-  return `<section class="flowstep${st ? ' ' + st : ''}"${id ? ` id="${esc(id)}"` : ''} data-n="${n}" data-short="${esc(short || title)}" aria-labelledby="${esc(hid)}"><span class="stepn" aria-hidden="true">${st === 'done' ? '✓' : n}</span>
-    <div class="stepbody"><div class="stephd"><h2 id="${esc(hid)}"><span class="sr">Step ${n}: </span>${esc(title)}</h2>${chip}${note ? `<small class="stnote">${esc(note)}</small>` : ''}${acts ? `<div class="stacts">${acts}</div>` : ''}</div>${cap ? `<p class="cap stcap">${cap}</p>` : ''}${body}</div></section>`;
+function stepHtml(n, { id, title, short, cap = '', st = '', note = '', acts = '', body = '', open: openAs }) {
+  // progressive disclosure: the step is one line; what it is for sits behind its ⓘ; its own cards open when it is the next step,
+  // or when the person opened it (remembered in this browser), and close again with the chevron or a click on the title
+  const key = id || `st-${String(short || title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || n}`;
+  const hid = `sth-${key}`, cid = `stc-${key}`, bid = `stb-${key}`, chip = st === 'done' ? '<span class="pill good">Done</span>' : st === 'next' ? '<span class="pill info">Next</span>' : '';
+  const open = !!body && uxStepOpen(key, openAs !== undefined ? !!openAs : st === 'next');   // openAs: a step whose cards are its working data stays open
+  const tog = body ? `<button type="button" class="btn ghost icon sm stog" data-stog="${esc(key)}" aria-expanded="${open}" aria-controls="${esc(bid)}" aria-label="Details of step ${n}" title="${open ? 'Hide' : 'Show'} the details"><svg aria-hidden="true" width="16" height="16"><use href="#i-chev"/></svg></button>` : '';
+  return `<section class="flowstep${st ? ' ' + st : ''}${body ? (open ? ' open' : ' shut') : ''}"${id ? ` id="${esc(id)}"` : ''} data-n="${n}" data-short="${esc(short || title)}" aria-labelledby="${esc(hid)}"><span class="stepn" aria-hidden="true">${st === 'done' ? '✓' : n}</span>
+    <div class="stepbody"><div class="stephd"><h2 id="${esc(hid)}"><span class="sr">Step ${n}: </span>${esc(title)}${cap ? uxTipBtn(cid, title) : ''}</h2>${chip}${note ? `<small class="stnote">${esc(note)}</small>` : ''}${acts || tog ? `<div class="stacts">${acts}${tog}</div>` : ''}</div>${cap ? `<p class="cap stcap uxsrc" id="${esc(cid)}">${cap}</p>` : ''}${body ? `<div class="stepdet" id="${esc(bid)}"${open ? '' : ' hidden'}>${body}</div>` : ''}</div></section>`;
 }
 /** the steps' states in order: each one done, or the first not done (next), or still to come. skipL: steps that cannot be next
     (a month closed before, where a step the tool did not see is "not recorded") */
 function stepStates(doneL, skipL = []) { let seen = false; return doneL.map((d, i) => (d ? 'done' : seen || skipL[i] ? '' : ((seen = true), 'next'))); }
-/** a heading between the steps and the rest of a page: what is there to look things up, what is set once */
-const phaseHtml = (t, cap = '') => `<div class="phase"><h2>${esc(t)}</h2>${cap ? `<p class="cap">${esc(cap)}</p>` : ''}</div>`;
+/** a heading between the steps and the rest of a page: what is there to look things up, what is set once (its caption behind ⓘ) */
+const phaseHtml = (t, cap = '') => { const id = `phc-${String(t).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`; return `<div class="phase"><h2>${esc(t)}${cap ? uxTipBtn(id, t) : ''}</h2>${cap ? `<p class="cap uxsrc" id="${esc(id)}">${esc(cap)}</p>` : ''}</div>`; };
 // ---- a long page (Supervisors) gets a local list of its sections, so each one is a click away (its steps first, numbered)
 function sectionNav(bodyId) {
   const body = $(bodyId); if (!body) return;

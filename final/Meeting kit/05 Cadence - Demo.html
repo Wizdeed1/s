@@ -2548,6 +2548,119 @@ p.prange { padding-top: 12px; }
 .impgrp { display: flex; align-items: center; gap: 2px; margin: var(--s2) 0 calc(-1 * var(--s1)); font: 600 13px/1.3 var(--text); color: var(--ink-2); }
 .impgrp[hidden] { display: none; }
 
+/* ================================================================ UX: a quiet page (ⓘ explanations), guidance, keys, table tools
+   The look is the approved one: the same tokens, controls and tooltip colours (the dashboard tiles' ⓘ). */
+
+/* ---- the ⓘ at the end of a title, and its popover */
+.uxi { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-inline-start: 6px; padding: 0; vertical-align: -3px; border: 0; border-radius: 50%; background: transparent; color: var(--faint); cursor: help; font: inherit; line-height: 0; transition: color var(--t-hover) ease, background-color var(--t-hover) ease; }
+.uxi svg { width: 16px; height: 16px; }
+.uxi:hover, .uxi[aria-expanded="true"] { color: var(--accent-text); background: var(--fill); }
+.uxi:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.uxi[hidden] { display: none; }
+h1 > .uxi { vertical-align: 2px; }
+.uxpop { position: fixed; z-index: var(--z-tt); width: max-content; max-width: min(360px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 10px; background: var(--tt-bg); color: var(--tt-ink); border: 1px solid var(--tt-line); box-shadow: var(--shadow-pop); font: 400 13px/1.5 var(--text); text-align: start; animation: uxin var(--t-hover, 120ms) ease; }
+.uxpop[hidden] { display: none; }
+.uxpop > * { margin: 0; padding: 0; color: inherit; font: inherit; max-width: none; display: block; }
+.uxpop b, .uxpop strong { color: inherit; font-weight: 600; }
+.uxpop a, .uxpop .linkbtn { color: inherit; text-decoration: underline; }
+.uxpop ol, .uxpop ul { padding-inline-start: 18px; display: grid; gap: 4px; }
+@keyframes uxin { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .uxpop { animation: none; } }
+/* the explanations themselves: off the page until Show guidance puts them back where they were */
+html:not(.uxguide) .uxsrc { display: none !important; }
+html.uxguide .uxi { display: none; }
+
+/* ---- the account menu's switch, and the shortcuts sheet */
+.menu button[data-uxguide]::after { content: ''; margin-inline-start: auto; width: 28px; height: 16px; border-radius: 8px; background: var(--line-2); box-shadow: inset 0 0 0 1px var(--line); transition: background-color var(--t-hover) ease; }
+.menu button[data-uxguide][aria-checked="true"]::after { background: var(--accent-fill); box-shadow: none; }
+.uxkeys { display: grid; gap: 6px; }
+.uxkeys + .uxkeys { margin-top: var(--s5); }
+.uxkeys h3 { margin: 0 0 2px; font: 600 12px/1.3 var(--text); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.uxkeys ul { margin: 0; padding: 0; list-style: none; display: grid; }
+.uxkeys li { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 36px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.uxkeys li:last-child { border-bottom: 0; }
+.uxkeys .keys { display: inline-flex; gap: 4px; flex: none; }
+kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--line-2); border-bottom-width: 2px; background: var(--surface); color: var(--ink); font: 600 11.5px/1 var(--text); }
+.uxguiderow { margin-top: var(--s5); padding: 12px 14px; border-radius: 12px; background: var(--fill); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.uxguiderow span { display: grid; gap: 2px; }
+.uxguiderow small { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+
+/* ---- a data card's tools: Copy and Filter at the end of its header */
+.uxtacts { display: inline-flex; align-items: center; gap: 2px; flex: none; margin-inline-start: auto; }
+.uxtacts .btn.icon { color: var(--muted); }
+.uxtacts .btn.icon:hover, .uxtacts .btn.icon[aria-expanded="true"] { color: var(--ink); }
+.uxf { display: inline-flex; align-items: center; gap: 6px; }
+.uxf[hidden] { display: none; }
+.uxfq { width: 180px; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--field, var(--surface)); color: var(--ink); font: 400 13px/1 var(--text); }
+.uxfq:focus { outline: 2px solid var(--focus); outline-offset: -1px; border-color: transparent; }
+.uxfcount { color: var(--muted); font-size: 12px; white-space: nowrap; }
+tr.uxfoff { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .card .uxtacts .btn.icon:not([aria-expanded="true"]) { opacity: .55; }
+  .card:hover .uxtacts .btn.icon, .card:focus-within .uxtacts .btn.icon { opacity: 1; }
+}
+/* ---- click to copy */
+.cpy { cursor: copy; border-radius: 4px; }
+.cpy:hover { text-decoration: underline dotted; text-underline-offset: 3px; color: var(--ink); }
+@media print { .uxi, .uxtacts { display: none !important; } }
+
+/* ---- steps: one line each; the chevron (or the title) opens a step's own cards; the progress bar above a flow */
+.stephd h2 > .uxi { margin-inline-start: 4px; }
+.stephd .stog { color: var(--muted); }
+.stephd .stog svg { transition: transform var(--t-hover) ease; }
+.flowstep.shut .stog svg { transform: rotate(-90deg); }
+[dir="rtl"] .flowstep.shut .stog svg { transform: rotate(90deg); }
+.flowstep.open > .stepbody > .stephd h2, .flowstep.shut > .stepbody > .stephd h2 { cursor: pointer; }
+.flowstep.shut > .stepbody > .stephd h2:hover { color: var(--accent-text); }
+.stepdet { display: grid; gap: var(--s3); min-width: 0; }
+.stepdet[hidden] { display: none; }
+.flow { gap: var(--s4); }
+.flowstep::before { top: 40px; bottom: calc(-1 * var(--s4) + 4px); }
+.flowbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: var(--s4); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow-card); }
+.fbcount { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.fbcount b { font: 700 15px/1 var(--display); color: var(--ink); }
+.fbtrack { flex: 1 1 120px; max-width: 240px; height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
+.fbtrack > span { display: block; height: 100%; border-radius: inherit; background: var(--good, var(--accent-fill)); transition: width var(--t-slow, 300ms) ease; }
+.fbnext { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.fbnext .good { color: var(--good); font-weight: 600; }
+.fball { margin-inline-start: auto; font-size: 13px; }
+@media (max-width: 640px) { .fbtrack { max-width: none; flex-basis: 100%; order: 3; } .fball { margin-inline-start: 0; } }
+
+/* ---- selecting rows and doing one thing to all of them (Results), the Quality grid's team tabs */
+th.uxsel, td.uxsel { width: 34px; padding-inline: 10px 2px !important; text-align: center; }
+.restab td.uxsel:first-child { min-width: 0; white-space: nowrap; }   /* the name column after it keeps its width */
+.restab td.uxsel + td { white-space: normal; min-width: 180px; }
+.uxsel input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent-fill); cursor: pointer; vertical-align: middle; }
+tr.sel > td { background: var(--accent-soft); }
+.bulkbar { position: sticky; top: calc(var(--head-h) + 8px); z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 12px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--accent-line); background: var(--surface); box-shadow: var(--shadow-pop); font-size: 13.5px; animation: uxin var(--t-hover, 120ms) ease; }
+.bulkbar > b { color: var(--accent-text); }
+.bulkbar .bbgrp { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.bulkbar .linkbtn { margin-inline-start: auto; }
+.qunits { margin: 0 0 12px; }
+.qunits small { color: var(--muted); font-weight: 500; }
+[aria-pressed="true"] > small { color: inherit; opacity: .8; }
+.card:has(> .uxtacts.abs) { position: relative; }
+.card > .uxtacts.abs { position: absolute; top: 14px; inset-inline-end: 14px; }
+
+/* ---- Import: a ready export is one slim line (title, file, counts, its actions); the drop zone is a slim bar once files are in */
+.slots:has(> .slot.slim) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); }
+.slot.slim { grid-template-columns: minmax(0, 18em) minmax(0, 1fr) auto; grid-template-areas: "top file acts" "top kv acts"; align-items: center; column-gap: 16px; row-gap: 2px; padding: 10px 14px; }
+.slot.slim > .top { grid-area: top; justify-content: flex-start; }
+.slot.slim > div:nth-child(2) { grid-area: file; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.slot.slim > .kv { grid-area: kv; display: flex; flex-wrap: wrap; gap: 2px 14px; padding: 0; background: none; border: 0; }
+.slot.slim > .kv > div { display: inline-flex; align-items: baseline; gap: 4px; padding: 0; background: none; min-height: 0; }
+.slot.slim > .kv b { font: 600 13px/1.3 var(--text); }
+.slot.slim > .kv span { font-size: 12px; color: var(--muted); }
+.slot.slim > .acts { grid-area: acts; }
+.slot h3 > .uxi { margin-inline-start: 4px; }
+.dropsub { font-size: 12.5px; color: var(--muted); }
+.drop.slim { grid-auto-flow: column; justify-content: center; align-items: center; gap: 10px; padding: 14px 16px; }
+.drop.slim svg { width: 20px; height: 20px; }
+.drop.slim strong { font-size: 14px; }
+.drop.slim .dropsub { display: none; }
+.uxi.uxhere { margin-inline-start: 0; }
+@media (max-width: 640px) { .slot.slim { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "top acts" "file file" "kv kv"; } }
+
 /* ------------------------------------------------------------------------------------------------------------- WFM › Report builder (the analysts) and WFM › Daily emails (the WFM manager) */
 .rb { display: grid; gap: 18px; min-width: 0; }
 .rbgrid { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -3579,6 +3692,8 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
         <div class="acctmenu menu" id="acctMenu" role="menu" hidden>
           <div class="who"><b id="acctName" dir="auto"></b><span id="acctEmail"></span><span><span class="pill" id="acctRole">User</span></span></div>
           <div class="appear" role="group" aria-labelledby="l-appear"><span id="l-appear">Appearance</span><div class="seg appearseg"><button role="menuitemradio" aria-checked="true" data-theme-set="system"><svg aria-hidden="true"><use href="#i-monitor"/></svg>System</button><button role="menuitemradio" aria-checked="false" data-theme-set="light"><svg aria-hidden="true"><use href="#i-sun"/></svg>Light</button><button role="menuitemradio" aria-checked="false" data-theme-set="dark"><svg aria-hidden="true"><use href="#i-moon"/></svg>Dark</button></div></div>
+          <button role="menuitemcheckbox" aria-checked="false" data-uxguide><svg aria-hidden="true"><use href="#i-info"/></svg><span>Show guidance</span></button>
+          <button role="menuitem" data-uxkeys><svg aria-hidden="true"><use href="#i-grid"/></svg><span>Keyboard shortcuts</span><kbd aria-hidden="true">?</kbd></button>
           <button role="menuitem" data-acct="accounts" hidden>Manage accounts</button>
           <button role="menuitem" data-acct="viewas" hidden>View as another role…</button>
           <button role="menuitem" data-acct="viewback" hidden>Back to Admin</button>
@@ -3639,7 +3754,8 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
     <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
       <svg aria-hidden="true"><use href="#i-up"/></svg>
       <strong>Drop files here, or click to choose</strong>
-      <span id="dropHelp">.csv, .xlsx or .xlsb, as many as you have: Genesys exports and attendance sheets fill this month; the Final EVAL goes to Quality, the old final result, incentive data and deduction workbooks to Results › Reconcile. A new export replaces the old one of the same type; attendance files add up.</span>
+      <small class="dropsub" aria-hidden="true">.csv, .xlsx or .xlsb · as many files as you have</small>
+      <span id="dropHelp" class="uxsrc">.csv, .xlsx or .xlsb, as many as you have: Genesys exports and attendance sheets fill this month; the Final EVAL goes to Quality, the old final result, incentive data and deduction workbooks to Results › Reconcile. A new export replaces the old one of the same type; attendance files add up.</span>
     </div>
     <input type="file" id="picker" multiple accept=".csv,.txt,.xlsx,.xlsm,.xlsb,.xls,.msg" hidden>
     <ul class="pending" id="pending" aria-live="polite"></ul>
@@ -3826,12 +3942,12 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
       <div class="incgrid"><div><h2 style="margin:0">Smart-Link attendance</h2><div class="fname-big" id="slName"></div><p class="hint" id="slNote"></p></div>
         <div style="display:grid;gap:8px;justify-items:end"><button class="btn lg" id="buildSl" disabled>Build Smart-Link file</button><button class="btn sm" id="slListBtn">Set Smart-Link's list from its file</button></div></div>
     </div>
-    <div class="card">
-      <h2>Sheets in the monthly report</h2>
+    <details class="card uxdisc">
+      <summary>Sheets in the monthly report</summary>
       <div class="sheets" id="sheets"></div>
-    </div>
-    <div class="card">
-      <h2>After you download</h2>
+    </details>
+    <details class="card uxdisc">
+      <summary>After you download · 5 tips</summary>
       <ol class="how">
         <li>The <b>Attendance</b> sheet is filled from the attendance files you dropped. Without them, paste the month's attendance there, from the first day column; rows match by National ID, or by name.</li>
         <li>Use these values. A number is tardy minutes and still counts as a worked day.
@@ -3843,7 +3959,7 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
         <li>Changing a Status in the workbook's <b>Roster</b> sheet updates every table after Excel recalculates.</li>
         <li>Go to <b>Email</b> for the deduction and absences emails. If you changed the report in Excel, save it and drop it there so the email uses your changes. Build the incentive file too: the senior manager sends it to the champions (Supervisors › Incentive email).</li>
       </ol>
-    </div>
+    </details>
     <div class="next"><button class="btn ghost" data-go="review"><svg width="16" height="16" aria-hidden="true"><use href="#i-chevl"/></svg>Back to Review</button><span class="spacer"></span><button class="btn primary" data-go="email">Continue to Email<svg width="16" height="16" aria-hidden="true"><use href="#i-chevr"/></svg></button></div>
   </section>
 
@@ -3945,7 +4061,7 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
     <div id="showBody"></div>
   </section>
   <section class="view ws" id="v-wait" aria-labelledby="h-wait" hidden>
-    <div class="viewhead"><div><div class="eyebrow">Almost there</div><h1 id="h-wait">Waiting for access</h1><p id="waitSub">Your account is ready. An admin now gives you a role (supervisor, senior manager, WFM manager or WFM analyst); this page opens your workspace as soon as they do.</p></div></div>
+    <div class="viewhead"><div><div class="eyebrow">Almost there</div><h1 id="h-wait">Waiting for access</h1><p id="waitSub" class="keep">Your account is ready. An admin now gives you a role (supervisor, senior manager, WFM manager or WFM analyst); this page opens your workspace as soon as they do.</p></div></div>
   </section>
 </main>
 <footer class="sitefoot" id="siteFoot">
@@ -4080,6 +4196,11 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
   <div class="body" id="viewAsBody"></div>
 </aside>
 
+<aside class="drawer" id="dKeys" role="dialog" aria-modal="true" aria-labelledby="h-keys" hidden>
+  <header><div><h2 id="h-keys">Keyboard shortcuts</h2><div class="sub">Anywhere outside a text box.</div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="keysBody"></div>
+</aside>
+
 <aside class="drawer wide" id="dHow" role="dialog" aria-modal="true" aria-labelledby="h-how" hidden>
   <header><div><h2 id="h-how">How this was counted</h2><div class="sub" id="howSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
   <div class="body" id="howBody"></div>
@@ -4117,6 +4238,17 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
       <h3 id="h-dept">Your department, step by step</h3>
       <div class="seg depttabs" role="tablist" aria-label="Department" id="deptTabs"></div>
       <div id="deptBody" role="tabpanel" aria-labelledby="h-dept"></div>
+    </section>
+    <section>
+      <h3>Work faster</h3>
+      <ul>
+        <li><b>ⓘ</b> next to a title says what the page, the card or the step is for: point at it, or click it to keep it open. <b>Show guidance</b> in your account menu (or Shift H) puts every explanation back on the pages while you learn.</li>
+        <li><b>Keys</b>: <kbd>?</kbd> lists them. <kbd>g</kbd> then a letter opens a page (<kbd>g</kbd> <kbd>t</kbd> Team, <kbd>g</kbd> <kbd>r</kbd> Results, <kbd>g</kbd> <kbd>i</kbd> Import); <kbd>[</kbd> and <kbd>]</kbd> change the month; <kbd>Ctrl</kbd> <kbd>K</kbd> searches.</li>
+        <li><b>Steps</b> (Supervisors, Quality): each step is one line; the next one opens by itself, and the bar above them says how many are done and takes you to the next.</li>
+        <li><b>Tables</b>: the copy button in a card's header copies its table for Excel or Outlook (on Team, every agent shown, every page); the search button filters the rows of a long table; a click on a National ID copies it.</li>
+        <li><b>Typing in a table</b> (Quality, Results, the supervisors' scorecard): Enter saves and goes down a row, ↑ and ↓ move, Esc puts the value back; the cursor stays where you are while the page saves. On Quality, paste a whole column from Excel into the first box: it is saved as one change.</li>
+        <li><b>Results</b>: <b>Show</b> narrows the list (not eligible, decided or changed by hand, no earned SR, below the target); tick agents to decide their eligibility together (each change is logged, with Undo) or to copy their names or National IDs.</li>
+      </ul>
     </section>
     <section>
       <h3>Getting around</h3>
@@ -23234,7 +23366,7 @@ function renderBadges() {
 }
 
 // ---- import
-function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); impGroups(); }
+function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); impGroups(); $('drop').classList.toggle('slim', KINDS.some(k => state.slots[k.kind])); }
 /** the Import page in the order the month is put together: 1 the exports, 2 the attendance, 3 the IDs and KPI inputs (a heading
     only when one of them is on the page) */
 function impGroups() { const g = $('impG3'); if (g) g.hidden = ['idsCard', 'kpiCardImp', 'csatImp'].every(id => $(id).hidden); }
@@ -23247,11 +23379,11 @@ function renderSlots() {
     const v = slotView(k.kind);
     if (!v) return `<article class="slot${k.optional ? ' opt' : ''}" aria-label="${esc(k.title)}: ${k.optional ? 'optional' : 'waiting'}">
       <div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-file"/></svg></span><h3>${esc(k.title)}</h3></div><span class="pill">${k.optional ? 'Optional' : 'Waiting'}</span></div>
-      <div class="hint">${esc(k.what)}. Expected columns:</div><div class="cols">${esc(k.cols)}</div>
+      <div class="uxhelp slothelp"><div class="hint">${esc(k.what)}. Expected columns:</div><div class="cols">${esc(k.cols)}</div></div>
       <div class="acts"><button class="btn sm" data-pick>Choose file</button></div></article>`;
     const pill = v.bad ? '<span class="pill bad">Check</span>' : v.warns.length ? `<span class="pill warn">${plural(v.warns.length, 'note')}</span>` : '<span class="pill good">Ready</span>';
     const sheets = v.s.dets.map(d => d.sheet).filter(s => s && s !== v.s.name);
-    return `<article class="slot ${v.bad ? 'error' : 'ready'}" aria-label="${esc(k.title)}: ${v.bad ? 'needs a check' : 'ready'}">
+    return `<article class="slot ${v.bad ? 'error' : 'ready'}${v.bad || v.warns.length ? '' : ' slim'}" aria-label="${esc(k.title)}: ${v.bad ? 'needs a check' : 'ready'}">
       <div class="top"><div class="ttl"><span class="ico"><svg><use href="#${v.bad ? 'i-alert' : 'i-check'}"/></svg></span><h3>${esc(k.title)}</h3></div>${pill}</div>
       <div><div class="fname">${esc(v.s.name)}</div><div class="meta">${fmtSize(v.s.size)}${sheets.length ? ' · sheet ' + esc(sheets.join(', ')) : ''}</div></div>
       <div class="kv">${v.kv.map(([b, s]) => `<div><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join('')}</div>
@@ -23924,13 +24056,13 @@ function renderAttCard() {
     const ed = [...R.byPerson.values()].reduce((t, a) => t + (a.edited || 0), 0);
     el.classList.add('ready');
     el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-check"/></svg></span><h3>Attendance</h3></div><span class="pill good">From Genesys</span></div>
-      <p class="hint">Counted from the Schedule and the Agent Status Timeline, as the CC and SM supervisors did: a scheduled day with a sign-on is Attend (or the late minutes), no sign-on is Absent, a leave in the schedule is that leave, no shift is OFF. Days after ${R.last} ${MON[state.m - 1]} stay empty until the next export. Supervisors correct their own team's days in their Team page; sick leave, which the schedule does not have, is corrected there.${tplTeams().length ? ` ${esc(tplTeams().join(', '))} send the attendance template: drop the filled files here and they are used for the people they list.` : ''}</p>
+      <p class="hint uxhelp">Counted from the Schedule and the Agent Status Timeline, as the CC and SM supervisors did: a scheduled day with a sign-on is Attend (or the late minutes), no sign-on is Absent, a leave in the schedule is that leave, no shift is OFF. Days after ${R.last} ${MON[state.m - 1]} stay empty until the next export. Supervisors correct their own team's days in their Team page; sick leave, which the schedule does not have, is corrected there.${tplTeams().length ? ` ${esc(tplTeams().join(', '))} send the attendance template: drop the filled files here and they are used for the people they list.` : ''}</p>
       <div class="kv"><div><b>${R.stats.people}</b><span>people counted</span></div><div><b>${ed}</b><span>days corrected by supervisors</span></div><div><b>${(R.stats.tardy || 0).toLocaleString('en-US')}</b><span>late minutes</span></div><div><b>${R.last || '–'}</b><span>last day with data</span></div></div>
       <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Add filled templates or sheets</button></div>`;
     return;
   }
   if (!F.length) { el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-file"/></svg></span><h3>Supervisors' attendance</h3></div><span class="pill">Optional</span></div>
-    <p class="hint">CC and SM come from Genesys once the Schedule and the Agent Status Timeline are in. ${tplTeams().length ? `${esc(tplTeams().join(', '))} send the attendance template (one row per late, absent, leave or day off): make them with Attendance templates, then drop the filled files here. ` : ''}Older attendance sheets (.xlsx or .xlsb) work too: the right month's tab is picked by its dates and names and IDs are matched to the roster. The CT team's incentive workbook (a block per day ending in Attendance) gives its agents' days and the month's Utilization.</p>
+    <p class="hint uxhelp">CC and SM come from Genesys once the Schedule and the Agent Status Timeline are in. ${tplTeams().length ? `${esc(tplTeams().join(', '))} send the attendance template (one row per late, absent, leave or day off): make them with Attendance templates, then drop the filled files here. ` : ''}Older attendance sheets (.xlsx or .xlsb) work too: the right month's tab is picked by its dates and names and IDs are matched to the roster. The CT team's incentive workbook (a block per day ending in Attendance) gives its agents' days and the month's Utilization.</p>
     <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Choose files</button></div>`; el.classList.remove('ready'); return; }
   el.classList.add('ready');
   const open = state.notes.filter(n => (n.sev === 'decide' || n.sev === 'warn') && /^Attendance/.test(n.group || '')).length;
@@ -25586,7 +25718,7 @@ const effP = pid => (state.ctx && state.ctx.roster.find(x => x._id === pid)) || 
 const RM = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
 const lsGet2 = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet2 = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* per-viewer convenience only */ } };
-state.pview = lsGet2('mc-pview') === 'table' ? 'table' : 'cards';
+state.pview = lsGet2('mc-pview') === 'cards' ? 'cards' : 'table';   // the dense table first (176 people as cards were a 10,000 px page); the choice is remembered
 state.rteam = ''; state.eSort = 'name'; state.eTeam = ''; state.pfTeam = ''; state.pfSort = 'ans'; state.pfDir = 'desc'; state.pfOpen = false; state.perf = null; state.wfTeam = ''; state.wfSort = 'score'; state.wfDir = 'desc'; state.wfOpen = false; state.wfDaysOpen = false; state.review = null; state.phMetric = 'adh'; state.autoLinks = []; state.autoTried = new Set();
 function agentNums(pid) {
   const m = state.byId.get(pid), K = state.kpi.get(pid), a = attOf(pid), c = a && a.filled ? Att.counts(a.days, a.tardyFile) : null;
@@ -27399,6 +27531,7 @@ const WS_VIEWS = ['dash', 'team', 'results', 'cycle', 'wfm', 'quality', 'me', 's
 // each role's pages in the order the month is done: the build (the WFM team page), the quality EVAL, the senior manager's month
 // close (Supervisors), the one-to-ones (Team), the final results; the dashboard first, the role's own first page
 const WS_OF = { admin: ['dash', 'build', 'wfm', 'quality', 'cycle', 'team', 'results', 'show'], user: ['dash', 'build', 'wfm', 'team'], senior: ['dash', 'cycle', 'team', 'results', 'wfm'], wfm: ['dash', 'wfm', 'results', 'team'], spv: ['team'], quality: ['quality'], agent: ['me'], pending: [] };
+Object.assign(state, { resShow: '', resSel: new Set(), resSelK: '' });
 Object.assign(state, { ws: 'build', finals: {}, finVer: 0, frozen: {}, people: [], wsMonth: '', wsSpv: '', wsUnit: '', wsQ: '', resSort: 'name', resDir: 'asc', resUnit: '', resSpv: '', resQ: '',
   wfmMetric: 'adh', wfmGroup: 'unit', wfmUnit: '', teamMetric: 'adh', autoAt: 0, autoNote: '', boardAll: {}, wfmTab: 'analytics', spvDone: {}, spvDoneVer: 0, cycleLog: {} });
 const FORM_STATUS = [['planned', 'Arranged'], ['held', 'Held'], ['closed', 'Closed']];
@@ -27884,7 +28017,12 @@ function renderResults() {
   const spvTab = `<div class="card"><h2>By supervisor</h2><p class="cap">${S.length ? 'Each supervisor\'s agents, from the roster\'s Supervisor column.' : 'No supervisors yet: the WFM team fills the Supervisor column in the roster, or imports the Teams Distribution.'}</p><div style="overflow-x:auto"><table class="teamtab"><thead><tr><th>Supervisor</th><th class="r">Agents</th><th class="r">Adherence</th><th class="r">Below</th><th class="r">AHT</th><th class="r">Final %</th><th class="r">Earned SR</th><th class="r">Deduction</th><th class="r">Exceptions</th><th class="r">One-to-ones</th></tr></thead><tbody>${sRows.map(([n, L]) => uRow(n, L)).join('')}</tbody></table></div></div>`;
   // every agent
   const q = normName(state.resQ), U = state.resUnit, SP = state.resSpv;
-  let L = items.filter(x => (!U || x.unit === U) && (!SP || (SP === '-' ? !x.spv : x.p.spv === SP)) && (!q || normName(`${x.exp} ${x.p.name} ${(effP(x.p._id) || x.p).nid}`).includes(q)));
+  const SHOW = [['', 'Everyone', () => true], ['no', 'Not eligible', x => !!(x.r._el && !x.r._el.ok)], ['decided', 'Decided by hand', x => !!(x.r._adj && x.r._adj.elig != null)], ['changed', 'Changed by hand', x => !!x.r._adj],
+    ['zero', 'No earned SR', x => !(x.r.earned > 0)], ['below', 'Below the adherence target', x => x.r.adh != null && x.r.adh < set.target]];
+  const shown = SHOW.find(z => z[0] === state.resShow) || SHOW[0];
+  let L = items.filter(x => (!U || x.unit === U) && (!SP || (SP === '-' ? !x.spv : x.p.spv === SP)) && (!q || normName(`${x.exp} ${x.p.name} ${(effP(x.p._id) || x.p).nid}`).includes(q)) && shown[2](x));
+  if (state.resSelK !== k) { state.resSel = new Set(); state.resSelK = k; }
+  const keys = new Set(items.map(x => rowKey(x.r))); for (const rk of [...state.resSel]) if (!keys.has(rk)) state.resSel.delete(rk);   // gone from the month
   const COLS = [['name', 'Agent'], ['unit', 'Team'], ['spv', 'Supervisor'], ['adh', 'Adherence'], ['adhUnder', 'Days under'], ['aht', 'AHT'], ['ded', 'Deduction'], ['absent', 'Absent'], ['tardy', 'Tardy'], ['wfExc', 'Exceptions'], ['fin', 'Final %'], ['earned', 'Earned SR'], ['elig', 'Eligible'], ['one', 'One-to-one']];
   const val = (x, c) => c === 'name' ? x.exp : c === 'unit' ? x.unit : c === 'spv' ? x.spv : c === 'one' ? ['none', 'planned', 'held', 'closed'].indexOf(x.os.st) : c === 'elig' ? (x.r._el ? (x.r._el.ok ? 1 : 0) : null) : x.r[c];
   const dir = state.resDir === 'desc' ? -1 : 1, sc = state.resSort;
@@ -27906,9 +28044,13 @@ function renderResults() {
     return c === 'fin' && (r.kpi || r.kx) ? td.replace(/<\/td>$/, ` ${howLink(x.p._id, x.exp, k)}</td>`) : td;   // the month on screen, not the one in Build
   };
   const th = ([c, l]) => `<th class="${['name', 'unit', 'spv', 'one'].includes(c) ? '' : 'r'}"><button class="linkbtn" data-ressort="${c}">${esc(l)}${sc === c ? (dir < 0 ? ' ↓' : ' ↑') : ''}</button></th>`;
+  const sel = state.resSel, nSel = L.filter(x => sel.has(rowKey(x.r))).length, allOn = L.length > 0 && nSel === L.length;
+  const selTh = `<th class="uxsel"><input type="checkbox" data-ressel="*" aria-label="Select every agent shown"${allOn ? ' checked' : ''}${nSel && !allOn ? ' data-mixed' : ''}></th>`;
+  const selTd = x => `<td class="uxsel"><input type="checkbox" data-ressel="${esc(rowKey(x.r))}" aria-label="Select ${esc(x.exp)}"${sel.has(rowKey(x.r)) ? ' checked' : ''}></td>`;
+  const bulk = sel.size ? `<div class="bulkbar" role="toolbar" aria-label="With the selected agents"><b>${plural(sel.size, 'agent')} selected</b>${canCycle() ? '<span class="bbgrp"><button class="btn sm" data-resbulk="yes">Eligible</button><button class="btn sm" data-resbulk="no">Not eligible</button><button class="btn sm ghost" data-resbulk="">By the rules</button></span>' : ''}<span class="bbgrp"><button class="btn sm ghost" data-resbulk="names"><svg width="14" height="14" aria-hidden="true"><use href="#i-copy"/></svg>Copy names</button><button class="btn sm ghost" data-resbulk="ids"><svg width="14" height="14" aria-hidden="true"><use href="#i-copy"/></svg>Copy IDs</button></span><button class="linkbtn" data-resbulk="clear">Clear</button></div>` : '';
   const agentTab = `<div class="card"><div class="cardhead"><div><h2>Every agent</h2><p class="cap">${edit ? 'The month is final. You can change Final %, Earned SR and who is eligible; each change is logged with your name.' : locked ? 'The month is final.' : `Draft numbers from the shared history.${canCycle() ? ` Eligibility follows the rules (${esc(eligText(k))}) unless you decide otherwise here; each decision is logged.` : ''}`}</p></div>
-    <div class="toolbar"><input type="search" data-resq value="${esc(state.resQ)}" placeholder="Search name or ID" aria-label="Search"><select class="cell" data-resunit aria-label="Team"><option value="">All teams</option>${units.map(u => `<option${u === U ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select><select class="cell" data-resspv aria-label="Supervisor"><option value="">All supervisors</option>${spvList().map(a => `<option value="${esc(a.pid)}"${a.pid === SP ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}<option value="-"${SP === '-' ? ' selected' : ''}>No supervisor</option></select></div></div>
-    <div class="tablewrap restab"><table><thead><tr>${COLS.map(th).join('')}</tr></thead><tbody>${L.map(x => `<tr>${COLS.map(([c]) => cell(x, c)).join('')}</tr>`).join('') || `<tr><td colspan="${COLS.length}" class="empty">Nobody matches.</td></tr>`}</tbody></table></div></div>`;
+    <div class="toolbar"><input type="search" data-resq value="${esc(state.resQ)}" placeholder="Search name or ID" aria-label="Search"><select class="cell" data-resunit aria-label="Team"><option value="">All teams</option>${units.map(u => `<option${u === U ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select><select class="cell" data-resspv aria-label="Supervisor"><option value="">All supervisors</option>${spvList().map(a => `<option value="${esc(a.pid)}"${a.pid === SP ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}<option value="-"${SP === '-' ? ' selected' : ''}>No supervisor</option></select><select class="cell" data-resshow aria-label="Show">${SHOW.map(([v, l, f]) => `<option value="${v}"${v === shown[0] ? ' selected' : ''}>${esc(l)}${v ? ` · ${items.filter(f).length}` : ''}</option>`).join('')}</select></div></div>
+    ${bulk}<div class="tablewrap restab"><table><thead><tr>${selTh}${COLS.map(th).join('')}</tr></thead><tbody>${L.map(x => `<tr${sel.has(rowKey(x.r)) ? ' class="sel"' : ''}>${selTd(x)}${COLS.map(([c]) => cell(x, c)).join('')}</tr>`).join('') || `<tr><td colspan="${COLS.length + 1}" class="empty">Nobody matches.</td></tr>`}</tbody></table></div></div>`;
   const log = D.final && (D.final.log || []).length ? `<details class="card wslog"><summary>Change log · ${plural(D.final.log.length, 'entry', 'entries')}</summary><ul class="ilist">${D.final.log.slice().reverse().map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
   const keepFocus = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-resq]') ? document.activeElement.selectionStart : null;
   // first what is decided here (every agent: who is eligible, a result adjusted by hand), then the month by team and by supervisor,
@@ -28030,7 +28172,7 @@ function renderPersonWs(p) {
   if (spvView && !(me.pid && p.spv === me.pid) && !inScope(p, me.scope)) { $('personBody').innerHTML = '<p class="subtle">Not in your team.</p>'; return; }
   const r = k ? rowOf(p._id, k) : null, on = p.status !== 'Inactive';
   let h = `<section class="sec profile"><div class="phead"><span class="av lg" aria-hidden="true"${avStyle(exp)}>${esc(initials(exp))}</span><div class="pwho"><b dir="auto">${esc(exp)}</b>${spvLine(p._id)}<span>${normSpace(p.sys) && normName(p.sys) !== normName(p.name) ? `Roster name: <span dir="auto">${esc(p.name)}</span> · ` : ''}${esc(DEP_NAMES[p.team] || p.team || '')}</span></div><span class="stt${on ? ' on' : ''}">${on ? 'Active' : 'Inactive'}</span></div>
-    <div class="pfacts"><div><span>National ID</span><b class="num">${esc(Core.cleanId(pp.nid) || '–')}</b></div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b></div><div><span>Supervisor</span><b>${esc(spvOf(p._id).map(a => a.name).join(', ') || '–')}</b></div>${p.joined ? (fr => `<div><span>Joined</span><b>${esc(Forms.fmtDate(p.joined))}</b>${fr ? `<small>incentive from ${esc(ymLabel(fr))}</small>` : ''}</div>`)(eligFrom(p, rulesFor(k || monthKey()).elig.minMonths)) : ''}</div></section>`;
+    <div class="pfacts"><div><span>National ID</span><b class="num${Core.cleanId(pp.nid) ? ' cpy' : ''}"${Core.cleanId(pp.nid) ? ' title="Copy the National ID"' : ''}>${esc(Core.cleanId(pp.nid) || '–')}</b></div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b></div><div><span>Supervisor</span><b>${esc(spvOf(p._id).map(a => a.name).join(', ') || '–')}</b></div>${p.joined ? (fr => `<div><span>Joined</span><b>${esc(Forms.fmtDate(p.joined))}</b>${fr ? `<small>incentive from ${esc(ymLabel(fr))}</small>` : ''}</div>`)(eligFrom(p, rulesFor(k || monthKey()).elig.minMonths)) : ''}</div></section>`;
   h += k ? statusBanner(k) : '';
   if (!r) h += `<div class="banner info">${k ? `Not in the ${esc(ymLabel(k))} results.` : 'No month is saved yet.'}</div>`;
   else {
@@ -28193,10 +28335,32 @@ document.addEventListener('click', e => {
   const op = t.closest('[data-open]'); if (op) { openPerson(op.dataset.open); }
 });
 $('resultsBody').addEventListener('input', e => { if (e.target.matches('[data-resq]')) { state.resQ = e.target.value; renderWs(); } });
+$('resultsBody').addEventListener('click', async e => {
+  const b = e.target.closest('[data-resbulk]'); if (!b) return;
+  const k = wsMonthNow(), act = b.dataset.resbulk, S = state.resSel, map = rowsByPid(k);
+  const P = rosterRows().map(p => ({ p, r: map.get(p._id) })).filter(x => x.r && S.has(rowKey(x.r)));
+  if (act === 'clear') { S.clear(); renderWs(); return; }
+  if (act === 'names' || act === 'ids') {
+    const L = P.map(x => (act === 'ids' ? Core.cleanId((effP(x.p._id) || x.p).nid) || '' : gname(effP(x.p._id) || x.p) || x.p.name)).filter(Boolean);
+    toast(await copyRich(null, L.join('\r\n')) ? `Copied ${plural(L.length, act === 'ids' ? 'National ID' : 'name')}` : 'Copy is blocked here.'); return;
+  }
+  if (!canCycle() || !P.length) return;
+  const before = P.map(x => { const F = state.finals[k], a = F && F.adj && F.adj[rowKey(x.r)]; return [rowKey(x.r), a && a.elig != null ? (a.elig ? 'yes' : 'no') : '']; });
+  for (const x of P) adjustResult(k, rowKey(x.r), 'elig', act);
+  S.clear(); renderWs();
+  toast(`${plural(P.length, 'agent')}: ${act === 'yes' ? 'eligible' : act === 'no' ? 'not eligible' : 'by the rules'} (each change logged)`, { label: 'Undo', fn: () => { for (const [rk, v] of before) adjustResult(k, rk, 'elig', v); renderWs(); } });
+});
 $('resultsBody').addEventListener('change', e => {
   const t = e.target;
   if (t.matches('[data-resunit]')) { state.resUnit = t.value; renderWs(); }
   if (t.matches('[data-resspv]')) { state.resSpv = t.value; renderWs(); }
+  if (t.matches('[data-resshow]')) { state.resShow = t.value; renderWs(); }
+  if (t.matches('[data-ressel]')) {
+    const v = t.dataset.ressel, S = state.resSel;
+    if (v === '*') { const rows = [...$('resultsBody').querySelectorAll('input[data-ressel]:not([data-ressel="*"])')].map(b => b.dataset.ressel); if (t.checked) rows.forEach(x => S.add(x)); else rows.forEach(x => S.delete(x)); }
+    else if (t.checked) S.add(v); else S.delete(v);
+    renderWs(); const n = $('resultsBody').querySelector(`input[data-ressel="${CSS.escape(v)}"]`); if (n) n.focus({ preventScroll: true });
+  }
   if (t.matches('[data-adj]')) adjustResult(wsMonthNow(), t.dataset.adj, t.dataset.f, t.value);
   if (t.matches('[data-elig]')) adjustResult(wsMonthNow(), t.dataset.elig, 'elig', t.value);
 });
@@ -28973,7 +29137,7 @@ function csatBoxHtml(k, ctx) {
   const v = csatAll(k), can = canQuality() && !monthLocked(k), id = 'csat-' + ctx;
   return `<div class="csatbox${v == null ? ' empty' : ''}"><label for="${id}"><b>DRC-CSAT</b><span>${esc(ymLabel(k))} · every agent</span></label>
     ${can ? `<span class="csatin"><input id="${id}" class="cell" data-csat="${esc(k)}" value="${v == null ? '' : +(v * 100).toFixed(2)}" inputmode="decimal" placeholder="–" aria-describedby="${id}-h"><span aria-hidden="true">%</span></span>` : `<b class="num">${v == null ? '–' : esc(pct(v, 1))}</b>`}
-    <small id="${id}-h">${v == null ? `One score for the month: type it once and it counts for every agent in ${esc(T.join(', '))}. Empty: DRC-CSAT has no value this month.` : `Counts for every agent in ${esc(T.join(', '))}.`}</small></div>`;
+    <small id="${id}-h" class="uxhelp">${v == null ? `One score for the month: type it once and it counts for every agent in ${esc(T.join(', '))}. Empty: DRC-CSAT has no value this month.` : `Counts for every agent in ${esc(T.join(', '))}.`}</small></div>`;
 }
 /** the box on WFM team › Import and Review › KPI results, for the month being built; never redrawn under the cursor */
 function renderCsat() {
@@ -29008,7 +29172,8 @@ function qTablesHtml(people, k, can, fixed, map) {
   const critTxt = c => (c || []).map(x => `${x.type}${x.n > 1 ? ' ×' + x.n : ''}`).join('; ');
   const crit = (pid, c, nm) => (can ? `<input class="cell qc" data-qcrit="${esc(pid)}" value="${esc(critTxt(c))}" placeholder="None" aria-label="Critical error of ${esc(nm)}">` : esc(critTxt(c) || '–'));
   const groups = new Map(); for (const o of people) { const u = unitOf(o.p); if (!groups.has(u)) groups.set(u, []); groups.get(u).push(o); }
-  const units = [...groups.keys()].sort(sortUnits);
+  const units = [...groups.keys()].sort(sortUnits), cur = state.qQ || units.length < 2 ? '*' : units.includes(state.qUnit) || state.qUnit === '*' ? state.qUnit : units[0];
+  const tabs = units.length > 1 ? `<div class="seg sm wrap qunits" role="group" aria-label="Team">${units.map(u => `<button type="button" data-qunit="${esc(u)}" aria-pressed="${cur === u}">${esc(u)} <small>${groups.get(u).length}</small></button>`).join('')}<button type="button" data-qunit="*" aria-pressed="${cur === '*'}">All <small>${people.length}</small></button></div>` : '';
   const tables = units.map(u => {
     const L = groups.get(u), tpl = Q_TPL[qTplOf(L[0].p, k)], cols = [...tpl, ...extra.map(x => [x.id, x.name])], span = cols.length + 2;
     const head = `<tr><th>Agent Name</th>${cols.map(([, l]) => `<th class="r">${esc(l)}</th>`).join('')}<th>Critical Error</th><th class="r">Number of Critical Errors</th><th class="r" title="The agent's KPI scorecard for the month, with these numbers in it">In the scorecard</th></tr>`;
@@ -29017,11 +29182,11 @@ function qTablesHtml(people, k, can, fixed, map) {
       const vals = x.status ? `<td colspan="${span}" class="qstatus"><span class="pill">${esc(x.status)}</span></td>` : `${cols.map(([f, l]) => `<td class="r">${inp(pid, f, qVal(x, f), `${l} of ${nm}`)}</td>`).join('')}<td>${crit(pid, x.crit, nm)}</td><td class="r num">${n || ''}</td>`;
       return `<tr${bad ? ' class="bad"' : ''}><td><button class="linkbtn nm" data-open="${esc(pid)}" data-agent="${esc(pid)}" dir="auto">${esc(nm)}</button></td>${vals}<td class="r num">${scoreCell(pid)}</td></tr>`;
     }).join('');
-    return `<section class="qteam" aria-label="${esc(u)}"><h3 class="sub">${esc(u)} <small class="subtle">${L.length}</small></h3><div class="tablewrap restab qtab"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div></section>`;
+    return `<section class="qteam" data-unit="${esc(u)}" aria-label="${esc(u)}"${cur === '*' || cur === u ? '' : ' hidden'}><h3 class="sub">${esc(u)} <small class="subtle">${L.length}</small></h3><div class="tablewrap restab qtab"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div></section>`;
   }).join('');
   return `<div class="card"><div class="cardhead"><div><h2>Agents · ${people.length}</h2><p class="cap">The quality team's template, one table per team. Call QA is Quality Observations, Ticket QA is Empowerment Utilization and CR is Call Reason &amp; FCR Accuracy in the scorecards (CT: the Final Score is Quality Observations and the Evaluation score is QA Evaluation). Type a corrected value (as %) in any cell; an "Attitude" critical error stops the incentive.</p></div>
     <div class="toolbar"><input type="search" data-qq value="${esc(state.qQ)}" placeholder="Search a name" aria-label="Search"></div></div>
-    ${tables || '<p class="empty">Nobody matches.</p>'}${can ? '<div class="formbtns"><button class="btn sm" data-qadd>Add an agent by hand</button></div>' : ''}</div>`;
+    ${tabs}${tables || '<p class="empty">Nobody matches.</p>'}${can ? '<div class="formbtns"><button class="btn sm" data-qadd>Add an agent by hand</button></div>' : ''}</div>`;
 }
 function renderQuality() {
   const k = qMonthNow(), Q = state.quality[k] || null, locked = monthLocked(k), can = canQuality() && !locked, KP = qualityKpis();
@@ -29183,22 +29348,41 @@ async function qUnlink(k, ci) {
   }, `"${c.name}" is not ${supName(c.pid)}: unlinked`);
 }
 $('v-quality').addEventListener('input', e => { if (e.target.matches('[data-qq]')) { state.qQ = e.target.value; renderWs(); } });
+/** one quality value typed for one person (v: 0..1 or null), as the table and the paste of a column both change it */
+function qSetVal(Q, pid, id, v) {
+  const r = Q.rows[pid] = Q.rows[pid] || { n: supName(pid), kpi: {}, qv: 2 }; r.kpi = r.kpi || {};
+  if (id === 'callqa' || id === 'final') r.eval = { ...(r.eval || {}), [id]: v }; else if (v == null) delete r.kpi[id]; else r.kpi[id] = v;
+  if (id === 'final') r.finalHand = v != null;   // a typed Final Score stays as typed
+  if (['callqa', 'emp', 'fcr', 'qa'].includes(id) && !r.finalHand) {   // else it is the average of Call QA, Ticket QA and CR, as in the template (CT: the Evaluation score)
+    const parts = ['callqa', 'emp', 'fcr'].map(f => qVal(r, f)).filter(x => x != null), f = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : qVal(r, 'qa');
+    r.eval = { ...(r.eval || {}), final: f == null ? null : Math.round(f * 10000) / 10000 };
+  }
+  if (['callqa', 'emp', 'fcr', 'qa', 'final'].includes(id)) { const qo = qObsOf(r.eval); if (qo == null) delete r.kpi.qobs; else r.kpi.qobs = Math.round(qo * 10000) / 10000; }   // Quality Observations follows Call QA
+}
+const qLabel = id => (id === 'callqa' ? 'Call QA' : id === 'emp' ? 'Ticket QA / Empowerment Utilization' : id === 'fcr' ? 'Call Reason & FCR Accuracy' : id === 'final' ? 'Final Score' : id === 'qa' ? 'Evaluation score' : (qualityKpis().find(x => x.id === id) || { name: id }).name);
+// the team tabs above the table: one team at a time, or All
+$('v-quality').addEventListener('click', e => { const b = e.target.closest('[data-qunit]'); if (!b) return; state.qUnit = b.dataset.qunit; renderWs(); const n = $('qualityBody').querySelector(`[data-qunit="${CSS.escape(b.dataset.qunit)}"]`); if (n) n.focus(); });
+// a column pasted from Excel (or the EVAL) into a box: that box and the ones under it in the same column, in one change (logged once)
+$('v-quality').addEventListener('paste', e => {
+  const t = e.target; if (!t.matches || !t.matches('input[data-qk]')) return;
+  const lines = String((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\r/g, '').split('\n'); while (lines.length && !normSpace(lines[lines.length - 1])) lines.pop();
+  if (lines.length < 2) return;   // one value: the box takes it as usual
+  e.preventDefault();
+  const id = t.dataset.qk, boxes = [...t.closest('tbody').querySelectorAll(`input[data-qk="${CSS.escape(id)}"]`)], i0 = boxes.indexOf(t);
+  const pairs = lines.slice(0, boxes.length - i0).map((l, j) => { const raw = normSpace(l.split('\t')[0]); return { pid: boxes[i0 + j].dataset.qp, raw, v: raw === '' ? null : qPct(raw) }; });
+  const bad = pairs.filter(x => x.raw !== '' && (x.v == null || x.v < 0 || x.v > 1.0001));
+  if (bad.length) { toast(`Not pasted: "${bad[0].raw}" is not a percentage (row ${pairs.indexOf(bad[0]) + 1}).`); return; }
+  const k = qMonthNow(), left = lines.length - pairs.length;
+  qEdit(k, Q => { for (const x of pairs) qSetVal(Q, x.pid, id, x.v); }, `${qLabel(id)} pasted for ${plural(pairs.length, 'person', 'people')}`)
+    .then(() => toast(`Pasted ${plural(pairs.length, 'value')} of ${qLabel(id)}${left > 0 ? `; ${left} more than the rows under it, left out` : ''}.`));
+});
 $('v-quality').addEventListener('change', e => {
   const t = e.target, k = qMonthNow();
   if (t.matches('[data-qk]')) {
     const pid = t.dataset.qp, id = t.dataset.qk, v = normSpace(t.value) === '' ? null : qPct(t.value);
     if (normSpace(t.value) !== '' && (v == null || v < 0 || v > 1.0001)) { toast('Type a percentage, like 94 or 94%.'); return; }
-    const label = id === 'callqa' ? 'Call QA' : id === 'emp' ? 'Ticket QA / Empowerment Utilization' : id === 'fcr' ? 'Call Reason & FCR Accuracy' : id === 'final' ? 'Final Score' : id === 'qa' ? 'Evaluation score' : (qualityKpis().find(x => x.id === id) || { name: id }).name;
-    qEdit(k, Q => {
-      const r = Q.rows[pid] = Q.rows[pid] || { n: supName(pid), kpi: {}, qv: 2 }; r.kpi = r.kpi || {};
-      if (id === 'callqa' || id === 'final') r.eval = { ...(r.eval || {}), [id]: v }; else if (v == null) delete r.kpi[id]; else r.kpi[id] = v;
-      if (id === 'final') r.finalHand = v != null;   // a typed Final Score stays as typed
-      if (['callqa', 'emp', 'fcr', 'qa'].includes(id) && !r.finalHand) {   // else it is the average of Call QA, Ticket QA and CR, as in the template (CT: the Evaluation score)
-        const parts = ['callqa', 'emp', 'fcr'].map(f => qVal(r, f)).filter(x => x != null), f = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : qVal(r, 'qa');
-        r.eval = { ...(r.eval || {}), final: f == null ? null : Math.round(f * 10000) / 10000 };
-      }
-      if (['callqa', 'emp', 'fcr', 'qa', 'final'].includes(id)) { const qo = qObsOf(r.eval); if (qo == null) delete r.kpi.qobs; else r.kpi.qobs = Math.round(qo * 10000) / 10000; }   // Quality Observations follows Call QA
-    }, `${label} for ${supName(pid)}: ${v == null ? 'empty' : pct(v, 1)}`);
+    const label = qLabel(id);
+    qEdit(k, Q => qSetVal(Q, pid, id, v), `${label} for ${supName(pid)}: ${v == null ? 'empty' : pct(v, 1)}`);
   }
   if (t.matches('[data-qcrit]')) {
     const pid = t.dataset.qcrit, list = normSpace(t.value) ? t.value.split(';').map(normSpace).filter(Boolean).map(s => { const m = /^(.*?)\s*×\s*(\d+)$/.exec(s); return m ? { type: m[1], n: +m[2] } : { type: s, n: 1 }; }) : [];
@@ -29489,7 +29673,7 @@ function renderTeam() {
       return `<div class="bcard${(st === 'none' && need > 6) || fl === 'review' ? ' hot' : ''}"><button class="linkbtn nm" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" dir="auto">${esc(x.exp)}</button>${spv ? '' : spvLine(x.p._id)}<small>${esc(whyLine(x.r, set))}</small>${x.os.fin ? `<span class="fst final">Final form${x.os.fin.outcome ? ' · ' + esc((Forms.OUTCOMES.find(z => z[0] === x.os.fin.outcome) || [, ''])[1]) : ''}</span>` : ''}${x.os.fin && replyNew(x.os.fin) ? '<span class="sgn todo">Final form: replied</span>' : ''}${st !== 'none' ? sigChip(o) + safeHtml(fuChip, o) : ''}${obN ? `<span class="fst obj">${plural(obN, 'objection')}</span>` : ''}${acts}</div>`;
     }).join('') || '<p class="subtle">Nobody.</p>'}${L.length > 8 ? `<button class="btn sm ghost bmore" data-more="${st}">${state.boardAll[st] ? 'Show fewer' : `Show all ${L.length}`}</button>` : ''}</div>`;
   };
-  const board = () => isSenior() ? seniorBoardHtml(items, k) : `<div class="card"><div class="cardhead"><div><h2>One-to-ones · ${esc(ymLabel(k))}</h2><p class="cap">${locked ? '<svg class="sti" aria-hidden="true"><use href="#i-lock"/></svg>The month is final: one-to-ones are read-only.' : 'Arrange each agent\'s one-to-one. An agent with an account fills in their part on their own page and sends it to you: review it, write your final comment (accepted or rejected) and send the final back; they then sign it. For an agent without an account, fill in the form when you meet.'}</p></div></div>
+  const board = () => isSenior() ? seniorBoardHtml(items, k) : `<div class="card"><div class="cardhead"><div><h2>One-to-ones · ${esc(ymLabel(k))}</h2><p class="cap${locked ? ' keep' : ''}">${locked ? '<svg class="sti" aria-hidden="true"><use href="#i-lock"/></svg>The month is final: one-to-ones are read-only.' : 'Arrange each agent\'s one-to-one. An agent with an account fills in their part on their own page and sends it to you: review it, write your final comment (accepted or rejected) and send the final back; they then sign it. For an agent without an account, fill in the form when you meet.'}</p></div></div>
     <div class="board">${col('none', 'To arrange', 'No one-to-one yet')}${col('planned', 'Arranged', 'With the agent, or a day set')}${col('held', 'Held', 'Final sent, or filled in')}${col('closed', 'Closed', 'Signed and done')}</div></div>`;
   // the team against the department
   const tm = [['adh', 'Adherence'], ['fin', 'Final %'], ['wfExc', 'Exceptions'], ['aht', 'AHT'], ['absent', 'Absent']].filter(([mk]) => wsMonths().some(x => (monthData(x) || { rows: [] }).rows.some(rr => rr[mk] != null)));
@@ -29578,22 +29762,24 @@ function oneBadge(x) {
   const t = st === 'none' ? 'Not arranged' : st === 'planned' ? `Arranged${o && o.plannedAt ? ' · ' + Forms.fmtDate(o.plannedAt) : ''}` : st === 'held' ? 'Held' : 'Signed';
   return `<span class="fst ${st === 'none' ? 'none' : st}">${esc(t)}</span>${o && replyNew(o) ? '<span class="sgn todo">Replied</span>' : ''}`;
 }
+const TEAM_COPY = { L: [], showSR: false };   // every agent the filters show (every page), for Copy
 function teamTableHtml(items, set, showSR, spv) {
   if (!items.length) return emptyCard('No agents match these filters', 'Change or clear the filters above to see the agents.');
   const { key, dir, L } = teamSorted(items), pages = Math.max(1, Math.ceil(L.length / TPAGE)), pg = Math.min(Math.max(0, state.teamPage || 0), pages - 1), from = pg * TPAGE, view = L.slice(from, from + TPAGE);
   const cols = ['name', 'adh', 'fin', showSR ? 'earned' : 'exc', 'aht', 'absent', 'tardy', 'elig', 'one'];
   const th = c => { const on = c === key, srt = on ? (dir < 0 ? 'descending' : 'ascending') : 'none'; return `<th scope="col" class="${['name', 'elig', 'one'].includes(c) ? '' : 'r'}" aria-sort="${srt}"><button class="sorth" data-tsortc="${c}">${esc(TCOL[c].l)}<svg aria-hidden="true"><use href="#i-chev"/></svg></button></th>`; };
   const so = TEAM_SORTS.find(x => x[0] === state.teamSort);
+  TEAM_COPY.L = L; TEAM_COPY.showSR = showSR;
   const rows = view.map((x, i) => {
     const rr = x.r, on = x.p.status !== 'Inactive', below = rr && rr.adh != null && rr.adh < set.target;
     const v = c => { const z = TCOL[c].v(x); return z == null ? '–' : c === 'adh' ? (below ? belowB(z, pct(z, 1)) : esc(pct(z, 1))) : c === 'fin' ? esc(pct1(z)) : c === 'aht' ? esc(mss(z)) : c === 'tardy' ? String(Math.round(z)) : c === 'earned' ? Math.round(z).toLocaleString('en-US') : String(z); };
     return `<tr data-row="${esc(x.p._id)}"${on ? '' : ' class="inactive"'}><td class="trk num">${from + i + 1}</td>
-      <td class="who"><div class="whoin"><span class="av" aria-hidden="true"${avStyle(x.exp)}>${esc(initials(x.exp))}</span><span class="wl"><button class="linkbtn nm" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" dir="auto">${esc(x.exp)}</button>${spv ? '' : spvLine(x.p._id)}<small>${esc(Core.cleanId((effP(x.p._id) || x.p).nid) || 'No National ID')} · ${esc(unitOf(x.p))}${on ? '' : ' · Inactive'}</small></span></div></td>
+      <td class="who"><div class="whoin"><span class="av" aria-hidden="true"${avStyle(x.exp)}>${esc(initials(x.exp))}</span><span class="wl"><button class="linkbtn nm" data-open="${esc(x.p._id)}" data-agent="${esc(x.p._id)}" dir="auto">${esc(x.exp)}</button>${spv ? '' : spvLine(x.p._id)}<small>${(id => (id ? `<span class="cpy" title="Copy the National ID">${esc(id)}</span>` : 'No National ID'))(Core.cleanId((effP(x.p._id) || x.p).nid))} · ${esc(unitOf(x.p))}${on ? '' : ' · Inactive'}</small></span></div></td>
       ${['adh', 'fin', showSR ? 'earned' : 'exc', 'aht', 'absent', 'tardy'].map(c => `<td class="r num${c === 'adh' && below ? ' low' : ''}" data-l="${esc(TCOL[c].l)}">${v(c)}</td>`).join('')}<td data-l="Eligible">${eligBadge(rr)}</td><td data-l="One-to-one">${oneBadge(x)}</td></tr>`;
   }).join('');
   const pager = pages > 1 ? `<nav class="pager" aria-label="Pages of agents"><span class="prange">${from + 1}–${from + view.length} of ${L.length}</span><span class="spacer"></span><button class="btn sm ghost" data-tpage="${pg - 1}"${pg ? '' : ' disabled'} aria-label="Previous page"><svg width="14" height="14" aria-hidden="true"><use href="#i-chevl"/></svg>Previous</button>${Array.from({ length: pages }, (_, i) => i).filter(i => pages <= 7 || i === 0 || i === pages - 1 || Math.abs(i - pg) <= 1).map((i, j, A) => `${j && i - A[j - 1] > 1 ? '<span class="pgap">…</span>' : ''}<button class="btn sm ${i === pg ? 'cur' : 'ghost'}" data-tpage="${i}"${i === pg ? ' aria-current="page"' : ''} aria-label="Page ${i + 1}">${i + 1}</button>`).join('')}<button class="btn sm ghost" data-tpage="${pg + 1}"${pg < pages - 1 ? '' : ' disabled'} aria-label="Next page">Next<svg width="14" height="14" aria-hidden="true"><use href="#i-chevr"/></svg></button></nav>` : `<p class="prange">${plural(L.length, 'agent')}</p>`;
-  return `<div class="card tagents" id="teamAgents"><div class="cardhead"><div><h2>Agents</h2><p class="cap">Ranked by ${esc(so ? so[3] : TCOL[key].l.toLowerCase())}${dir < 0 ? ', highest first' : ', lowest first'}. Point at a name for a quick look; select a row for the agent's panel.</p></div>
-    <label class="wsfield"><span>Rank by</span><select class="cell" data-tsort>${TEAM_SORTS.map(([v, l]) => `<option value="${v}"${v === state.teamSort ? ' selected' : ''}>${esc(l)}</option>`).join('')}${TEAM_SORTS.some(x => x[0] === state.teamSort) ? '' : `<option value="${esc(key)}" selected>${esc(TCOL[key].l)}</option>`}</select></label></div>
+  return `<div class="card tagents" id="teamAgents" data-uxt="off"><div class="cardhead"><div><h2>Agents</h2><p class="cap">Ranked by ${esc(so ? so[3] : TCOL[key].l.toLowerCase())}${dir < 0 ? ', highest first' : ', lowest first'}. Point at a name for a quick look; select a row for the agent's panel.</p></div>
+    <label class="wsfield"><span>Rank by</span><select class="cell" data-tsort>${TEAM_SORTS.map(([v, l]) => `<option value="${v}"${v === state.teamSort ? ' selected' : ''}>${esc(l)}</option>`).join('')}${TEAM_SORTS.some(x => x[0] === state.teamSort) ? '' : `<option value="${esc(key)}" selected>${esc(TCOL[key].l)}</option>`}</select></label><button type="button" class="btn ghost icon sm tcopy" data-tcopy aria-label="Copy every agent shown, on every page, for Excel or Outlook" title="Copy every agent shown (every page)"><svg aria-hidden="true" width="16" height="16"><use href="#i-copy"/></svg></button></div>
     <div class="tteamwrap"><table class="tteam"><caption class="sr">Agents for the month, ${esc(TCOL[key].l)} order</caption><thead><tr><th scope="col" class="trk">#</th>${cols.map(th).join('')}</tr></thead><tbody>${rows}</tbody></table></div>${pager}</div>`;
 }
 const teamCountText = (shown, n, so) => `${shown === n ? plural(n, 'agent') : `${shown} of ${plural(n, 'agent')}`}, ranked by ${so[3]}${so[0] === 'name' ? '' : ' (number 1 first)'}. Point at a name for a quick look; select the row for the full profile, history and forms.`;
@@ -29798,6 +29984,19 @@ $('teamBody').addEventListener('click', e => {
   const pg = t.closest('[data-tpage]'); if (pg && !pg.disabled) { state.teamPage = +pg.dataset.tpage; renderWs(); const top = $('teamAgents'); if (top) top.scrollIntoView({ block: 'start' }); const b = $('teamBody').querySelector('.pager [aria-current="page"]'); if (b) b.focus({ preventScroll: true }); return; }
   const row = t.closest('tr[data-row]'); if (row && !t.closest('button, a, input, select')) { const nb = row.querySelector('[data-open]'); if (nb) nb.focus({ preventScroll: true }); openPerson(row.dataset.row); }
 });
+// Copy: every agent the filters show, on every page, with their National ID and supervisor (Excel and Outlook paste it as a table)
+document.addEventListener('click', async e => {
+  if (!(e.target.closest && e.target.closest('[data-tcopy]'))) return;
+  const L = TEAM_COPY.L, sr = TEAM_COPY.showSR;
+  const head = ['#', 'Agent', 'National ID', 'Team', 'Supervisor', 'Adherence', 'Final %', sr ? 'Earned SR' : 'Exceptions', 'AHT', 'Absent', 'Tardy (min)', 'Eligible', 'One-to-one'];
+  const rows = L.map((x, i) => { const r = x.r || {}, el = r._el;
+    return [i + 1, x.exp, Core.cleanId((effP(x.p._id) || x.p).nid) || '', unitOf(x.p), spvOf(x.p._id).map(a => a.name).join(', '), r.adh == null ? '' : pct(r.adh, 2), r.fin == null ? '' : pct1(r.fin), sr ? (r.earned == null ? '' : Math.round(r.earned)) : (r.wfExc ?? ''),
+      r.aht == null ? '' : mss(r.aht), r.absent ?? '', r.tardy == null ? '' : Math.round(r.tardy), !el ? '' : el.ok ? 'Yes' : 'No', ({ none: 'Not arranged', planned: 'Arranged', held: 'Held', closed: 'Signed' })[x.os.st] || '']; });
+  const tsv = [head, ...rows].map(r => r.map(v => String(v).replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\r\n');
+  const th = 'style="border:1px solid #c8c8c8;padding:4px 8px;background:#f2f2f2;text-align:left"', td = 'style="border:1px solid #c8c8c8;padding:4px 8px"';
+  const html = `<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11pt"><tr>${head.map(h => `<th ${th}>${esc(h)}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(v => `<td ${td}>${esc(v)}</td>`).join('')}</tr>`).join('')}</table>`;
+  toast(await copyRich(html, tsv) ? `Copied ${plural(L.length, 'agent')} (every page): paste into Excel or Outlook` : 'Copy is blocked here.');
+});
 function teamTabTo(v, focus = true) { state.teamTab = v; renderWs(); if (focus) { const b = $('teamBody').querySelector(`[data-ttab="${v}"]`); if (b) b.focus(); } }
 $('teamBody').addEventListener('keydown', e => {
   const tb = e.target.closest('[data-ttab]'); if (!tb) return;
@@ -29881,7 +30080,7 @@ function renderCycle() {
   const dl = C.deadline, days = dl ? Math.ceil((new Date(dl + 'T23:59:59') - Date.now()) / 86400000) : null;
   // who finished their team (step 4)
   const fresh = R.filter(r => r.done && r.done.at > prev), notYet = R.filter(r => !r.done);
-  const notes = `<div class="card notecard"><div class="cardhead"><div><h2>Who finished</h2><p class="cap">${doneN} of ${R.length} supervisors finished their team for ${esc(ymLabel(k))}.${dl ? ` One-to-ones due ${esc(Forms.fmtDate(dl))}${days < 0 ? `, ${plural(-days, 'day')} ago` : days === 0 ? ', today' : `, in ${plural(days, 'day')}`}.` : ' No deadline set yet: set it in step 3.'}</p></div>${fresh.length ? '<button class="btn sm" data-cyc="seen">Mark as read</button>' : ''}</div>
+  const notes = `<div class="card notecard"><div class="cardhead"><div><h2>Who finished</h2><p class="cap keep">${doneN} of ${R.length} supervisors finished their team for ${esc(ymLabel(k))}.${dl ? ` One-to-ones due ${esc(Forms.fmtDate(dl))}${days < 0 ? `, ${plural(-days, 'day')} ago` : days === 0 ? ', today' : `, in ${plural(days, 'day')}`}.` : ' No deadline set yet: set it in step 3.'}</p></div>${fresh.length ? '<button class="btn sm" data-cyc="seen">Mark as read</button>' : ''}</div>
     <ul class="ilist notes">${fresh.map(r => `<li class="new"><span class="nm">${esc(r.name)} finished the team</span><span class="sg">${esc(fmtWhen(r.done.at))} · ${r.done.held}/${r.done.n} one-to-ones · ${r.done.signed || 0} signed by the agent</span></li>`).join('')}
     ${R.filter(r => r.done && !(r.done.at > prev)).map(r => `<li><span class="nm">${esc(r.name)} finished the team</span><span class="sg">${esc(fmtWhen(r.done.at))} · ${r.done.held}/${r.done.n} one-to-ones</span></li>`).join('')}
     ${notYet.length ? `<li class="${dl && days < 0 ? 'late' : ''}"><span class="nm">Not finished yet: ${esc(notYet.map(r => r.name).join(', '))}</span><span class="sg">${dl && days < 0 ? 'past the deadline' : dl ? 'before the deadline' : ''}</span></li>` : ''}</ul></div>`;
@@ -29922,7 +30121,7 @@ function renderCycle() {
     { id: 'st-follow', short: 'Follow the supervisors', title: 'Follow the supervisors and the objections', done: calDone('done'), skip: calPast('done'), note: `${doneN} of ${R.length} supervisors finished${sent.warn ? ` · reminder prepared ${fmtWhen(sent.warn.at)}` : ''}`,
       cap: 'Who finished their team and who has not, and what the agents raised. The reminder goes to the supervisors not finished yet.',
       acts: () => `<button class="btn sm" data-mail4="warn"${can && notYet.length ? '' : ' disabled'}>Deadline reminder</button>`,
-      body: `${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}` },
+      body: `${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}`, open: true },   // who finished: the page's own content, open unless the person closes it
     { id: 'st-review', short: 'Results for review', title: 'Send the results for review', done: calDone('review'), skip: calPast('review'), note: sentTxt('review') || calNote('review'),
       cap: `To ${who('vp') || 'the VP'}: “Hi All”, with the ID, name, final % and earned SR of everyone on the incentive list who earned it, and the same table as an Excel file.`,
       acts: on => `<button class="${btn(on)}" data-mail4="review"${dis}>Make the email</button>`, body: can ? safeHtml(incListHtml, k) : '' },
@@ -31490,7 +31689,7 @@ function rbSendRender() {
     const st = sent ? `<b class="ok">Sent</b><small>${esc(fmtWhen(sent.at))}${sent.by ? ' · ' + esc(sent.by) : ''}</small>` : !has ? '<b>Waiting</b><small>for the exports</small>' : w ? `<b class="warn">${plural(w, 'check')}</b><small>${pub ? 'with the WFM manager' : 'on its way'}</small>` : `<b class="ok">Ready</b><small>${pub ? 'with the WFM manager' : 'on its way'}</small>`;
     return `<li class="${sent ? 'sent' : !has ? 'idle' : w ? 'warn' : 'ok'}" data-peek="${key}" tabindex="0" aria-label="${esc(rbName(key))}: ${sent ? 'sent' : !has ? 'waiting for the exports' : w ? plural(w, 'check') : 'ready'}. Hover or focus to see the email"><span class="bn">${esc(rbName(key))}</span>${st}${has && d && w && !sent ? `<details><summary>What to check</summary><ul>${d.warnings.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}</li>`;
   };
-  el.innerHTML = `<div class="cardhead"><div><h2>Brand emails · sent to the WFM manager</h2><p class="cap">${has ? (pub ? `With the WFM manager since ${esc(fmtWhen(pub.at))}${pub.by ? ' (' + esc(pub.by) + ')' : ''}: he writes the SLA insight and sends them. Anything you drop now updates them.` : 'Going to the WFM manager now…') : 'Drop the Genesys and Crystal exports: Virgin Postpaid, Virgin Mobile, FRiENDi Mobile and FRiENDi Pay are made from them and go straight to the WFM manager.'}</p></div></div><ul class="rbbrands">${RB_BRANDS.map(chip).join('')}</ul>`;
+  el.innerHTML = `<div class="cardhead"><div><h2>Brand emails · sent to the WFM manager</h2><p class="cap keep">${has ? (pub ? `With the WFM manager since ${esc(fmtWhen(pub.at))}${pub.by ? ' (' + esc(pub.by) + ')' : ''}: he writes the SLA insight and sends them. Anything you drop now updates them.` : 'Going to the WFM manager now…') : 'Drop the Genesys and Crystal exports: Virgin Postpaid, Virgin Mobile, FRiENDi Mobile and FRiENDi Pay are made from them and go straight to the WFM manager.'}</p></div></div><ul class="rbbrands">${RB_BRANDS.map(chip).join('')}</ul>`;
 }
 function rbTabsRender() {
   const el = $('wfmRb').querySelector('[data-rbtabs]'); if (!el) return;
@@ -31647,7 +31846,7 @@ function dmRender(full) {
   if (!RB_BRANDS.includes(state.dmActive)) state.dmActive = 'postpaid';
   const sentN = RB_BRANDS.filter(k => rbSentOf(k, dk)).length;
   head.innerHTML = `<div class="dmday"><label class="wsfield"><span>Report day</span><select class="cell" data-dmday aria-label="Report day">${L.map(y => { const left = RB_BRANDS.filter(k => !rbSentOf(k, y.k)).length; return `<option value="${esc(y.k)}"${y.k === dk ? ' selected' : ''}>${esc(rbDayLabel(y))}${left ? ` · ${left} to send` : ' · all sent'}</option>`; }).join('')}</select></label>
-    <p class="cap">Made by ${esc(x.by || 'the WFM analyst')} from ${plural(x.files || 0, 'file')} · ${esc(fmtWhen(x.at))}</p></div>
+    <p class="cap keep">Made by ${esc(x.by || 'the WFM analyst')} from ${plural(x.files || 0, 'file')} · ${esc(fmtWhen(x.at))}</p></div>
     <div class="dmprog" aria-label="${sentN} of 4 sent"><span class="pbar"><i style="width:${Math.round(sentN / 4 * 100)}%"></i></span><b>${sentN} / 4</b><small>sent</small></div>`;
   const tabs = host.querySelector('[data-dmtabs]');
   tabs.innerHTML = RB_BRANDS.map(k => { const b = (x.brands || {})[k] || {}, s = rbSentOf(k, dk); return `<button data-dmtab="${k}" aria-pressed="${state.dmActive === k}">${s ? '<svg width="13" height="13" aria-hidden="true"><use href="#i-check"/></svg>' : ''}${esc(rbName(k))}${!s && b.warn ? `<span class="cnt warn" aria-label="${plural(b.warn, 'check')}">${b.warn}</span>` : ''}</button>`; }).join('');
@@ -32088,7 +32287,7 @@ function renderWeeklyWs() {
   ];
   const focus = document.activeElement && body.contains(document.activeElement) ? document.activeElement : null, frow = focus && focus.closest('[data-oid]');
   const fsel = frow && (focus.dataset.of || focus.dataset.ob) ? `[data-oid="${frow.dataset.oid}"] ${focus.dataset.of ? `[data-of="${focus.dataset.of}"]` : `[data-ob="${focus.dataset.ob}"]`}` : null;
-  body.innerHTML = `<div class="flow wcflow">${L4.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i] })).join('')}</div>`;
+  body.innerHTML = `<div class="flow wcflow">${L4.map((x, i) => stepHtml(i + 1, { open: true, ...x, st: sts[i] })).join('')}</div>`;
   if (fsel) { const f = body.querySelector(fsel); if (f) f.focus(); }
 }
 
@@ -32432,7 +32631,7 @@ function renderPerfWs() {
     { id: 'prs-calls', title: 'OTP and final termination calls', short: 'OTP', cap: 'From the Call history export (the raw call reasons): the OTP calls of the last two months, day by day, and the final termination calls by month. Read in this browser; only the counts by day are kept.', body: calls },
     { id: 'prs-send', title: 'The deck and the email', short: 'Deck', cap: 'The slides, in the weekly presentation\'s look.', body: send, acts: `<button class="btn sm" data-prdeck${busy || !T ? ' disabled' : ''}>Download deck</button><button class="btn sm primary" data-prmail${busy || !T ? ' disabled' : ''}>Email with the deck</button>` },
   ];
-  body.innerHTML = `<div class="flow wcflow prflow">${L3.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i] })).join('')}</div>`;
+  body.innerHTML = `<div class="flow wcflow prflow">${L3.map((x, i) => stepHtml(i + 1, { open: true, ...x, st: sts[i] })).join('')}</div>`;
   const ta = body.querySelector('[data-prtext]'); if (ta && PR.open) ta.value = PR.pasted || '';
 }
 async function prMake(kind) {
@@ -34827,7 +35026,7 @@ function objSeniorHtml(k) {
   const rows = S.map(s => { const L = all.filter(o => objSpvOf(o) === s.pid), team = teamOf(s.pid).filter(p => p.status !== 'Inactive').length, dec = L.filter(o => ['accepted', 'fixed', 'rejected'].includes(o.status)), acc = dec.filter(o => o.status !== 'rejected').length;
     return { s, n: L.length, team, open: L.filter(o => o.status === 'open').length, esc: L.filter(o => o.status === 'escalated').length, acc, rej: dec.length - acc, rate: team ? L.length / team : null }; });
   const tot = all.length;
-  if (!tot) return `<div class="card objcard"><div class="cardhead"><div><h2>Objections · ${esc(ymLabel(k))}</h2><p class="cap">None yet. Agents can object on their own page until ${esc(fmtDue(calDue(k, 'objections')))}; what they raise, and how each team answers, shows here.</p></div></div></div>`;
+  if (!tot) return `<div class="card objcard"><div class="cardhead"><div><h2>Objections · ${esc(ymLabel(k))}</h2><p class="cap keep">None yet. Agents can object on their own page until ${esc(fmtDue(calDue(k, 'objections')))}; what they raise, and how each team answers, shows here.</p></div></div></div>`;
   return `<div class="card objcard"><div class="cardhead"><div><h2>Objections · ${esc(ymLabel(k))}</h2><p class="cap">Agents' objections and how each team answered them. A high rate means the numbers or the one-to-ones need a closer look in that team.</p></div><div class="calsum"><b>${tot}</b> raised${esc2.length ? ` · <span class="warnt">${esc2.length} for you</span>` : ''}</div></div>
     ${esc2.length ? `<h3 class="sub">For you</h3><ul class="ilist">${esc2.map(o => objRowHtml(o, { spv: true })).join('')}</ul>` : ''}
     <div class="tablewrap restab"><table><thead><tr><th>Supervisor</th><th class="r">Agents</th><th class="r">Objections</th><th class="r">Waiting</th><th class="r">With you</th><th class="r">Accepted</th><th class="r">Not accepted</th><th class="r">Dispute rate</th></tr></thead><tbody>
@@ -34929,7 +35128,7 @@ function meObjHtml(k, rec) {
   const M = state.me, L = Object.values(M.objs || {}).filter(o => o.k === k).sort((a, b) => String(b.at).localeCompare(String(a.at))), w = objWindow(rec, k);
   const st = o => ({ open: T('Waiting for your supervisor'), escalated: T('With the senior manager'), accepted: T('Accepted · being fixed by {who}', { who: T(OBJ_FIXER[o.fixBy] || 'the team') }), fixed: T('Accepted and fixed'), rejected: T('Not accepted') })[o.status] || o.status;
   const last = o => { const e = (o.log || []).filter(x => x.role !== 'agent').pop(); return e ? e : null; };
-  return `<div class="card meobj" id="meObj"><div class="cardhead"><div><h2>${esc(T('My objections'))}</h2><p class="cap">${esc(w.open ? (w.until ? T('Something not right? You can object until {d}; your supervisor answers.', { d: fmtDueT(w.until) }) : T('Something not right? Object here; your supervisor answers.')) : w.why || '')}</p></div>${w.open ? `<button class="btn sm primary" data-objnew>${esc(T('Raise an objection'))}</button>` : ''}</div>
+  return `<div class="card meobj" id="meObj"><div class="cardhead"><div><h2>${esc(T('My objections'))}</h2><p class="cap keep">${esc(w.open ? (w.until ? T('Something not right? You can object until {d}; your supervisor answers.', { d: fmtDueT(w.until) }) : T('Something not right? Object here; your supervisor answers.')) : w.why || '')}</p></div>${w.open ? `<button class="btn sm primary" data-objnew>${esc(T('Raise an objection'))}</button>` : ''}</div>
     ${L.length ? `<ul class="ilist">${L.map(o => { const e = last(o); return `<li><span class="nm">${esc(objLabelT(o))}</span><span class="pill ${OBJ_ST_CLS[o.status] || ''}">${esc(st(o))}</span><span class="sp"></span>${o.status === 'rejected' && !o.escalatedBy && o.decided && o.decided.role === 'spv' && rec.status !== 'final' ? `<button class="btn sm" data-objesc="${esc(o.id)}">${esc(T('Ask the senior manager to look'))}</button>` : ''}
       ${objAnswerT(o) ? `<span class="objans" dir="auto">${esc((e && e.by) || '')}${e && e.by ? ': ' : ''}${esc(objAnswerT(o))}</span>` : ''}</li>`; }).join('')}</ul>` : `<p class="subtle">${esc(T('None for this month.'))}</p>`}</div>`;
 }
@@ -35062,7 +35261,7 @@ function mtdPublishSoon(k) { clearTimeout(mtdT); mtdT = setTimeout(() => { publi
 function mtdCardHtml(rec) {
   const X = rec && rec.mtd; if (!X || rec.status === 'final') return '';
   const why = whyTr(X.why);
-  return `<div class="card mtdcard" id="meMtd"><div class="cardhead"><div><h2>${esc(T('This month so far'))}</h2><p class="cap">${esc(T(X.days === 1 ? 'Based on 1 day up to {d}.' : 'Based on {n} days up to {d}.', { n: X.days, d: fmtDueT(X.asOf) }))}${X.borrowed && X.borrowed.length ? ' ' + esc(T("Last month's {list} until this month's arrive.", { list: X.borrowed.join(', ') })) : ''}</p></div></div>
+  return `<div class="card mtdcard" id="meMtd"><div class="cardhead"><div><h2>${esc(T('This month so far'))}</h2><p class="cap keep">${esc(T(X.days === 1 ? 'Based on 1 day up to {d}.' : 'Based on {n} days up to {d}.', { n: X.days, d: fmtDueT(X.asOf) }))}${X.borrowed && X.borrowed.length ? ' ' + esc(T("Last month's {list} until this month's arrive.", { list: X.borrowed.join(', ') })) : ''}</p></div></div>
     <div class="tiles wstiles"><div class="tile${X.fin != null && X.fin < (X.minFinal ?? 0.8) ? ' alert' : ''}"><span class="tl">${esc(T('Projected final'))}</span><b>${esc(pct1(X.fin))}</b><span class="ts">${esc(T('if it stays like this'))}</span></div>
       <div class="tile${X.ok ? '' : ' alert'}"><span class="tl">${esc(T('Projected incentive'))}</span><b>${X.earned == null ? '–' : `${Math.round(X.earned).toLocaleString('en-US')} ${esc(T('SR'))}`}</b><span class="ts">${esc(X.ok ? T('if it stays like this') : T('At risk: {why}', { why }))}</span></div>
       <div class="tile"><span class="tl">${esc(T('Weakest KPI'))}</span><b>${esc(X.weak ? X.weak.value : '✓')}</b><span class="ts">${X.weak ? `${esc(X.weak.name)} · ${esc(T('target {t}', { t: '' }))}${ltr(X.weak.target)}` : esc(T('Every KPI is in the top band so far.'))}</span></div></div>
@@ -35967,16 +36166,21 @@ applyRail();
 /** one numbered step of a page: its number on a line down the left, its title, its state (done, next, or still to come), a short
     note (done when and by whom, how far it is), its actions, what it is for, then its own cards. title and note are text; cap,
     acts and body are HTML the caller made safe. short: the step's name in the page's "On this page" list */
-function stepHtml(n, { id, title, short, cap = '', st = '', note = '', acts = '', body = '' }) {
-  const hid = `sth-${id || n}`, chip = st === 'done' ? '<span class="pill good">Done</span>' : st === 'next' ? '<span class="pill info">Next</span>' : '';
-  return `<section class="flowstep${st ? ' ' + st : ''}"${id ? ` id="${esc(id)}"` : ''} data-n="${n}" data-short="${esc(short || title)}" aria-labelledby="${esc(hid)}"><span class="stepn" aria-hidden="true">${st === 'done' ? '✓' : n}</span>
-    <div class="stepbody"><div class="stephd"><h2 id="${esc(hid)}"><span class="sr">Step ${n}: </span>${esc(title)}</h2>${chip}${note ? `<small class="stnote">${esc(note)}</small>` : ''}${acts ? `<div class="stacts">${acts}</div>` : ''}</div>${cap ? `<p class="cap stcap">${cap}</p>` : ''}${body}</div></section>`;
+function stepHtml(n, { id, title, short, cap = '', st = '', note = '', acts = '', body = '', open: openAs }) {
+  // progressive disclosure: the step is one line; what it is for sits behind its ⓘ; its own cards open when it is the next step,
+  // or when the person opened it (remembered in this browser), and close again with the chevron or a click on the title
+  const key = id || `st-${String(short || title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || n}`;
+  const hid = `sth-${key}`, cid = `stc-${key}`, bid = `stb-${key}`, chip = st === 'done' ? '<span class="pill good">Done</span>' : st === 'next' ? '<span class="pill info">Next</span>' : '';
+  const open = !!body && uxStepOpen(key, openAs !== undefined ? !!openAs : st === 'next');   // openAs: a step whose cards are its working data stays open
+  const tog = body ? `<button type="button" class="btn ghost icon sm stog" data-stog="${esc(key)}" aria-expanded="${open}" aria-controls="${esc(bid)}" aria-label="Details of step ${n}" title="${open ? 'Hide' : 'Show'} the details"><svg aria-hidden="true" width="16" height="16"><use href="#i-chev"/></svg></button>` : '';
+  return `<section class="flowstep${st ? ' ' + st : ''}${body ? (open ? ' open' : ' shut') : ''}"${id ? ` id="${esc(id)}"` : ''} data-n="${n}" data-short="${esc(short || title)}" aria-labelledby="${esc(hid)}"><span class="stepn" aria-hidden="true">${st === 'done' ? '✓' : n}</span>
+    <div class="stepbody"><div class="stephd"><h2 id="${esc(hid)}"><span class="sr">Step ${n}: </span>${esc(title)}${cap ? uxTipBtn(cid, title) : ''}</h2>${chip}${note ? `<small class="stnote">${esc(note)}</small>` : ''}${acts || tog ? `<div class="stacts">${acts}${tog}</div>` : ''}</div>${cap ? `<p class="cap stcap uxsrc" id="${esc(cid)}">${cap}</p>` : ''}${body ? `<div class="stepdet" id="${esc(bid)}"${open ? '' : ' hidden'}>${body}</div>` : ''}</div></section>`;
 }
 /** the steps' states in order: each one done, or the first not done (next), or still to come. skipL: steps that cannot be next
     (a month closed before, where a step the tool did not see is "not recorded") */
 function stepStates(doneL, skipL = []) { let seen = false; return doneL.map((d, i) => (d ? 'done' : seen || skipL[i] ? '' : ((seen = true), 'next'))); }
-/** a heading between the steps and the rest of a page: what is there to look things up, what is set once */
-const phaseHtml = (t, cap = '') => `<div class="phase"><h2>${esc(t)}</h2>${cap ? `<p class="cap">${esc(cap)}</p>` : ''}</div>`;
+/** a heading between the steps and the rest of a page: what is there to look things up, what is set once (its caption behind ⓘ) */
+const phaseHtml = (t, cap = '') => { const id = `phc-${String(t).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`; return `<div class="phase"><h2>${esc(t)}${cap ? uxTipBtn(id, t) : ''}</h2>${cap ? `<p class="cap uxsrc" id="${esc(id)}">${esc(cap)}</p>` : ''}</div>`; };
 // ---- a long page (Supervisors) gets a local list of its sections, so each one is a click away (its steps first, numbered)
 function sectionNav(bodyId) {
   const body = $(bodyId); if (!body) return;
@@ -36412,7 +36616,7 @@ function readinessHtml() {
   const left = state.issues.length;
   return `<h2 id="h-ready">Build readiness</h2>
     <p class="rstate ${ready ? 'ok' : 'no'}"><svg aria-hidden="true"><use href="#${ready ? 'i-check' : 'i-lock'}"/></svg><b>${ready ? 'Ready to build' : 'Cannot build yet'}</b></p>
-    <p class="cap">${ready ? (wr.length || left ? 'The workbook can be built now; the warnings below say what it would leave out.' : 'Nothing is left out.') : esc(buildBlocker()) + '.'}</p>
+    <p class="cap keep">${ready ? (wr.length || left ? 'The workbook can be built now; the warnings below say what it would leave out.' : 'Nothing is left out.') : esc(buildBlocker()) + '.'}</p>
     <h3>What would block it</h3><ul class="checklist">${items.filter(x => x.block).map(x => `<li><span class="ck ${x.ok ? 'ok' : 'no'}" aria-hidden="true"><svg width="12" height="12"><use href="#${x.ok ? 'i-check' : 'i-dash'}"/></svg></span><span>${esc(x.t)}</span></li>`).join('')}</ul>
     ${wr.length || left ? `<h3>What it would leave out</h3><ul class="checklist">${left ? `<li><span class="ck wa" aria-hidden="true"><svg width="12" height="12"><use href="#i-bang"/></svg></span><span>${plural(left, 'name')} in the exports not on the roster${isBuilder() ? ' <button class="linkbtn" data-go="match">Match names…</button>' : ''}</span></li>` : ''}${wr.map(x => `<li><span class="ck wa" aria-hidden="true"><svg width="12" height="12"><use href="#i-bang"/></svg></span><span>${esc(x.t)}</span></li>`).join('')}</ul>` : ''}
     <button class="btn primary" data-go="export"${ready ? '' : ' disabled'}>Continue to Export</button>`;
@@ -37015,7 +37219,7 @@ function dupGroupHtml(g, pl, i) {
   const plan = pl ? `Keeps ${pl.keep.name}'s record (it ${pl.why}), named "${pl.G}"; ${pl.from.map(f => f.name).join(', ')} ${pl.from.length > 1 ? 'are' : 'is'} removed. Their spellings are kept, so files that use them still match.` : '';
   return `<section class="card dupgrp ${g.kind}" data-dg="${esc(g.kind + ':' + g.key)}" aria-labelledby="dg-${i}">
     <div class="dgh"><span class="pill ${g.sev === 'info' ? 'info' : 'warn'}">${esc(DUP_KIND[g.kind])}${g.also ? ` · ${esc(g.also.map(k => DUP_KIND[k]).join(' · '))}` : ''}</span><h3 id="dg-${i}" dir="auto">${esc(g.title)}</h3></div>
-    <p class="cap">${esc(g.body)}</p>
+    <p class="cap keep">${esc(g.body)}</p>
     <div class="dupcards">${P.map(p => dupCard(p, g, twoIds ? null : pl)).join('')}</div>
     <div class="dgf">${twoIds ? '<p class="hint">Different National IDs: these cannot be combined. Give each their own system name above.</p>' : canC ? `<button class="btn primary" data-dcomb="${esc(g.kind + ':' + g.key)}">Combine into one</button><span class="hint">${esc(plan)}</span>` : pl ? `<button class="btn" disabled>Combine into one</button><span class="hint warnline">${esc(pl.block[0] || '')}</span>` : ''}
       ${['same', 'name', 'alias'].includes(g.kind) ? `<span class="spacer"></span><button class="btn ghost" data-ddistinct="${esc(g.kind + ':' + g.key)}">These are different people</button>` : ''}</div></section>`;
@@ -37878,6 +38082,326 @@ window.addEventListener('dragenter', e => { if (!dropOk(e)) return; dropDepth++;
 window.addEventListener('dragover', e => { if (!dropOk(e)) return; const z = e.target.closest && e.target.closest(DROP_ZONES); dropShow(!z); });
 window.addEventListener('dragleave', () => { dropDepth = Math.max(0, dropDepth - 1); if (!dropDepth) dropShow(false); });
 window.addEventListener('drop', () => { dropDepth = 0; dropShow(false); }, true);
+
+// ================================================================ UX: a quiet page, help on demand, keys, tools for the tables
+// The main view keeps what someone acts on: titles, numbers, states, warnings and actions. What a page or a card is for, how a
+// step works, what a chart shows: behind an ⓘ next to the title it belongs to (point at it, focus it, or click to pin it). Show
+// guidance (the account menu, or the shortcuts sheet: ?) puts every explanation back on the page for someone learning the tool.
+// Nothing here changes a number, a rule, a saved file or who may do what: it only changes how a page is read and worked.
+// The few choices it remembers are per browser (mc-guide, mc-ux-open:*), like the appearance (mc-theme).
+
+// ---------------------------------------------------------------- the ⓘ: one popover for every explanation
+const UX = { n: 0, pop: null, cur: null, pinned: false, tShow: 0, tHide: 0, raf: 0 };
+const uxText = el => normSpace(el ? el.textContent : '');
+const uxGuide = () => document.documentElement.classList.contains('uxguide');
+function uxPopEl() {
+  if (UX.pop && UX.pop.isConnected) return UX.pop;
+  const el = document.createElement('div'); el.id = 'uxPop'; el.className = 'uxpop'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); el.hidden = true;
+  el.addEventListener('mouseenter', () => clearTimeout(UX.tHide));
+  el.addEventListener('mouseleave', () => { if (!UX.pinned) uxHideSoon(); });
+  document.body.appendChild(el); UX.pop = el; return el;
+}
+const uxSrcOf = b => document.getElementById(b.getAttribute('aria-describedby') || '');
+/** the explanation of an ⓘ, as a copy (ids taken off), next to the ⓘ; pin: it stays until a click elsewhere or Escape */
+function uxShow(b, pin) {
+  const src = uxSrcOf(b); if (!src || !uxText(src)) return;
+  const el = uxPopEl(); clearTimeout(UX.tShow); clearTimeout(UX.tHide);
+  if (UX.cur && UX.cur !== b) UX.cur.setAttribute('aria-expanded', 'false');
+  const t = src.cloneNode(true); t.removeAttribute('id'); t.removeAttribute('hidden'); t.classList.remove('uxsrc'); t.querySelectorAll('[id]').forEach(x => x.removeAttribute('id'));
+  el.replaceChildren(t); el.classList.toggle('pinned', !!pin); el.hidden = false;
+  UX.cur = b; UX.pinned = !!pin; b.setAttribute('aria-expanded', 'true');
+  uxPlace();
+}
+function uxPlace() {
+  const b = UX.cur, el = UX.pop; if (!b || !el || el.hidden) return;
+  if (!b.isConnected || !b.getClientRects().length) { uxHide(); return; }
+  const r = b.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight, m = 8, rtl = getComputedStyle(b).direction === 'rtl';
+  let top = r.bottom + 6; if (top + h > innerHeight - m && r.top - 6 - h > m) top = r.top - 6 - h;
+  let left = rtl ? r.right - w + 10 : r.left - 10; left = Math.max(m, Math.min(innerWidth - w - m, left));
+  el.style.top = Math.round(top) + 'px'; el.style.left = Math.round(left) + 'px';
+}
+function uxHide(back) {
+  clearTimeout(UX.tShow); clearTimeout(UX.tHide);
+  const b = UX.cur; if (b) b.setAttribute('aria-expanded', 'false');
+  UX.cur = null; UX.pinned = false; if (UX.pop) UX.pop.hidden = true;
+  if (back && b && b.isConnected) b.focus();
+}
+function uxHideSoon() { clearTimeout(UX.tHide); UX.tHide = setTimeout(() => uxHide(), 160); }
+document.addEventListener('mouseover', e => {
+  const b = e.target.closest && e.target.closest('.uxi'); if (!b || UX.pinned) return;
+  clearTimeout(UX.tHide); if (UX.cur === b) return;
+  clearTimeout(UX.tShow); UX.tShow = setTimeout(() => uxShow(b, false), 220);
+});
+document.addEventListener('mouseout', e => {
+  const b = e.target.closest && e.target.closest('.uxi'); if (!b) return;
+  const to = e.relatedTarget; if (to && (b.contains(to) || (UX.pop && UX.pop.contains(to)))) return;
+  clearTimeout(UX.tShow); if (!UX.pinned && UX.cur === b) uxHideSoon();
+});
+document.addEventListener('focusin', e => { const b = e.target.closest && e.target.closest('.uxi'); if (b && b.matches(':focus-visible') && !UX.pinned) uxShow(b, false); });
+document.addEventListener('focusout', e => { const b = e.target.closest && e.target.closest('.uxi'); if (b && UX.cur === b && !UX.pinned) uxHideSoon(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.uxi');
+  if (b) { e.preventDefault(); e.stopPropagation(); if (UX.cur === b && UX.pinned) uxHide(); else uxShow(b, true); return; }
+  if (UX.cur && !(UX.pop && UX.pop.contains(e.target))) uxHide();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && UX.cur) { e.preventDefault(); e.stopPropagation(); uxHide(UX.pinned); } }, true);
+window.addEventListener('scroll', () => { if (!UX.cur) return; if (!UX.pinned) uxHide(); else if (!UX.raf) UX.raf = requestAnimationFrame(() => { UX.raf = 0; uxPlace(); }); }, { passive: true, capture: true });
+window.addEventListener('resize', () => uxHide());
+
+// ---------------------------------------------------------------- explanations out of the main view
+/** an ⓘ at the end of a title, for the text in src: the text stays where it was (hidden), so a screen reader hears it with the ⓘ
+    and Show guidance puts it back. A title rewritten by its page gets its ⓘ again on the next pass. */
+function uxTip(src, head) {
+  if (!src || !head || src === head) return;
+  if (!src.id) src.id = 'uxs' + (++UX.n);
+  let b = head.querySelector(':scope > .uxi');
+  const other = b && b.getAttribute('aria-describedby'), oe = other && other !== src.id ? document.getElementById(other) : null;
+  if (oe && oe.isConnected) { delete src.dataset.uxh; uxTipHere(src); return; }   // that title explains something else already
+  src.classList.add('uxsrc'); src.dataset.uxh = head.id || (head.id = 'uxh' + (++UX.n));
+  if (!b) {
+    b = document.createElement('button'); b.type = 'button'; b.className = 'uxi'; b.innerHTML = '<svg aria-hidden="true" width="16" height="16"><use href="#i-info"/></svg>';
+    b.setAttribute('aria-expanded', 'false'); head.appendChild(b);
+  }
+  if (b.getAttribute('aria-describedby') !== src.id) b.setAttribute('aria-describedby', src.id);
+  const lab = `About ${uxText(head).replace(/^Step \d+:\s*/, '') || 'this'}`; if (b.getAttribute('aria-label') !== lab) b.setAttribute('aria-label', lab);
+  const on = !src.hidden && !!uxText(src); if (b.hidden === on) b.hidden = !on;
+}
+/** an explanation with no title near it: its ⓘ goes where the text was */
+function uxTipHere(src) {
+  if (!src.id) src.id = 'uxs' + (++UX.n);
+  src.classList.add('uxsrc');
+  let b = src.previousElementSibling; if (!b || !b.classList.contains('uxi')) { b = document.createElement('button'); b.type = 'button'; b.className = 'uxi uxhere'; b.innerHTML = '<svg aria-hidden="true" width="16" height="16"><use href="#i-info"/></svg>'; b.setAttribute('aria-expanded', 'false'); b.setAttribute('aria-label', 'About this'); src.before(b); }
+  b.setAttribute('aria-describedby', src.id); b.hidden = src.hidden || !uxText(src);
+}
+/** the title an explanation belongs to: the heading just before it in its block, else its card's first heading */
+function uxHeadFor(src) {
+  for (let el = src.previousElementSibling; el; el = el.previousElementSibling) if (el.matches('h1, h2, h3, h4')) return el;
+  const box = src.closest('.cardhead, .card, article, details'); if (!box || box.matches('.view')) return null;   // its own card's title, never the page's
+  const h = box.querySelector('h1, h2, h3, h4, summary'); return h && !h.contains(src) && !src.contains(h) ? h : null;
+}
+const uxWords = el => uxText(el).split(' ').filter(Boolean).length;
+/** what is an explanation on a main page: a page's lead under its title; a card's caption (a long one: short lines are meta, like
+    "Sep 2026 · 164 agents"); anything marked .uxhelp. Status, warnings and the lines marked .keep stay on the page. */
+function uxDeclutter() {
+  const main = $('main'); if (!main) return;
+  for (const p of main.querySelectorAll('.viewhead > div:first-child > p:not(.keep)')) uxTip(p, p.parentElement.querySelector(':scope > h1, :scope > h2'));
+  for (const p of main.querySelectorAll('.cardhead p.cap:not(.keep), .card > p.cap:not(.keep)')) if (p.classList.contains('uxsrc') || uxWords(p) >= 7) uxTip(p, uxHeadFor(p));
+  for (const p of main.querySelectorAll('.uxhelp:not(.keep)')) { const h = uxHeadFor(p); if (h) uxTip(p, h); else uxTipHere(p); }
+  // a title rewritten by its page (textContent) lost its ⓘ: put it back; an explanation emptied or hidden by its page hides it
+  for (const s of main.querySelectorAll('.uxsrc[data-uxh]')) { const h = document.getElementById(s.dataset.uxh); if (h) uxTip(s, h); }
+  for (const b of main.querySelectorAll('.uxi')) { const s = uxSrcOf(b); if (!s || !s.isConnected) b.hidden = true; }
+}
+// after every change to the page, once per frame (the pages draw themselves; this only adds the ⓘ and the tools)
+const uxObs = new MutationObserver(() => { if (UX.mo) return; UX.mo = requestAnimationFrame(() => { UX.mo = 0; try { uxDeclutter(); uxFlowBars(); uxEnhance(); uxRefocus(); } catch (e) { /* a page half drawn: the next pass */ } }); });
+function uxStart() { const m = $('main'); if (m) uxObs.observe(m, { childList: true, subtree: true }); uxDeclutter(); uxFlowBars(); uxEnhance(); }
+
+// ---- Show guidance: every explanation back on the page (per browser), from the account menu, the shortcuts sheet or Shift+H
+function uxSetGuide(on, quiet) {
+  document.documentElement.classList.toggle('uxguide', !!on); lsSet2('mc-guide', on ? '1' : ''); uxHide(); uxSyncGuide();
+  if (!quiet) toast(on ? 'Guidance shown: every explanation is on the page.' : 'Guidance hidden: point at ⓘ for an explanation.');
+}
+function uxSyncGuide() { const on = uxGuide(); document.querySelectorAll('[data-uxguide]').forEach(b => { b.setAttribute('aria-checked', String(on)); b.setAttribute('aria-pressed', String(on)); }); }
+if (lsGet3('mc-guide') === '1') document.documentElement.classList.add('uxguide');
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-uxguide]'); if (b) { e.preventDefault(); uxSetGuide(!uxGuide()); } });
+
+// ---------------------------------------------------------------- keys: ? the sheet, g then a letter a page, [ and ] the month
+const UX_GO = [['d', 'dash', 'Dashboard'], ['w', 'wfm', 'WFM team'], ['i', 'import', 'Import (WFM team)'], ['e', 'export', 'Export (WFM team)'], ['q', 'quality', 'Quality'], ['c', 'cycle', 'Supervisors (month close)'], ['t', 'team', 'Team'], ['r', 'results', 'Results'], ['m', 'me', 'My page']];
+function uxGoTo(w) {
+  if (w === 'import' || w === 'export') { if (typeof isBuilder === 'function' && isBuilder()) { wfmGo(w); return true; } return false; }
+  if (!navList().includes(w)) return false; goWs(w); return true;
+}
+function uxMonth(d) {
+  const L = periodList(), k = periodNow(), i = L.indexOf(k); if (i < 0 || $('periodBtn').hidden) return false;
+  const j = i + d; if (j < 0 || j >= L.length) { toast(d < 0 ? 'This is the first month there is.' : 'This is the newest month.'); return true; }
+  setPeriod(L[j]); toast(`Showing ${periodLabel(L[j])}`); return true;
+}
+function uxKeysHtml() {
+  const kb = s => s.split(' ').map(k => `<kbd>${esc(k)}</kbd>`).join(' ');
+  const gos = UX_GO.filter(([, w]) => (w === 'import' || w === 'export' ? typeof isBuilder === 'function' && isBuilder() : navList().includes(w)));
+  const row = (k, t) => `<li><span>${esc(t)}</span><span class="keys">${kb(k)}</span></li>`;
+  return `<section class="uxkeys"><h3>Anywhere</h3><ul>${row('Ctrl K', 'Search: a person, a measure, a page')}${row('/', 'Search, too')}${row('?', 'This sheet')}${row('Shift H', 'Show or hide the guidance on the pages')}${periodList().length > 1 ? row('[', 'The month before') + row(']', 'The month after') : ''}${row('Esc', 'Close a panel, a menu or an ⓘ')}</ul></section>
+    ${gos.length ? `<section class="uxkeys"><h3>Go to a page: g, then a letter</h3><ul>${gos.map(([k, , t]) => row(`g ${k}`, t)).join('')}</ul></section>` : ''}
+    <section class="uxkeys"><h3>In a table</h3><ul>${row('Enter', 'Save a typed value and go down one row')}${row('↑ ↓', 'Up or down a row in a column of boxes')}${row('Esc', 'Put a typed value back')}${row('Ctrl V', 'Paste a column from Excel down the boxes')}</ul></section>
+    <div class="uxguiderow"><span><b>Guidance on the pages</b><small>What each page and step is for, shown under its title instead of behind ⓘ.</small></span><button type="button" class="btn sm" data-uxguide aria-pressed="${uxGuide()}">${uxGuide() ? 'Hide guidance' : 'Show guidance'}</button></div>`;
+}
+function uxOpenKeys() { $('keysBody').innerHTML = uxKeysHtml(); openDrawer('dKeys'); }
+document.addEventListener('click', e => {
+  if (!(e.target.closest && e.target.closest('[data-uxkeys]'))) return;
+  e.preventDefault(); const m = $('acctMenu'); if (m && !m.hidden) { m.hidden = true; $('acctBtn').setAttribute('aria-expanded', 'false'); }
+  uxOpenKeys();
+});
+document.addEventListener('mc-uxguide', () => { if (!$('dKeys').hidden) $('keysBody').innerHTML = uxKeysHtml(); });
+let uxG = 0;
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+  const t = e.target; if (t && t.closest && t.closest('input, select, textarea, [contenteditable], .dlg:not([hidden])')) return;
+  if (openId && openId !== 'dKeys') return;
+  if (!Auth.user() && !window.__NOLOCK__) return;
+  const k = e.key;
+  if (uxG && Date.now() - uxG < 1500) {
+    uxG = 0; const g = UX_GO.find(x => x[0] === k.toLowerCase());
+    if (g) { e.preventDefault(); e.stopImmediatePropagation(); if (openId) closeDrawer(); if (!uxGoTo(g[1])) toast(`${g[2]} is not one of your pages.`); }
+    return;
+  }
+  if (k === '?') { e.preventDefault(); if (openId === 'dKeys') closeDrawer(); else uxOpenKeys(); return; }
+  if (openId) return;
+  if (k === 'g') { uxG = Date.now(); return; }
+  if (k === 'H' && e.shiftKey) { e.preventDefault(); uxSetGuide(!uxGuide()); document.dispatchEvent(new Event('mc-uxguide')); return; }
+  if ((k === '[' || k === ']') && uxMonth(k === '[' ? -1 : 1)) e.preventDefault();
+});
+
+// ---------------------------------------------------------------- steps: one line each, the next one open, a progress bar above
+/** the ⓘ of a text a template already hid (a step's or a phase's caption) */
+const uxTipBtn = (id, label) => `<button type="button" class="uxi" aria-expanded="false" aria-describedby="${esc(id)}" aria-label="About ${esc(label)}"><svg aria-hidden="true" width="16" height="16"><use href="#i-info"/></svg></button>`;
+/** a step's own cards: open when it is next, unless the person chose otherwise for that step (this browser) */
+function uxStepOpen(key, dflt) { const v = lsGet3('mc-ux-open:' + key); return v === '1' ? true : v === '0' ? false : dflt; }
+function uxStepSet(step, open, keep) {
+  const b = step.querySelector(':scope > .stepbody > .stephd .stog'), d = step.querySelector(':scope > .stepbody > .stepdet'); if (!b || !d) return;
+  d.hidden = !open; b.setAttribute('aria-expanded', String(open)); b.title = open ? 'Hide the details' : 'Show the details';
+  step.classList.toggle('open', open); step.classList.toggle('shut', !open);
+  if (keep) lsSet2('mc-ux-open:' + b.dataset.stog, open ? '1' : '0');
+  if (open) { try { reveal(d); } catch (e) { /* motion is optional */ } }
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-stog], .flowstep.open > .stepbody > .stephd h2, .flowstep.shut > .stepbody > .stephd h2');
+  if (!t || e.target.closest('.uxi')) return;
+  const step = t.closest('.flowstep'); uxStepSet(step, step.classList.contains('shut'), true);
+});
+/** above a flow of three steps or more: how many are done, the next one with a button to it, and Open all / Close all */
+function uxFlowBars() {
+  for (const f of document.querySelectorAll('#main .flow')) {
+    const S = [...f.querySelectorAll(':scope > .flowstep')]; let bar = f.previousElementSibling;
+    if (!bar || !bar.classList.contains('flowbar')) { if (S.length < 3) continue; bar = document.createElement('div'); bar.className = 'flowbar'; f.before(bar); }
+    if (S.length < 3) { bar.remove(); continue; }
+    const done = S.filter(x => x.classList.contains('done')).length, nx = S.find(x => x.classList.contains('next')), det = S.filter(x => x.querySelector(':scope > .stepbody > .stepdet'));
+    const allOpen = det.length && det.every(x => x.classList.contains('open'));
+    const sig = `${done}|${S.length}|${nx ? nx.dataset.short : ''}|${det.length}|${allOpen}`; if (bar.dataset.sig === sig) continue; bar.dataset.sig = sig;
+    if (nx && !nx.id) nx.id = 'fs-' + (++UX.n);
+    bar.innerHTML = `<div class="fbcount"><b>${done}</b> of ${S.length} done</div><div class="fbtrack" role="progressbar" aria-label="Steps done" aria-valuemin="0" aria-valuemax="${S.length}" aria-valuenow="${done}"><span style="width:${Math.round(done / S.length * 100)}%"></span></div>
+      ${nx ? `<div class="fbnext"><span>Next: <b>${esc(nx.dataset.n)} · ${esc(nx.dataset.short)}</b></span><button type="button" class="btn sm" data-flowgo="${esc(nx.id)}">Go to step</button></div>` : done === S.length ? '<div class="fbnext"><span class="good">Every step is done.</span></div>' : ''}
+      ${det.length > 1 ? `<button type="button" class="linkbtn fball" data-flowall="${allOpen ? 'close' : 'open'}">${allOpen ? 'Close all' : 'Open all'}</button>` : ''}`;
+  }
+}
+document.addEventListener('click', e => {
+  const g = e.target.closest && e.target.closest('[data-flowgo]');
+  if (g) { const st = $(g.dataset.flowgo); if (!st) return; if (st.classList.contains('shut')) uxStepSet(st, true, false); st.scrollIntoView({ block: 'start', behavior: RM() ? 'auto' : 'smooth' }); const h = st.querySelector('h2'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } return; }
+  const a = e.target.closest && e.target.closest('[data-flowall]');
+  if (a) { const f = a.closest('.flowbar').nextElementSibling; if (!f) return; const open = a.dataset.flowall === 'open'; f.querySelectorAll(':scope > .flowstep').forEach(st => uxStepSet(st, open, true)); uxFlowBars(); }
+});
+
+// ---------------------------------------------------------------- tools for the tables: copy, filter the rows, copy an ID
+// A card with one data table gets two small buttons at the end of its header: Copy (the rows on screen, with the headings, as a
+// table Excel and Outlook paste as one) and, for a long table with no search of its own, Filter (a box that hides the rows without
+// the words typed; it stays while the page redraws). Text marked .cpy (a National ID) is copied with a click.
+const UXF = new Map();   // the filter typed per table (by its card's title), kept while the page redraws
+const uxCardKey = card => { const h = card.querySelector('h2, h3, summary'); return (card.closest('.view, section[id]') || {}).id + '|' + (h ? uxText(h).replace(/\s*·.*$/, '') : ''); };
+const uxCellText = td => { const f = td.querySelector('input:not([type=checkbox]), select, textarea'); if (f) return f.tagName === 'SELECT' ? uxText(f.options[f.selectedIndex]) : String(f.value || '').trim(); return normSpace((td.innerText || td.textContent || '').replace(/\n+/g, ' ')); };
+function uxTableOf(card) { const T = [...card.querySelectorAll('table')].filter(t => !t.closest('.uxpop') && t.tHead && t.tBodies[0]); return T.length === 1 ? T[0] : null; }
+function uxRows(t) { return [...t.tBodies[0].rows].filter(r => !r.hidden && r.style.display !== 'none' && !r.classList.contains('uxfoff') && !r.querySelector('td.empty')); }
+async function uxCopyTable(card) {
+  const t = uxTableOf(card); if (!t) return;
+  const cols = [...t.tHead.rows[t.tHead.rows.length - 1].cells].map((c, i) => ({ i, h: uxText(c) || '', skip: !!c.querySelector('input[type=checkbox]') || c.classList.contains('uxsel') }));
+  const use = cols.filter(c => !c.skip), rows = uxRows(t);
+  const data = rows.map(r => { const cells = [...r.cells]; return use.map(c => (cells[c.i] ? uxCellText(cells[c.i]) : '')); });
+  const tsv = [use.map(c => c.h), ...data].map(r => r.map(v => String(v).replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\r\n');
+  const th = 'style="border:1px solid #c8c8c8;padding:4px 8px;background:#f2f2f2;text-align:left"', td = 'style="border:1px solid #c8c8c8;padding:4px 8px"';
+  const html = `<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11pt"><tr>${use.map(c => `<th ${th}>${esc(c.h)}</th>`).join('')}</tr>${data.map(r => `<tr>${r.map(v => `<td ${td}>${esc(v)}</td>`).join('')}</tr>`).join('')}</table>`;
+  const ok = await copyRich(html, tsv);
+  toast(ok ? `Copied ${plural(rows.length, 'row')}: paste into Excel or Outlook` : 'Copy is blocked here. Select the table and press Ctrl+C.');
+}
+function uxFilterRows(card, q) {
+  const t = uxTableOf(card); if (!t) return;
+  const w = fwords(q || ''), all = [...t.tBodies[0].rows].filter(r => !r.querySelector('td.empty'));
+  let n = 0;
+  for (const r of all) { const on = !w.length || w.every(x => fnorm(r.textContent).includes(x)); r.classList.toggle('uxfoff', !on); if (on) n++; }
+  const c = card.querySelector('.uxfcount'); if (c) c.textContent = w.length ? `${n} of ${all.length}` : '';
+}
+function uxEnhance() {
+  const main = $('main'); if (!main) return;
+  for (const c of main.querySelectorAll('input[type=checkbox][data-mixed]')) c.indeterminate = true;
+  for (const card of main.querySelectorAll('.card')) {
+    if (card.closest('.uxpop') || card.dataset.uxt === 'off') continue;
+    const head = card.querySelector(':scope > .cardhead'), h2 = !head && card.querySelector(':scope > h2'), t = (head || h2) && uxTableOf(card);
+    let box = head ? head.querySelector(':scope > .uxtacts') : card.querySelector(':scope > .uxtacts.abs');
+    if (!t || t.tBodies[0].rows.length < 2 || t.closest('.card') !== card) { if (box) box.remove(); continue; }
+    const key = uxCardKey(card), long = t.tBodies[0].rows.length >= 12, own = !!card.querySelector('input[type=search], input[placeholder^="Search"], input[placeholder*="search" i], [data-tq]');
+    if (!box) {
+      box = document.createElement('div'); box.className = 'uxtacts';
+      box.innerHTML = `${long && !own ? '<span class="uxf" hidden><input type="search" class="uxfq" placeholder="Filter rows" aria-label="Filter the rows of this table" spellcheck="false"><small class="uxfcount" aria-live="polite"></small></span><button type="button" class="btn ghost icon sm" data-uxt="filter" aria-label="Filter the rows" title="Filter the rows" aria-expanded="false"><svg aria-hidden="true" width="16" height="16"><use href="#i-search"/></svg></button>' : ''}<button type="button" class="btn ghost icon sm" data-uxt="copy" aria-label="Copy this table for Excel or Outlook" title="Copy the table (Excel, Outlook)"><svg aria-hidden="true" width="16" height="16"><use href="#i-copy"/></svg></button>`;
+      if (head) head.appendChild(box); else { box.classList.add('abs'); card.appendChild(box); }
+    }
+    const q = UXF.get(key) || '', f = box.querySelector('.uxf');
+    if (f && q) { f.hidden = false; const i = f.querySelector('input'); if (i.value !== q) i.value = q; box.querySelector('[data-uxt="filter"]').setAttribute('aria-expanded', 'true'); }
+    if (q) uxFilterRows(card, q);
+  }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-uxt]'); if (!b) return;
+  const card = b.closest('.card'); if (!card) return;
+  if (b.dataset.uxt === 'copy') { uxCopyTable(card); return; }
+  if (b.dataset.uxt === 'filter') {
+    const f = card.querySelector('.uxf'), open = f.hidden; f.hidden = !open; b.setAttribute('aria-expanded', String(open));
+    const i = f.querySelector('input'); if (open) i.focus(); else { i.value = ''; UXF.delete(uxCardKey(card)); uxFilterRows(card, ''); }
+  }
+});
+document.addEventListener('input', e => { const i = e.target.closest && e.target.closest('.uxfq'); if (!i) return; const card = i.closest('.card'); UXF.set(uxCardKey(card), i.value); uxFilterRows(card, i.value); });
+document.addEventListener('keydown', e => {
+  const i = e.target.closest && e.target.closest('.uxfq'); if (!i || e.key !== 'Escape') return;
+  e.preventDefault(); e.stopPropagation(); const card = i.closest('.card'), b = card.querySelector('[data-uxt="filter"]'); if (b) b.click(); if (b) b.focus();
+}, true);
+// a National ID (or anything marked .cpy): a click copies it, and nothing else happens (the row under it does not open)
+document.addEventListener('click', async e => {
+  const c = e.target.closest && e.target.closest('.cpy'); if (!c || e.target.closest('a, button:not(.cpy), input, select, textarea')) return;
+  e.preventDefault(); e.stopPropagation();
+  const v = uxText(c); if (!v) return;
+  toast(await copyRich(null, v) ? `Copied ${v}` : 'Copy is blocked here. Select it and press Ctrl+C.');
+}, true);
+
+uxSyncGuide();
+uxStart();
+
+// ---------------------------------------------------------------- typing in a table: the cursor stays, Enter goes down, Esc undoes
+// A value typed in a table is saved and the page redraws itself: the box the person was in (or the one Enter, ↑ or ↓ moved to)
+// gets the cursor back after the redraw, so a column is filled without the mouse. Esc puts back what the box had.
+const UXK = { el: null, sel: '', at: 0, want: '', orig: '' };
+/** a box found again after a redraw: its tag and its data-* attributes (they name the person and the field) */
+function uxSel(el) {
+  if (!el || !el.matches || !el.matches('input, select, textarea')) return '';
+  const a = [...el.attributes].filter(x => x.name.startsWith('data-') && !/^data-ux/.test(x.name)).map(x => `[${x.name}="${CSS.escape(x.value)}"]`).join('');
+  return a ? el.tagName.toLowerCase() + a : el.id ? '#' + CSS.escape(el.id) : '';
+}
+const uxGridBox = el => !!(el && el.matches && el.matches('td input.cell:not([type=checkbox]):not([type=date]):not([type=number]), td input.adj, td input.qv, td input.qc') && el.closest('#main'));
+document.addEventListener('focusin', e => {
+  const el = e.target; if (!el.closest || !el.closest('#main') || !el.matches('input, select, textarea')) return;
+  UXK.el = el; UXK.sel = uxSel(el); UXK.at = Date.now(); if (uxGridBox(el)) UXK.orig = el.value;
+});
+/** after a redraw: the box that had the cursor is gone and nothing has it now: give it to the new box (or to the one asked for) */
+function uxRefocus() {
+  const gone = UXK.el && !UXK.el.isConnected, idle = !document.activeElement || document.activeElement === document.body;
+  if (!gone || !idle || Date.now() - UXK.at > 4000) { if (gone && !idle) UXK.want = ''; return; }
+  const sel = UXK.want || UXK.sel; UXK.want = ''; if (!sel) return;
+  let n = null; try { n = document.querySelector('#main ' + sel); } catch (e) { n = null; }
+  if (!n || n.disabled) return;
+  n.focus({ preventScroll: true }); if (n.select && n.matches('input:not([type=checkbox])')) n.select();
+}
+/** the same column's box in the row below (d = 1) or above (d = -1), skipping rows without one */
+function uxBoxNext(el, d) {
+  const td = el.closest('td'), tr = td && td.parentElement; if (!tr) return null; const i = td.cellIndex;
+  for (let r = d > 0 ? tr.nextElementSibling : tr.previousElementSibling; r; r = d > 0 ? r.nextElementSibling : r.previousElementSibling) {
+    if (r.hidden || r.classList.contains('uxfoff')) continue;
+    const c = r.cells[i], b = c && c.querySelector('input.cell, input.adj, input.qv, input.qc, select.cell'); if (b && !b.disabled) return b;
+  }
+  return null;
+}
+document.addEventListener('keydown', e => {
+  const el = e.target; if (!uxGridBox(el) || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+  if (e.key === 'Escape') { if (el.value !== UXK.orig) { e.preventDefault(); e.stopPropagation(); el.value = UXK.orig; el.select(); } return; }
+  const d = e.key === 'Enter' ? (e.shiftKey ? -1 : 1) : e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0; if (!d) return;
+  e.preventDefault();
+  const n = uxBoxNext(el, d);
+  if (!n) { el.blur(); el.focus(); return; }   // the last row: the value is saved, the cursor stays
+  UXK.want = uxSel(n); n.focus({ preventScroll: false }); if (n.select && n.tagName === 'INPUT') n.select();
+}, true);
 
 applyTheme(themeNow()); syncTheme();
 renderBrand();

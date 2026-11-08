@@ -232,7 +232,7 @@ function csatBoxHtml(k, ctx) {
   const v = csatAll(k), can = canQuality() && !monthLocked(k), id = 'csat-' + ctx;
   return `<div class="csatbox${v == null ? ' empty' : ''}"><label for="${id}"><b>DRC-CSAT</b><span>${esc(ymLabel(k))} · every agent</span></label>
     ${can ? `<span class="csatin"><input id="${id}" class="cell" data-csat="${esc(k)}" value="${v == null ? '' : +(v * 100).toFixed(2)}" inputmode="decimal" placeholder="–" aria-describedby="${id}-h"><span aria-hidden="true">%</span></span>` : `<b class="num">${v == null ? '–' : esc(pct(v, 1))}</b>`}
-    <small id="${id}-h">${v == null ? `One score for the month: type it once and it counts for every agent in ${esc(T.join(', '))}. Empty: DRC-CSAT has no value this month.` : `Counts for every agent in ${esc(T.join(', '))}.`}</small></div>`;
+    <small id="${id}-h" class="uxhelp">${v == null ? `One score for the month: type it once and it counts for every agent in ${esc(T.join(', '))}. Empty: DRC-CSAT has no value this month.` : `Counts for every agent in ${esc(T.join(', '))}.`}</small></div>`;
 }
 /** the box on WFM team › Import and Review › KPI results, for the month being built; never redrawn under the cursor */
 function renderCsat() {
@@ -267,7 +267,8 @@ function qTablesHtml(people, k, can, fixed, map) {
   const critTxt = c => (c || []).map(x => `${x.type}${x.n > 1 ? ' ×' + x.n : ''}`).join('; ');
   const crit = (pid, c, nm) => (can ? `<input class="cell qc" data-qcrit="${esc(pid)}" value="${esc(critTxt(c))}" placeholder="None" aria-label="Critical error of ${esc(nm)}">` : esc(critTxt(c) || '–'));
   const groups = new Map(); for (const o of people) { const u = unitOf(o.p); if (!groups.has(u)) groups.set(u, []); groups.get(u).push(o); }
-  const units = [...groups.keys()].sort(sortUnits);
+  const units = [...groups.keys()].sort(sortUnits), cur = state.qQ || units.length < 2 ? '*' : units.includes(state.qUnit) || state.qUnit === '*' ? state.qUnit : units[0];
+  const tabs = units.length > 1 ? `<div class="seg sm wrap qunits" role="group" aria-label="Team">${units.map(u => `<button type="button" data-qunit="${esc(u)}" aria-pressed="${cur === u}">${esc(u)} <small>${groups.get(u).length}</small></button>`).join('')}<button type="button" data-qunit="*" aria-pressed="${cur === '*'}">All <small>${people.length}</small></button></div>` : '';
   const tables = units.map(u => {
     const L = groups.get(u), tpl = Q_TPL[qTplOf(L[0].p, k)], cols = [...tpl, ...extra.map(x => [x.id, x.name])], span = cols.length + 2;
     const head = `<tr><th>Agent Name</th>${cols.map(([, l]) => `<th class="r">${esc(l)}</th>`).join('')}<th>Critical Error</th><th class="r">Number of Critical Errors</th><th class="r" title="The agent's KPI scorecard for the month, with these numbers in it">In the scorecard</th></tr>`;
@@ -276,11 +277,11 @@ function qTablesHtml(people, k, can, fixed, map) {
       const vals = x.status ? `<td colspan="${span}" class="qstatus"><span class="pill">${esc(x.status)}</span></td>` : `${cols.map(([f, l]) => `<td class="r">${inp(pid, f, qVal(x, f), `${l} of ${nm}`)}</td>`).join('')}<td>${crit(pid, x.crit, nm)}</td><td class="r num">${n || ''}</td>`;
       return `<tr${bad ? ' class="bad"' : ''}><td><button class="linkbtn nm" data-open="${esc(pid)}" data-agent="${esc(pid)}" dir="auto">${esc(nm)}</button></td>${vals}<td class="r num">${scoreCell(pid)}</td></tr>`;
     }).join('');
-    return `<section class="qteam" aria-label="${esc(u)}"><h3 class="sub">${esc(u)} <small class="subtle">${L.length}</small></h3><div class="tablewrap restab qtab"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div></section>`;
+    return `<section class="qteam" data-unit="${esc(u)}" aria-label="${esc(u)}"${cur === '*' || cur === u ? '' : ' hidden'}><h3 class="sub">${esc(u)} <small class="subtle">${L.length}</small></h3><div class="tablewrap restab qtab"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div></section>`;
   }).join('');
   return `<div class="card"><div class="cardhead"><div><h2>Agents · ${people.length}</h2><p class="cap">The quality team's template, one table per team. Call QA is Quality Observations, Ticket QA is Empowerment Utilization and CR is Call Reason &amp; FCR Accuracy in the scorecards (CT: the Final Score is Quality Observations and the Evaluation score is QA Evaluation). Type a corrected value (as %) in any cell; an "Attitude" critical error stops the incentive.</p></div>
     <div class="toolbar"><input type="search" data-qq value="${esc(state.qQ)}" placeholder="Search a name" aria-label="Search"></div></div>
-    ${tables || '<p class="empty">Nobody matches.</p>'}${can ? '<div class="formbtns"><button class="btn sm" data-qadd>Add an agent by hand</button></div>' : ''}</div>`;
+    ${tabs}${tables || '<p class="empty">Nobody matches.</p>'}${can ? '<div class="formbtns"><button class="btn sm" data-qadd>Add an agent by hand</button></div>' : ''}</div>`;
 }
 function renderQuality() {
   const k = qMonthNow(), Q = state.quality[k] || null, locked = monthLocked(k), can = canQuality() && !locked, KP = qualityKpis();
@@ -442,22 +443,41 @@ async function qUnlink(k, ci) {
   }, `"${c.name}" is not ${supName(c.pid)}: unlinked`);
 }
 $('v-quality').addEventListener('input', e => { if (e.target.matches('[data-qq]')) { state.qQ = e.target.value; renderWs(); } });
+/** one quality value typed for one person (v: 0..1 or null), as the table and the paste of a column both change it */
+function qSetVal(Q, pid, id, v) {
+  const r = Q.rows[pid] = Q.rows[pid] || { n: supName(pid), kpi: {}, qv: 2 }; r.kpi = r.kpi || {};
+  if (id === 'callqa' || id === 'final') r.eval = { ...(r.eval || {}), [id]: v }; else if (v == null) delete r.kpi[id]; else r.kpi[id] = v;
+  if (id === 'final') r.finalHand = v != null;   // a typed Final Score stays as typed
+  if (['callqa', 'emp', 'fcr', 'qa'].includes(id) && !r.finalHand) {   // else it is the average of Call QA, Ticket QA and CR, as in the template (CT: the Evaluation score)
+    const parts = ['callqa', 'emp', 'fcr'].map(f => qVal(r, f)).filter(x => x != null), f = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : qVal(r, 'qa');
+    r.eval = { ...(r.eval || {}), final: f == null ? null : Math.round(f * 10000) / 10000 };
+  }
+  if (['callqa', 'emp', 'fcr', 'qa', 'final'].includes(id)) { const qo = qObsOf(r.eval); if (qo == null) delete r.kpi.qobs; else r.kpi.qobs = Math.round(qo * 10000) / 10000; }   // Quality Observations follows Call QA
+}
+const qLabel = id => (id === 'callqa' ? 'Call QA' : id === 'emp' ? 'Ticket QA / Empowerment Utilization' : id === 'fcr' ? 'Call Reason & FCR Accuracy' : id === 'final' ? 'Final Score' : id === 'qa' ? 'Evaluation score' : (qualityKpis().find(x => x.id === id) || { name: id }).name);
+// the team tabs above the table: one team at a time, or All
+$('v-quality').addEventListener('click', e => { const b = e.target.closest('[data-qunit]'); if (!b) return; state.qUnit = b.dataset.qunit; renderWs(); const n = $('qualityBody').querySelector(`[data-qunit="${CSS.escape(b.dataset.qunit)}"]`); if (n) n.focus(); });
+// a column pasted from Excel (or the EVAL) into a box: that box and the ones under it in the same column, in one change (logged once)
+$('v-quality').addEventListener('paste', e => {
+  const t = e.target; if (!t.matches || !t.matches('input[data-qk]')) return;
+  const lines = String((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\r/g, '').split('\n'); while (lines.length && !normSpace(lines[lines.length - 1])) lines.pop();
+  if (lines.length < 2) return;   // one value: the box takes it as usual
+  e.preventDefault();
+  const id = t.dataset.qk, boxes = [...t.closest('tbody').querySelectorAll(`input[data-qk="${CSS.escape(id)}"]`)], i0 = boxes.indexOf(t);
+  const pairs = lines.slice(0, boxes.length - i0).map((l, j) => { const raw = normSpace(l.split('\t')[0]); return { pid: boxes[i0 + j].dataset.qp, raw, v: raw === '' ? null : qPct(raw) }; });
+  const bad = pairs.filter(x => x.raw !== '' && (x.v == null || x.v < 0 || x.v > 1.0001));
+  if (bad.length) { toast(`Not pasted: "${bad[0].raw}" is not a percentage (row ${pairs.indexOf(bad[0]) + 1}).`); return; }
+  const k = qMonthNow(), left = lines.length - pairs.length;
+  qEdit(k, Q => { for (const x of pairs) qSetVal(Q, x.pid, id, x.v); }, `${qLabel(id)} pasted for ${plural(pairs.length, 'person', 'people')}`)
+    .then(() => toast(`Pasted ${plural(pairs.length, 'value')} of ${qLabel(id)}${left > 0 ? `; ${left} more than the rows under it, left out` : ''}.`));
+});
 $('v-quality').addEventListener('change', e => {
   const t = e.target, k = qMonthNow();
   if (t.matches('[data-qk]')) {
     const pid = t.dataset.qp, id = t.dataset.qk, v = normSpace(t.value) === '' ? null : qPct(t.value);
     if (normSpace(t.value) !== '' && (v == null || v < 0 || v > 1.0001)) { toast('Type a percentage, like 94 or 94%.'); return; }
-    const label = id === 'callqa' ? 'Call QA' : id === 'emp' ? 'Ticket QA / Empowerment Utilization' : id === 'fcr' ? 'Call Reason & FCR Accuracy' : id === 'final' ? 'Final Score' : id === 'qa' ? 'Evaluation score' : (qualityKpis().find(x => x.id === id) || { name: id }).name;
-    qEdit(k, Q => {
-      const r = Q.rows[pid] = Q.rows[pid] || { n: supName(pid), kpi: {}, qv: 2 }; r.kpi = r.kpi || {};
-      if (id === 'callqa' || id === 'final') r.eval = { ...(r.eval || {}), [id]: v }; else if (v == null) delete r.kpi[id]; else r.kpi[id] = v;
-      if (id === 'final') r.finalHand = v != null;   // a typed Final Score stays as typed
-      if (['callqa', 'emp', 'fcr', 'qa'].includes(id) && !r.finalHand) {   // else it is the average of Call QA, Ticket QA and CR, as in the template (CT: the Evaluation score)
-        const parts = ['callqa', 'emp', 'fcr'].map(f => qVal(r, f)).filter(x => x != null), f = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : qVal(r, 'qa');
-        r.eval = { ...(r.eval || {}), final: f == null ? null : Math.round(f * 10000) / 10000 };
-      }
-      if (['callqa', 'emp', 'fcr', 'qa', 'final'].includes(id)) { const qo = qObsOf(r.eval); if (qo == null) delete r.kpi.qobs; else r.kpi.qobs = Math.round(qo * 10000) / 10000; }   // Quality Observations follows Call QA
-    }, `${label} for ${supName(pid)}: ${v == null ? 'empty' : pct(v, 1)}`);
+    const label = qLabel(id);
+    qEdit(k, Q => qSetVal(Q, pid, id, v), `${label} for ${supName(pid)}: ${v == null ? 'empty' : pct(v, 1)}`);
   }
   if (t.matches('[data-qcrit]')) {
     const pid = t.dataset.qcrit, list = normSpace(t.value) ? t.value.split(';').map(normSpace).filter(Boolean).map(s => { const m = /^(.*?)\s*×\s*(\d+)$/.exec(s); return m ? { type: m[1], n: +m[2] } : { type: s, n: 1 }; }) : [];

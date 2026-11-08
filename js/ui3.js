@@ -728,7 +728,7 @@ function renderBadges() {
 }
 
 // ---- import
-function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); impGroups(); }
+function renderImport() { renderPending(); renderSlots(); renderAttCard(); renderIdsCard(); renderKpiCard(); renderOthers(); renderImportNote(); renderImpSide(); renderUploads(); impGroups(); $('drop').classList.toggle('slim', KINDS.some(k => state.slots[k.kind])); }
 /** the Import page in the order the month is put together: 1 the exports, 2 the attendance, 3 the IDs and KPI inputs (a heading
     only when one of them is on the page) */
 function impGroups() { const g = $('impG3'); if (g) g.hidden = ['idsCard', 'kpiCardImp', 'csatImp'].every(id => $(id).hidden); }
@@ -741,11 +741,11 @@ function renderSlots() {
     const v = slotView(k.kind);
     if (!v) return `<article class="slot${k.optional ? ' opt' : ''}" aria-label="${esc(k.title)}: ${k.optional ? 'optional' : 'waiting'}">
       <div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-file"/></svg></span><h3>${esc(k.title)}</h3></div><span class="pill">${k.optional ? 'Optional' : 'Waiting'}</span></div>
-      <div class="hint">${esc(k.what)}. Expected columns:</div><div class="cols">${esc(k.cols)}</div>
+      <div class="uxhelp slothelp"><div class="hint">${esc(k.what)}. Expected columns:</div><div class="cols">${esc(k.cols)}</div></div>
       <div class="acts"><button class="btn sm" data-pick>Choose file</button></div></article>`;
     const pill = v.bad ? '<span class="pill bad">Check</span>' : v.warns.length ? `<span class="pill warn">${plural(v.warns.length, 'note')}</span>` : '<span class="pill good">Ready</span>';
     const sheets = v.s.dets.map(d => d.sheet).filter(s => s && s !== v.s.name);
-    return `<article class="slot ${v.bad ? 'error' : 'ready'}" aria-label="${esc(k.title)}: ${v.bad ? 'needs a check' : 'ready'}">
+    return `<article class="slot ${v.bad ? 'error' : 'ready'}${v.bad || v.warns.length ? '' : ' slim'}" aria-label="${esc(k.title)}: ${v.bad ? 'needs a check' : 'ready'}">
       <div class="top"><div class="ttl"><span class="ico"><svg><use href="#${v.bad ? 'i-alert' : 'i-check'}"/></svg></span><h3>${esc(k.title)}</h3></div>${pill}</div>
       <div><div class="fname">${esc(v.s.name)}</div><div class="meta">${fmtSize(v.s.size)}${sheets.length ? ' · sheet ' + esc(sheets.join(', ')) : ''}</div></div>
       <div class="kv">${v.kv.map(([b, s]) => `<div><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join('')}</div>
@@ -1418,13 +1418,13 @@ function renderAttCard() {
     const ed = [...R.byPerson.values()].reduce((t, a) => t + (a.edited || 0), 0);
     el.classList.add('ready');
     el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-check"/></svg></span><h3>Attendance</h3></div><span class="pill good">From Genesys</span></div>
-      <p class="hint">Counted from the Schedule and the Agent Status Timeline, as the CC and SM supervisors did: a scheduled day with a sign-on is Attend (or the late minutes), no sign-on is Absent, a leave in the schedule is that leave, no shift is OFF. Days after ${R.last} ${MON[state.m - 1]} stay empty until the next export. Supervisors correct their own team's days in their Team page; sick leave, which the schedule does not have, is corrected there.${tplTeams().length ? ` ${esc(tplTeams().join(', '))} send the attendance template: drop the filled files here and they are used for the people they list.` : ''}</p>
+      <p class="hint uxhelp">Counted from the Schedule and the Agent Status Timeline, as the CC and SM supervisors did: a scheduled day with a sign-on is Attend (or the late minutes), no sign-on is Absent, a leave in the schedule is that leave, no shift is OFF. Days after ${R.last} ${MON[state.m - 1]} stay empty until the next export. Supervisors correct their own team's days in their Team page; sick leave, which the schedule does not have, is corrected there.${tplTeams().length ? ` ${esc(tplTeams().join(', '))} send the attendance template: drop the filled files here and they are used for the people they list.` : ''}</p>
       <div class="kv"><div><b>${R.stats.people}</b><span>people counted</span></div><div><b>${ed}</b><span>days corrected by supervisors</span></div><div><b>${(R.stats.tardy || 0).toLocaleString('en-US')}</b><span>late minutes</span></div><div><b>${R.last || '–'}</b><span>last day with data</span></div></div>
       <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Add filled templates or sheets</button></div>`;
     return;
   }
   if (!F.length) { el.innerHTML = `<div class="top"><div class="ttl"><span class="ico"><svg><use href="#i-file"/></svg></span><h3>Supervisors' attendance</h3></div><span class="pill">Optional</span></div>
-    <p class="hint">CC and SM come from Genesys once the Schedule and the Agent Status Timeline are in. ${tplTeams().length ? `${esc(tplTeams().join(', '))} send the attendance template (one row per late, absent, leave or day off): make them with Attendance templates, then drop the filled files here. ` : ''}Older attendance sheets (.xlsx or .xlsb) work too: the right month's tab is picked by its dates and names and IDs are matched to the roster. The CT team's incentive workbook (a block per day ending in Attendance) gives its agents' days and the month's Utilization.</p>
+    <p class="hint uxhelp">CC and SM come from Genesys once the Schedule and the Agent Status Timeline are in. ${tplTeams().length ? `${esc(tplTeams().join(', '))} send the attendance template (one row per late, absent, leave or day off): make them with Attendance templates, then drop the filled files here. ` : ''}Older attendance sheets (.xlsx or .xlsb) work too: the right month's tab is picked by its dates and names and IDs are matched to the roster. The CT team's incentive workbook (a block per day ending in Attendance) gives its agents' days and the month's Utilization.</p>
     <div class="acts">${tplBtn()}<button class="btn sm" id="attPick">Choose files</button></div>`; el.classList.remove('ready'); return; }
   el.classList.add('ready');
   const open = state.notes.filter(n => (n.sev === 'decide' || n.sev === 'warn') && /^Attendance/.test(n.group || '')).length;
@@ -3080,7 +3080,7 @@ const effP = pid => (state.ctx && state.ctx.roster.find(x => x._id === pid)) || 
 const RM = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
 const lsGet2 = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet2 = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* per-viewer convenience only */ } };
-state.pview = lsGet2('mc-pview') === 'table' ? 'table' : 'cards';
+state.pview = lsGet2('mc-pview') === 'cards' ? 'cards' : 'table';   // the dense table first (176 people as cards were a 10,000 px page); the choice is remembered
 state.rteam = ''; state.eSort = 'name'; state.eTeam = ''; state.pfTeam = ''; state.pfSort = 'ans'; state.pfDir = 'desc'; state.pfOpen = false; state.perf = null; state.wfTeam = ''; state.wfSort = 'score'; state.wfDir = 'desc'; state.wfOpen = false; state.wfDaysOpen = false; state.review = null; state.phMetric = 'adh'; state.autoLinks = []; state.autoTried = new Set();
 function agentNums(pid) {
   const m = state.byId.get(pid), K = state.kpi.get(pid), a = attOf(pid), c = a && a.filled ? Att.counts(a.days, a.tardyFile) : null;

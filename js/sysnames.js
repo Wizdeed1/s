@@ -478,7 +478,7 @@ function dupGroupHtml(g, pl, i) {
   const plan = pl ? `Keeps ${pl.keep.name}'s record (it ${pl.why}), named "${pl.G}"; ${pl.from.map(f => f.name).join(', ')} ${pl.from.length > 1 ? 'are' : 'is'} removed. Their spellings are kept, so files that use them still match.` : '';
   return `<section class="card dupgrp ${g.kind}" data-dg="${esc(g.kind + ':' + g.key)}" aria-labelledby="dg-${i}">
     <div class="dgh"><span class="pill ${g.sev === 'info' ? 'info' : 'warn'}">${esc(DUP_KIND[g.kind])}${g.also ? ` · ${esc(g.also.map(k => DUP_KIND[k]).join(' · '))}` : ''}</span><h3 id="dg-${i}" dir="auto">${esc(g.title)}</h3></div>
-    <p class="cap">${esc(g.body)}</p>
+    <p class="cap keep">${esc(g.body)}</p>
     <div class="dupcards">${P.map(p => dupCard(p, g, twoIds ? null : pl)).join('')}</div>
     <div class="dgf">${twoIds ? '<p class="hint">Different National IDs: these cannot be combined. Give each their own system name above.</p>' : canC ? `<button class="btn primary" data-dcomb="${esc(g.kind + ':' + g.key)}">Combine into one</button><span class="hint">${esc(plan)}</span>` : pl ? `<button class="btn" disabled>Combine into one</button><span class="hint warnline">${esc(pl.block[0] || '')}</span>` : ''}
       ${['same', 'name', 'alias'].includes(g.kind) ? `<span class="spacer"></span><button class="btn ghost" data-ddistinct="${esc(g.kind + ':' + g.key)}">These are different people</button>` : ''}</div></section>`;

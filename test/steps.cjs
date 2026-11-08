@@ -37,8 +37,12 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'ok ' : '✗ ') + m); if 
   const nav = await p.$$eval('#cycleBody > .secnav [data-sec]', L => L.map(x => x.textContent));
   ok(nav[0] === '1 · Incentive data for review' && nav[7] === '8 · Final incentive data' && nav.includes('Supervisor results'), `On this page: the steps numbered, then the rest (${nav.slice(0, 3).join(' | ')}…)`);
   ok(await p.evaluate(() => [...document.querySelectorAll('#cycleBody .phase h2')].map(h => h.textContent).join('|')) === 'To look things up|Set once', 'after the steps: To look things up, then Set once');
-  const lead = await p.evaluate(() => { const a = document.querySelector('#st-review .stephd'), c = document.querySelector('#st-review .stcap'); return { below: c.getBoundingClientRect().top >= a.getBoundingClientRect().bottom - 1, inHead: !!a.querySelector('.stcap') }; });
-  ok(lead.below && !lead.inHead, 'a step\'s caption sits under its title line, whatever the title\'s length');
+  const lead = await p.evaluate(() => {
+    const a = document.querySelector('#st-review .stephd'), c = document.querySelector('#st-review .stcap'), b = a.querySelector('h2 > .uxi'), hid = getComputedStyle(c).display === 'none';
+    document.documentElement.classList.add('uxguide'); const below = c.getBoundingClientRect().top >= a.getBoundingClientRect().bottom - 1; document.documentElement.classList.remove('uxguide');
+    return { tip: !!b && b.getAttribute('aria-describedby') === c.id, hid, below, inHead: !!a.querySelector('.stcap') };
+  });
+  ok(lead.tip && lead.hid && lead.below && !lead.inHead, 'a step\'s caption is behind the ⓘ on its title; with Show guidance it sits under the title line, whatever the title\'s length');
   await p.screenshot({ path: path.join(out, 'senior-cycle.png'), fullPage: true });
   // a step done moves "next" along
   await p.evaluate(() => { const M = window.__mc, C = M.state.cycles['2026-09'] = M.state.cycles['2026-09'] || {}; C.sent = { ...(C.sent || {}), incReview: { at: new Date().toISOString(), by: 'Faisal M.' } }; M.renderWs(); });

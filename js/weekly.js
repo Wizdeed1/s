@@ -218,7 +218,7 @@ function renderWeeklyWs() {
   ];
   const focus = document.activeElement && body.contains(document.activeElement) ? document.activeElement : null, frow = focus && focus.closest('[data-oid]');
   const fsel = frow && (focus.dataset.of || focus.dataset.ob) ? `[data-oid="${frow.dataset.oid}"] ${focus.dataset.of ? `[data-of="${focus.dataset.of}"]` : `[data-ob="${focus.dataset.ob}"]`}` : null;
-  body.innerHTML = `<div class="flow wcflow">${L4.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i] })).join('')}</div>`;
+  body.innerHTML = `<div class="flow wcflow">${L4.map((x, i) => stepHtml(i + 1, { open: true, ...x, st: sts[i] })).join('')}</div>`;
   if (fsel) { const f = body.querySelector(fsel); if (f) f.focus(); }
 }
 

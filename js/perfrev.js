@@ -253,7 +253,7 @@ function renderPerfWs() {
     { id: 'prs-calls', title: 'OTP and final termination calls', short: 'OTP', cap: 'From the Call history export (the raw call reasons): the OTP calls of the last two months, day by day, and the final termination calls by month. Read in this browser; only the counts by day are kept.', body: calls },
     { id: 'prs-send', title: 'The deck and the email', short: 'Deck', cap: 'The slides, in the weekly presentation\'s look.', body: send, acts: `<button class="btn sm" data-prdeck${busy || !T ? ' disabled' : ''}>Download deck</button><button class="btn sm primary" data-prmail${busy || !T ? ' disabled' : ''}>Email with the deck</button>` },
   ];
-  body.innerHTML = `<div class="flow wcflow prflow">${L3.map((x, i) => stepHtml(i + 1, { ...x, st: sts[i] })).join('')}</div>`;
+  body.innerHTML = `<div class="flow wcflow prflow">${L3.map((x, i) => stepHtml(i + 1, { open: true, ...x, st: sts[i] })).join('')}</div>`;
   const ta = body.querySelector('[data-prtext]'); if (ta && PR.open) ta.value = PR.pasted || '';
 }
 async function prMake(kind) {

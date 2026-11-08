@@ -68,7 +68,7 @@ function renderCycle() {
   const dl = C.deadline, days = dl ? Math.ceil((new Date(dl + 'T23:59:59') - Date.now()) / 86400000) : null;
   // who finished their team (step 4)
   const fresh = R.filter(r => r.done && r.done.at > prev), notYet = R.filter(r => !r.done);
-  const notes = `<div class="card notecard"><div class="cardhead"><div><h2>Who finished</h2><p class="cap">${doneN} of ${R.length} supervisors finished their team for ${esc(ymLabel(k))}.${dl ? ` One-to-ones due ${esc(Forms.fmtDate(dl))}${days < 0 ? `, ${plural(-days, 'day')} ago` : days === 0 ? ', today' : `, in ${plural(days, 'day')}`}.` : ' No deadline set yet: set it in step 3.'}</p></div>${fresh.length ? '<button class="btn sm" data-cyc="seen">Mark as read</button>' : ''}</div>
+  const notes = `<div class="card notecard"><div class="cardhead"><div><h2>Who finished</h2><p class="cap keep">${doneN} of ${R.length} supervisors finished their team for ${esc(ymLabel(k))}.${dl ? ` One-to-ones due ${esc(Forms.fmtDate(dl))}${days < 0 ? `, ${plural(-days, 'day')} ago` : days === 0 ? ', today' : `, in ${plural(days, 'day')}`}.` : ' No deadline set yet: set it in step 3.'}</p></div>${fresh.length ? '<button class="btn sm" data-cyc="seen">Mark as read</button>' : ''}</div>
     <ul class="ilist notes">${fresh.map(r => `<li class="new"><span class="nm">${esc(r.name)} finished the team</span><span class="sg">${esc(fmtWhen(r.done.at))} · ${r.done.held}/${r.done.n} one-to-ones · ${r.done.signed || 0} signed by the agent</span></li>`).join('')}
     ${R.filter(r => r.done && !(r.done.at > prev)).map(r => `<li><span class="nm">${esc(r.name)} finished the team</span><span class="sg">${esc(fmtWhen(r.done.at))} · ${r.done.held}/${r.done.n} one-to-ones</span></li>`).join('')}
     ${notYet.length ? `<li class="${dl && days < 0 ? 'late' : ''}"><span class="nm">Not finished yet: ${esc(notYet.map(r => r.name).join(', '))}</span><span class="sg">${dl && days < 0 ? 'past the deadline' : dl ? 'before the deadline' : ''}</span></li>` : ''}</ul></div>`;
@@ -109,7 +109,7 @@ function renderCycle() {
     { id: 'st-follow', short: 'Follow the supervisors', title: 'Follow the supervisors and the objections', done: calDone('done'), skip: calPast('done'), note: `${doneN} of ${R.length} supervisors finished${sent.warn ? ` · reminder prepared ${fmtWhen(sent.warn.at)}` : ''}`,
       cap: 'Who finished their team and who has not, and what the agents raised. The reminder goes to the supervisors not finished yet.',
       acts: () => `<button class="btn sm" data-mail4="warn"${can && notYet.length ? '' : ' disabled'}>Deadline reminder</button>`,
-      body: `${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}` },
+      body: `${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}`, open: true },   // who finished: the page's own content, open unless the person closes it
     { id: 'st-review', short: 'Results for review', title: 'Send the results for review', done: calDone('review'), skip: calPast('review'), note: sentTxt('review') || calNote('review'),
       cap: `To ${who('vp') || 'the VP'}: “Hi All”, with the ID, name, final % and earned SR of everyone on the incentive list who earned it, and the same table as an Excel file.`,
       acts: on => `<button class="${btn(on)}" data-mail4="review"${dis}>Make the email</button>`, body: can ? safeHtml(incListHtml, k) : '' },

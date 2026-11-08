@@ -6,6 +6,7 @@ const WS_VIEWS = ['dash', 'team', 'results', 'cycle', 'wfm', 'quality', 'me', 's
 // each role's pages in the order the month is done: the build (the WFM team page), the quality EVAL, the senior manager's month
 // close (Supervisors), the one-to-ones (Team), the final results; the dashboard first, the role's own first page
 const WS_OF = { admin: ['dash', 'build', 'wfm', 'quality', 'cycle', 'team', 'results', 'show'], user: ['dash', 'build', 'wfm', 'team'], senior: ['dash', 'cycle', 'team', 'results', 'wfm'], wfm: ['dash', 'wfm', 'results', 'team'], spv: ['team'], quality: ['quality'], agent: ['me'], pending: [] };
+Object.assign(state, { resShow: '', resSel: new Set(), resSelK: '' });
 Object.assign(state, { ws: 'build', finals: {}, finVer: 0, frozen: {}, people: [], wsMonth: '', wsSpv: '', wsUnit: '', wsQ: '', resSort: 'name', resDir: 'asc', resUnit: '', resSpv: '', resQ: '',
   wfmMetric: 'adh', wfmGroup: 'unit', wfmUnit: '', teamMetric: 'adh', autoAt: 0, autoNote: '', boardAll: {}, wfmTab: 'analytics', spvDone: {}, spvDoneVer: 0, cycleLog: {} });
 const FORM_STATUS = [['planned', 'Arranged'], ['held', 'Held'], ['closed', 'Closed']];
@@ -491,7 +492,12 @@ function renderResults() {
   const spvTab = `<div class="card"><h2>By supervisor</h2><p class="cap">${S.length ? 'Each supervisor\'s agents, from the roster\'s Supervisor column.' : 'No supervisors yet: the WFM team fills the Supervisor column in the roster, or imports the Teams Distribution.'}</p><div style="overflow-x:auto"><table class="teamtab"><thead><tr><th>Supervisor</th><th class="r">Agents</th><th class="r">Adherence</th><th class="r">Below</th><th class="r">AHT</th><th class="r">Final %</th><th class="r">Earned SR</th><th class="r">Deduction</th><th class="r">Exceptions</th><th class="r">One-to-ones</th></tr></thead><tbody>${sRows.map(([n, L]) => uRow(n, L)).join('')}</tbody></table></div></div>`;
   // every agent
   const q = normName(state.resQ), U = state.resUnit, SP = state.resSpv;
-  let L = items.filter(x => (!U || x.unit === U) && (!SP || (SP === '-' ? !x.spv : x.p.spv === SP)) && (!q || normName(`${x.exp} ${x.p.name} ${(effP(x.p._id) || x.p).nid}`).includes(q)));
+  const SHOW = [['', 'Everyone', () => true], ['no', 'Not eligible', x => !!(x.r._el && !x.r._el.ok)], ['decided', 'Decided by hand', x => !!(x.r._adj && x.r._adj.elig != null)], ['changed', 'Changed by hand', x => !!x.r._adj],
+    ['zero', 'No earned SR', x => !(x.r.earned > 0)], ['below', 'Below the adherence target', x => x.r.adh != null && x.r.adh < set.target]];
+  const shown = SHOW.find(z => z[0] === state.resShow) || SHOW[0];
+  let L = items.filter(x => (!U || x.unit === U) && (!SP || (SP === '-' ? !x.spv : x.p.spv === SP)) && (!q || normName(`${x.exp} ${x.p.name} ${(effP(x.p._id) || x.p).nid}`).includes(q)) && shown[2](x));
+  if (state.resSelK !== k) { state.resSel = new Set(); state.resSelK = k; }
+  const keys = new Set(items.map(x => rowKey(x.r))); for (const rk of [...state.resSel]) if (!keys.has(rk)) state.resSel.delete(rk);   // gone from the month
   const COLS = [['name', 'Agent'], ['unit', 'Team'], ['spv', 'Supervisor'], ['adh', 'Adherence'], ['adhUnder', 'Days under'], ['aht', 'AHT'], ['ded', 'Deduction'], ['absent', 'Absent'], ['tardy', 'Tardy'], ['wfExc', 'Exceptions'], ['fin', 'Final %'], ['earned', 'Earned SR'], ['elig', 'Eligible'], ['one', 'One-to-one']];
   const val = (x, c) => c === 'name' ? x.exp : c === 'unit' ? x.unit : c === 'spv' ? x.spv : c === 'one' ? ['none', 'planned', 'held', 'closed'].indexOf(x.os.st) : c === 'elig' ? (x.r._el ? (x.r._el.ok ? 1 : 0) : null) : x.r[c];
   const dir = state.resDir === 'desc' ? -1 : 1, sc = state.resSort;
@@ -513,9 +519,13 @@ function renderResults() {
     return c === 'fin' && (r.kpi || r.kx) ? td.replace(/<\/td>$/, ` ${howLink(x.p._id, x.exp, k)}</td>`) : td;   // the month on screen, not the one in Build
   };
   const th = ([c, l]) => `<th class="${['name', 'unit', 'spv', 'one'].includes(c) ? '' : 'r'}"><button class="linkbtn" data-ressort="${c}">${esc(l)}${sc === c ? (dir < 0 ? ' ↓' : ' ↑') : ''}</button></th>`;
+  const sel = state.resSel, nSel = L.filter(x => sel.has(rowKey(x.r))).length, allOn = L.length > 0 && nSel === L.length;
+  const selTh = `<th class="uxsel"><input type="checkbox" data-ressel="*" aria-label="Select every agent shown"${allOn ? ' checked' : ''}${nSel && !allOn ? ' data-mixed' : ''}></th>`;
+  const selTd = x => `<td class="uxsel"><input type="checkbox" data-ressel="${esc(rowKey(x.r))}" aria-label="Select ${esc(x.exp)}"${sel.has(rowKey(x.r)) ? ' checked' : ''}></td>`;
+  const bulk = sel.size ? `<div class="bulkbar" role="toolbar" aria-label="With the selected agents"><b>${plural(sel.size, 'agent')} selected</b>${canCycle() ? '<span class="bbgrp"><button class="btn sm" data-resbulk="yes">Eligible</button><button class="btn sm" data-resbulk="no">Not eligible</button><button class="btn sm ghost" data-resbulk="">By the rules</button></span>' : ''}<span class="bbgrp"><button class="btn sm ghost" data-resbulk="names"><svg width="14" height="14" aria-hidden="true"><use href="#i-copy"/></svg>Copy names</button><button class="btn sm ghost" data-resbulk="ids"><svg width="14" height="14" aria-hidden="true"><use href="#i-copy"/></svg>Copy IDs</button></span><button class="linkbtn" data-resbulk="clear">Clear</button></div>` : '';
   const agentTab = `<div class="card"><div class="cardhead"><div><h2>Every agent</h2><p class="cap">${edit ? 'The month is final. You can change Final %, Earned SR and who is eligible; each change is logged with your name.' : locked ? 'The month is final.' : `Draft numbers from the shared history.${canCycle() ? ` Eligibility follows the rules (${esc(eligText(k))}) unless you decide otherwise here; each decision is logged.` : ''}`}</p></div>
-    <div class="toolbar"><input type="search" data-resq value="${esc(state.resQ)}" placeholder="Search name or ID" aria-label="Search"><select class="cell" data-resunit aria-label="Team"><option value="">All teams</option>${units.map(u => `<option${u === U ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select><select class="cell" data-resspv aria-label="Supervisor"><option value="">All supervisors</option>${spvList().map(a => `<option value="${esc(a.pid)}"${a.pid === SP ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}<option value="-"${SP === '-' ? ' selected' : ''}>No supervisor</option></select></div></div>
-    <div class="tablewrap restab"><table><thead><tr>${COLS.map(th).join('')}</tr></thead><tbody>${L.map(x => `<tr>${COLS.map(([c]) => cell(x, c)).join('')}</tr>`).join('') || `<tr><td colspan="${COLS.length}" class="empty">Nobody matches.</td></tr>`}</tbody></table></div></div>`;
+    <div class="toolbar"><input type="search" data-resq value="${esc(state.resQ)}" placeholder="Search name or ID" aria-label="Search"><select class="cell" data-resunit aria-label="Team"><option value="">All teams</option>${units.map(u => `<option${u === U ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select><select class="cell" data-resspv aria-label="Supervisor"><option value="">All supervisors</option>${spvList().map(a => `<option value="${esc(a.pid)}"${a.pid === SP ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}<option value="-"${SP === '-' ? ' selected' : ''}>No supervisor</option></select><select class="cell" data-resshow aria-label="Show">${SHOW.map(([v, l, f]) => `<option value="${v}"${v === shown[0] ? ' selected' : ''}>${esc(l)}${v ? ` · ${items.filter(f).length}` : ''}</option>`).join('')}</select></div></div>
+    ${bulk}<div class="tablewrap restab"><table><thead><tr>${selTh}${COLS.map(th).join('')}</tr></thead><tbody>${L.map(x => `<tr${sel.has(rowKey(x.r)) ? ' class="sel"' : ''}>${selTd(x)}${COLS.map(([c]) => cell(x, c)).join('')}</tr>`).join('') || `<tr><td colspan="${COLS.length + 1}" class="empty">Nobody matches.</td></tr>`}</tbody></table></div></div>`;
   const log = D.final && (D.final.log || []).length ? `<details class="card wslog"><summary>Change log · ${plural(D.final.log.length, 'entry', 'entries')}</summary><ul class="ilist">${D.final.log.slice().reverse().map(e => `<li><span class="nm">${esc(e.what)}</span><span class="sg">${esc(e.by || '')} · ${esc(fmtWhen(e.at))}</span></li>`).join('')}</ul></details>` : '';
   const keepFocus = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-resq]') ? document.activeElement.selectionStart : null;
   // first what is decided here (every agent: who is eligible, a result adjusted by hand), then the month by team and by supervisor,
@@ -637,7 +647,7 @@ function renderPersonWs(p) {
   if (spvView && !(me.pid && p.spv === me.pid) && !inScope(p, me.scope)) { $('personBody').innerHTML = '<p class="subtle">Not in your team.</p>'; return; }
   const r = k ? rowOf(p._id, k) : null, on = p.status !== 'Inactive';
   let h = `<section class="sec profile"><div class="phead"><span class="av lg" aria-hidden="true"${avStyle(exp)}>${esc(initials(exp))}</span><div class="pwho"><b dir="auto">${esc(exp)}</b>${spvLine(p._id)}<span>${normSpace(p.sys) && normName(p.sys) !== normName(p.name) ? `Roster name: <span dir="auto">${esc(p.name)}</span> · ` : ''}${esc(DEP_NAMES[p.team] || p.team || '')}</span></div><span class="stt${on ? ' on' : ''}">${on ? 'Active' : 'Inactive'}</span></div>
-    <div class="pfacts"><div><span>National ID</span><b class="num">${esc(Core.cleanId(pp.nid) || '–')}</b></div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b></div><div><span>Supervisor</span><b>${esc(spvOf(p._id).map(a => a.name).join(', ') || '–')}</b></div>${p.joined ? (fr => `<div><span>Joined</span><b>${esc(Forms.fmtDate(p.joined))}</b>${fr ? `<small>incentive from ${esc(ymLabel(fr))}</small>` : ''}</div>`)(eligFrom(p, rulesFor(k || monthKey()).elig.minMonths)) : ''}</div></section>`;
+    <div class="pfacts"><div><span>National ID</span><b class="num${Core.cleanId(pp.nid) ? ' cpy' : ''}"${Core.cleanId(pp.nid) ? ' title="Copy the National ID"' : ''}>${esc(Core.cleanId(pp.nid) || '–')}</b></div><div><span>Brand</span><b>${esc(p.brand || '–')}</b></div><div><span>Team</span><b>${esc(p.team || '–')}</b></div><div><span>Supervisor</span><b>${esc(spvOf(p._id).map(a => a.name).join(', ') || '–')}</b></div>${p.joined ? (fr => `<div><span>Joined</span><b>${esc(Forms.fmtDate(p.joined))}</b>${fr ? `<small>incentive from ${esc(ymLabel(fr))}</small>` : ''}</div>`)(eligFrom(p, rulesFor(k || monthKey()).elig.minMonths)) : ''}</div></section>`;
   h += k ? statusBanner(k) : '';
   if (!r) h += `<div class="banner info">${k ? `Not in the ${esc(ymLabel(k))} results.` : 'No month is saved yet.'}</div>`;
   else {
@@ -800,10 +810,32 @@ document.addEventListener('click', e => {
   const op = t.closest('[data-open]'); if (op) { openPerson(op.dataset.open); }
 });
 $('resultsBody').addEventListener('input', e => { if (e.target.matches('[data-resq]')) { state.resQ = e.target.value; renderWs(); } });
+$('resultsBody').addEventListener('click', async e => {
+  const b = e.target.closest('[data-resbulk]'); if (!b) return;
+  const k = wsMonthNow(), act = b.dataset.resbulk, S = state.resSel, map = rowsByPid(k);
+  const P = rosterRows().map(p => ({ p, r: map.get(p._id) })).filter(x => x.r && S.has(rowKey(x.r)));
+  if (act === 'clear') { S.clear(); renderWs(); return; }
+  if (act === 'names' || act === 'ids') {
+    const L = P.map(x => (act === 'ids' ? Core.cleanId((effP(x.p._id) || x.p).nid) || '' : gname(effP(x.p._id) || x.p) || x.p.name)).filter(Boolean);
+    toast(await copyRich(null, L.join('\r\n')) ? `Copied ${plural(L.length, act === 'ids' ? 'National ID' : 'name')}` : 'Copy is blocked here.'); return;
+  }
+  if (!canCycle() || !P.length) return;
+  const before = P.map(x => { const F = state.finals[k], a = F && F.adj && F.adj[rowKey(x.r)]; return [rowKey(x.r), a && a.elig != null ? (a.elig ? 'yes' : 'no') : '']; });
+  for (const x of P) adjustResult(k, rowKey(x.r), 'elig', act);
+  S.clear(); renderWs();
+  toast(`${plural(P.length, 'agent')}: ${act === 'yes' ? 'eligible' : act === 'no' ? 'not eligible' : 'by the rules'} (each change logged)`, { label: 'Undo', fn: () => { for (const [rk, v] of before) adjustResult(k, rk, 'elig', v); renderWs(); } });
+});
 $('resultsBody').addEventListener('change', e => {
   const t = e.target;
   if (t.matches('[data-resunit]')) { state.resUnit = t.value; renderWs(); }
   if (t.matches('[data-resspv]')) { state.resSpv = t.value; renderWs(); }
+  if (t.matches('[data-resshow]')) { state.resShow = t.value; renderWs(); }
+  if (t.matches('[data-ressel]')) {
+    const v = t.dataset.ressel, S = state.resSel;
+    if (v === '*') { const rows = [...$('resultsBody').querySelectorAll('input[data-ressel]:not([data-ressel="*"])')].map(b => b.dataset.ressel); if (t.checked) rows.forEach(x => S.add(x)); else rows.forEach(x => S.delete(x)); }
+    else if (t.checked) S.add(v); else S.delete(v);
+    renderWs(); const n = $('resultsBody').querySelector(`input[data-ressel="${CSS.escape(v)}"]`); if (n) n.focus({ preventScroll: true });
+  }
   if (t.matches('[data-adj]')) adjustResult(wsMonthNow(), t.dataset.adj, t.dataset.f, t.value);
   if (t.matches('[data-elig]')) adjustResult(wsMonthNow(), t.dataset.elig, 'elig', t.value);
 });

@@ -114,6 +114,8 @@
         <div class="acctmenu menu" id="acctMenu" role="menu" hidden>
           <div class="who"><b id="acctName" dir="auto"></b><span id="acctEmail"></span><span><span class="pill" id="acctRole">User</span></span></div>
           <div class="appear" role="group" aria-labelledby="l-appear"><span id="l-appear">Appearance</span><div class="seg appearseg"><button role="menuitemradio" aria-checked="true" data-theme-set="system"><svg aria-hidden="true"><use href="#i-monitor"/></svg>System</button><button role="menuitemradio" aria-checked="false" data-theme-set="light"><svg aria-hidden="true"><use href="#i-sun"/></svg>Light</button><button role="menuitemradio" aria-checked="false" data-theme-set="dark"><svg aria-hidden="true"><use href="#i-moon"/></svg>Dark</button></div></div>
+          <button role="menuitemcheckbox" aria-checked="false" data-uxguide><svg aria-hidden="true"><use href="#i-info"/></svg><span>Show guidance</span></button>
+          <button role="menuitem" data-uxkeys><svg aria-hidden="true"><use href="#i-grid"/></svg><span>Keyboard shortcuts</span><kbd aria-hidden="true">?</kbd></button>
           <button role="menuitem" data-acct="accounts" hidden>Manage accounts</button>
           <button role="menuitem" data-acct="viewas" hidden>View as another role…</button>
           <button role="menuitem" data-acct="viewback" hidden>Back to Admin</button>
@@ -174,7 +176,8 @@
     <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
       <svg aria-hidden="true"><use href="#i-up"/></svg>
       <strong>Drop files here, or click to choose</strong>
-      <span id="dropHelp">.csv, .xlsx or .xlsb, as many as you have: Genesys exports and attendance sheets fill this month; the Final EVAL goes to Quality, the old final result, incentive data and deduction workbooks to Results › Reconcile. A new export replaces the old one of the same type; attendance files add up.</span>
+      <small class="dropsub" aria-hidden="true">.csv, .xlsx or .xlsb · as many files as you have</small>
+      <span id="dropHelp" class="uxsrc">.csv, .xlsx or .xlsb, as many as you have: Genesys exports and attendance sheets fill this month; the Final EVAL goes to Quality, the old final result, incentive data and deduction workbooks to Results › Reconcile. A new export replaces the old one of the same type; attendance files add up.</span>
     </div>
     <input type="file" id="picker" multiple accept=".csv,.txt,.xlsx,.xlsm,.xlsb,.xls,.msg" hidden>
     <ul class="pending" id="pending" aria-live="polite"></ul>
@@ -361,12 +364,12 @@
       <div class="incgrid"><div><h2 style="margin:0">Smart-Link attendance</h2><div class="fname-big" id="slName"></div><p class="hint" id="slNote"></p></div>
         <div style="display:grid;gap:8px;justify-items:end"><button class="btn lg" id="buildSl" disabled>Build Smart-Link file</button><button class="btn sm" id="slListBtn">Set Smart-Link's list from its file</button></div></div>
     </div>
-    <div class="card">
-      <h2>Sheets in the monthly report</h2>
+    <details class="card uxdisc">
+      <summary>Sheets in the monthly report</summary>
       <div class="sheets" id="sheets"></div>
-    </div>
-    <div class="card">
-      <h2>After you download</h2>
+    </details>
+    <details class="card uxdisc">
+      <summary>After you download · 5 tips</summary>
       <ol class="how">
         <li>The <b>Attendance</b> sheet is filled from the attendance files you dropped. Without them, paste the month's attendance there, from the first day column; rows match by National ID, or by name.</li>
         <li>Use these values. A number is tardy minutes and still counts as a worked day.
@@ -378,7 +381,7 @@
         <li>Changing a Status in the workbook's <b>Roster</b> sheet updates every table after Excel recalculates.</li>
         <li>Go to <b>Email</b> for the deduction and absences emails. If you changed the report in Excel, save it and drop it there so the email uses your changes. Build the incentive file too: the senior manager sends it to the champions (Supervisors › Incentive email).</li>
       </ol>
-    </div>
+    </details>
     <div class="next"><button class="btn ghost" data-go="review"><svg width="16" height="16" aria-hidden="true"><use href="#i-chevl"/></svg>Back to Review</button><span class="spacer"></span><button class="btn primary" data-go="email">Continue to Email<svg width="16" height="16" aria-hidden="true"><use href="#i-chevr"/></svg></button></div>
   </section>
 
@@ -480,7 +483,7 @@
     <div id="showBody"></div>
   </section>
   <section class="view ws" id="v-wait" aria-labelledby="h-wait" hidden>
-    <div class="viewhead"><div><div class="eyebrow">Almost there</div><h1 id="h-wait">Waiting for access</h1><p id="waitSub">Your account is ready. An admin now gives you a role (supervisor, senior manager, WFM manager or WFM analyst); this page opens your workspace as soon as they do.</p></div></div>
+    <div class="viewhead"><div><div class="eyebrow">Almost there</div><h1 id="h-wait">Waiting for access</h1><p id="waitSub" class="keep">Your account is ready. An admin now gives you a role (supervisor, senior manager, WFM manager or WFM analyst); this page opens your workspace as soon as they do.</p></div></div>
   </section>
 </main>
 <footer class="sitefoot" id="siteFoot">
@@ -615,6 +618,11 @@
   <div class="body" id="viewAsBody"></div>
 </aside>
 
+<aside class="drawer" id="dKeys" role="dialog" aria-modal="true" aria-labelledby="h-keys" hidden>
+  <header><div><h2 id="h-keys">Keyboard shortcuts</h2><div class="sub">Anywhere outside a text box.</div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body" id="keysBody"></div>
+</aside>
+
 <aside class="drawer wide" id="dHow" role="dialog" aria-modal="true" aria-labelledby="h-how" hidden>
   <header><div><h2 id="h-how">How this was counted</h2><div class="sub" id="howSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
   <div class="body" id="howBody"></div>
@@ -652,6 +660,17 @@
       <h3 id="h-dept">Your department, step by step</h3>
       <div class="seg depttabs" role="tablist" aria-label="Department" id="deptTabs"></div>
       <div id="deptBody" role="tabpanel" aria-labelledby="h-dept"></div>
+    </section>
+    <section>
+      <h3>Work faster</h3>
+      <ul>
+        <li><b>ⓘ</b> next to a title says what the page, the card or the step is for: point at it, or click it to keep it open. <b>Show guidance</b> in your account menu (or Shift H) puts every explanation back on the pages while you learn.</li>
+        <li><b>Keys</b>: <kbd>?</kbd> lists them. <kbd>g</kbd> then a letter opens a page (<kbd>g</kbd> <kbd>t</kbd> Team, <kbd>g</kbd> <kbd>r</kbd> Results, <kbd>g</kbd> <kbd>i</kbd> Import); <kbd>[</kbd> and <kbd>]</kbd> change the month; <kbd>Ctrl</kbd> <kbd>K</kbd> searches.</li>
+        <li><b>Steps</b> (Supervisors, Quality): each step is one line; the next one opens by itself, and the bar above them says how many are done and takes you to the next.</li>
+        <li><b>Tables</b>: the copy button in a card's header copies its table for Excel or Outlook (on Team, every agent shown, every page); the search button filters the rows of a long table; a click on a National ID copies it.</li>
+        <li><b>Typing in a table</b> (Quality, Results, the supervisors' scorecard): Enter saves and goes down a row, ↑ and ↓ move, Esc puts the value back; the cursor stays where you are while the page saves. On Quality, paste a whole column from Excel into the first box: it is saved as one change.</li>
+        <li><b>Results</b>: <b>Show</b> narrows the list (not eligible, decided or changed by hand, no earned SR, below the target); tick agents to decide their eligibility together (each change is logged, with Undo) or to copy their names or National IDs.</li>
+      </ul>
     </section>
     <section>
       <h3>Getting around</h3>

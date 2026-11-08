@@ -117,7 +117,7 @@ function readinessHtml() {
   const left = state.issues.length;
   return `<h2 id="h-ready">Build readiness</h2>
     <p class="rstate ${ready ? 'ok' : 'no'}"><svg aria-hidden="true"><use href="#${ready ? 'i-check' : 'i-lock'}"/></svg><b>${ready ? 'Ready to build' : 'Cannot build yet'}</b></p>
-    <p class="cap">${ready ? (wr.length || left ? 'The workbook can be built now; the warnings below say what it would leave out.' : 'Nothing is left out.') : esc(buildBlocker()) + '.'}</p>
+    <p class="cap keep">${ready ? (wr.length || left ? 'The workbook can be built now; the warnings below say what it would leave out.' : 'Nothing is left out.') : esc(buildBlocker()) + '.'}</p>
     <h3>What would block it</h3><ul class="checklist">${items.filter(x => x.block).map(x => `<li><span class="ck ${x.ok ? 'ok' : 'no'}" aria-hidden="true"><svg width="12" height="12"><use href="#${x.ok ? 'i-check' : 'i-dash'}"/></svg></span><span>${esc(x.t)}</span></li>`).join('')}</ul>
     ${wr.length || left ? `<h3>What it would leave out</h3><ul class="checklist">${left ? `<li><span class="ck wa" aria-hidden="true"><svg width="12" height="12"><use href="#i-bang"/></svg></span><span>${plural(left, 'name')} in the exports not on the roster${isBuilder() ? ' <button class="linkbtn" data-go="match">Match names…</button>' : ''}</span></li>` : ''}${wr.map(x => `<li><span class="ck wa" aria-hidden="true"><svg width="12" height="12"><use href="#i-bang"/></svg></span><span>${esc(x.t)}</span></li>`).join('')}</ul>` : ''}
     <button class="btn primary" data-go="export"${ready ? '' : ' disabled'}>Continue to Export</button>`;

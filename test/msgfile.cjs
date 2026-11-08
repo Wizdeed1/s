@@ -50,4 +50,28 @@ function sampleBody(o = {}) {
   cells.push('​​​', 'Sami Q.', 'Control and Complaint Manager', 'PO Box 0000, Riyadh', 'sami.q@example.com', 'Please consider the environment before printing this email.');
   return cells.join('\r\n\r\n \r\n\r\n');
 }
-module.exports = { msgFile, sampleBody };
+/** a made-up answer to "Weekly commercial meeting" from the Complaint Management team: a block per brand (No. of Complaints,
+    Resolution Time of Closed TKT, The Remaining Open TKT, Top Complaints), then the request quoted under it, with the same
+    headings and no numbers. o.period: the blocks' month ('Oct 2026'); o.tabs: as copied from Outlook (a row tab-separated) */
+function complaintsBody(o = {}) {
+  const P = o.period || 'Oct 2026', rows = [];
+  const block = (name, n, res, open, top, fpay) => {
+    rows.push([name], [P]);
+    if (fpay) rows.push(['Target']);
+    rows.push(['No. of Complaints', n]);
+    if (fpay) rows.push(['Resolution Time in Days'], ['Resolution Time', '', '5 Days'], ['Resolution Time One day', '', '1 Day']);
+    else rows.push(['Resolution Time of Closed TKT', res]);
+    rows.push(['The Remaining Open TKT ', open], ['Top Complaints :'], ['Subcategories ', 'Total', 'Percentage ']);
+    top.forEach(r => rows.push(r));
+  };
+  rows.push(['Hi Team,'], ['Kindly find the needed below']);
+  block(' Virgin', '1,240', '97%', '210', [['Data not working', '120', '10%'], ['Billing dispute', '98', '8%'], ['Wrong info from an agent', '85', '7%'], ['Weak Coverage', '80', '6%'], ['Recharge failed', '60', '5%']]);
+  block('Friendi', '300', '100%', '40', [['SIM not working', '36', '12%'], ['Balance dispute', '30', '10%'], ['No network', '27', '9%'], ['Port-in delay', '24', '8%'], ['Wrong info from an agent', '21', '7%']]);
+  block('FPAY', '90', '', '25', [['Remittance / Technical error while processing the remittance', '30', '33%'], ['Card / Card already used', '12', '13%'], ['Remittance / Transaction on hold', '9', '10%'], ['Sanction screening', '6', '7%'], ['Change phone number / Not working', '3', '3%']], true);
+  rows.push(['Rana K.'], ['Complaint Management Supervisor'], ['rana.k@example.com']);
+  rows.push(['From: Huda S. <huda.s@example.com>'], ['Subject: Weekly commercial meeting - Nov 2026'], ['Please provide the following data for VM, FR, and Fpay from Nov 01 to Nov 07.']);
+  for (const b of ['Virgin', 'Friendi', 'Fpay']) rows.push([b], ['Nov-26'], ['No. of Complaints'], ['Resolution Time of Closed TKT'], ['The Remaining Open TKT'], ['Top 5 complaints'], ['Percentage']);
+  if (o.tabs) return rows.map(r => r.join('\t')).join('\r\n');
+  return rows.flat().map(c => c || ' ').join('\r\n\r\n \r\n\r\n');
+}
+module.exports = { msgFile, sampleBody, complaintsBody };

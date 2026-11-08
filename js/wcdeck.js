@@ -1,8 +1,9 @@
 /* Cadence - the Weekly Commercial Presentation (Member Care Performance Review), every week for the commercial
    meeting. model(): each brand's numbers for the month to date - the service level and the daily and monthly trends from the
    brands' history (as the daily brand emails keep it), the top call reasons from the month's call history export, the complaints
-   and tickets from the month's tickets export (FRiENDi Pay's from its tickets sheet when the export has none), and the outages the
-   WFM team logs. deck(): the 7 slides of the presentation as a PowerPoint (cover, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay,
+   and tickets from the complaints email (complaintsOf(): the Complaint Management team's answer to "Weekly commercial meeting")
+   or else the month's tickets export (FRiENDi Pay's from its tickets sheet when the export has none), and the outages the WFM team
+   logs. deck(): the 7 slides of the presentation as a PowerPoint (cover, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay,
    Postpaid, outages, thank you); a number the files do not give shows "–". */
 'use strict';
 const WcDeck = ((P, K) => {
@@ -85,6 +86,73 @@ function topBy(rows, get, n, skip = []) {
   list.sort((a, c) => c.count - a.count || a.at - c.at);
   return { base, list: list.slice(0, n) };
 }
+// ---------------------------------------------------------------- the complaints email
+/* The Complaint Management team's answer to "Weekly commercial meeting": a block per brand (Virgin, FRiENDi, FPAY) with its month
+   ("Oct 2026", "Nov-26"), No. of Complaints, Resolution Time of Closed TKT (a share), The Remaining Open TKT, and Top Complaints
+   (Subcategories, Total, Percentage). An Outlook .msg keeps one table cell a line; copied from Outlook a row comes tab-separated.
+   The first block of each brand with a number wins: the request quoted under the answer has the same headings and no numbers. */
+const CM_BRAND = [[/^(virgin|virgin mobile|vm)$/, 'virgin'], [/^(friendi|friendi mobile|fr)$/, 'friendi'], [/^(fpay|f pay|f-pay|friendi pay|friendipay)$/, 'fpay']];
+const CM_MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+const CM_FIELD = [
+  ['total', /^(no\.?|number)\s*of\s*complaints?$|^complaints?\s*(logged|count)$|^total\s*complaints?$/],
+  ['onTime', /^resolution\s*(time|rate)\s*of\s*closed\s*(tkts?|tickets?)$|^(closed\s*(tkts?|tickets?)\s*)?resolved\s*on\s*time$/],
+  ['open', /^(the\s*)?remaining\s*open\s*(tkts?|tickets?)$|^(tkts?|tickets?)\s*still\s*open$|^still\s*open$|^open\s*(tkts?|tickets?)$/],
+];
+const CM_TOP = /^top\s*(\d+\s*)?(complaints?|tkts?|tickets?)\s*:?$/;
+const CM_HEAD = /^(sub\s*-?\s*categor(y|ies)|categor(y|ies)|complaint\s*types?|types?|total|count|volume|vol\.?|percentage|share|%)$/;
+const cmCell = s => String(s ?? '').replace(/[​-‏‪-‮﻿]/g, '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const cmKey = s => cmCell(s).toLowerCase().replace(/\s*:$/, '');
+const cmInt = s => (/^\d{1,3}(,\d{3})+$|^\d+$/.test(cmCell(s)) ? +cmCell(s).replace(/,/g, '') : null);
+const cmPct = s => { const x = cmCell(s).match(/^(\d+(?:\.\d+)?)\s*%$/); return x ? +x[1] / 100 : null; };
+const cmBrand = s => { const k = cmKey(s); const b = CM_BRAND.find(([re]) => re.test(k)); return b ? b[1] : null; };
+const cmMonth = s => { const x = cmKey(s).match(/^([a-z]{3,9})\.?[\s\-\/']*(\d{2}|\d{4})$/); const m = x && CM_MON[x[1].slice(0, x[1] === 'sept' ? 4 : 3)]; if (!m) return null; const y = x[2].length === 2 ? 2000 + +x[2] : +x[2]; return { ym: `${y}-${pad(m)}`, label: `${MON[m - 1]} ${y}` }; };
+const cmField = s => { const k = cmKey(s); const f = CM_FIELD.find(([, re]) => re.test(k)); return f ? f[0] : null; };
+/**
+ * The complaints email's numbers: { brands: { virgin|friendi|fpay: { period: { ym, label }, total, onTime (a share), open, drivers:
+ * { base, list: [{ label, count, pct }] } } }, periods: [labels] } (null when the text has no brand block with a number).
+ */
+function complaintsOf(text) {
+  const cells = [];
+  for (const line of String(text || '').split(/\r?\n/)) for (const p of line.includes('\t') ? line.split('\t') : [line]) { const c = cmCell(p); if (c) cells.push(c); }
+  const isMark = c => !!(cmBrand(c) || cmField(c) || CM_TOP.test(cmKey(c)));
+  const out = {}; let cur = null;
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i], b = cmBrand(c);
+    if (b) {   // a block starts with the brand and, within four cells, its month or one of the headings
+      const near = cells.slice(i + 1, i + 5);
+      if (near.some(x => cmMonth(x) || cmField(x))) { cur = out[b] && out[b].filled ? null : (out[b] = { k: b, period: null, total: null, onTime: null, open: null, list: [], filled: false }); continue; }
+    }
+    if (!cur) continue;
+    if (!cur.period && cmMonth(c)) { cur.period = cmMonth(c); continue; }
+    const f = cmField(c);
+    if (f) {   // the value is the first cell after the heading that is one, before the next heading
+      for (let j = i + 1; j < Math.min(cells.length, i + 4) && !isMark(cells[j]); j++) {
+        const v = f === 'onTime' ? cmPct(cells[j]) : cmInt(cells[j]);
+        if (v !== null) { if (cur[f] === null) { cur[f] = v; cur.filled = true; } break; }
+      }
+      continue;
+    }
+    if (CM_TOP.test(cmKey(c))) {   // the table: its headings, then rows of a subcategory, its total and (often) its share
+      let j = i + 1; while (j < cells.length && CM_HEAD.test(cmKey(cells[j]))) j++;
+      while (j + 1 < cells.length && cur.list.length < 5) {
+        const lab = cells[j], n = cmInt(cells[j + 1]);
+        if (isMark(lab) || cmInt(lab) !== null || cmPct(lab) !== null || n === null) break;
+        const p = j + 2 < cells.length ? cmPct(cells[j + 2]) : null;
+        cur.list.push({ label: lab, count: n, pct: p }); j += p === null ? 2 : 3; cur.filled = true;
+      }
+      i = j - 1;
+    }
+  }
+  const brands = {};
+  for (const [k, x] of Object.entries(out)) {
+    if (!x.filled) continue;
+    const base = x.total ?? (x.list.length ? x.list.reduce((a, r) => a + r.count, 0) : null);
+    brands[k] = { period: x.period, total: x.total, onTime: x.onTime, open: x.open,
+      drivers: x.list.length ? { base, list: x.list.map(r => ({ label: r.label, count: r.count, pct: r.pct ?? (base ? r.count / base : null) })) } : null };
+  }
+  if (!Object.keys(brands).length) return null;
+  return { brands, periods: [...new Set(Object.values(brands).map(x => x.period && x.period.label).filter(Boolean))] };
+}
 /** a brand's tickets: how many were logged, how many of the closed ones were closed within onTimeH hours, how many are not closed,
     and the complaint types they were logged for */
 function ticketStats(rows, E, onTimeH, skip) {
@@ -101,7 +169,8 @@ function ticketStats(rows, E, onTimeH, skip) {
  * The presentation's numbers.
  * input: { date (the presentation's day, yyyy-mm-dd), hist (the brands' history), calls (call history rows), tickets (tickets
  * export rows), fpayTickets ([{ date, category, sub, count }] from FRiENDi Pay's tickets sheet), outages ([{ date, title, brands,
- * desc }]), onTimeH (hours within which a closed ticket counts as on time), reports (the report builder's settings per brand) }
+ * desc }]), onTimeH (hours within which a closed ticket counts as on time), reports (the report builder's settings per brand),
+ * complaints (complaintsOf() of the complaints email: its numbers come before the tickets export's, one by one) }
  * The month is the one of the day before the presentation: its days up to that day.
  */
 function model(input, E) {
@@ -118,7 +187,8 @@ function model(input, E) {
     return { base: t.base, list: t.list.map(x => ({ label: x.reason, count: x.count, pct: x.pct })) };
   };
   if (!calls) notes.push('No call history export: the top call reasons show –.');
-  if (!tickets) notes.push('No tickets export: the complaints and tickets show –.');
+  const CM = input.complaints && input.complaints.brands ? input.complaints.brands : null;
+  if (!tickets && !CM) notes.push('No tickets export or complaints email: the complaints and tickets show –.');
   const brands = BRANDS.map(B => {
     const v = brandVoice(input.hist, B.k, ref), o = { ...B, v, reasons: reasonsOf(B.k), tickets: null, from: '' };
     if (!v.daily.length) notes.push(`${B.name}: no days of ${mLong(ym)} in the brands' history.`);
@@ -129,9 +199,18 @@ function model(input, E) {
       const total = sheet.reduce((a, r) => a + (numOr(r.count) ?? 1), 0);
       o.tickets = { total, open: null, closed: null, onTime: null, timed: 0, drivers: topBy(sheet, r => (r.sub && norm(r.sub) !== norm(r.category) ? `${r.category} / ${r.sub}` : r.category || r.sub), 5) };
       o.from = 'sheet';
-    } else if (tickets) notes.push(`${B.name}: no tickets in the tickets export${B.k === 'fpay' ? ' (drop FRiENDi Pay\'s tickets sheet)' : ''}.`);
+    } else if (tickets && !(CM && CM[B.k])) notes.push(`${B.name}: no tickets in the tickets export${B.k === 'fpay' ? ' (drop FRiENDi Pay\'s tickets sheet)' : ''}.`);
+    const e = CM && CM[B.k];
+    if (e) {   // the complaints email's numbers first; what it leaves out comes from the export, if any
+      const t0 = o.tickets || {}, has = v => v !== null && v !== undefined;
+      o.tickets = { total: has(e.total) ? e.total : t0.total ?? null, open: has(e.open) ? e.open : t0.open ?? null, closed: t0.closed ?? null, onTime: has(e.onTime) ? e.onTime : t0.onTime ?? null,
+        timed: t0.timed || 0, drivers: e.drivers && e.drivers.list.length ? e.drivers : t0.drivers || null };
+      o.from = 'email'; o.period = e.period && e.period.ym !== ym ? e.period : null;   // said on the slide when it is not the deck's month
+    } else if (CM && !o.tickets) notes.push(`${B.name}: not in the complaints email${tickets ? '' : ' and no tickets export'}: its complaints show –.`);
     return o;
   });
+  const other = [...new Set(brands.filter(b => b.period).map(b => b.period.label))];
+  if (other.length) notes.push(`The complaints email is for ${other.join(' and ')}, not ${mLong(ym)}: the slides say so beside its numbers.`);
   const pv = brandVoice(input.hist, 'postpaid', ref);
   const pt = tickets ? E.sliceTickets(tickets, 'postpaid') : null;
   const postpaid = { ...POSTPAID, v: pv, reasons: reasonsOf('postpaid'), tickets: pt ? topBy(pt, r => r[E.TCOL.sub], 5) : null };
@@ -199,13 +278,14 @@ function brandSlide(D, m, B, n, o) {
   trendChart(s, 0.43, 2.42, 7.35, 2.27, v.daily.map(r => dShort(r.date)), v.daily, B.bar, { name: 'Daily trend' });
   label(s, 0.45, 4.66, 7.85, o.monthlyLabel || `Monthly Trend — ${(v.trend[0] || { m: m.ym }).m.slice(0, 4)} to Date`);
   trendChart(s, 0.43, 4.91, 7.35, 2.15, v.trend.map(x => x.label), v.trend.map(x => x.v), B.bar, { name: 'Monthly trend' });   // ends above the foot (7.10)
+  const at = B.period ? ` · ${B.period.label}` : '';   // the complaints email's month, when it is not the deck's
   const tiles = B.k === 'fpay'
-    ? [[int(t && t.total), 'Complaints logged'], [int(t && t.open), 'Tickets still open'], [pct(v.prev && v.prev.sl), `Service level — ${m.prev}`]]
-    : [[int(t && t.total), 'Complaints logged'], [pct(t && t.onTime), 'Closed tickets resolved on time'], [int(t && t.open), 'Tickets still open']];
+    ? [[int(t && t.total), `Complaints logged${at}`], [int(t && t.open), `Tickets still open${at}`], [pct(v.prev && v.prev.sl), `Service level — ${m.prev}`]]
+    : [[int(t && t.total), `Complaints logged${at}`], [pct(t && t.onTime), at ? `Resolved on time${at}` : 'Closed tickets resolved on time'], [int(t && t.open), `Tickets still open${at}`]];
   tiles.forEach(([big, lab], i) => tile(s, [8.62, 10.07, 11.53][i], 2.10, big, lab, B.color));
   label(s, 8.62, 3.27, 4.28, 'Top Call Reasons', 11.5);
   topTable(s, 8.62, 3.55, 4.28, 'Reason', B.reasons, true, { rowH: 0.25 });
-  label(s, 8.62, 5.22, 4.28, 'Top Complaint Drivers', 11.5);
+  label(s, 8.62, 5.22, 4.28, `Top Complaint Drivers${at}`, 11.5);
   topTable(s, 8.62, 5.50, 4.28, 'Complaint Type', t && t.drivers, false, { rowH: 0.25 });   // six rows end at 7.00, above the foot
 }
 function postpaidSlide(D, m, n, o) {
@@ -261,7 +341,7 @@ function deck(m, o = {}) {
   return D;
 }
 const fileName = date => `Beyond_One_Member_Care_Review - ${longDate(date)}.pptx`;
-return { model, deck, fileName, brandVoice, ticketBrand, longDate, dShort, BRANDS, POSTPAID,
+return { model, deck, fileName, brandVoice, ticketBrand, complaintsOf, longDate, dShort, BRANDS, POSTPAID,
   parts: { cover, thanks, brandSlide, postpaidSlide, logoTop, pic, tt, foot, callout, label, fit, int, pct, deckDate, logos, NAVY, MUTED, INK, HEAD, FRAME, MON, K } };   // for the Performance Review deck (prdeck.js)
 })(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'), typeof BoDeck !== 'undefined' ? BoDeck : require('./bodeck.js'));
 if (typeof module !== 'undefined') module.exports = WcDeck;

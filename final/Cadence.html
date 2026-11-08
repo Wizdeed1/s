@@ -2769,6 +2769,7 @@ li.uxmoreoff { display: none !important; }
 .wcpaste .acts, .wcset .grid2 { margin-top: 8px; }
 .wcsum { max-height: none; }
 .wcsum td:first-child { white-space: nowrap; }
+.wcsum td.wctop { max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wcnotes { margin: 10px 0 0; padding-left: 18px; color: var(--warn); font-size: 13px; line-height: 1.5; }
 .wcflow .flowstep .stacts { gap: 8px; }
 .prtab { max-height: none; margin-top: 10px; }
@@ -14427,8 +14428,9 @@ if (typeof module !== 'undefined') module.exports = BoDeck;
 /* Cadence - the Weekly Commercial Presentation (Member Care Performance Review), every week for the commercial
    meeting. model(): each brand's numbers for the month to date - the service level and the daily and monthly trends from the
    brands' history (as the daily brand emails keep it), the top call reasons from the month's call history export, the complaints
-   and tickets from the month's tickets export (FRiENDi Pay's from its tickets sheet when the export has none), and the outages the
-   WFM team logs. deck(): the 7 slides of the presentation as a PowerPoint (cover, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay,
+   and tickets from the complaints email (complaintsOf(): the Complaint Management team's answer to "Weekly commercial meeting")
+   or else the month's tickets export (FRiENDi Pay's from its tickets sheet when the export has none), and the outages the WFM team
+   logs. deck(): the 7 slides of the presentation as a PowerPoint (cover, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay,
    Postpaid, outages, thank you); a number the files do not give shows "–". */
 'use strict';
 const WcDeck = ((P, K) => {
@@ -14511,6 +14513,73 @@ function topBy(rows, get, n, skip = []) {
   list.sort((a, c) => c.count - a.count || a.at - c.at);
   return { base, list: list.slice(0, n) };
 }
+// ---------------------------------------------------------------- the complaints email
+/* The Complaint Management team's answer to "Weekly commercial meeting": a block per brand (Virgin, FRiENDi, FPAY) with its month
+   ("Oct 2026", "Nov-26"), No. of Complaints, Resolution Time of Closed TKT (a share), The Remaining Open TKT, and Top Complaints
+   (Subcategories, Total, Percentage). An Outlook .msg keeps one table cell a line; copied from Outlook a row comes tab-separated.
+   The first block of each brand with a number wins: the request quoted under the answer has the same headings and no numbers. */
+const CM_BRAND = [[/^(virgin|virgin mobile|vm)$/, 'virgin'], [/^(friendi|friendi mobile|fr)$/, 'friendi'], [/^(fpay|f pay|f-pay|friendi pay|friendipay)$/, 'fpay']];
+const CM_MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+const CM_FIELD = [
+  ['total', /^(no\.?|number)\s*of\s*complaints?$|^complaints?\s*(logged|count)$|^total\s*complaints?$/],
+  ['onTime', /^resolution\s*(time|rate)\s*of\s*closed\s*(tkts?|tickets?)$|^(closed\s*(tkts?|tickets?)\s*)?resolved\s*on\s*time$/],
+  ['open', /^(the\s*)?remaining\s*open\s*(tkts?|tickets?)$|^(tkts?|tickets?)\s*still\s*open$|^still\s*open$|^open\s*(tkts?|tickets?)$/],
+];
+const CM_TOP = /^top\s*(\d+\s*)?(complaints?|tkts?|tickets?)\s*:?$/;
+const CM_HEAD = /^(sub\s*-?\s*categor(y|ies)|categor(y|ies)|complaint\s*types?|types?|total|count|volume|vol\.?|percentage|share|%)$/;
+const cmCell = s => String(s ?? '').replace(/[​-‏‪-‮﻿]/g, '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const cmKey = s => cmCell(s).toLowerCase().replace(/\s*:$/, '');
+const cmInt = s => (/^\d{1,3}(,\d{3})+$|^\d+$/.test(cmCell(s)) ? +cmCell(s).replace(/,/g, '') : null);
+const cmPct = s => { const x = cmCell(s).match(/^(\d+(?:\.\d+)?)\s*%$/); return x ? +x[1] / 100 : null; };
+const cmBrand = s => { const k = cmKey(s); const b = CM_BRAND.find(([re]) => re.test(k)); return b ? b[1] : null; };
+const cmMonth = s => { const x = cmKey(s).match(/^([a-z]{3,9})\.?[\s\-\/']*(\d{2}|\d{4})$/); const m = x && CM_MON[x[1].slice(0, x[1] === 'sept' ? 4 : 3)]; if (!m) return null; const y = x[2].length === 2 ? 2000 + +x[2] : +x[2]; return { ym: `${y}-${pad(m)}`, label: `${MON[m - 1]} ${y}` }; };
+const cmField = s => { const k = cmKey(s); const f = CM_FIELD.find(([, re]) => re.test(k)); return f ? f[0] : null; };
+/**
+ * The complaints email's numbers: { brands: { virgin|friendi|fpay: { period: { ym, label }, total, onTime (a share), open, drivers:
+ * { base, list: [{ label, count, pct }] } } }, periods: [labels] } (null when the text has no brand block with a number).
+ */
+function complaintsOf(text) {
+  const cells = [];
+  for (const line of String(text || '').split(/\r?\n/)) for (const p of line.includes('\t') ? line.split('\t') : [line]) { const c = cmCell(p); if (c) cells.push(c); }
+  const isMark = c => !!(cmBrand(c) || cmField(c) || CM_TOP.test(cmKey(c)));
+  const out = {}; let cur = null;
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i], b = cmBrand(c);
+    if (b) {   // a block starts with the brand and, within four cells, its month or one of the headings
+      const near = cells.slice(i + 1, i + 5);
+      if (near.some(x => cmMonth(x) || cmField(x))) { cur = out[b] && out[b].filled ? null : (out[b] = { k: b, period: null, total: null, onTime: null, open: null, list: [], filled: false }); continue; }
+    }
+    if (!cur) continue;
+    if (!cur.period && cmMonth(c)) { cur.period = cmMonth(c); continue; }
+    const f = cmField(c);
+    if (f) {   // the value is the first cell after the heading that is one, before the next heading
+      for (let j = i + 1; j < Math.min(cells.length, i + 4) && !isMark(cells[j]); j++) {
+        const v = f === 'onTime' ? cmPct(cells[j]) : cmInt(cells[j]);
+        if (v !== null) { if (cur[f] === null) { cur[f] = v; cur.filled = true; } break; }
+      }
+      continue;
+    }
+    if (CM_TOP.test(cmKey(c))) {   // the table: its headings, then rows of a subcategory, its total and (often) its share
+      let j = i + 1; while (j < cells.length && CM_HEAD.test(cmKey(cells[j]))) j++;
+      while (j + 1 < cells.length && cur.list.length < 5) {
+        const lab = cells[j], n = cmInt(cells[j + 1]);
+        if (isMark(lab) || cmInt(lab) !== null || cmPct(lab) !== null || n === null) break;
+        const p = j + 2 < cells.length ? cmPct(cells[j + 2]) : null;
+        cur.list.push({ label: lab, count: n, pct: p }); j += p === null ? 2 : 3; cur.filled = true;
+      }
+      i = j - 1;
+    }
+  }
+  const brands = {};
+  for (const [k, x] of Object.entries(out)) {
+    if (!x.filled) continue;
+    const base = x.total ?? (x.list.length ? x.list.reduce((a, r) => a + r.count, 0) : null);
+    brands[k] = { period: x.period, total: x.total, onTime: x.onTime, open: x.open,
+      drivers: x.list.length ? { base, list: x.list.map(r => ({ label: r.label, count: r.count, pct: r.pct ?? (base ? r.count / base : null) })) } : null };
+  }
+  if (!Object.keys(brands).length) return null;
+  return { brands, periods: [...new Set(Object.values(brands).map(x => x.period && x.period.label).filter(Boolean))] };
+}
 /** a brand's tickets: how many were logged, how many of the closed ones were closed within onTimeH hours, how many are not closed,
     and the complaint types they were logged for */
 function ticketStats(rows, E, onTimeH, skip) {
@@ -14527,7 +14596,8 @@ function ticketStats(rows, E, onTimeH, skip) {
  * The presentation's numbers.
  * input: { date (the presentation's day, yyyy-mm-dd), hist (the brands' history), calls (call history rows), tickets (tickets
  * export rows), fpayTickets ([{ date, category, sub, count }] from FRiENDi Pay's tickets sheet), outages ([{ date, title, brands,
- * desc }]), onTimeH (hours within which a closed ticket counts as on time), reports (the report builder's settings per brand) }
+ * desc }]), onTimeH (hours within which a closed ticket counts as on time), reports (the report builder's settings per brand),
+ * complaints (complaintsOf() of the complaints email: its numbers come before the tickets export's, one by one) }
  * The month is the one of the day before the presentation: its days up to that day.
  */
 function model(input, E) {
@@ -14544,7 +14614,8 @@ function model(input, E) {
     return { base: t.base, list: t.list.map(x => ({ label: x.reason, count: x.count, pct: x.pct })) };
   };
   if (!calls) notes.push('No call history export: the top call reasons show –.');
-  if (!tickets) notes.push('No tickets export: the complaints and tickets show –.');
+  const CM = input.complaints && input.complaints.brands ? input.complaints.brands : null;
+  if (!tickets && !CM) notes.push('No tickets export or complaints email: the complaints and tickets show –.');
   const brands = BRANDS.map(B => {
     const v = brandVoice(input.hist, B.k, ref), o = { ...B, v, reasons: reasonsOf(B.k), tickets: null, from: '' };
     if (!v.daily.length) notes.push(`${B.name}: no days of ${mLong(ym)} in the brands' history.`);
@@ -14555,9 +14626,18 @@ function model(input, E) {
       const total = sheet.reduce((a, r) => a + (numOr(r.count) ?? 1), 0);
       o.tickets = { total, open: null, closed: null, onTime: null, timed: 0, drivers: topBy(sheet, r => (r.sub && norm(r.sub) !== norm(r.category) ? `${r.category} / ${r.sub}` : r.category || r.sub), 5) };
       o.from = 'sheet';
-    } else if (tickets) notes.push(`${B.name}: no tickets in the tickets export${B.k === 'fpay' ? ' (drop FRiENDi Pay\'s tickets sheet)' : ''}.`);
+    } else if (tickets && !(CM && CM[B.k])) notes.push(`${B.name}: no tickets in the tickets export${B.k === 'fpay' ? ' (drop FRiENDi Pay\'s tickets sheet)' : ''}.`);
+    const e = CM && CM[B.k];
+    if (e) {   // the complaints email's numbers first; what it leaves out comes from the export, if any
+      const t0 = o.tickets || {}, has = v => v !== null && v !== undefined;
+      o.tickets = { total: has(e.total) ? e.total : t0.total ?? null, open: has(e.open) ? e.open : t0.open ?? null, closed: t0.closed ?? null, onTime: has(e.onTime) ? e.onTime : t0.onTime ?? null,
+        timed: t0.timed || 0, drivers: e.drivers && e.drivers.list.length ? e.drivers : t0.drivers || null };
+      o.from = 'email'; o.period = e.period && e.period.ym !== ym ? e.period : null;   // said on the slide when it is not the deck's month
+    } else if (CM && !o.tickets) notes.push(`${B.name}: not in the complaints email${tickets ? '' : ' and no tickets export'}: its complaints show –.`);
     return o;
   });
+  const other = [...new Set(brands.filter(b => b.period).map(b => b.period.label))];
+  if (other.length) notes.push(`The complaints email is for ${other.join(' and ')}, not ${mLong(ym)}: the slides say so beside its numbers.`);
   const pv = brandVoice(input.hist, 'postpaid', ref);
   const pt = tickets ? E.sliceTickets(tickets, 'postpaid') : null;
   const postpaid = { ...POSTPAID, v: pv, reasons: reasonsOf('postpaid'), tickets: pt ? topBy(pt, r => r[E.TCOL.sub], 5) : null };
@@ -14625,13 +14705,14 @@ function brandSlide(D, m, B, n, o) {
   trendChart(s, 0.43, 2.42, 7.35, 2.27, v.daily.map(r => dShort(r.date)), v.daily, B.bar, { name: 'Daily trend' });
   label(s, 0.45, 4.66, 7.85, o.monthlyLabel || `Monthly Trend — ${(v.trend[0] || { m: m.ym }).m.slice(0, 4)} to Date`);
   trendChart(s, 0.43, 4.91, 7.35, 2.15, v.trend.map(x => x.label), v.trend.map(x => x.v), B.bar, { name: 'Monthly trend' });   // ends above the foot (7.10)
+  const at = B.period ? ` · ${B.period.label}` : '';   // the complaints email's month, when it is not the deck's
   const tiles = B.k === 'fpay'
-    ? [[int(t && t.total), 'Complaints logged'], [int(t && t.open), 'Tickets still open'], [pct(v.prev && v.prev.sl), `Service level — ${m.prev}`]]
-    : [[int(t && t.total), 'Complaints logged'], [pct(t && t.onTime), 'Closed tickets resolved on time'], [int(t && t.open), 'Tickets still open']];
+    ? [[int(t && t.total), `Complaints logged${at}`], [int(t && t.open), `Tickets still open${at}`], [pct(v.prev && v.prev.sl), `Service level — ${m.prev}`]]
+    : [[int(t && t.total), `Complaints logged${at}`], [pct(t && t.onTime), at ? `Resolved on time${at}` : 'Closed tickets resolved on time'], [int(t && t.open), `Tickets still open${at}`]];
   tiles.forEach(([big, lab], i) => tile(s, [8.62, 10.07, 11.53][i], 2.10, big, lab, B.color));
   label(s, 8.62, 3.27, 4.28, 'Top Call Reasons', 11.5);
   topTable(s, 8.62, 3.55, 4.28, 'Reason', B.reasons, true, { rowH: 0.25 });
-  label(s, 8.62, 5.22, 4.28, 'Top Complaint Drivers', 11.5);
+  label(s, 8.62, 5.22, 4.28, `Top Complaint Drivers${at}`, 11.5);
   topTable(s, 8.62, 5.50, 4.28, 'Complaint Type', t && t.drivers, false, { rowH: 0.25 });   // six rows end at 7.00, above the foot
 }
 function postpaidSlide(D, m, n, o) {
@@ -14687,7 +14768,7 @@ function deck(m, o = {}) {
   return D;
 }
 const fileName = date => `Beyond_One_Member_Care_Review - ${longDate(date)}.pptx`;
-return { model, deck, fileName, brandVoice, ticketBrand, longDate, dShort, BRANDS, POSTPAID,
+return { model, deck, fileName, brandVoice, ticketBrand, complaintsOf, longDate, dShort, BRANDS, POSTPAID,
   parts: { cover, thanks, brandSlide, postpaidSlide, logoTop, pic, tt, foot, callout, label, fit, int, pct, deckDate, logos, NAVY, MUTED, INK, HEAD, FRAME, MON, K } };   // for the Performance Review deck (prdeck.js)
 })(typeof Pptx !== 'undefined' ? Pptx : require('./pptx.js'), typeof BoDeck !== 'undefined' ? BoDeck : require('./bodeck.js'));
 if (typeof module !== 'undefined') module.exports = WcDeck;
@@ -32007,11 +32088,12 @@ for (const page of [$('wfmDm'), $('wfmRb')]) {
 // Every week the WFM team sends the VP the Weekly Commercial Presentation: a 7-slide PowerPoint (cover; Virgin Mobile, FRiENDi
 // Mobile and FRiENDi Pay with their service level, daily and monthly trends, complaints, call reasons and complaint drivers;
 // Postpaid; the outages of the last three months; thank you). The service level and the trends come from the brands' history the
-// daily brand emails keep; the call reasons, complaints and tickets from the month-to-date Call history and Tickets exports dropped
-// here (read in this browser, not kept); the outages from a list the team keeps here (config/outages). The deck is made here
+// daily brand emails keep; the call reasons from the month-to-date Call history export; the complaints, resolved on time, still
+// open and top tickets from the Complaint Management team's answer to "Weekly commercial meeting" (the .msg) or else the Tickets
+// export; all dropped here, read in this browser and not kept; the outages from a list the team keeps here (config/outages). The deck is made here
 // (WcDeck) and the email to the VP comes as an Outlook draft with the deck attached; the tool never sends anything itself.
 Object.assign(state, { wcDate: '', wcCfg: null, outages: null, wcBusy: '', wcBuilt: '', deckLogos: null });
-const WC = { calls: {}, tickets: {}, comb: {}, fpay: null, files: [], loaded: null, boot: null, ready: false, saveT: 0, open: { paste: false, set: false }, pasteText: '' };
+const WC = { calls: {}, tickets: {}, comb: {}, fpay: null, mail: null, files: [], loaded: null, boot: null, ready: false, saveT: 0, open: { paste: false, set: false }, pasteText: '' };
 const WC0 = { presenter: '', title: '', to: '', cc: '', onTimeH: 72 };
 const WC_BRAND = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay' };
 const WC_MAXOUT = 500;
@@ -32096,8 +32178,20 @@ function wcRows(kind) {
 const wcCalls = () => wcRows('calls'), wcTickets = () => wcRows('tickets');
 function wcModel(date) {
   const c = wcCfg();
-  return WcDeck.model({ date: date || wcDateNow(), hist: rbHist(), calls: wcCalls(), tickets: wcTickets(), fpayTickets: WC.fpay ? WC.fpay.rows : null, outages: outagesNow(), onTimeH: c.onTimeH, reports: (window.Build || {}).REPORTS }, rbE());
+  return WcDeck.model({ date: date || wcDateNow(), hist: rbHist(), calls: wcCalls(), tickets: wcTickets(), fpayTickets: WC.fpay ? WC.fpay.rows : null, outages: outagesNow(), onTimeH: c.onTimeH, reports: (window.Build || {}).REPORTS, complaints: WC.mail }, rbE());
 }
+/** an email's text: the .msg's text body, the .eml's text part (or its HTML as text), a saved .txt or .htm */
+function wcMailText(name, u8) {
+  if (/\.msg$/i.test(name)) return msgBodyText(u8);
+  if (/\.eml$/i.test(name)) { const P = UpdParse.emlParts(u8); return P.text && WcDeck.complaintsOf(P.text) ? P.text : P.html ? prHtmlText(P.html) : P.text || ''; }
+  const t = new TextDecoder().decode(u8); return /\.html?$/i.test(name) ? prHtmlText(t) : t;
+}
+/** the complaints email read (with the files: not kept), and its line in the list of files */
+function wcTakeMail(name, r) {
+  WC.mail = { name, ...r };
+  return `Complaints email · ${r.periods.join(', ') || 'no month'} · ${Object.keys(r.brands).map(k => WC_BRAND[k]).join(', ')}`;
+}
+const WC_NOTMAIL = 'not the complaints email: drop the answer to "Weekly commercial meeting", with No. of Complaints for each brand';
 
 // ---------------------------------------------------------------- the files: the month-to-date Crystal exports, FRiENDi Pay's tickets sheet
 async function wcAddFiles(list) {
@@ -32107,6 +32201,11 @@ async function wcAddFiles(list) {
   const E = rbE(), notes = [];
   for (const f of Array.from(list)) {
     try {
+      if (/\.(msg|eml|txt|html?)$/i.test(f.name)) {   // the complaints email
+        const r = WcDeck.complaintsOf(wcMailText(f.name, new Uint8Array(await f.arrayBuffer())));
+        notes.push(r ? { name: f.name, label: wcTakeMail(f.name, r) } : { name: f.name, label: WC_NOTMAIL, bad: true });
+        continue;
+      }
       if (/\.xls$/i.test(f.name)) {
         const sheets = window.parseXls(await f.arrayBuffer()), rows = sheets[0] ? sheets[0].rows : [], c = E.classify(f.name, 'xls', { rows });
         if (c.type === 'history') { const p = E.historyRows(rows); WC.calls[f.name] = p; notes.push({ name: f.name, label: `Call history · ${E.fmtInt(p.length)} rows${wcSpan(p.map(r => E.rowDate(r[E.COL.date])))}` }); }
@@ -32122,7 +32221,7 @@ async function wcAddFiles(list) {
         const pl = E.parseCsv(await f.text()); if (E.classify(f.name, 'csv', pl).type === 'fpayTickets') rows = E.parseTicketSheet(pl);
       }
       if (rows) { WC.fpay = { name: f.name, rows }; notes.push({ name: f.name, label: `FRiENDi Pay tickets · ${E.fmtInt(rows.reduce((a, r) => a + (+r.count || 0), 0))} tickets${wcSpan(rows.map(r => r.date))}` }); }
-      else notes.push({ name: f.name, label: 'not recognised: drop the Call history, the Tickets export or FRiENDi Pay\'s tickets sheet', bad: true });
+      else notes.push({ name: f.name, label: 'not recognised: drop the Call history, the complaints email, the Tickets export or FRiENDi Pay\'s tickets sheet', bad: true });
     } catch (err) { notes.push({ name: f.name, label: 'not readable (' + ((err && err.message) || err) + ')', bad: true }); }
   }
   WC.files = WC.files.filter(x => !notes.some(n => n.name === x.name)).concat(notes); WC.comb = {};
@@ -32135,7 +32234,7 @@ function wcSpan(dates) {
   const R = rbR(), a = D[0], b = D[D.length - 1];
   return ' · ' + (a === b ? R.dayLabel(a) : R.niceRange(a, b));
 }
-function wcClear() { WC.calls = {}; WC.tickets = {}; WC.comb = {}; WC.fpay = null; WC.files = []; state.wcBuilt = ''; renderWeeklyWs(); }
+function wcClear() { WC.calls = {}; WC.tickets = {}; WC.comb = {}; WC.fpay = null; WC.mail = null; WC.files = []; state.wcBuilt = ''; renderWeeklyWs(); }
 
 // ---------------------------------------------------------------- the outages: typed in, or pasted from Excel
 const WC_MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
@@ -32181,7 +32280,7 @@ function renderWeeklyWs() {
   const c = wcCfg(), date = wcDateNow(), m = wcModel(), R = rbR(), busy = state.wcBusy;
   const ref = m.ref, first = ref.slice(0, 8) + '01', want = []; for (let d = first; d <= ref; d = wcAddDays(d, 1)) want.push(d);
   const histRows = m.brands.concat([m.postpaid]).map(B => { const have = new Set(B.v.daily.map(r => r.date)), miss = want.filter(d => !have.has(d)); return { B, n: have.size, miss }; });
-  const histOk = histRows.every(x => x.n && !x.miss.length), filesOk = !!(wcCalls() && wcTickets());
+  const histOk = histRows.every(x => x.n && !x.miss.length), filesOk = !!(wcCalls() && (wcTickets() || WC.mail));
   const O = m.outages, outOk = O.list.length > 0, built = state.wcBuilt === date;
   const sts = stepStates([histOk, filesOk, outOk, built]);
   const span = want.length ? (want.length === 1 ? R.dayLabel(first) : R.niceRange(first, ref)) : '';
@@ -32191,7 +32290,7 @@ function renderWeeklyWs() {
   const histHtml = `<div class="wchist">${histRows.map(({ B, n, miss }) => `<span class="pill ${n && !miss.length ? 'good' : n ? 'warn' : 'bad'}" title="${esc(miss.length ? 'Missing: ' + rbShortDays(miss) : 'Every day is in the history')}"><i class="wcdot" style="background:#${B.color}"></i>${esc(B.short)} · ${n}/${want.length} days</span>`).join('')}</div>
     ${histOk ? '' : `<p class="hint">${histRows.filter(x => x.miss.length).map(({ B, miss }) => `<b>${esc(B.short)}</b> has no ${esc(rbShortDays(miss))}`).join(' · ')}. Drop those days' exports on WFM team › Report builder, or import the brands' history on Emails › Daily brand emails.</p>`}`;
   const files = WC.files.length ? `<div class="rbfiles">${WC.files.map(f => `<div class="rbfile${f.bad ? ' bad' : ''}"><span class="fname" title="${esc(f.name)}">${esc(f.name)}</span><span class="ftag">${esc(f.label)}</span></div>`).join('')}</div><div class="rbmini"><button class="btn sm ghost" data-wcclear>Clear files</button></div>` : '<p class="hint">No files yet.</p>';
-  const drop = `<div class="drop rbdrop" data-wcdrop role="button" tabindex="0" aria-label="Drop the month's exports, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month-to-date exports</strong><span>The Call history and the Tickets exports from Crystal (.xls), and FRiENDi Pay's tickets sheet (.xlsx or .csv), or click to choose them</span></div><input type="file" multiple accept=".xls,.xlsx,.csv" hidden data-wcpick>${files}`;
+  const drop = `<div class="drop rbdrop" data-wcdrop role="button" tabindex="0" aria-label="Drop the month's exports, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month-to-date files</strong><span>The Call history export from Crystal (.xls) and the complaints email (the answer to "Weekly commercial meeting", .msg or .eml); or the Tickets export (.xls) and FRiENDi Pay's tickets sheet (.xlsx or .csv). Or click to choose them</span></div><input type="file" multiple accept=".xls,.xlsx,.csv,.msg,.eml,.txt,.htm,.html" hidden data-wcpick>${files}`;
   const lo = O.from + '-01', inRange = x => x.date >= lo && x.date <= date;
   const L = outagesNow().slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), shown = L.filter(inRange), older = L.length - shown.length;
   const orow = x => `<tr data-oid="${esc(x.id)}"><td><input type="date" class="cell" data-of="date" value="${esc(x.date)}" aria-label="Day of the outage"></td><td><input class="cell" data-of="title" value="${esc(x.title)}" placeholder="Outage and issue" aria-label="Outage and issue" maxlength="200"></td>
@@ -32201,11 +32300,12 @@ function renderWeeklyWs() {
     <div class="acts wcoacts"><button class="btn sm" data-oadd>Add an outage</button>${older ? `<span class="hint">${plural(older, 'older outage')} kept, not in this deck.</span>` : ''}</div>
     <details class="wcpaste"${WC.open.paste ? ' open' : ''}><summary>Paste rows from Excel</summary><p class="hint">Copy the rows (Date, Outage and issue, Affected brand, Description) and paste them here. A day like 6-Aug takes the presentation's year; a heading row is left out.</p><textarea class="cell rbta" data-opaste rows="4" placeholder="6-Aug&#9;Genesys outage&#9;Virgin, FRiENDi&#9;What happened">${esc(WC.pasteText)}</textarea><div class="acts"><button class="btn sm" data-opastego>Add these rows</button></div></details>`;
   const t = B => B.tickets, cell = v => `<td class="num">${esc(v)}</td>`;
+  const top = v => `<td class="wctop" dir="auto"${v ? ` title="${esc(v)}"` : ''}>${esc(v || '–')}</td>`;   // a long label cut with …, whole on hover
   const pc = v => (v == null ? '–' : Math.round(v * 100) + '%'), nn = v => (v == null ? '–' : Math.round(v).toLocaleString('en-US'));
-  const sum = `<div class="tablewrap wcsum"><table><thead><tr><th>Slide</th><th class="r">Service level</th><th class="r">Complaints logged</th><th class="r">Resolved on time</th><th class="r">Still open</th><th>Top call reason</th></tr></thead><tbody>
-    ${m.brands.map(B => `<tr><td><i class="wcdot" style="background:#${B.color}"></i>${esc(B.name)}</td>${cell(pc(B.v.mtd && B.v.mtd.sl))}${cell(nn(t(B) && t(B).total))}${cell(pc(t(B) && t(B).onTime))}${cell(nn(t(B) && t(B).open))}<td dir="auto">${esc((B.reasons && B.reasons.list[0] || {}).label || '–')}</td></tr>`).join('')}
-    <tr><td><i class="wcdot" style="background:#${m.postpaid.color}"></i>Postpaid</td>${cell(pc(m.postpaid.v.mtd && m.postpaid.v.mtd.sl))}${cell(nn(m.postpaid.tickets && m.postpaid.tickets.base))}<td class="num">–</td><td class="num">–</td><td dir="auto">${esc((m.postpaid.reasons && m.postpaid.reasons.list[0] || {}).label || '–')}</td></tr>
-    <tr><td>Outages</td><td class="num" colspan="5">${plural(O.list.length, 'incident')} in ${esc(O.span)}${O.list.length ? `, ${plural(O.brands, 'brand')}` : ''}</td></tr></tbody></table></div>
+  const sum = `<div class="tablewrap wcsum"><table><thead><tr><th>Slide</th><th class="r">Service level</th><th class="r">Complaints logged</th><th class="r">Resolved on time</th><th class="r">Still open</th><th>Top call reason</th><th>Top TKT</th></tr></thead><tbody>
+    ${m.brands.map(B => `<tr><td><i class="wcdot" style="background:#${B.color}"></i>${esc(B.name)}</td>${cell(pc(B.v.mtd && B.v.mtd.sl))}${cell(nn(t(B) && t(B).total))}${cell(pc(t(B) && t(B).onTime))}${cell(nn(t(B) && t(B).open))}${top((B.reasons && B.reasons.list[0] || {}).label)}${top((t(B) && t(B).drivers && t(B).drivers.list[0] || {}).label)}</tr>`).join('')}
+    <tr><td><i class="wcdot" style="background:#${m.postpaid.color}"></i>Postpaid</td>${cell(pc(m.postpaid.v.mtd && m.postpaid.v.mtd.sl))}${cell(nn(m.postpaid.tickets && m.postpaid.tickets.base))}<td class="num">–</td><td class="num">–</td>${top((m.postpaid.reasons && m.postpaid.reasons.list[0] || {}).label)}${top((m.postpaid.tickets && m.postpaid.tickets.list[0] || {}).label)}</tr>
+    <tr><td>Outages</td><td class="num" colspan="6">${plural(O.list.length, 'incident')} in ${esc(O.span)}${O.list.length ? `, ${plural(O.brands, 'brand')}` : ''}</td></tr></tbody></table></div>
     ${m.notes.length ? `<ul class="wcnotes">${m.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
     <p class="hint">The email goes to ${esc(splitAddr(c.to).map(wcName).join(', ') || 'nobody yet: type the address in the settings below')}${splitAddr(c.cc).length ? `, copy to ${esc(splitAddr(c.cc).map(wcName).join(', '))}` : ''}, with ${esc(WcDeck.fileName(date))} attached. It opens in Outlook as a draft to check and send.</p>
     <details class="wcset"${WC.open.set ? ' open' : ''}><summary>Settings: the cover and the email</summary><div class="grid2 tight">
@@ -32217,7 +32317,7 @@ function renderWeeklyWs() {
       <p class="hint">Kept for the whole WFM team. Empty To and Cc take the VP and the final result form's contact from the senior manager's contacts.</p></details>`;
   const L4 = [
     { id: 'wcs-hist', title: 'The month in the brands\' history', short: 'History', cap: `The service level and the daily and monthly trends: ${esc(span)} (the month up to the day before the presentation), from the history the daily brand emails keep.`, body: histHtml },
-    { id: 'wcs-files', title: 'Drop the month\'s exports', short: 'Exports', cap: 'Call history for the top call reasons; Tickets for the complaints, resolved on time, still open and the complaint drivers. Read in this browser; nothing is kept.', body: drop },
+    { id: 'wcs-files', title: 'Drop the month\'s exports', short: 'Exports', cap: 'Call history for the top call reasons; the complaints email for the complaints logged, resolved on time, still open and the top tickets (the Tickets export where the email has none). Read in this browser; nothing is kept.', body: drop },
     { id: 'wcs-out', title: 'Outages', short: 'Outages', cap: `The last 3 months (${esc(O.span)}) go in the deck. The list is kept for the whole WFM team: add each outage once.`, body: outHtml },
     { id: 'wcs-send', title: 'The deck and the email', short: 'Deck', cap: 'What the slides show. "–" where a file is missing.', body: sum, acts: `<button class="btn sm" data-wcdeck${busy ? ' disabled' : ''}>Download deck</button><button class="btn sm primary" data-wcmail${busy ? ' disabled' : ''}>Email with the deck</button>` },
   ];
@@ -32466,6 +32566,10 @@ async function prFiles(list) {
   for (const f of F) {
     try {
       const buf = await f.arrayBuffer(), u8 = new Uint8Array(buf);
+      if (/\.(msg|eml|txt|html?)$/i.test(f.name)) {   // the complaints email goes to the brands' slides, as on Weekly commercial
+        const cm = WcDeck.complaintsOf(wcMailText(f.name, u8));
+        if (cm) { prMonthFile(f.name, wcTakeMail(f.name, cm), month); continue; }
+      }
       if (/\.msg$/i.test(f.name)) prRead(msgBodyText(u8), f.name);
       else if (/\.eml$/i.test(f.name)) { const P = UpdParse.emlParts(u8); const a = P.text ? PrDeck.tablesOf(P.text, prRef()) : []; prRead(a.length || !P.html ? P.text : prHtmlText(P.html), f.name); }
       else if (/\.(txt|html?)$/i.test(f.name)) { const t = new TextDecoder().decode(u8); prRead(/\.html?$/i.test(f.name) ? prHtmlText(t) : t, f.name); }
@@ -32477,7 +32581,7 @@ async function prFiles(list) {
   }
   if (got.length) prKeepCalls(got);
   state.prBusy = ''; renderPerfWs();
-  const msg = [], ch = month.some(l => /^Call history/.test(l)), tk = month.some(l => /^Tickets/.test(l));
+  const msg = [], ch = month.some(l => /^Call history/.test(l)), tk = month.some(l => /^(Tickets|Complaints email)/.test(l));
   if (got.length) { const c = PR.calls, k = prFields(prRule()), n = f => Object.values(c.days).reduce((a, x) => a + x[f], 0), w = (v, a) => `${v.toLocaleString('en-US')} ${a}${v === 1 ? '' : 's'}`; msg.push(`${plural(Object.keys(c.days).length, 'day')} of call history read: ${w(n(k.o), 'OTP call')}, ${w(n(k.t), 'final termination call')}`); }
   if (ch || tk) msg.push(`for the brands' slides: ${[ch ? 'the call reasons' : '', tk ? 'the complaints and tickets' : ''].filter(Boolean).join(' and ')}`);
   if (msg.length) toast(msg.join('; ') + '.');
@@ -32528,9 +32632,10 @@ function renderPerfWs() {
   const span = want.length ? (want.length === 1 ? R.dayLabel(first) : R.niceRange(first, ref)) : '';
   const mFiles = WC.files.filter(x => !x.bad), mWarn = [];
   if (!hasC) mWarn.push('No Call history for the month yet: the Top Call Reasons show "–".'); else if (!nC) mWarn.push(`The Call history dropped has no calls in ${span}: the Top Call Reasons show "–". Drop this month's.`);
-  if (!hasT) mWarn.push('No Tickets export for the month yet: Complaints logged, Closed tickets resolved on time, Tickets still open and the Top Complaint Drivers show "–".'); else if (!nT) mWarn.push(`The Tickets export dropped has no tickets in ${span}: the complaints and tickets show "–". Drop this month's.`);
+  if (!hasT && !WC.mail) mWarn.push('No complaints email or Tickets export for the month yet: Complaints logged, Closed tickets resolved on time, Tickets still open and the Top Complaint Drivers show "–".'); else if (!WC.mail && !nT) mWarn.push(`The Tickets export dropped has no tickets in ${span}: the complaints and tickets show "–". Drop this month's.`);
+  if (WC.mail) mWarn.push(...m.notes.filter(n => /^The complaints email is for|^(Virgin Mobile|FRiENDi Mobile): not in the complaints email/.test(n)));
   const brand = `${pills}<p class="hint">The service level and the trends: the month to date (${esc(span)}) and the months before, from the history the daily brand emails keep.</p>
-    <div class="drop rbdrop" data-prdrop="month" role="button" tabindex="0" aria-label="Drop the month's Call history and Tickets exports, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month's Call history and Tickets exports</strong><span>From Crystal (.xls), the month to date, or click to choose them: the Top Call Reasons, the complaints, the tickets and the Top Complaint Drivers. Read in this browser and not kept, so drop them again another day; they count on Weekly commercial too.</span></div><input type="file" hidden multiple accept=".xls" data-prpick="month">
+    <div class="drop rbdrop" data-prdrop="month" role="button" tabindex="0" aria-label="Drop the month's Call history export and the complaints email, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month's Call history export and the complaints email</strong><span>The Call history from Crystal (.xls) for the Top Call Reasons; the complaints email (the answer to "Weekly commercial meeting", .msg or .eml) for the complaints, resolved on time, still open and the Top Complaint Drivers, or the Tickets export (.xls). Read in this browser and not kept; they count on Weekly commercial too.</span></div><input type="file" hidden multiple accept=".xls,.msg,.eml" data-prpick="month">
     ${reading}${mFiles.length ? `<div class="rbfiles">${mFiles.map(x => `<div class="rbfile"><span class="fname" title="${esc(x.name)}">${esc(x.name)}</span><span class="ftag">${esc(x.label)}</span></div>`).join('')}</div><div class="rbmini"><button class="btn sm ghost" data-prmonthclear>Clear files</button></div>` : ''}
     ${mWarn.map(t => `<p class="hint warnline">${esc(t)}</p>`).join('')}`;
   // 3. OTP and final termination calls: the old deck's and the workbook's numbers as they are, the Call history's days after them
@@ -32926,7 +33031,7 @@ const WFM_LEAD = {
   builder: 'Drop the day\'s exports: MC Leaders and the WFM Daily Review are made here, and the four brand emails go straight to the WFM manager.',
   emails: 'Every email the WFM team sends, in one place for the WFM manager and the analysts: the four daily brand emails and the month\'s deduction and absences emails. Edit them here and send them from Outlook; the tool never sends anything itself. The incentive email is the senior manager\'s (Supervisors › Incentive email), with the incentive file you build on Export.',
   inter: 'The interactions export: when customers call, what happens to their calls, and each agent\'s calls.',
-  weekly: 'The Weekly Commercial Presentation for the VP, in four steps: the service level and the trends come from the brands\' history; drop the month\'s Call history and Tickets exports for the call reasons, complaints and tickets; keep the outages list here. The tool makes the PowerPoint and the email with it attached; it never sends anything itself.',
+  weekly: 'The Weekly Commercial Presentation for the VP, in four steps: the service level and the trends come from the brands\' history; drop the month\'s Call history export for the call reasons and the complaints email (the answer to Weekly commercial meeting) for the complaints and the top tickets; keep the outages list here. The tool makes the PowerPoint and the email with it attached; it never sends anything itself.',
   perf: 'The Member Care Performance Review for the VP: drop the "MC performance Review" email (.msg) and the tool reads its tables (Rebooking, Network issues, Web + App, Social media, Vnet) and makes the PowerPoint in the weekly presentation\'s look, with the brands\' slides, the OTP and final termination calls from the Call history export, and the email with it attached; it never sends anything itself.',
   data: 'Everything the tool keeps, out to one file locked with a password, and back in: to keep a copy, or to move the data to another folder or computer.',
 };
@@ -36146,8 +36251,8 @@ const DEPT = [
   ['user', 'WFM analyst', [
     'Every morning, <b>WFM team › Report builder</b>: drop yesterday\'s exports (on a Sunday, Thursday to Saturday). MC Leaders and the WFM Daily Review are made here, and the four brand emails go to <b>WFM team › Emails</b>.',
     '<b>WFM team › Emails</b> is shared with the WFM manager: the four daily brand emails and the month\'s deduction and absences emails. Edit them (SLA insight, subject, greeting, or the text right in the preview), then <b>Copy for Outlook</b> or <b>Download .eml</b> and send them from Outlook. Mark each one sent. The tool never sends anything itself.',
-    'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
-    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Drop your old deck (.pptx) once too: its OTP and final termination numbers are kept as they are, and the exports only add the days after them. For the brands\' slides (Top Call Reasons, complaints, tickets, Top Complaint Drivers) drop the month\'s Call history and Tickets exports in step 2; without them those boxes show –. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
+    'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> export from Crystal for the call reasons, and the <b>complaints email</b> (the Complaint Management team\'s answer to Weekly commercial meeting, saved from Outlook as .msg) for the complaints logged, resolved on time, still open and the top tickets (the Tickets export still works without it); add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
+    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Drop your old deck (.pptx) once too: its OTP and final termination numbers are kept as they are, and the exports only add the days after them. For the brands\' slides drop the month\'s Call history export (Top Call Reasons) and the complaints email, the answer to Weekly commercial meeting (complaints logged, resolved on time, still open, Top Complaint Drivers), in step 2; the Tickets export still works without the email; without them those boxes show –. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     'At month end, the numbered tabs are the month\'s steps, in order: <b>1 Import</b>, <b>2 Review</b>, <b>3 Export</b>, <b>4 Emails</b>. On <b>Import</b>, drop every file of the month at once: the four Genesys exports, the supervisors\' filled attendance templates, the IDs file and the quality Final EVAL (the KPIs are worked out in the tool). The tool recognises each file on this computer and sends it where it belongs; anything it is not sure about, it asks.',
     '<b>Attendance</b>: CC and SM are counted from the Schedule and the Agent Status Timeline by themselves. For TS, MG, CT, QA, DE and WF, <b>Import › Attendance templates</b> makes one file per department for the month (one per supervisor when a department has several; or all of them as one .zip). Each opens on <b>How to fill</b>: a row only for each late, absent, leave or day off, every other day counts as a working day. Drop the filled files on Import.',
@@ -36165,8 +36270,8 @@ const DEPT = [
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
   ['wfm', 'WFM manager', [
     'Every morning, <b>WFM team › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them.',
-    'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> and <b>Tickets</b> exports from Crystal (and FRiENDi Pay\'s tickets sheet) for the call reasons, complaints and tickets; add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
-    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Drop your old deck (.pptx) once too: its OTP and final termination numbers are kept as they are, and the exports only add the days after them. For the brands\' slides (Top Call Reasons, complaints, tickets, Top Complaint Drivers) drop the month\'s Call history and Tickets exports in step 2; without them those boxes show –. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
+    'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> export from Crystal for the call reasons, and the <b>complaints email</b> (the Complaint Management team\'s answer to Weekly commercial meeting, saved from Outlook as .msg) for the complaints logged, resolved on time, still open and the top tickets (the Tickets export still works without it); add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
+    '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Drop your old deck (.pptx) once too: its OTP and final termination numbers are kept as they are, and the exports only add the days after them. For the brands\' slides drop the month\'s Call history export (Top Call Reasons) and the complaints email, the answer to Weekly commercial meeting (complaints logged, resolved on time, still open, Top Complaint Drivers), in step 2; the Tickets export still works without the email; without them those boxes show –. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
     '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it.',

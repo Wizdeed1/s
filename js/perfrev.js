@@ -152,6 +152,10 @@ async function prFiles(list) {
   for (const f of F) {
     try {
       const buf = await f.arrayBuffer(), u8 = new Uint8Array(buf);
+      if (/\.(msg|eml|txt|html?)$/i.test(f.name)) {   // the complaints email goes to the brands' slides, as on Weekly commercial
+        const cm = WcDeck.complaintsOf(wcMailText(f.name, u8));
+        if (cm) { prMonthFile(f.name, wcTakeMail(f.name, cm), month); continue; }
+      }
       if (/\.msg$/i.test(f.name)) prRead(msgBodyText(u8), f.name);
       else if (/\.eml$/i.test(f.name)) { const P = UpdParse.emlParts(u8); const a = P.text ? PrDeck.tablesOf(P.text, prRef()) : []; prRead(a.length || !P.html ? P.text : prHtmlText(P.html), f.name); }
       else if (/\.(txt|html?)$/i.test(f.name)) { const t = new TextDecoder().decode(u8); prRead(/\.html?$/i.test(f.name) ? prHtmlText(t) : t, f.name); }
@@ -163,7 +167,7 @@ async function prFiles(list) {
   }
   if (got.length) prKeepCalls(got);
   state.prBusy = ''; renderPerfWs();
-  const msg = [], ch = month.some(l => /^Call history/.test(l)), tk = month.some(l => /^Tickets/.test(l));
+  const msg = [], ch = month.some(l => /^Call history/.test(l)), tk = month.some(l => /^(Tickets|Complaints email)/.test(l));
   if (got.length) { const c = PR.calls, k = prFields(prRule()), n = f => Object.values(c.days).reduce((a, x) => a + x[f], 0), w = (v, a) => `${v.toLocaleString('en-US')} ${a}${v === 1 ? '' : 's'}`; msg.push(`${plural(Object.keys(c.days).length, 'day')} of call history read: ${w(n(k.o), 'OTP call')}, ${w(n(k.t), 'final termination call')}`); }
   if (ch || tk) msg.push(`for the brands' slides: ${[ch ? 'the call reasons' : '', tk ? 'the complaints and tickets' : ''].filter(Boolean).join(' and ')}`);
   if (msg.length) toast(msg.join('; ') + '.');
@@ -214,9 +218,10 @@ function renderPerfWs() {
   const span = want.length ? (want.length === 1 ? R.dayLabel(first) : R.niceRange(first, ref)) : '';
   const mFiles = WC.files.filter(x => !x.bad), mWarn = [];
   if (!hasC) mWarn.push('No Call history for the month yet: the Top Call Reasons show "–".'); else if (!nC) mWarn.push(`The Call history dropped has no calls in ${span}: the Top Call Reasons show "–". Drop this month's.`);
-  if (!hasT) mWarn.push('No Tickets export for the month yet: Complaints logged, Closed tickets resolved on time, Tickets still open and the Top Complaint Drivers show "–".'); else if (!nT) mWarn.push(`The Tickets export dropped has no tickets in ${span}: the complaints and tickets show "–". Drop this month's.`);
+  if (!hasT && !WC.mail) mWarn.push('No complaints email or Tickets export for the month yet: Complaints logged, Closed tickets resolved on time, Tickets still open and the Top Complaint Drivers show "–".'); else if (!WC.mail && !nT) mWarn.push(`The Tickets export dropped has no tickets in ${span}: the complaints and tickets show "–". Drop this month's.`);
+  if (WC.mail) mWarn.push(...m.notes.filter(n => /^The complaints email is for|^(Virgin Mobile|FRiENDi Mobile): not in the complaints email/.test(n)));
   const brand = `${pills}<p class="hint">The service level and the trends: the month to date (${esc(span)}) and the months before, from the history the daily brand emails keep.</p>
-    <div class="drop rbdrop" data-prdrop="month" role="button" tabindex="0" aria-label="Drop the month's Call history and Tickets exports, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month's Call history and Tickets exports</strong><span>From Crystal (.xls), the month to date, or click to choose them: the Top Call Reasons, the complaints, the tickets and the Top Complaint Drivers. Read in this browser and not kept, so drop them again another day; they count on Weekly commercial too.</span></div><input type="file" hidden multiple accept=".xls" data-prpick="month">
+    <div class="drop rbdrop" data-prdrop="month" role="button" tabindex="0" aria-label="Drop the month's Call history export and the complaints email, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month's Call history export and the complaints email</strong><span>The Call history from Crystal (.xls) for the Top Call Reasons; the complaints email (the answer to "Weekly commercial meeting", .msg or .eml) for the complaints, resolved on time, still open and the Top Complaint Drivers, or the Tickets export (.xls). Read in this browser and not kept; they count on Weekly commercial too.</span></div><input type="file" hidden multiple accept=".xls,.msg,.eml" data-prpick="month">
     ${reading}${mFiles.length ? `<div class="rbfiles">${mFiles.map(x => `<div class="rbfile"><span class="fname" title="${esc(x.name)}">${esc(x.name)}</span><span class="ftag">${esc(x.label)}</span></div>`).join('')}</div><div class="rbmini"><button class="btn sm ghost" data-prmonthclear>Clear files</button></div>` : ''}
     ${mWarn.map(t => `<p class="hint warnline">${esc(t)}</p>`).join('')}`;
   // 3. OTP and final termination calls: the old deck's and the workbook's numbers as they are, the Call history's days after them

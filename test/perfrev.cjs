@@ -10,14 +10,15 @@
 //    the team's old deck (made up) dropped: its numbers kept as they are and the Call history after them (October completed, the
 //    days still missing named), what counts changed without a new drop, the deck's OTP slide from them, Clear and Undo.
 //    The month's Call history and Tickets exports dropped on the brands' step: what was dropped, what is missing (another day's
-//    Call history said so), the Virgin slide's Top Call Reasons and Top Complaint Drivers from them.
+//    Call history said so), the Virgin slide's Top Call Reasons and Top Complaint Drivers from them. The complaints email (made up)
+//    dropped there goes to the brands' slides (its month said), not to the review's tables.
 // 5. An email dropped on the drop zone is read once; a pasted text with two tables says which are not in it; a picture is refused
 //    with what to do instead.
 // 6. The senior manager has no tab; at phone width nothing runs off the page; no errors.
 // Usage: node test/perfrev.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
-const Core = require('../js/core.js'), { msgFile, sampleBody } = require('./msgfile.cjs');
+const Core = require('../js/core.js'), { msgFile, sampleBody, complaintsBody } = require('./msgfile.cjs');
 const [page0, out = 'test/shots'] = process.argv.slice(2); fs.mkdirSync(out, { recursive: true });
 const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');
 let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? '✓ ' : '✗ ') + m); };
@@ -64,7 +65,7 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   ok(em.suggestedFilename() === 'MC Performance Review - 4 Nov 2026.eml' && /\r\nTo: "Huda S\." <huda\.s@example\.com>/.test(eml) && /\r\nCc: "Omar T\." <omar\.t@example\.com>/.test(eml) && /\r\nSubject: MC Performance Review\r\n/.test(eml), 'Email with the deck: to the VP, the contact in copy, "MC Performance Review"');
   ok(/name="MC_Performance_Review - 4 Nov 2026\.pptx"/.test(part) && att && att.has('ppt/presentation.xml') && Buffer.from(txt.replace(/\s+/g, ''), 'base64').toString('utf8') === 'Hi Huda,\r\nKindly find the MC Performance Review as attached.\r\nSincerely.', 'the deck attached; "Hi Huda, Kindly find the MC Performance Review as attached. Sincerely."');
   const st3 = await p.evaluate(() => ({ done: [...document.querySelectorAll('#wfmBody .flowstep')].map(s => s.classList.contains('done')).join(), brand: document.querySelector('#prs-brand').textContent }));
-  ok(st3.done === 'true,false,false,true' && /No Call history for the month yet: the Top Call Reasons show "–"\./.test(st3.brand) && /No Tickets export for the month yet: Complaints logged/.test(st3.brand), 'every step done but the brands\' slides (no Call history or Tickets export for the month: said so) and the OTP and final termination calls');
+  ok(st3.done === 'true,false,false,true' && /No Call history for the month yet: the Top Call Reasons show "–"\./.test(st3.brand) && /No complaints email or Tickets export for the month yet: Complaints logged/.test(st3.brand), 'every step done but the brands\' slides (no Call history, complaints email or Tickets export for the month: said so) and the OTP and final termination calls');
   // ---- the MC KPIs workbook and one of the team's decks (both made up): the three charts the email lacks, and the logos
   const W2 = require('../js/writer2.js'), Pptx = require('../js/pptx.js'), S2 = new W2.Styles(), rbS = new W2.Sheet('Reactivate the Booking code '), otS = new W2.Sheet('OTP & Termination');
   const ser = iso => Math.round((Date.parse(iso + 'T00:00:00Z') - Date.UTC(1899, 11, 30)) / 86400000), iso = (m, d) => new Date(Date.UTC(2026, m - 1, d)).toISOString().slice(0, 10);
@@ -159,6 +160,16 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   const d4 = path.join(out, 'with-month.pptx'); await dl4.saveAs(d4);
   const z4 = await Core.readZip(fs.readFileSync(d4)), v4 = [...((await z4.text('ppt/slides/slide2.xml')) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]);
   ok(v4.includes('Renew Now') && v4.includes('SM is not working') && v4.includes('Top Call Reasons') && v4.includes('Top Complaint Drivers'), 'the Virgin slide: its Top Call Reasons (Renew Now) and Top Complaint Drivers (SM is not working) from the month\'s exports');
+  // the complaints email (a made-up answer to "Weekly commercial meeting", for October) dropped on the brands' step: for the brands' slides, not the review's tables
+  const cmDt = await p.evaluateHandle(b64 => { const d = new DataTransfer(); d.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'RE Weekly commercial meeting.msg', { type: 'application/vnd.ms-outlook' })); return d; }, msgFile(complaintsBody()).toString('base64'));
+  await p.dispatchEvent('#wfmBody [data-prdrop="month"]', 'drop', { dataTransfer: cmDt }); await p.waitForTimeout(700);
+  const cmx = await p.evaluate(() => { const b = document.querySelector('#prs-brand'); return { files: [...b.querySelectorAll('.rbfile')].map(x => x.textContent).join(' | '), warn: [...b.querySelectorAll('.warnline')].map(x => x.textContent).join(' | '), mail: document.querySelector('#prs-mail').textContent, weekly: !!window.__mc.wc().WC.mail }; });
+  ok(/RE Weekly commercial meeting\.msg\s*Complaints email · Oct 2026 · Virgin, FRiENDi, FRiENDi Pay/.test(cmx.files) && /The complaints email is for Oct 2026, not Nov 2026/.test(cmx.warn) && !/RE Weekly commercial meeting/.test(cmx.mail) && cmx.weekly,
+    `the complaints email on the brands' step: for the brands' slides (and Weekly commercial), its month said (${cmx.warn})`);
+  const [dl5] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#wfmBar [data-prdeck]')]);
+  const d5 = path.join(out, 'with-complaints.pptx'); await dl5.saveAs(d5);
+  const v5 = [...((await (await Core.readZip(fs.readFileSync(d5))).text('ppt/slides/slide2.xml')) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]);
+  ok(['1,240', '97%', '210', 'Data not working', 'Complaints logged · Oct 2026'].every(x => v5.includes(x)), "the review's Virgin slide: the complaints email's numbers, its month beside them");
   await p.evaluate(() => { window.__mc.state.db = null; });
   // ---- 5. a drop, a paste, a picture
   const dt = await p.evaluateHandle(b64 => { const d = new DataTransfer(); d.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'Review 2.msg', { type: 'application/vnd.ms-outlook' })); return d; }, msgFile(sampleBody({ vnet: false })).toString('base64'));

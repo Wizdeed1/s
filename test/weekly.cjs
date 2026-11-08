@@ -6,6 +6,8 @@
 //    presentation's year, an older one kept but not shown), the same paste again adds nothing, Remove and Undo.
 // 4. Settings: resolved on time within 24 hours changes the numbers; a To that is not an address is refused.
 // 5. Download deck: the .pptx with the numbers; Email with the deck: an Outlook draft to the VP from the contacts, the deck attached.
+//    The complaints email (a made-up answer to "Weekly commercial meeting", .msg): read, its numbers and top TKTs before the
+//    Tickets export's; another email refused.
 // 6. Another day: 1 November shows October's missing days. The settings and the outages come from the shared data and go back
 //    to it. The senior manager has no Weekly commercial tab; at phone width nothing runs off the page; no errors.
 // Usage: node test/weekly.cjs page.html outDir
@@ -78,7 +80,7 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-10-2
     M.renderWs();
   });
   S = await sum();
-  ok(S['Virgin Mobile'].join('|') === '87%|5|75%|1|Renew Now' && S['FRiENDi Mobile'].join('|') === '87%|1|–|1|Check Data Usage' && S['FRiENDi Pay'][4] === 'Follow Up' && S.Postpaid[1] === '1' && S.Postpaid[4] === 'Billing Details', `with the exports: Virgin ${S['Virgin Mobile'].join(' · ')}; Postpaid ${S.Postpaid.join(' · ')}`);
+  ok(S['Virgin Mobile'].join('|') === '87%|5|75%|1|Renew Now|SM is not working' && S['FRiENDi Mobile'].join('|') === '87%|1|–|1|Check Data Usage|No network' && S['FRiENDi Pay'][4] === 'Follow Up' && S.Postpaid[1] === '1' && S.Postpaid[4] === 'Billing Details', `with the exports: Virgin ${S['Virgin Mobile'].join(' · ')}; Postpaid ${S.Postpaid.join(' · ')}`);
   // ---- 3. outages
   await p.click('#wfmBody [data-oadd]');
   const f1 = await p.evaluate(() => { const a = document.activeElement; return a && a.dataset.of === 'title' && a.closest('tr').querySelector('[data-of="date"]').value; });
@@ -134,6 +136,17 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-10-2
   ok(/name="Beyond_One_Member_Care_Review - 22 Oct 2026\.pptx"/.test(part) && att && att.has('ppt/presentation.xml'), 'the deck attached as a PowerPoint');
   ok(Buffer.from(txt.replace(/\s+/g, ''), 'base64').toString('utf8') === 'Hi Huda,\r\nKindly find the Weekly Commercial Presentation as attached.\r\nSincerely.', 'the body as sent before: Hi Huda, / Kindly find… / Sincerely.');
   await p.screenshot({ path: path.join(out, 'weekly.png'), fullPage: true });
+  // ---- 5b. the complaints email (a made-up answer to "Weekly commercial meeting"): its numbers before the Tickets export's
+  const { msgFile, complaintsBody } = require('./msgfile.cjs');
+  const cmF = path.join(out, 'RE Weekly commercial meeting.msg'), hiF = path.join(out, 'Hello.msg');
+  fs.writeFileSync(cmF, msgFile(complaintsBody())); fs.writeFileSync(hiF, msgFile('Hi all,\r\n\r\nSee you on Sunday.\r\n\r\nRana K.'));
+  await p.setInputFiles('#wfmBody [data-wcpick]', [cmF, hiF]);
+  await p.waitForFunction(() => [...document.querySelectorAll('#wfmBody .rbfile .fname')].some(x => /Hello\.msg/.test(x.textContent)), null, { timeout: 15000 });
+  const cmFiles = await p.evaluate(() => [...document.querySelectorAll('#wfmBody .rbfile')].filter(x => /\.msg$/.test(x.querySelector('.fname').textContent)).map(x => ({ n: x.querySelector('.fname').textContent, t: x.querySelector('.ftag').textContent, bad: x.classList.contains('bad') })));
+  ok(cmFiles.length === 2 && cmFiles[0].t === 'Complaints email · Oct 2026 · Virgin, FRiENDi, FRiENDi Pay' && !cmFiles[0].bad && cmFiles[1].bad && /not the complaints email/.test(cmFiles[1].t), `the complaints email read (${cmFiles[0] && cmFiles[0].t}); another email refused`);
+  S = await sum();
+  ok(S['Virgin Mobile'].join('|') === '87%|1,240|97%|210|Renew Now|Data not working' && S['FRiENDi Mobile'].slice(1).join('|') === '300|100%|40|Check Data Usage|SIM not working'
+    && S['FRiENDi Pay'].slice(1).join('|') === '90|–|25|Follow Up|Remittance / Technical error while processing the remittance', `the email's numbers come first, with its top TKT: Virgin ${S['Virgin Mobile'].join(' | ')}`);
   // ---- 6. another day; the shared data; roles; phone width
   await p.fill('#wfmBar [data-wcdate]', '2026-11-01'); await p.dispatchEvent('#wfmBar [data-wcdate]', 'change'); await p.waitForTimeout(200);
   const nov = await p.evaluate(() => ({ pills: [...document.querySelectorAll('.wchist .pill')].map(x => x.textContent.trim() + (x.classList.contains('warn') ? ' warn' : '')), hint: (document.querySelector('#wcs-hist .hint') || {}).textContent || '' }));

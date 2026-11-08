@@ -8,6 +8,8 @@
 // 3. The outages of the month and the two before, up to the presentation's day.
 // 4. The deck: 7 slides, a column-and-line chart with its own workbook for each trend, the numbers on the slides, text escaped,
 //    the logo as a picture, a second outages slide when there are many, and "–" where a file is missing.
+// 5. The complaints email (a made-up answer to "Weekly commercial meeting", as a .msg keeps it and as copied from Outlook): its
+//    numbers before the tickets export's, one by one; another email not taken for it; an email of another month said so.
 // Usage: node test/weekly.test.cjs [outDir: the made-up deck is written there, to open or render]
 const fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
 const repo = path.join(__dirname, '..');
@@ -128,5 +130,30 @@ const near = (a, b) => a != null && Math.abs(a - b) < 1e-9;
   ok(te.filter(x => x === '–').length >= 6 && e.notes.length >= 5 && /descr="Beyond One"/.test(await ze.text('ppt/slides/slide1.xml')), `no history and no files: "–" on the slides, ${e.notes.length} notes, the logo built in`);
   ok(WcDeck.fileName('2026-10-25') === 'Beyond_One_Member_Care_Review - 25 Oct 2026.pptx', 'the file name as sent before');
   ok(WcDeck.ticketBrand('FRiENDi Pay Complaint') === 'fpay' && WcDeck.ticketBrand('FRiENDi Inquiry') === 'friendi' && WcDeck.ticketBrand('Virgin Complaint') === 'virgin' && WcDeck.ticketBrand('') === null, 'tickets: the brand from the type');
+  // ---- 5. the complaints email (the answer to "Weekly commercial meeting"): its numbers before the tickets export's
+  const { complaintsBody, sampleBody } = require('./msgfile.cjs');
+  const CM = WcDeck.complaintsOf(complaintsBody()), CT = WcDeck.complaintsOf(complaintsBody({ tabs: true }));
+  const cmv = x => x && [x.period && x.period.label, x.total, x.onTime, x.open, x.drivers && x.drivers.list.length].join('|');
+  ok(cmv(CM.brands.virgin) === 'Oct 2026|1240|0.97|210|5' && cmv(CM.brands.friendi) === 'Oct 2026|300|1|40|5' && cmv(CM.brands.fpay) === 'Oct 2026|90||25|5',
+    `the email read: Virgin ${cmv(CM.brands.virgin)}, FRiENDi ${cmv(CM.brands.friendi)}, FRiENDi Pay ${cmv(CM.brands.fpay)} (FRiENDi Pay's resolution only as targets in days)`);
+  ok(JSON.stringify(CT) === JSON.stringify(CM), 'the same numbers when the email is copied from Outlook (a row tab-separated)');
+  ok(CM.brands.virgin.drivers.list[0].label === 'Data not working' && near(CM.brands.virgin.drivers.list[0].pct, 0.1) && CM.brands.fpay.drivers.list[0].label === 'Remittance / Technical error while processing the remittance', 'its top complaints with their totals and shares');
+  ok(WcDeck.complaintsOf('Hello, see you on Sunday.') === null && WcDeck.complaintsOf(sampleBody()) === null, 'another email: not read as the complaints email (the request quoted under the answer, with no numbers, is left out too)');
+  const me = WcDeck.model({ date: '2026-10-22', hist: H, complaints: CM }, E), [mv, mf, mp] = me.brands;
+  ok(mv.from === 'email' && mv.tickets.total === 1240 && near(mv.tickets.onTime, 0.97) && mv.tickets.open === 210 && mv.tickets.drivers.list[0].label === 'Data not working' && mv.period === null,
+    'no tickets export: the slides take the email\'s complaints logged, resolved on time, still open and top tickets');
+  ok(mf.tickets.total === 300 && mp.tickets.total === 90 && mp.tickets.onTime === null && !me.notes.some(n => /tickets export/.test(n)), `FRiENDi and FRiENDi Pay too; no note asks for the tickets export (${me.notes.join(' | ')})`);
+  const mb = WcDeck.model({ date: '2026-10-22', hist: H, tickets, complaints: CM }, E);
+  ok(mb.brands[0].tickets.total === 1240 && mb.brands[0].tickets.drivers.list[0].label === 'Data not working' && mb.brands[2].tickets.onTime === null, 'with the tickets export too, the email\'s numbers come first');
+  const part = WcDeck.complaintsOf(complaintsBody().replace('Resolution Time of Closed TKT', 'Resolution'));
+  const mpart = WcDeck.model({ date: '2026-10-22', hist: H, tickets, onTimeH: 72, complaints: part }, E);
+  ok(mpart.brands[0].tickets.total === 1240 && near(mpart.brands[0].tickets.onTime, 0.8), 'a number the email leaves out comes from the tickets export (Virgin resolved on time 80%)');
+  const sep = WcDeck.model({ date: '2026-10-22', hist: H, complaints: WcDeck.complaintsOf(complaintsBody({ period: 'Sep 2026' })) }, E);
+  ok(sep.brands[0].period && sep.brands[0].period.label === 'Sep 2026' && sep.notes.some(n => /^The complaints email is for Sep 2026, not Oct 2026/.test(n)), 'an email of another month: said in the notes');
+  const zs = await Core.readZip(await WcDeck.deck(sep, {}).bytes()), ts2 = T(await zs.text('ppt/slides/slide2.xml')), ts4 = T(await zs.text('ppt/slides/slide4.xml'));
+  ok(['1,240', '97%', '210', 'Complaints logged · Sep 2026', 'Resolved on time · Sep 2026', 'Tickets still open · Sep 2026', 'Top Complaint Drivers · Sep 2026', 'Data not working'].every(x => ts2.includes(x)), "Virgin's slide: the email's numbers, with its month beside them");
+  ok(['90', '25', 'Complaints logged · Sep 2026', 'Tickets still open · Sep 2026'].every(x => ts4.includes(x)), "FRiENDi Pay's slide too");
+  const zo = await Core.readZip(await WcDeck.deck(me, {}).bytes()), to2 = T(await zo.text('ppt/slides/slide2.xml'));
+  ok(to2.includes('Complaints logged') && to2.includes('1,240') && !to2.some(x => /· Oct 2026$/.test(x) && /Complaints/.test(x)), "the email of the deck's own month: the tiles' labels as they are");
   console.log(bad ? `${bad} failed` : 'all passed'); process.exit(bad ? 1 : 0);
 })().catch(e => { console.log('✗ ' + (e && e.stack || e)); process.exit(1); });

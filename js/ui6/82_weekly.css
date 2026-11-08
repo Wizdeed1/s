@@ -19,6 +19,7 @@
 .wcpaste .acts, .wcset .grid2 { margin-top: 8px; }
 .wcsum { max-height: none; }
 .wcsum td:first-child { white-space: nowrap; }
+.wcsum td.wctop { max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wcnotes { margin: 10px 0 0; padding-left: 18px; color: var(--warn); font-size: 13px; line-height: 1.5; }
 .wcflow .flowstep .stacts { gap: 8px; }
 .prtab { max-height: none; margin-top: 10px; }

@@ -2,11 +2,12 @@
 // Every week the WFM team sends the VP the Weekly Commercial Presentation: a 7-slide PowerPoint (cover; Virgin Mobile, FRiENDi
 // Mobile and FRiENDi Pay with their service level, daily and monthly trends, complaints, call reasons and complaint drivers;
 // Postpaid; the outages of the last three months; thank you). The service level and the trends come from the brands' history the
-// daily brand emails keep; the call reasons, complaints and tickets from the month-to-date Call history and Tickets exports dropped
-// here (read in this browser, not kept); the outages from a list the team keeps here (config/outages). The deck is made here
+// daily brand emails keep; the call reasons from the month-to-date Call history export; the complaints, resolved on time, still
+// open and top tickets from the Complaint Management team's answer to "Weekly commercial meeting" (the .msg) or else the Tickets
+// export; all dropped here, read in this browser and not kept; the outages from a list the team keeps here (config/outages). The deck is made here
 // (WcDeck) and the email to the VP comes as an Outlook draft with the deck attached; the tool never sends anything itself.
 Object.assign(state, { wcDate: '', wcCfg: null, outages: null, wcBusy: '', wcBuilt: '', deckLogos: null });
-const WC = { calls: {}, tickets: {}, comb: {}, fpay: null, files: [], loaded: null, boot: null, ready: false, saveT: 0, open: { paste: false, set: false }, pasteText: '' };
+const WC = { calls: {}, tickets: {}, comb: {}, fpay: null, mail: null, files: [], loaded: null, boot: null, ready: false, saveT: 0, open: { paste: false, set: false }, pasteText: '' };
 const WC0 = { presenter: '', title: '', to: '', cc: '', onTimeH: 72 };
 const WC_BRAND = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay' };
 const WC_MAXOUT = 500;
@@ -91,8 +92,20 @@ function wcRows(kind) {
 const wcCalls = () => wcRows('calls'), wcTickets = () => wcRows('tickets');
 function wcModel(date) {
   const c = wcCfg();
-  return WcDeck.model({ date: date || wcDateNow(), hist: rbHist(), calls: wcCalls(), tickets: wcTickets(), fpayTickets: WC.fpay ? WC.fpay.rows : null, outages: outagesNow(), onTimeH: c.onTimeH, reports: (window.Build || {}).REPORTS }, rbE());
+  return WcDeck.model({ date: date || wcDateNow(), hist: rbHist(), calls: wcCalls(), tickets: wcTickets(), fpayTickets: WC.fpay ? WC.fpay.rows : null, outages: outagesNow(), onTimeH: c.onTimeH, reports: (window.Build || {}).REPORTS, complaints: WC.mail }, rbE());
 }
+/** an email's text: the .msg's text body, the .eml's text part (or its HTML as text), a saved .txt or .htm */
+function wcMailText(name, u8) {
+  if (/\.msg$/i.test(name)) return msgBodyText(u8);
+  if (/\.eml$/i.test(name)) { const P = UpdParse.emlParts(u8); return P.text && WcDeck.complaintsOf(P.text) ? P.text : P.html ? prHtmlText(P.html) : P.text || ''; }
+  const t = new TextDecoder().decode(u8); return /\.html?$/i.test(name) ? prHtmlText(t) : t;
+}
+/** the complaints email read (with the files: not kept), and its line in the list of files */
+function wcTakeMail(name, r) {
+  WC.mail = { name, ...r };
+  return `Complaints email · ${r.periods.join(', ') || 'no month'} · ${Object.keys(r.brands).map(k => WC_BRAND[k]).join(', ')}`;
+}
+const WC_NOTMAIL = 'not the complaints email: drop the answer to "Weekly commercial meeting", with No. of Complaints for each brand';
 
 // ---------------------------------------------------------------- the files: the month-to-date Crystal exports, FRiENDi Pay's tickets sheet
 async function wcAddFiles(list) {
@@ -102,6 +115,11 @@ async function wcAddFiles(list) {
   const E = rbE(), notes = [];
   for (const f of Array.from(list)) {
     try {
+      if (/\.(msg|eml|txt|html?)$/i.test(f.name)) {   // the complaints email
+        const r = WcDeck.complaintsOf(wcMailText(f.name, new Uint8Array(await f.arrayBuffer())));
+        notes.push(r ? { name: f.name, label: wcTakeMail(f.name, r) } : { name: f.name, label: WC_NOTMAIL, bad: true });
+        continue;
+      }
       if (/\.xls$/i.test(f.name)) {
         const sheets = window.parseXls(await f.arrayBuffer()), rows = sheets[0] ? sheets[0].rows : [], c = E.classify(f.name, 'xls', { rows });
         if (c.type === 'history') { const p = E.historyRows(rows); WC.calls[f.name] = p; notes.push({ name: f.name, label: `Call history · ${E.fmtInt(p.length)} rows${wcSpan(p.map(r => E.rowDate(r[E.COL.date])))}` }); }
@@ -117,7 +135,7 @@ async function wcAddFiles(list) {
         const pl = E.parseCsv(await f.text()); if (E.classify(f.name, 'csv', pl).type === 'fpayTickets') rows = E.parseTicketSheet(pl);
       }
       if (rows) { WC.fpay = { name: f.name, rows }; notes.push({ name: f.name, label: `FRiENDi Pay tickets · ${E.fmtInt(rows.reduce((a, r) => a + (+r.count || 0), 0))} tickets${wcSpan(rows.map(r => r.date))}` }); }
-      else notes.push({ name: f.name, label: 'not recognised: drop the Call history, the Tickets export or FRiENDi Pay\'s tickets sheet', bad: true });
+      else notes.push({ name: f.name, label: 'not recognised: drop the Call history, the complaints email, the Tickets export or FRiENDi Pay\'s tickets sheet', bad: true });
     } catch (err) { notes.push({ name: f.name, label: 'not readable (' + ((err && err.message) || err) + ')', bad: true }); }
   }
   WC.files = WC.files.filter(x => !notes.some(n => n.name === x.name)).concat(notes); WC.comb = {};
@@ -130,7 +148,7 @@ function wcSpan(dates) {
   const R = rbR(), a = D[0], b = D[D.length - 1];
   return ' · ' + (a === b ? R.dayLabel(a) : R.niceRange(a, b));
 }
-function wcClear() { WC.calls = {}; WC.tickets = {}; WC.comb = {}; WC.fpay = null; WC.files = []; state.wcBuilt = ''; renderWeeklyWs(); }
+function wcClear() { WC.calls = {}; WC.tickets = {}; WC.comb = {}; WC.fpay = null; WC.mail = null; WC.files = []; state.wcBuilt = ''; renderWeeklyWs(); }
 
 // ---------------------------------------------------------------- the outages: typed in, or pasted from Excel
 const WC_MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
@@ -176,7 +194,7 @@ function renderWeeklyWs() {
   const c = wcCfg(), date = wcDateNow(), m = wcModel(), R = rbR(), busy = state.wcBusy;
   const ref = m.ref, first = ref.slice(0, 8) + '01', want = []; for (let d = first; d <= ref; d = wcAddDays(d, 1)) want.push(d);
   const histRows = m.brands.concat([m.postpaid]).map(B => { const have = new Set(B.v.daily.map(r => r.date)), miss = want.filter(d => !have.has(d)); return { B, n: have.size, miss }; });
-  const histOk = histRows.every(x => x.n && !x.miss.length), filesOk = !!(wcCalls() && wcTickets());
+  const histOk = histRows.every(x => x.n && !x.miss.length), filesOk = !!(wcCalls() && (wcTickets() || WC.mail));
   const O = m.outages, outOk = O.list.length > 0, built = state.wcBuilt === date;
   const sts = stepStates([histOk, filesOk, outOk, built]);
   const span = want.length ? (want.length === 1 ? R.dayLabel(first) : R.niceRange(first, ref)) : '';
@@ -186,7 +204,7 @@ function renderWeeklyWs() {
   const histHtml = `<div class="wchist">${histRows.map(({ B, n, miss }) => `<span class="pill ${n && !miss.length ? 'good' : n ? 'warn' : 'bad'}" title="${esc(miss.length ? 'Missing: ' + rbShortDays(miss) : 'Every day is in the history')}"><i class="wcdot" style="background:#${B.color}"></i>${esc(B.short)} · ${n}/${want.length} days</span>`).join('')}</div>
     ${histOk ? '' : `<p class="hint">${histRows.filter(x => x.miss.length).map(({ B, miss }) => `<b>${esc(B.short)}</b> has no ${esc(rbShortDays(miss))}`).join(' · ')}. Drop those days' exports on WFM team › Report builder, or import the brands' history on Emails › Daily brand emails.</p>`}`;
   const files = WC.files.length ? `<div class="rbfiles">${WC.files.map(f => `<div class="rbfile${f.bad ? ' bad' : ''}"><span class="fname" title="${esc(f.name)}">${esc(f.name)}</span><span class="ftag">${esc(f.label)}</span></div>`).join('')}</div><div class="rbmini"><button class="btn sm ghost" data-wcclear>Clear files</button></div>` : '<p class="hint">No files yet.</p>';
-  const drop = `<div class="drop rbdrop" data-wcdrop role="button" tabindex="0" aria-label="Drop the month's exports, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month-to-date exports</strong><span>The Call history and the Tickets exports from Crystal (.xls), and FRiENDi Pay's tickets sheet (.xlsx or .csv), or click to choose them</span></div><input type="file" multiple accept=".xls,.xlsx,.csv" hidden data-wcpick>${files}`;
+  const drop = `<div class="drop rbdrop" data-wcdrop role="button" tabindex="0" aria-label="Drop the month's exports, or choose them"><svg aria-hidden="true"><use href="#i-up"/></svg><strong>Drop the month-to-date files</strong><span>The Call history export from Crystal (.xls) and the complaints email (the answer to "Weekly commercial meeting", .msg or .eml); or the Tickets export (.xls) and FRiENDi Pay's tickets sheet (.xlsx or .csv). Or click to choose them</span></div><input type="file" multiple accept=".xls,.xlsx,.csv,.msg,.eml,.txt,.htm,.html" hidden data-wcpick>${files}`;
   const lo = O.from + '-01', inRange = x => x.date >= lo && x.date <= date;
   const L = outagesNow().slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), shown = L.filter(inRange), older = L.length - shown.length;
   const orow = x => `<tr data-oid="${esc(x.id)}"><td><input type="date" class="cell" data-of="date" value="${esc(x.date)}" aria-label="Day of the outage"></td><td><input class="cell" data-of="title" value="${esc(x.title)}" placeholder="Outage and issue" aria-label="Outage and issue" maxlength="200"></td>
@@ -196,11 +214,12 @@ function renderWeeklyWs() {
     <div class="acts wcoacts"><button class="btn sm" data-oadd>Add an outage</button>${older ? `<span class="hint">${plural(older, 'older outage')} kept, not in this deck.</span>` : ''}</div>
     <details class="wcpaste"${WC.open.paste ? ' open' : ''}><summary>Paste rows from Excel</summary><p class="hint">Copy the rows (Date, Outage and issue, Affected brand, Description) and paste them here. A day like 6-Aug takes the presentation's year; a heading row is left out.</p><textarea class="cell rbta" data-opaste rows="4" placeholder="6-Aug&#9;Genesys outage&#9;Virgin, FRiENDi&#9;What happened">${esc(WC.pasteText)}</textarea><div class="acts"><button class="btn sm" data-opastego>Add these rows</button></div></details>`;
   const t = B => B.tickets, cell = v => `<td class="num">${esc(v)}</td>`;
+  const top = v => `<td class="wctop" dir="auto"${v ? ` title="${esc(v)}"` : ''}>${esc(v || '–')}</td>`;   // a long label cut with …, whole on hover
   const pc = v => (v == null ? '–' : Math.round(v * 100) + '%'), nn = v => (v == null ? '–' : Math.round(v).toLocaleString('en-US'));
-  const sum = `<div class="tablewrap wcsum"><table><thead><tr><th>Slide</th><th class="r">Service level</th><th class="r">Complaints logged</th><th class="r">Resolved on time</th><th class="r">Still open</th><th>Top call reason</th></tr></thead><tbody>
-    ${m.brands.map(B => `<tr><td><i class="wcdot" style="background:#${B.color}"></i>${esc(B.name)}</td>${cell(pc(B.v.mtd && B.v.mtd.sl))}${cell(nn(t(B) && t(B).total))}${cell(pc(t(B) && t(B).onTime))}${cell(nn(t(B) && t(B).open))}<td dir="auto">${esc((B.reasons && B.reasons.list[0] || {}).label || '–')}</td></tr>`).join('')}
-    <tr><td><i class="wcdot" style="background:#${m.postpaid.color}"></i>Postpaid</td>${cell(pc(m.postpaid.v.mtd && m.postpaid.v.mtd.sl))}${cell(nn(m.postpaid.tickets && m.postpaid.tickets.base))}<td class="num">–</td><td class="num">–</td><td dir="auto">${esc((m.postpaid.reasons && m.postpaid.reasons.list[0] || {}).label || '–')}</td></tr>
-    <tr><td>Outages</td><td class="num" colspan="5">${plural(O.list.length, 'incident')} in ${esc(O.span)}${O.list.length ? `, ${plural(O.brands, 'brand')}` : ''}</td></tr></tbody></table></div>
+  const sum = `<div class="tablewrap wcsum"><table><thead><tr><th>Slide</th><th class="r">Service level</th><th class="r">Complaints logged</th><th class="r">Resolved on time</th><th class="r">Still open</th><th>Top call reason</th><th>Top TKT</th></tr></thead><tbody>
+    ${m.brands.map(B => `<tr><td><i class="wcdot" style="background:#${B.color}"></i>${esc(B.name)}</td>${cell(pc(B.v.mtd && B.v.mtd.sl))}${cell(nn(t(B) && t(B).total))}${cell(pc(t(B) && t(B).onTime))}${cell(nn(t(B) && t(B).open))}${top((B.reasons && B.reasons.list[0] || {}).label)}${top((t(B) && t(B).drivers && t(B).drivers.list[0] || {}).label)}</tr>`).join('')}
+    <tr><td><i class="wcdot" style="background:#${m.postpaid.color}"></i>Postpaid</td>${cell(pc(m.postpaid.v.mtd && m.postpaid.v.mtd.sl))}${cell(nn(m.postpaid.tickets && m.postpaid.tickets.base))}<td class="num">–</td><td class="num">–</td>${top((m.postpaid.reasons && m.postpaid.reasons.list[0] || {}).label)}${top((m.postpaid.tickets && m.postpaid.tickets.list[0] || {}).label)}</tr>
+    <tr><td>Outages</td><td class="num" colspan="6">${plural(O.list.length, 'incident')} in ${esc(O.span)}${O.list.length ? `, ${plural(O.brands, 'brand')}` : ''}</td></tr></tbody></table></div>
     ${m.notes.length ? `<ul class="wcnotes">${m.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
     <p class="hint">The email goes to ${esc(splitAddr(c.to).map(wcName).join(', ') || 'nobody yet: type the address in the settings below')}${splitAddr(c.cc).length ? `, copy to ${esc(splitAddr(c.cc).map(wcName).join(', '))}` : ''}, with ${esc(WcDeck.fileName(date))} attached. It opens in Outlook as a draft to check and send.</p>
     <details class="wcset"${WC.open.set ? ' open' : ''}><summary>Settings: the cover and the email</summary><div class="grid2 tight">
@@ -212,7 +231,7 @@ function renderWeeklyWs() {
       <p class="hint">Kept for the whole WFM team. Empty To and Cc take the VP and the final result form's contact from the senior manager's contacts.</p></details>`;
   const L4 = [
     { id: 'wcs-hist', title: 'The month in the brands\' history', short: 'History', cap: `The service level and the daily and monthly trends: ${esc(span)} (the month up to the day before the presentation), from the history the daily brand emails keep.`, body: histHtml },
-    { id: 'wcs-files', title: 'Drop the month\'s exports', short: 'Exports', cap: 'Call history for the top call reasons; Tickets for the complaints, resolved on time, still open and the complaint drivers. Read in this browser; nothing is kept.', body: drop },
+    { id: 'wcs-files', title: 'Drop the month\'s exports', short: 'Exports', cap: 'Call history for the top call reasons; the complaints email for the complaints logged, resolved on time, still open and the top tickets (the Tickets export where the email has none). Read in this browser; nothing is kept.', body: drop },
     { id: 'wcs-out', title: 'Outages', short: 'Outages', cap: `The last 3 months (${esc(O.span)}) go in the deck. The list is kept for the whole WFM team: add each outage once.`, body: outHtml },
     { id: 'wcs-send', title: 'The deck and the email', short: 'Deck', cap: 'What the slides show. "–" where a file is missing.', body: sum, acts: `<button class="btn sm" data-wcdeck${busy ? ' disabled' : ''}>Download deck</button><button class="btn sm primary" data-wcmail${busy ? ' disabled' : ''}>Email with the deck</button>` },
   ];

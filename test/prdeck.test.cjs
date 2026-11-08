@@ -21,7 +21,7 @@ let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? '✓ ' : '�
 const src = fs.readFileSync(path.join(repo, 'js/rb_src.html'), 'utf8'), code = src.split('<script id="rb-code">')[1].split('</' + 'script>')[0];
 const W = { console, TextDecoder, TextEncoder, setTimeout, clearTimeout }; W.window = W; vm.createContext(W); vm.runInContext(code, W);
 const E = W.Engine, Core = require(path.join(repo, 'js/core.js')), WcDeck = require(path.join(repo, 'js/wcdeck.js')), PrDeck = require(path.join(repo, 'js/prdeck.js')), Pptx = require(path.join(repo, 'js/pptx.js'));
-const { msgFile, sampleBody } = require('./msgfile.cjs');
+const { msgFile, sampleBody, complaintsBody } = require('./msgfile.cjs');
 const ref = { y: 2026, m: 11 };
 (async () => {
   // ---- 1. reading
@@ -96,6 +96,12 @@ const ref = { y: 2026, m: 11 };
   const t5 = [...((await z3.text('ppt/slides/slide5.xml')) || '').matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(r => r[1]);
   ok(t5.includes('Network TKT: not in the email') && z3.names().filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n)).length === 7, 'no Network table: said so in its place; no workbook: no OTP slide (7 slides)');
   ok(PrDeck.fileName('2026-11-04') === 'MC_Performance_Review - 4 Nov 2026.pptx', 'the file name');
+  // the brands' slides from the complaints email (a made-up answer to "Weekly commercial meeting", for October: the review is November's)
+  const cmM = WcDeck.model({ date: '2026-11-04', hist: H, complaints: WcDeck.complaintsOf(complaintsBody()) }, E), cmZ = await Core.readZip(await PrDeck.deck(cmM, T, {}).bytes());
+  const cmX = async n => { const x = (await cmZ.text(n)) || ''; return runsOf(x).concat([...x.matchAll(/<a:p>([\s\S]*?)<\/a:p>/g)].map(p => runsOf(p[1]).join(''))).map(un); };
+  const cv2 = await cmX('ppt/slides/slide2.xml'), cv3 = await cmX('ppt/slides/slide3.xml');
+  ok(['1,240', '97%', '210', 'Complaints logged · Oct 2026', 'Top Complaint Drivers · Oct 2026', 'Data not working'].every(x => cv2.includes(x)) && ['300', '100%', '40', 'SIM not working'].every(x => cv3.includes(x)),
+    "the review's brand slides take the complaints email's numbers, its month beside them");
   // ---- 4. the made-up .msg, read with the tool's own reader
   const ex = fs.readFileSync(path.join(repo, 'js/extras.js'), 'utf8'), fn = ex.slice(ex.indexOf('function msgBodyText'), ex.indexOf('/** "Name / Team" pairs'));
   const msgBodyText = new Function(fn + '; return msgBodyText;')();

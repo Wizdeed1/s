@@ -14,8 +14,25 @@ that the admin can view every role's interface (a preview that saves nothing) an
 The tool still sends nothing and makes no network request; opened as a file, the browser itself now refuses any web
 address (see the security review below).
 
-**The built file:** [`final/Cadence.html`](final/MC%20Monthly%20Report%20Builder.html). Open it in
+**The built file:** [`final/Cadence.html`](final/Cadence.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
+
+## Interaction design: a quieter page, faster work (November 2026)
+
+The approved look is kept; how the pages are worked changed. The brief, with before-and-after numbers, is
+[`docs/UX-BRIEF.md`](docs/UX-BRIEF.md). The code is `js/ux.js` and `js/ui6/76_ux.css`; `test/ux.cjs` checks it.
+
+| Part | What changed |
+|---|---|
+| Explanations | A page's lead, a step's caption and a card's caption sit behind an **ⓘ** next to their title (point at it, focus it, or click to pin it; Esc closes). Status, numbers, warnings and actions stay on the page. **Show guidance** (account menu, Shift H) puts every explanation back; remembered per browser (`mc-guide`). |
+| Steps | Supervisors, Quality, Weekly commercial and Performance Review: each step is one line; its cards open when it is next (or always, where they are the working data: who finished, the tables); the chevron or the title opens and closes it (`mc-ux-open:<step>`); a progress bar above says how many are done, with **Go to step** and **Open all**. |
+| Tables | A data card's header has **Copy** (a table for Outlook and Excel, and tab text) and, on a long table with no search, **Filter rows**; Team's Copy takes every agent shown on every page; a click on a National ID copies it. |
+| Typing in a table | Enter saves and goes down, Shift Enter up, ↑ ↓ move, Esc puts the value back; the cursor comes back to the right box after the page redraws (it was lost after every value). |
+| Results | **Show** (Not eligible, Decided by hand, Changed by hand, No earned SR, Below target, with counts); ticks and a bulk bar: Eligible, Not eligible, By the rules (each decision logged, Undo), Copy names, Copy IDs. |
+| Quality | Team tabs over the grid (All still there; a search shows every match); a column pasted from Excel is checked, then saved as one logged change. |
+| Import, Export, Review | A ready export is one slim line with its Ready chip, the drop zone a slim bar; Export's sheet list and after-download tips are disclosures; Review › People opens as the table; a long list to read shows 10 lines, then Show all. |
+| Keys | ? the shortcuts; g then a letter a page (d w i e q c t r m); [ and ] the month; Shift H the guidance. S and Z stay the presenter's. How to use has a **Work faster** section. |
+| Kept | The one-to-one form stays on one page (asked for earlier). No calculation, rule, saved format, email or permission changed. |
 
 ## Beyond One (November 2026)
 
@@ -421,6 +438,7 @@ node test/weekly.cjs "final/Cadence.html" test/shots           # WFM team › We
 node test/attupd.cjs "final/Cadence.html" test/shots           # Emails › Deduction and absences › Corrections after the review: a champion's table pasted, typed lines (choose between two people, a range's OFF day, clear), exceptions as the supervisors list them (the deduction, the email and its workbook follow), Apply, Undo, Remove, an .eml chosen and dropped, a picture refused, a final month, text as text, the senior manager without the box
 node test/perfrev.cjs "final/Cadence.html" test/shots          # WFM team › Performance Review: a made-up .msg chosen and one dropped, its tables listed, the deck and the email to the VP, a made-up Call history (.xlsx, and an .xls) counted and kept with the shared days, what counts, Clear and Undo, a pasted text, a picture refused, the senior manager without the tab, phone width
 node test/viewas.cjs "final/Cadence.html" test/shots           # the admin's View as (every role, a supervisor's team, an agent's page, nothing saved while viewing) and the Showcase (sections, figures, Present)
+node test/ux.cjs "final/Cadence.html" test/shots /tmp/exports   # the interaction layer: ⓘ and Show guidance, keys, one-line steps, Copy and Filter, Results bulk decisions, Quality tabs, Enter and paste, slim Import, Show all
 node test/meeting.cjs "final/Meeting kit/05 Cadence - Demo.html" "final/Meeting kit/06 Live drop pack (made-up, Sep 2026)" test/shots   # the demo file (opens anywhere, nothing stored), no KPI file asked for, the bell's buttons, How on Results, the calculator, the presenter's keys, View as an agent, Import
 bash tools/meeting/build.sh                                                        # the meeting kit from the current build (made-up data; needs ffmpeg)
 bash tools/deck/build.sh /tmp/mc-deck                                              # the stakeholder deck from the current build (synthetic data; needs LibreOffice and pptxgenjs)

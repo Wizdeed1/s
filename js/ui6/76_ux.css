@@ -110,3 +110,6 @@ tr.sel > td { background: var(--accent-soft); }
 .drop.slim .dropsub { display: none; }
 .uxi.uxhere { margin-inline-start: 0; }
 @media (max-width: 640px) { .slot.slim { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "top acts" "file file" "kv kv"; } }
+/* ---- a long list: its first 10 lines, then Show all */
+li.uxmoreoff { display: none !important; }
+.uxmore { margin-top: 8px; font-size: 13px; }

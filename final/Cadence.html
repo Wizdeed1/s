@@ -2578,6 +2578,9 @@ tr.sel > td { background: var(--accent-soft); }
 .drop.slim .dropsub { display: none; }
 .uxi.uxhere { margin-inline-start: 0; }
 @media (max-width: 640px) { .slot.slim { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "top acts" "file file" "kv kv"; } }
+/* ---- a long list: its first 10 lines, then Show all */
+li.uxmoreoff { display: none !important; }
+.uxmore { margin-top: 8px; font-size: 13px; }
 
 /* ------------------------------------------------------------------------------------------------------------- WFM › Report builder (the analysts) and WFM › Daily emails (the WFM manager) */
 .rb { display: grid; gap: 18px; min-width: 0; }
@@ -38110,8 +38113,8 @@ function uxDeclutter() {
   for (const b of main.querySelectorAll('.uxi')) { const s = uxSrcOf(b); if (!s || !s.isConnected) b.hidden = true; }
 }
 // after every change to the page, once per frame (the pages draw themselves; this only adds the ⓘ and the tools)
-const uxObs = new MutationObserver(() => { if (UX.mo) return; UX.mo = requestAnimationFrame(() => { UX.mo = 0; try { uxDeclutter(); uxFlowBars(); uxEnhance(); uxRefocus(); } catch (e) { /* a page half drawn: the next pass */ } }); });
-function uxStart() { const m = $('main'); if (m) uxObs.observe(m, { childList: true, subtree: true }); uxDeclutter(); uxFlowBars(); uxEnhance(); }
+const uxObs = new MutationObserver(() => { if (UX.mo) return; UX.mo = requestAnimationFrame(() => { UX.mo = 0; try { uxDeclutter(); uxFlowBars(); uxEnhance(); uxLists(); uxRefocus(); } catch (e) { /* a page half drawn: the next pass */ } }); });
+function uxStart() { const m = $('main'); if (m) uxObs.observe(m, { childList: true, subtree: true }); uxDeclutter(); uxFlowBars(); uxEnhance(); uxLists(); }
 
 // ---- Show guidance: every explanation back on the page (per browser), from the account menu, the shortcuts sheet or Shift+H
 function uxSetGuide(on, quiet) {
@@ -38253,6 +38256,25 @@ function uxEnhance() {
     if (q) uxFilterRows(card, q);
   }
 }
+// a long list to read (more than 15 lines, nothing to choose or type in it): its first 10, then Show all (kept while the page redraws)
+const UXL = new Set();
+function uxLists() {
+  for (const ul of document.querySelectorAll('#main ul.ilist')) {
+    if (ul.closest('details, .uxpop')) continue;
+    const L = [...ul.children].filter(li => li.tagName === 'LI'); let b = ul.nextElementSibling;
+    const own = b && b.classList.contains('uxmore');
+    if (L.length <= 15 || ul.querySelector('select, input, textarea, .btn')) { if (own) b.remove(); L.forEach(li => li.classList.remove('uxmoreoff')); continue; }
+    const key = uxCardKey(ul.closest('.card') || ul.parentElement), all = UXL.has(key);
+    L.forEach((li, i) => li.classList.toggle('uxmoreoff', !all && i >= 10));
+    if (!own) { b = document.createElement('button'); b.type = 'button'; b.className = 'linkbtn uxmore'; ul.after(b); }
+    const t = all ? 'Show fewer' : `Show all ${L.length}`; if (b.textContent !== t) b.textContent = t;
+    b.dataset.key = key; b.setAttribute('aria-expanded', String(all));
+  }
+}
+document.addEventListener('click', e => {
+  const m = e.target.closest && e.target.closest('.uxmore'); if (!m) return;
+  if (UXL.has(m.dataset.key)) UXL.delete(m.dataset.key); else UXL.add(m.dataset.key); uxLists();
+});
 document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('[data-uxt]'); if (!b) return;
   const card = b.closest('.card'); if (!card) return;

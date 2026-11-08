@@ -1,6 +1,7 @@
 // The backup video for the meeting: a month in the tool in about a minute, with captions and a visible pointer, from the made-up
 // test data only (test/fixture.js and the made-up September 2026 exports). It shows the product as each role sees it, signed in as
-// that role; it never shows the admin's meeting tools, so it can be sent after the meeting too.
+// that role and tells what each gets from it (the month's files go in off camera); it never shows the admin's meeting tools, so
+// it can be sent after the meeting too.
 // Usage: node tools/meeting/make_video.cjs page.html exportsDir out.mp4   (Playwright with Chromium, and ffmpeg)
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path'), { execFileSync } = require('node:child_process');
@@ -82,45 +83,33 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const glide = async (x, y, steps = 22) => p.mouse.move(x, y, { steps });
 
   // ---- 1. the title, then the month at a glance (the WFM analyst's dashboard)
-  await open('user', () => { window.__mc.setWs('dash'); }, ['Introducing <b>Cadence</b>', 'Member Care\'s month end, in one place · made-up people, no real data']);
+  await open('user', () => { window.__mc.setWs('dash'); }, ['Introducing <b>Cadence</b>', 'Member Care\'s month, in one place · made-up people, no real data']);
   await wait(3400); await card('', '', false); await wait(600);
   await cap('The month at a glance: every number with its trend, and the steps of the close.');
   await glide(330, 300); await wait(600); await glide(760, 300); await wait(600); await to('.dclose'); await wait(1600);
 
-  // ---- 2. one drop: the four Genesys exports
-  await cap(''); await p.evaluate(() => { const M = window.__mc, F = window.__FIX__; M.state.history = Object.fromEntries(Object.entries(F.history).filter(([k]) => k !== '2026-09')); M.state.histVer++; M.setWs('build'); M.setStep('import'); scrollTo(0, 0); });
-  await wait(500); await cap('One drop: every file of the month, each recognised by what is inside it.');
-  await to('#drop'); await wait(500); await p.mouse.down(); await p.mouse.up();
+  // ---- 2. settled before it counts: the month's files go in off camera (that stretch is cut), then the checks
+  await cap(''); const tA = now();
+  await p.evaluate(() => { document.documentElement.style.background = '#080808'; document.body.style.opacity = '0'; const M = window.__mc, F = window.__FIX__; M.state.history = Object.fromEntries(Object.entries(F.history).filter(([k]) => k !== '2026-09')); M.state.histVer++; M.setWs('build'); M.setStep('import'); scrollTo(0, 0); });
   await p.setInputFiles('#picker', ['Monthly Adherence - Sep.csv', 'Agents Performance Summary.csv', 'Schedule activities.csv', 'Agent Status Timeline Details.csv'].map(f => path.join(exp, f)));
   await p.waitForFunction(() => !window.__mc.state.pending.length && Object.keys(window.__mc.state.slots).length >= 4, null, { timeout: 60000 });
-  await wait(700); await p.evaluate(() => { const c = document.querySelector('#slots'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); await wait(1400);
-  await to('#slots .slot'); await wait(1800);
-
-  // ---- 3. the checks
-  await cap(''); await p.evaluate(() => { window.__mc.setStep('review'); if (window.__mc.setTab) window.__mc.setTab('checks'); scrollTo(0, 0); });
-  await wait(500); await cap('Nothing is built until every blocking check is decided.');
+  await p.evaluate(() => { window.__mc.setStep('review'); if (window.__mc.setTab) window.__mc.setTab('checks'); scrollTo(0, 0); });
+  await wait(500); await p.evaluate(() => { document.body.style.opacity = ''; document.documentElement.style.background = ''; }); cuts.push([tA + 0.35, now() - 0.1]);
+  await wait(300); await cap('Settled before it counts: every question decided, and every decision kept.');
   await to('#checksTiles'); await wait(1200); await to('#checksBody'); await wait(2400);
 
-  // ---- 4. the emails
-  await cap(''); await p.evaluate(() => { const M = window.__mc; M.state.history = window.__FIX__.history; M.state.histVer++; M.state.wsMonth = '2026-09'; }); await p.click('#wfmTabs [data-wt="emails"]'); await wait(300);
-  const ms = await p.$('[data-mailsub="month"]'); if (ms) { await ms.click(); await wait(300); }
-  await p.evaluate(() => { const M = window.__mc; Object.assign(M.state.mail, { to: 'Member Care Management <mc.management@example.com>; WFM Team <wfm.team@example.com>', cc: 'Senior Manager <senior.manager@example.com>' }); M.state.mailKind = 'ded'; M.state.mailStage = 'review'; M.renderWs(); scrollTo(0, 0); });
-  await wait(600); await cap('The emails are written and checked here, and sent by people from Outlook. No National IDs in the attachments.');
-  await p.evaluate(() => { const f = document.querySelector('#mailFrame'), c = f && (f.closest('.card') || f); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); await wait(1300);
-  await to('#mailFrame'); await wait(2600);
-
-  // ---- 5. every bonus explains itself (the senior manager, Results)
+  // ---- 3. every bonus explains itself (the senior manager, Results)
   await cap(''); await wait(250); await open('senior', () => { window.__mc.setWs('results'); });
   await cap('Every bonus explains itself: each KPI, its band, its ranking and its points.');
   const how = p.locator('[data-how]:visible').first(); await to('[data-how]'); await wait(400); await how.click(); await wait(1200);
   await to('#howBody table'); await wait(1600); await p.evaluate(() => { const b = document.getElementById('howBody'); const sc = b.closest('.drawer, aside') || b; sc.scrollBy({ top: 320, behavior: 'smooth' }); }); await wait(2200);
 
-  // ---- 6. a supervisor's own team
+  // ---- 4. a supervisor's own team
   await cap(''); await wait(250); await open('spv', () => { window.__mc.setWs('team'); window.__mc.renderWs(); });
-  await cap('A supervisor sees their own team: attendance, one-to-ones and objections.');
+  await cap('A supervisor sees their own team, and coaches from the month\'s own numbers.');
   await glide(500, 260); await wait(800); await glide(900, 420); await wait(2400);
 
-  // ---- 7. an agent's own page, in Arabic
+  // ---- 5. an agent's own page, in Arabic
   await cap(''); await wait(250); await open('agent', () => {
     const M = window.__mc, F = window.__FIX__, per = F.roster[20], months = {}, keys = Object.keys(F.history).sort();
     for (const k of keys) { const r = F.history[k].rows.find(x => x.id === per.nid) || F.history[k].rows[0]; months[k] = { status: k === keys[keys.length - 1] ? 'draft' : 'final', row: r, at: k + '-28T09:00:00Z', by: 'Noura B.' }; }
@@ -130,7 +119,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await cap('Each agent sees their own results, in English or Arabic.');
   await glide(860, 300); await wait(900); await glide(640, 470); await wait(2600);
 
-  // ---- 8. the end
+  // ---- 6. the end
   await cap(''); await card('Ready for <b>the next close</b>', 'Cadence · Member Care · WFM team'); await wait(3400);
 
   const vid = p.video(); await ctx.close(); const webm = await vid.path(); await b.close();

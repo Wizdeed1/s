@@ -1,7 +1,8 @@
-// The launch deck: Cadence introduced as a new product, for the management team. It follows a product-demo
-// arc (the hook, the job month end asks for, the answer, how it works feature by feature, every role, trust,
-// proof, what it means, and the call to action), with a messaging framework (the main message, the value proposition, key
-// messages with their proof, a message for every role) and plain copy. It speaks only of the product as it is.
+// The launch deck: Cadence introduced as a new product, for the management team. It tells the idea and what Member Care gets
+// from it (the hook, the challenge, the idea, what Member Care gets: time back, right the first time, fairness people can see;
+// every role, the coaching loop, continuity, trust, proof, what changes, and what comes next), with a messaging framework (the
+// main message, the value proposition, key messages with their proof, a message for every role) and plain copy. It never
+// explains how files go in or out: the room hears the idea and the benefits.
 // On the Beyond One template the team's decks are made with (the decks the tool makes have the same look: js/bodeck.js): the cover
 // is the template's title slide; every other slide has the moving logo at the top left, its section in small capitals beside a
 // square at the top right, CONFIDENTIAL and its number at the foot, and its title in capitals with the words that matter in bold;
@@ -46,7 +47,7 @@ pres.defineSlideMaster({ title: 'END', background: { color: C.ink }, objects: [l
 // ---- pieces. An object's name says how it comes in and when: 'up|300|…' rises in 300 ms after the slide, 'fade|0|…' fades in
 const T = (s, text, o) => s.addText(text, { isTextBox: true, margin: 0, fontFace: FONT, ...o });
 const ALT = { 'laptop-dark': 'The dashboard, in dark, on a laptop', 'hero-dash': 'The dashboard: shortcuts, the month at a glance, the month close and the bell',
-  'z-import': 'Import: the four Genesys exports recognised and ready', 'z-checks': 'Review, Checks: what needs a decision before the build', 'z-email': 'The deduction email for review, ready to copy into Outlook',
+  'z-import': 'Import: the four Genesys exports recognised and ready', 'z-checks': 'Checks: what needs a decision before anything counts', 'z-email': 'The deduction email for review, ready to copy into Outlook',
   'z-templates': 'Attendance templates: one for each department', 'z-how': 'How this was counted, for one agent: each KPI, its band, ranking and points', 'win-xlsx': 'An attendance template open on How to fill',
   'win-builder': 'WFM team, Report builder', 'win-team': 'A supervisor\'s own team', 'win-agent-ar': 'An agent\'s own page, in Arabic', 'paper-form': 'A one-to-one form on one A4 page' };
 /** a picture whose visible part (inside `pad` transparent pixels kept for its shadow) is put at x, y with width w (or height h) */
@@ -106,56 +107,56 @@ const fig = (s, name, b, dark, t) => pic(s, `fig-${name}-${dark ? 'dark' : 'ligh
 // =============================================================================================== 1. cover: the template's title slide
 pres.addSection({ title: 'Launch' });
 {
-  const s = add('COVER', 'Launch', 'Introducing Cadence: Member Care\'s month end, in one place. One offline file that takes the month from the Genesys exports to the last email, with a page for every role. In the next minutes: what it does, how a month runs in it, who uses it, why it can be trusted, and how we start.');
+  const s = add('COVER', 'Launch', 'Introducing Cadence: Member Care\'s month, in one place. One shared place where every role works from the same numbers, every number is settled before it counts, and every result is explained to the person it touches. In the next minutes: the problem, the idea, what Member Care gets, every role, trust, and what comes next.');
   s.addShape(pres.shapes.RECTANGLE, { x: 5.05, y: 1.30, w: 5.70, h: 3.95, fill: { color: C.lav }, line: { type: 'none' }, objectName: 'fade|0|title-box' });
   pixels(s, [[4.60, 0.88, 0.52, C.red], [9.10, 0.60, 0.26, C.pink], [4.52, 4.78, 0.86, C.tealBlue], [11.40, 5.70, 0.32, C.teal], [12.20, 1.62, 0.13, C.blue], [11.05, 4.98, 0.17, C.orange]], 150);
-  T(s, [{ text: 'INTRODUCING', options: { fontSize: 13, bold: true, charSpacing: 3, breakLine: true } }, { text: 'CADENCE', options: { fontSize: 50, bold: true, breakLine: true } }, { text: 'MEMBER CARE PERFORMANCE', options: { fontSize: 13, charSpacing: 2 } }], { x: 5.42, y: 1.62, w: 5.0, h: 2.2, color: C.white, valign: 'top', lineSpacingMultiple: 1.0, objectName: 'up|120|name' });
-  T(s, 'Member Care\'s month end, in one place.', { x: 5.42, y: 3.95, w: 5.0, h: 1.05, fontSize: 14, color: C.white, valign: 'bottom', objectName: 'up|260|sub' });
+  T(s, [{ text: 'INTRODUCING', options: { fontSize: 13, bold: true, charSpacing: 3, breakLine: true } }, { text: 'CADENCE', options: { fontSize: 50, bold: true, breakLine: true } }, { text: 'MEMBER CARE PERFORMANCE', options: { fontSize: 13, charSpacing: 2 } }], { x: 5.42, y: 1.62, w: 5.0, h: 2.2, color: C.white, valign: 'top', objectName: 'up|120|title' });
+  T(s, 'Member Care\'s month, in one place.', { x: 5.42, y: 3.95, w: 5.0, h: 1.05, fontSize: 14, color: C.white, valign: 'bottom', objectName: 'up|260|sub' });
   T(s, 'November 2026', { x: 6.2, y: 6.18, w: 6.7, h: 0.32, fontSize: 12, bold: true, color: C.ink, align: 'right', objectName: 'fade|600|date' });
   T(s, 'Member Care · WFM team', { x: 6.2, y: 6.52, w: 6.7, h: 0.3, fontSize: 10, color: C.muted, align: 'right', objectName: 'fade|600|who' });
 }
 
-// =============================================================================================== 2. the product in one line
+// =============================================================================================== 2. the idea in one line
 {
-  const s = add('LIGHT', 'Launch', 'The product in one line: Member Care\'s month end, in one place. One offline file turns the month\'s Genesys exports into the monthly workbook, the incentive data, the emails and the one-to-ones. Three promises. Nothing is built until the checks are decided. Any bonus can be traced back, KPI by KPI. And each role sees only its own page.');
-  eyebrow(s, 'The product');
-  title(s, 'Member Care\'s month end, *in one place*');
-  lead(s, 'One offline file turns the month\'s Genesys exports into the monthly workbook, the incentive data, the emails and the one-to-ones.', false, { w: 5.7, h: 1.0 });
-  [['check', 'Checked before it is built', 'Nothing goes out until the checks are decided.'], ['eye', 'Every bonus explains itself', 'Each KPI, band, ranking and point, for every person.'], ['team', 'A page for every role', 'Seven roles on one set of data, in English or Arabic.']]
+  const s = add('LIGHT', 'Launch', 'The idea in one line: Member Care\'s month, in one place. One shared truth for the whole month: the numbers every role works from, settled before they count, and explained to the person they touch. Three promises: one truth for every role, right before it counts, and every number explained.');
+  eyebrow(s, 'The idea');
+  title(s, 'Member Care\'s month, *in one place*');
+  lead(s, 'One shared truth for the whole month: the numbers every role works from, settled before they count, and explained to the person they touch.', false, { w: 5.7, h: 1.0 });
+  [['team', 'One truth for every role', 'Seven roles on the same numbers, the same day.'], ['check', 'Right before it counts', 'Questions settled before anything goes out.'], ['eye', 'Every number explained', 'Anyone can see how a result was reached.']]
     .forEach((p, i) => point(s, p, M, 3.05 + i * 1.12, 5.7, { t: 400 + i * 150, th: 0.55, bg: i ? C.ink : C.blue }));
   pic(s, 'laptop-dark', { x: 6.6, y: 2.05, w: 6.1 }, 90, 'up|250|laptop');
   let x = M;
-  for (const [i, c] of ['Works offline', 'Shared folder', 'Encrypted'].entries()) x += chip(s, c, x, 6.45, { t: 1000 + i * 100 }) + 0.12;
+  for (const [i, c] of ['A page for every role', 'Works offline', 'Encrypted'].entries()) x += chip(s, c, x, 6.45, { t: 1000 + i * 100 }) + 0.12;
 }
 
-// =============================================================================================== 3. the job: what month end asks for
+// =============================================================================================== 3. the challenge
 {
-  const s = add('SPLIT', 'Launch', 'Month end has many moving parts: more than ten files from different places, seven roles who depend on the same numbers, and one deadline for all of it. The numbers decide people\'s bonuses and deductions, so each one has to be right and explainable, and the emails that carry them have to go out on time.');
+  const s = add('SPLIT', 'Launch', 'Month end used to run on people and spreadsheets: numbers from more than ten places, joined by hand, for seven roles waiting on one deadline. Skilled people spent their month assembling instead of improving service; a question about a bonus meant reopening the spreadsheets; and when one person was away, the month waited.');
   pixels(s, [[4.93, 1.05, 0.44, C.red], [4.80, 5.85, 0.26, C.pink], [5.38, 6.45, 0.13, C.blue]], 100);
-  [['10+', 'files every month'], ['7', 'roles on the same numbers'], ['1', 'deadline for all of it']].forEach(([n, l], i) => {
+  [['10+', 'sources of numbers'], ['7', 'roles on the same numbers'], ['1', 'deadline for all of it']].forEach(([n, l], i) => {
     const y = 1.45 + i * 1.85, t = 200 + i * 160;
     T(s, n, { x: 0.85, y, w: 3.6, h: 1.05, fontSize: 64, bold: true, color: i === 2 ? C.pink : C.white, valign: 'top', objectName: `up|${t}|n${i}` });
     T(s, l, { x: 0.85, y: y + 1.08, w: 3.8, h: 0.4, fontSize: 15, fontFace: LIGHT, color: C.dmuted, objectName: `up|${t}|l${i}` });
   });
-  eyebrow(s, 'The job');
-  title(s, 'Month end has *many moving parts*');
-  [['file', 'Files from many places', 'Genesys exports, attendance and quality files, each laid out its own way.'],
-    ['chart', 'Numbers people must trust', 'A bonus or a deduction has to be explainable to the person it touches.'],
-    ['mail', 'Emails that must be right', 'Deduction, absence and incentive emails, every month, on time.']]
+  eyebrow(s, 'The challenge');
+  title(s, 'Month end ran on *people and spreadsheets*');
+  [['clock', 'Hours spent assembling', 'Skilled people joined and checked numbers instead of improving service.'],
+    ['help', 'Hard to explain, easy to dispute', 'A question about pay meant reopening the spreadsheets.'],
+    ['user', 'The month lived with one person', 'When they were away, the month waited.']]
     .forEach((p, i) => point(s, p, 6.0, 2.75 + i * 1.32, R - 6.0, { t: 400 + i * 150 }));
 }
 
-// =============================================================================================== 4. the answer: the dashboard, pointed out
+// =============================================================================================== 4. the idea on screen: the dashboard, pointed out
 {
-  const s = add('LIGHT', 'Launch', 'The answer is one page in the common folder, opened in Edge or Chrome. Everyone signs in and sees the same month. One: shortcuts to what this role does next. Two: the month at a glance, each number against the month before. Three: the month close, step by step. Four: the bell keeps each person\'s deadlines and checks, so nothing crowds the pages.');
-  eyebrow(s, 'The answer');
-  title(s, 'One file runs *the whole month*');
+  const s = add('LIGHT', 'Launch', 'This is the idea on screen: everyone opens the same month. One: what this person does next, one click away. Two: the month at a glance, each number against the month before. Three: the month close, step by step, and whose turn it is. Four: the bell keeps each person\'s deadlines, so nobody has to chase anyone.');
+  eyebrow(s, 'The idea');
+  title(s, 'Everyone on *the same month*');
   const H = JSON.parse(fs.readFileSync(path.join(artDir, 'hero.json'), 'utf8')), B = H.boxes, css = B.view.width;
   const win = pic(s, 'hero-dash', { x: M, y: 1.95, w: 7.55 }, H.pad, 'up|200|hero');
   const k = win.w / H.winW, X = x => win.x + x * (H.winW / css) * k, Y = y => win.y + (H.bar + y * (H.winW / css)) * k, cap = y => Math.min(y, B.view.height - 10);
   const out = (b, t, g = 0.03) => s.addShape(pres.shapes.RECTANGLE, { x: X(b.x) - g, y: Y(b.y) - g, w: X(b.x + b.w) - X(b.x) + 2 * g, h: Y(cap(b.y + b.h)) - Y(b.y) + 2 * g, fill: { type: 'none' }, line: { color: C.blue, width: 2 }, objectName: `fade|${t}|frame` });
-  const pts = [[B.acts, 'Shortcuts for your role', 'What this person does next, one click away.'], [B.kpis, 'The month at a glance', 'Every number with its trend.'],
-    [B.close, 'The month close', 'Each step, done or due, and whose turn it is.'], [B.bell, 'The bell', 'Each person\'s deadlines and checks, in one place.']];
+  const pts = [[B.acts, 'Next, for your role', 'What this person does next, one click away.'], [B.kpis, 'The month at a glance', 'Every number with its trend.'],
+    [B.close, 'The month close', 'Each step, done or due, and whose turn it is.'], [B.bell, 'Nobody chases', 'Each person\'s own deadlines, in the bell.']];
   pts.forEach(([b, h, t], i) => {
     const d = 700 + i * 260;
     if (b) { out(b, d, b === B.bell ? 0.04 : 0.03); if (b === B.bell) marker(s, i + 1, X(b.x) - 0.28, Y(b.y + b.h / 2), d, 0.34); else marker(s, i + 1, X(b.x) - 0.03, Y(b.y) - 0.03, d, 0.34); }
@@ -166,115 +167,85 @@ pres.addSection({ title: 'Launch' });
   });
 }
 
-// =============================================================================================== 5. how it works: four steps
-pres.addSection({ title: 'How it works' });
+// =============================================================================================== 5. what Member Care gets
+pres.addSection({ title: 'Benefits' });
 {
-  const s = add('LIGHT', 'How it works', 'A month runs in four steps on the WFM team page. Import: every file of the month at once. Review: the checks list what needs a decision. Export: the monthly workbook and the incentive data. Emails: the deduction, absence and incentive emails, for review and then final. Each step says what it still needs, and the month stays saved between sign-ins.');
-  eyebrow(s, 'How it works');
-  title(s, 'A month in *four steps*');
-  lead(s, 'Each step says what it still needs, and the month stays saved between sign-ins.', false, { w: 10.5, h: 0.4 });
-  const steps = [['riffle', 'Import', 'Drop every file of the month at once. Each is recognised by what is inside it.'],
-    ['sieve', 'Review', 'The checks list what needs a decision before anything is built.'],
-    ['format', 'Export', 'The monthly workbook and the incentive data, built in one click.'],
-    ['relay', 'Emails', 'Deduction, absence and incentive emails, ready to send from Outlook.']];
-  const cw = 2.86, gap = (R - M - 4 * cw) / 3;
-  steps.forEach(([f, h, t], i) => {
-    const x = M + i * (cw + gap), d = 350 + i * 220;
-    card(s, x, 2.45, cw, 4.2, { t: d });
-    s.addShape(pres.shapes.RECTANGLE, { x: x + 0.22, y: 2.67, w: 0.44, h: 0.44, fill: { color: C.blue }, line: { type: 'none' }, objectName: `up|${d}|n` });
-    T(s, String(i + 1), { x: x + 0.22, y: 2.67, w: 0.44, h: 0.44, fontSize: 16, bold: true, color: C.white, align: 'center', valign: 'middle', objectName: `up|${d}|nt` });
-    fig(s, f, { x: x + 0.36, y: 2.95, w: cw - 0.72 }, false, d);
-    T(s, h, { x: x + 0.3, y: 4.85, w: cw - 0.6, h: 0.45, fontSize: 20, bold: true, color: C.ink, objectName: `up|${d}|h` });
-    T(s, t, { x: x + 0.3, y: 5.35, w: cw - 0.6, h: 1.15, fontSize: 13, color: C.muted, valign: 'top', lineSpacingMultiple: 1.06, objectName: `up|${d}|t` });
-    if (i < 3) s.addShape(pres.shapes.CHEVRON, { x: x + cw + gap / 2 - 0.08, y: 4.45, w: 0.16, h: 0.24, fill: { color: C.blue }, line: { type: 'none' }, objectName: `fade|${d + 160}|arrow` });
+  const s = add('LIGHT', 'Benefits', 'What Member Care gets, in six parts: time back for people; fewer errors and fewer disputes; fairness everyone can see; the month at a glance for every manager; no single point of failure; and privacy by design. Each is something the team can feel in the first month.');
+  eyebrow(s, 'What Member Care gets');
+  title(s, 'What Member Care *gets*');
+  const L = [['clock', 'Time back for people', 'The hours that went into assembling numbers go back to coaching, quality and service.'],
+    ['target', 'Fewer errors and disputes', 'Problems are settled before anything goes out, so fewer corrections follow.'],
+    ['eye', 'Fairness people can see', 'Every bonus explains itself; the same rules for everyone; agents see their own.'],
+    ['chart', 'The month at a glance', 'Managers see where the close stands, what is late and who is next.'],
+    ['sync', 'No single point of failure', 'Shared, saved and covered during holidays: never one person\'s spreadsheet.'],
+    ['shield', 'Private by design', 'The data stays on our own computers, encrypted; each role sees only its own.']];
+  const cw = (R - M - 0.5) / 3, ch = 2.1;
+  L.forEach(([icon, h, t], i) => {
+    const x = M + (i % 3) * (cw + 0.25), y = 2.0 + Math.floor(i / 3) * (ch + 0.25), d = 300 + i * 120, on = i === 0;
+    card(s, x, y, cw, ch, { t: d, fill: on ? C.blue : C.soft });
+    dot(s, icon, x + 0.3, y + 0.3, 0.52, on ? C.white : C.ink, on ? 'blue' : 'white', d);
+    T(s, h, { x: x + 0.3, y: y + 1.0, w: cw - 0.6, h: 0.38, fontSize: 17, bold: true, color: on ? C.white : C.ink, objectName: `up|${d}|h` });
+    T(s, t, { x: x + 0.3, y: y + 1.4, w: cw - 0.6, h: 0.62, fontSize: 12.5, color: on ? C.white : C.muted, valign: 'top', lineSpacingMultiple: 1.05, objectName: `up|${d}|t` });
   });
 }
 
-// =============================================================================================== 6. one drop
+// =============================================================================================== 6. time back
 {
-  const s = add('LIGHT', 'How it works', 'Import takes every file of the month in one drop. The tool reads each one on this computer and recognises it by its columns: the four Genesys exports, the attendance templates, the IDs and the quality EVAL each go where they belong. Every upload is kept, locked, and is back at the next sign-in.');
-  eyebrow(s, 'Import');
-  title(s, 'Drop everything *at once*');
-  [['sparkle', 'Recognised by what is inside', 'Each file goes where it belongs by its columns, whatever its name.'],
-    ['layers', 'One drop for the whole month', 'The four Genesys exports, attendance templates, IDs and the quality EVAL, together.'],
-    ['folder', 'Kept for the next sign-in', 'Every upload is kept, locked with the shared data, and comes back by itself.']]
-    .forEach((p, i) => point(s, p, M, 2.2 + i * 1.42, 4.75, { t: 300 + i * 150, th: 0.7, bg: i ? C.ink : C.blue }));
-  pic(s, 'z-import', { x: 5.55, y: 2.0, w: R - 5.55 }, 70, 'up|250|shot');
-}
-
-// =============================================================================================== 7. checked first
-{
-  const s = add('LIGHT', 'How it works', 'Review is where problems surface before anything is built. Blocking checks stop the build until someone decides; the rest are listed to look at, such as names in the exports that are not on the roster, or people with no schedule this month. Every decision is recorded with who made it.');
-  eyebrow(s, 'Review');
-  title(s, 'Problems surface before anything is *built*');
-  pic(s, 'z-checks', { x: M, y: 2.0, w: 7.7 }, 70, 'up|250|shot');
-  T(s, 'Nothing is built until every blocking check is decided.', { x: 8.75, y: 2.15, w: R - 8.75, h: 1.7, fontSize: 22, bold: true, color: C.ink, valign: 'top', lineSpacingMultiple: 1.05, objectName: 'up|450|claim' });
-  T(s, 'The workbook, the incentive data and the emails all come from the month that passed its checks.', { x: 8.75, y: 3.85, w: R - 8.75, h: 1.0, fontSize: 13, color: C.muted, valign: 'top', objectName: 'up|550|claim-t' });
-  [['bell', 'Blocking', 'stops the build'], ['help', 'Please check', 'names, schedules'], ['user', 'Decided by you', 'every choice kept']].forEach(([icon, h, t], i) => {
-    const x = M + i * 2.6, d = 700 + i * 140;
-    card(s, x, 5.95, 2.5, 0.85, { t: d });
-    dot(s, icon, x + 0.16, 6.14, 0.46, C.bsoft, 'blue', d);
-    T(s, h, { x: x + 0.76, y: 6.05, w: 1.68, h: 0.3, fontSize: 13, bold: true, color: C.ink, objectName: `up|${d}|h` });
-    T(s, t, { x: x + 0.76, y: 6.36, w: 1.68, h: 0.3, fontSize: 12, color: C.muted, objectName: `up|${d}|t` });
+  const s = add('DARK', 'Benefits', 'Time back is the first thing the team will feel. The measure is simple: the people in a role, times the hours each gives month end today, minus the hours with Cadence. We measure it with the team\'s own numbers in the first month. Analysts move from assembling to analysis, supervisors from paperwork to coaching, managers from chasing to deciding.');
+  eyebrow(s, 'Time back', true);
+  title(s, 'Time back for *people*');
+  lead(s, 'Measured with the team\'s own numbers in the first month.', true, { w: 7.0, h: 0.5 });
+  card(s, M, 2.6, R - M, 1.25, { dark: true, fill: C.ink, t: 300 });
+  T(s, [{ text: 'Hours back  =  ', options: { bold: true, color: C.white } }, { text: 'people  ×  ( hours today  −  hours with Cadence )', options: { color: C.dmuted } }], { x: M + 0.4, y: 2.6, w: R - M - 0.8, h: 1.25, fontSize: 24, valign: 'middle', objectName: 'up|300|formula' });
+  const L = [['team', 'WFM analysts', 'From assembling', 'to analysis', 'The month\'s numbers come together and are checked for them.'],
+    ['pen', 'Supervisors', 'From paperwork', 'to coaching', 'The one-to-one fills itself from the month\'s numbers.'],
+    ['star', 'Managers', 'From chasing', 'to deciding', 'Where the close stands and who is next, at a glance.']];
+  const cw = (R - M - 0.5) / 3;
+  L.forEach(([icon, who, a, b, more], i) => {
+    const x = M + i * (cw + 0.25), d = 500 + i * 160, on = i === 0;
+    card(s, x, 4.15, cw, 2.55, { dark: true, fill: on ? C.blue : C.ink, t: d });
+    dot(s, icon, x + 0.3, 4.45, 0.5, on ? C.white : C.edge, on ? 'blue' : 'white', d);
+    T(s, who, { x: x + 0.3, y: 5.1, w: cw - 0.6, h: 0.4, fontSize: 18, bold: true, color: C.white, objectName: `up|${d}|w` });
+    T(s, [{ text: a + ' ', options: { color: on ? C.white : C.dmuted } }, { text: b, options: { bold: true, color: C.white } }], { x: x + 0.3, y: 5.55, w: cw - 0.6, h: 0.4, fontSize: 16, valign: 'top', objectName: `up|${d}|t` });
+    T(s, more, { x: x + 0.3, y: 6.02, w: cw - 0.6, h: 0.55, fontSize: 12.5, color: on ? C.white : C.dmuted, valign: 'top', lineSpacingMultiple: 1.05, objectName: `up|${d}|more` });
   });
 }
 
-// =============================================================================================== 8. attendance from exceptions
+// =============================================================================================== 7. right the first time
 {
-  const s = add('LIGHT', 'How it works', 'Attendance comes from the exceptions only. CC and SM are counted from the Schedule and the Agent Status Timeline in Genesys. Every other department gets one template a month from the tool: supervisors write only late, absent, leave and days off, and every other day counts as worked. Each file opens on its own instructions.');
-  eyebrow(s, 'Attendance');
-  title(s, 'Attendance from *exceptions only*');
-  card(s, M, 2.05, 5.45, 4.75, { t: 250, fill: C.white, line: true, px: C.blue });
-  [['sync', 'CC and SM: automatic', 'Counted from the Genesys Schedule and Agent Status Timeline.'], ['sheet', 'Other departments: exceptions only', 'One template a month: late, absent, leave, days off. Every other day counts as worked.'], ['folder', 'Every file explains itself', 'Each template opens on its own How to fill sheet, with examples.']]
-    .forEach((p, i) => point(s, p, M + 0.35, 2.45 + i * 1.42, 4.9, { t: 400 + i * 150, d: 0.5, hs: 15, th: 0.75, bg: i ? C.ink : C.blue }));
-  pic(s, 'win-xlsx', { x: 6.45, y: 2.05, w: 4.75 }, 90, 'up|350|xlsx');
-  pic(s, 'z-templates', { x: 9.45, y: 2.95, h: 3.9 }, 70, 'up|550|tpl');
+  const s = add('LIGHT', 'Benefits', 'Right the first time. Problems surface before anything counts: the questions that matter hold the month until someone decides, and every decision is kept with who made it and when. So fewer corrections follow the emails, and fewer surprises reach agents.');
+  eyebrow(s, 'Right the first time');
+  title(s, 'Settled *before it counts*');
+  pic(s, 'z-checks', { x: M, y: 2.0, h: 4.75 }, 70, 'up|250|shot');
+  T(s, 'Problems are settled before a number reaches a payslip or an email.', { x: 8.55, y: 2.0, w: R - 8.55, h: 1.3, fontSize: 20, bold: true, color: C.ink, valign: 'top', lineSpacingMultiple: 1.05, objectName: 'up|450|claim' });
+  [['target', 'Decided first', 'Nothing counts until someone decides.'], ['user', 'Every decision kept', 'Who decided, and when.'], ['check', 'One version', 'The same month for everyone.']]
+    .forEach((p, i) => point(s, p, 8.55, 3.75 + i * 1.02, R - 8.55, { t: 650 + i * 150, d: 0.5, hs: 15, ts: 12.5, th: 0.5, bg: i ? C.ink : C.blue }));
 }
 
-// =============================================================================================== 9. every bonus explained
+// =============================================================================================== 8. fairness people can see
 {
-  const s = add('LIGHT', 'How it works', 'Every bonus explains itself. For any agent, How this was counted shows each KPI with its result, the band reached, the ranking and the points, then the days and the amount. Percent KPIs round to a whole percent before they count. And Reconcile lines up any workbook against the tool\'s numbers, with the reason and a fix for each difference.');
-  eyebrow(s, 'Incentive');
-  title(s, 'Every bonus *explains itself*');
+  const s = add('LIGHT', 'Benefits', 'Fairness people can see. For any agent, every result explains itself: each KPI with its result, band, ranking and points, then the days and the amount. The same rules apply to everyone, kept by the senior manager with every change logged, and agents see their own results. A question about pay is answered in a click.');
+  eyebrow(s, 'Fairness');
+  title(s, 'Fairness people *can see*');
   pic(s, 'z-how', { x: M, y: 1.95, h: 4.95 }, 70, 'up|250|shot');
   card(s, 6.05, 2.0, R - 6.05, 1.58, { fill: C.blue, t: 400 });
   T(s, '94.96%  →  95%', { x: 6.4, y: 2.12, w: R - 6.75, h: 0.75, fontSize: 34, bold: true, color: C.white, objectName: 'up|400|stat' });
-  T(s, 'Percent KPIs round to a whole % before they count, the same for everyone.', { x: 6.4, y: 2.86, w: R - 6.75, h: 0.5, fontSize: 13, color: C.white, objectName: 'up|400|stat-t' });
-  [['star', 'One set of rules', 'Scorecards, bases and who is eligible, kept by the senior manager; every change logged.'],
-    ['eye', 'Every person, step by step', 'Each KPI\'s result, band, ranking and points, then the days and the amount.'],
-    ['link', 'Reconcile any workbook', 'Any file lined up with the tool\'s numbers, each difference with its reason and a fix.']]
+  T(s, 'The same rounding for everyone, shown in every result.', { x: 6.4, y: 2.86, w: R - 6.75, h: 0.5, fontSize: 13, color: C.white, objectName: 'up|400|stat-t' });
+  [['star', 'One set of rules', 'Kept by the senior manager; every change logged.'],
+    ['eye', 'Every person, step by step', 'Each KPI, band, ranking and points, then the days and the amount.'],
+    ['user', 'Agents see their own', 'Their own results, explained, in English or Arabic.']]
     .forEach((p, i) => point(s, p, 6.05, 3.95 + i * 1.0, R - 6.05, { t: 600 + i * 150, th: 0.55 }));
 }
 
-// =============================================================================================== 10. emails
-{
-  const s = add('DARK', 'How it works', 'The emails are written by the tool and sent by people, from Outlook: the tool never sends anything itself. Every month, the deduction email for review and then final, plus the absence and incentive emails. Every day, the four brand emails, MC Leaders and the WFM Daily Review. The attachments never carry National IDs.');
-  eyebrow(s, 'Emails', true);
-  title(s, 'Emails *ready to send*');
-  lead(s, 'The tool writes them; people send them from Outlook. It never sends anything itself.', true, { w: 5.2, h: 0.66 });
-  const grp = (label, items, y, t) => {
-    T(s, label.toUpperCase(), { x: M, y, w: 5, h: 0.28, fontSize: 10, bold: true, color: C.dmuted, charSpacing: 2, objectName: `up|${t}|g` });
-    let x = M, yy = y + 0.38;
-    items.forEach((c, i) => { const w = 0.4 + c.length * 0.088; if (x + w > 5.75) { x = M; yy += 0.5; } chip(s, c, x, yy, { dark: true, t: t + 60 * i, cw: 0.088, pad: 0.4 }); x += w + 0.12; });
-    return yy + 0.4;
-  };
-  let y = grp('Every month', ['Deduction: review, then final', 'Absences', 'Incentive'], 2.7, 350);
-  y = grp('Every day', ['Virgin Postpaid', 'Virgin Mobile', 'FRiENDi Mobile', 'FRiENDi Pay', 'MC Leaders', 'WFM Daily Review'], y + 0.38, 600);
-  point(s, ['lock', 'No National IDs in attachments', 'Names only: the agents\' privacy, by default.'], M, y + 0.48, 5.3, { dark: true, bg: C.blue, t: 1000, th: 0.5 });
-  const ez = size(A('z-email')), eh = Math.min(4.9, (R - 6.25) * (ez.h - 140) / (ez.w - 140)), ew = eh * (ez.w - 140) / (ez.h - 140);
-  pixels(s, [[R - ew - 0.34, 1.66, 0.24, C.red], [12.62, 1.62, 0.15, C.pink], [R - ew - 0.3, 1.95 + eh - 0.2, 0.2, C.lav]], 150);
-  pic(s, 'z-email', { x: R - ew, y: 1.95, h: eh }, 70, 'up|250|shot');
-}
-
-// =============================================================================================== 11. every role
+// =============================================================================================== 9. every role
 pres.addSection({ title: 'Everyone' });
 {
-  const s = add('LIGHT', 'Everyone', 'Every role signs in to its own page and sees only what is theirs. The WFM analysts build the month and the daily emails; the WFM manager sends them; the senior manager keeps the rules and finalizes the month; supervisors see their team and their one-to-ones; the quality team brings the Final EVAL; agents see their own results and forms, in English or Arabic.');
+  const s = add('LIGHT', 'Everyone', 'Every role gets a better month, on its own page, seeing only what is theirs. WFM analysts spend their time on analysis; the WFM manager sends checked numbers on time; the senior manager sees the whole close and decides with every number explained; supervisors coach from the month\'s own numbers; the quality team enters quality once; agents see and understand their own results; and the admin gives each person their role.');
   eyebrow(s, 'Every role');
-  title(s, 'A page for *every role*');
-  const roles = [['up', 'WFM analyst', 'Builds the month and the daily emails'], ['mail', 'WFM manager', 'Sends the emails; sees the analytics'],
-    ['star', 'Senior manager', 'Keeps the rules; finalizes the month'], ['team', 'Supervisor', 'The team, attendance, one-to-ones'],
-    ['check', 'Quality team', 'The Final EVAL and critical errors'], ['user', 'Agent', 'Own results, in English or Arabic'], ['lock', 'Admin', 'Accounts and roles for everyone']];
+  title(s, 'A better month for *every role*');
+  const roles = [['up', 'WFM analyst', 'Time for analysis, not assembling'], ['mail', 'WFM manager', 'Checked numbers, sent on time'],
+    ['star', 'Senior manager', 'The whole close, every number explained'], ['team', 'Supervisor', 'More coaching, less paperwork'],
+    ['check', 'Quality team', 'Quality entered once, counted everywhere'], ['user', 'Agent', 'Own results, understood, English or Arabic'], ['lock', 'Admin', 'Each person in their role']];
   roles.forEach(([icon, h, t], i) => {
     const y = 1.95 + i * 0.67, d = 300 + i * 90, cw = 6.7;
     card(s, M, y, cw, 0.58, { t: d });
@@ -282,19 +253,18 @@ pres.addSection({ title: 'Everyone' });
     T(s, h, { x: M + 0.72, y, w: 1.9, h: 0.58, fontSize: 15, bold: true, color: C.ink, valign: 'middle', objectName: `up|${d}|h` });
     T(s, t, { x: M + 2.65, y, w: cw - 2.8, h: 0.58, fontSize: 13, color: C.muted, valign: 'middle', objectName: `up|${d}|t` });
   });
-  // two of the roles' own pages, one over the other: a supervisor's team, and an agent's page in Arabic
   pic(s, 'win-team', { x: 7.55, y: 1.95, w: 4.6 }, 90, 'up|450|team');
   pic(s, 'win-agent-ar', { x: R - 4.6, y: 3.6, w: 4.6 }, 90, 'up|650|agent');
 }
 
-// =============================================================================================== 12. the coaching loop
+// =============================================================================================== 10. the coaching loop
 {
-  const s = add('LIGHT', 'Everyone', 'The coaching loop is closed inside the tool. Results go to each agent\'s own page. The one-to-one form is filled from the month\'s numbers and fits on one A4 page. The agent adds comments and signs in the tool, after the supervisor. If an agent disagrees with a number, the objection goes to the supervisor and, if needed, to the senior manager, and the answer comes back on the agent\'s page.');
+  const s = add('LIGHT', 'Everyone', 'The coaching loop is closed in one place. Results reach each agent\'s own page; the one-to-one is filled from the month\'s numbers and fits on one A4 page; the agent comments and signs after the supervisor; and if an agent disagrees with a number, the supervisor answers first and the senior manager decides. Better conversations, on the same facts.');
   eyebrow(s, 'Coaching');
   title(s, 'The coaching loop, *closed*');
   pic(s, 'paper-form', { x: 0.75, y: 2.15, h: 4.6 }, 110, 'up|250|form');
-  const nodes = [['chart', 'Results published', 'Each agent sees the month on their own page.'], ['pen', 'One-to-one', 'Filled from the numbers, on one A4 page.'],
-    ['check', 'Signed in the tool', 'The agent comments and signs after the supervisor.'], ['handshake', 'Objections answered', 'Supervisor first; the senior manager decides.']];
+  const nodes = [['chart', 'Results shared', 'Each agent sees the month on their own page.'], ['pen', 'One-to-one', 'Filled from the numbers, on one A4 page.'],
+    ['check', 'Signed together', 'The agent comments and signs after the supervisor.'], ['handshake', 'Questions answered', 'Supervisor first; the senior manager decides.']];
   const nx = [5.2, 9.5], ny = [2.05, 4.6], nw = 3.3, nh = 2.1, pos = [[0, 0], [1, 0], [1, 1], [0, 1]];
   nodes.forEach(([icon, h, t], i) => {
     const x = nx[pos[i][0]], y = ny[pos[i][1]], d = 450 + i * 220;
@@ -311,26 +281,24 @@ pres.addSection({ title: 'Everyone' });
   ln(nx[0] + nw / 2, ny[0] + nh + 0.06, 0, ny[1] - ny[0] - nh - 0.12, { flipV: true }, 1310);
 }
 
-// =============================================================================================== 13. every day
+// =============================================================================================== 11. no single point of failure
 {
-  const s = add('LIGHT', 'Everyone', 'Daily reporting is built in. Each morning a WFM analyst drops yesterday\'s exports; MC Leaders and the WFM Daily Review are made in the tool, and the four brand emails go straight to the WFM manager, checked and ready for Outlook. Each day is kept in the shared history, so the month to date and the monthly tables fill themselves, and the history can be saved to a file and read back.');
-  eyebrow(s, 'Every day');
-  title(s, 'Daily reporting, *built in*');
-  const steps = [['up', 'Drop yesterday\'s exports', 'MC Leaders and the WFM Daily Review are made in the tool.'],
-    ['mail', 'Four brand emails to send', 'Virgin Postpaid, Virgin Mobile, FRiENDi Mobile and FRiENDi Pay, checked and ready for Outlook.'],
-    ['database', 'A history that builds itself', 'Every day kept for the month to date and the monthly tables; saved to a file and read back.']];
-  s.addShape(pres.shapes.LINE, { x: M + 0.28, y: 2.55, w: 0, h: 3.0, line: { color: C.line, width: 2 }, objectName: 'fade|300|rail' });
-  steps.forEach((p, i) => point(s, p, M, 2.1 + i * 1.5, 5.15, { t: 350 + i * 180, bg: i === 0 ? C.blue : C.ink, th: 0.8 }));
-  pic(s, 'win-builder', { x: 6.0, y: 2.0, w: R - 6.0 }, 90, 'up|250|shot');
+  const s = add('LIGHT', 'Everyone', 'The month never waits on one person. Every role shares the same month, it is saved as the work happens, and when someone is on holiday a colleague covers their pages until they are back. Everyone sees where the close stands, so nobody has to chase anyone.');
+  eyebrow(s, 'Continuity');
+  title(s, 'A month that never waits *on one person*');
+  [['team', 'Shared by every role', 'One month, one set of numbers, for everyone who needs it.'], ['database', 'Saved as the work happens', 'Nothing lives in one person\'s spreadsheet; the history builds itself.'],
+    ['sync', 'Covered during holidays', 'A colleague takes over a role\'s pages until they are back.'], ['bell', 'Nobody chases', 'Everyone sees the close and their own deadlines.']]
+    .forEach((p, i) => point(s, p, M, 2.1 + i * 1.18, 6.2, { t: 300 + i * 150, th: 0.6, bg: i ? C.ink : C.blue }));
+  fig(s, 'hub', { x: 7.4, y: 2.2, w: R - 7.4 }, false, 500);
 }
 
-// =============================================================================================== 14. private by design
+// =============================================================================================== 12. private by design
 pres.addSection({ title: 'Trust' });
 {
-  const s = add('DARK', 'Trust', 'The data is the most sensitive Member Care has: names, National IDs, results and money. Opened as a file, the page refuses every web address, so nothing can leave by accident. The shared data is encrypted with AES-256 and only accounts made in the tool can read it. Attachments carry no National IDs, and each person sees only what their role allows: an agent, only their own page. A security review was done, every finding fixed and covered by tests, and every change is logged with a name and a time.');
+  const s = add('DARK', 'Trust', 'The data is the most sensitive Member Care has: names, National IDs, results and money. It stays on our own computers and is sent nowhere. The shared data is encrypted with AES-256 and only accounts made in the tool can read it. Attachments carry no National IDs. Each role sees only what is theirs, a security review was done, and every change is logged.');
   eyebrow(s, 'Private by design', true);
   title(s, 'Your data *stays yours*');
-  const tiles = [['0', 'web requests', 'Opened as a file, the browser itself refuses every web address.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read the files in the folder.'],
+  const tiles = [['0', 'web requests', 'Nothing is sent anywhere: the data stays on our own computers.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read it.'],
     ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['By role', 'what each person sees', 'An agent sees only their own page; a supervisor, only their team.'],
     ['Reviewed', 'for security', 'Every finding fixed and covered by tests.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.']];
   const tw = (R - M - 0.4) / 3;
@@ -343,12 +311,12 @@ pres.addSection({ title: 'Trust' });
   });
 }
 
-// =============================================================================================== 15. proof
+// =============================================================================================== 13. proof
 {
-  const s = add('LIGHT', 'Trust', 'It is tested like a product. Every counting rule runs over ten thousand synthetic people with the expected results. Thirty-six automated browser test suites run before every change ships. Every role\'s pages are checked, in light and dark.');
+  const s = add('LIGHT', 'Trust', 'It is tested like a product. Every counting rule runs over ten thousand synthetic people with the expected results. Thirty-seven automated browser test suites run before every change ships. Every role\'s pages are checked, in light and dark.');
   eyebrow(s, 'Built to be right');
   title(s, 'Tested like a *product*');
-  const stats = [['10,000', 'synthetic people', 'run through every counting rule, with the expected results'], ['36', 'browser test suites', 'run before every change ships'], ['7', 'roles', 'every page checked,\nin light and dark']];
+  const stats = [['10,000', 'synthetic people', 'run through every counting rule, with the expected results'], ['37', 'browser test suites', 'run before every change ships'], ['7', 'roles', 'every page checked,\nin light and dark']];
   const cw = (R - M - 0.7) / 3;
   stats.forEach(([n, h, t], i) => {
     const x = M + i * (cw + 0.35), d = 300 + i * 200, on = i === 0;
@@ -361,35 +329,38 @@ pres.addSection({ title: 'Trust' });
   T(s, 'Every calculation, email and permission is covered by tests that run before each change ships.', { x: M + 0.7, y: 6.1, w: 10.5, h: 0.46, fontSize: 14, color: C.ink2, valign: 'middle', objectName: 'up|900|same' });
 }
 
-// =============================================================================================== 16. what it means
+// =============================================================================================== 14. what changes
 pres.addSection({ title: 'Launch plan' });
 {
-  const s = add('LIGHT', 'Launch plan', 'What it means for Member Care: every file of the month in one drop; problems decided before a number goes out; any bonus explained in a click; email drafts that are checked and private by default; and a month that is shared, locked and backed up, with vacation cover built in.');
-  eyebrow(s, 'What it means');
-  title(s, 'What it means for *Member Care*');
+  const s = add('LIGHT', 'Launch plan', 'What changes for Member Care, in one view: time moves from assembling to coaching; mistakes are settled before anything goes out; questions about pay are answered in a click; the whole month is visible to every role; and the month no longer rests on one person.');
+  eyebrow(s, 'What changes');
+  title(s, 'What changes for *Member Care*');
   const hd = (t, o = {}) => ({ text: t, options: { bold: true, color: C.white, fill: { color: o.fill || C.ink }, fontSize: 13, fontFace: FONT, valign: 'middle', margin: [0.08, 0.2, 0.08, 0.2] } });
   const c = (t, o = {}) => ({ text: t, options: { color: o.color || C.ink2, bold: !!o.bold, fontSize: 13, fontFace: FONT, fill: { color: o.fill || C.white }, valign: 'middle', margin: [0.08, 0.2, 0.08, 0.2] } });
-  const rows = [['One drop, every file recognised', 'The month starts from everything at once.'], ['Checks before anything is built', 'Problems are decided before a number goes out.'],
-    ['Every bonus explained in a click', 'Anyone can see how a bonus was counted.'], ['Ready drafts, no National IDs', 'Emails that are checked, and private by default.'],
-    ['Shared, locked, backed up', 'The month never rests on one person; vacation cover is built in.']];
-  s.addTable([[hd('What you get'), hd('Why it matters', { fill: C.blue })], ...rows.map((r, i) => [c(r[0], { bold: true, color: C.ink, fill: i % 2 ? C.white : C.row }), c(r[1], { color: C.muted, fill: i % 2 ? C.white : C.row })])],
-    { x: M, y: 2.05, w: 8.4, colW: [3.9, 4.5], rowH: [0.55, 0.78, 0.78, 0.78, 0.78, 0.78], border: { type: 'solid', color: C.line, pt: 0.75 }, objectName: 'up|300|table' });
-  fig(s, 'hub', { x: 9.2, y: 2.6, w: R - 9.2 }, false, 600);
+  const rows = [['Time', 'Assembling and checking by hand', 'Spent on coaching and service'], ['Accuracy', 'Mistakes found after the emails', 'Settled before anything goes out'],
+    ['Questions about pay', 'Worked out again on request', 'Answered in a click'], ['Visibility', 'Status gathered by email and calls', 'The whole month at a glance'],
+    ['Continuity', 'The month in one person\'s files', 'Shared, saved and covered']];
+  s.addTable([[hd(''), hd('Before'), hd('With Cadence', { fill: C.blue })], ...rows.map((r, i) => [c(r[0], { bold: true, color: C.ink, fill: i % 2 ? C.white : C.row }), c(r[1], { color: C.muted, fill: i % 2 ? C.white : C.row }), c(r[2], { bold: true, color: C.ink, fill: i % 2 ? C.white : C.row })])],
+    { x: M, y: 2.05, w: 8.6, colW: [2.3, 3.05, 3.25], rowH: [0.55, 0.78, 0.78, 0.78, 0.78, 0.78], border: { type: 'solid', color: C.line, pt: 0.75 }, objectName: 'up|300|table' });
+  card(s, 9.35, 2.05, R - 9.35, 4.45, { fill: C.blue, t: 600 });
+  dot(s, 'sparkle', 9.7, 2.4, 0.52, C.white, 'blue', 600);
+  T(s, 'Same team, same rules: a better month.', { x: 9.7, y: 3.2, w: R - 10.05, h: 1.6, fontSize: 24, bold: true, color: C.white, valign: 'top', lineSpacingMultiple: 1.02, objectName: 'up|600|sum' });
+  T(s, 'Month end runs on one shared truth instead of people and spreadsheets.', { x: 9.7, y: 4.95, w: R - 10.05, h: 1.1, fontSize: 13, color: C.white, valign: 'top', lineSpacingMultiple: 1.05, objectName: 'up|600|sum-t' });
 }
 
-// =============================================================================================== 17. how we start
+// =============================================================================================== 15. what comes next
 {
-  const s = add('END', 'Launch plan', 'Three steps to start: put the HTML in the common folder next to MC Data, read-only for everyone but its owner; open it in Edge or Chrome on a computer; each person makes an account and the admin gives the roles. Next: opening it from anywhere, phones included. Thank you, and questions.');
+  const s = add('END', 'Launch plan', 'What comes next, in three steps: run the next month end in Cadence, with the old way beside it for one month; measure what it gives back, hours, corrections and questions about pay, against the month before; then make it how Member Care closes every month. Next: opening it from anywhere, phones included. Thank you, and questions.');
   pixels(s, [[11.95, 1.08, 0.40, C.red], [12.55, 1.72, 0.16, C.pink], [6.80, 5.98, 0.28, C.lav], [12.32, 5.84, 0.22, C.orange], [7.08, 1.38, 0.14, C.blue]], 120);
   pic(s, 'laptop-dark', { x: 7.0, y: 1.95, w: 5.6 }, 90, 'up|250|laptop');
-  eyebrow(s, 'Next steps', true);
+  eyebrow(s, 'What comes next', true);
   title(s, 'Ready for *the next close*');
-  [['Put the HTML in the common folder', 'next to MC Data, read-only for everyone but its owner.'], ['Open it in Edge or Chrome', 'on a computer: nothing to install, no server.'], ['Everyone makes an account', 'the admin gives each person their role.']].forEach(([h, t], i) => {
+  [['Run the next month end in Cadence', 'every role in one place, the old way beside it for one month.'], ['Measure what it gives back', 'hours, corrections and questions about pay, against the month before.'], ['Make it how we close', 'every month, every role, one shared truth.']].forEach(([h, t], i) => {
     const y = 2.9 + i * 0.98, d = 300 + i * 160;
     s.addShape(pres.shapes.RECTANGLE, { x: M, y, w: 0.52, h: 0.52, fill: { color: i === 0 ? C.blue : C.edge }, line: { type: 'none' }, objectName: `up|${d}|n${i}` });
     T(s, String(i + 1), { x: M, y, w: 0.52, h: 0.52, fontSize: 15, bold: true, color: C.white, align: 'center', valign: 'middle', objectName: `up|${d}|n${i}t` });
-    T(s, h, { x: M + 0.75, y: y - 0.04, w: 5.4, h: 0.34, fontSize: 16, bold: true, color: C.white, objectName: `up|${d}|h${i}` });
-    T(s, t, { x: M + 0.75, y: y + 0.3, w: 5.4, h: 0.32, fontSize: 13, color: C.dmuted, objectName: `up|${d}|t${i}` });
+    T(s, h, { x: M + 0.75, y: y - 0.04, w: 5.6, h: 0.34, fontSize: 16, bold: true, color: C.white, objectName: `up|${d}|h${i}` });
+    T(s, t, { x: M + 0.75, y: y + 0.3, w: 5.6, h: 0.32, fontSize: 13, color: C.dmuted, objectName: `up|${d}|t${i}` });
   });
   dot(s, 'globe', M + 0.06, 5.8, 0.4, C.edge, 'white', 800);
   T(s, [{ text: 'Next: ', options: { bold: true, color: C.white } }, { text: 'open it from anywhere, phones included.', options: { color: C.dmuted } }], { x: M + 0.75, y: 5.8, w: 5.4, h: 0.4, fontSize: 13, valign: 'middle', objectName: 'up|800|next' });

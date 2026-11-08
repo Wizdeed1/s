@@ -30,6 +30,9 @@ elsewhere. Screen readers hear the same text as the ⓘ's description.
   Agents, Saved uploads, Import log, the KPI results helpers and others).
 - **Import**: the drop zone's file rules, what each missing export must contain, the attendance and DRC-CSAT notes.
 - **Export**: the sheet descriptions and the after-download tips (in disclosures).
+- **Drawers and Settings**: Settings' field notes (14 of them) sit behind an ⓘ beside their label; the KPI scorecards'
+  explanation behind the ⓘ on its title, with its fields' notes beside them (18 ⓘ); View as and the other drawers the same way. How to use,
+  the shortcuts sheet, How this was counted, the forms, signing and objections stay as they are, and a person's panel keeps its status lines.
 
 **Stays on the page:** numbers, states and deadlines ("0 of 12 supervisors finished", "Based on 12 days", "Draft · saved
 by…"), warnings, empty states and every action.

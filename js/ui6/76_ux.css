@@ -113,3 +113,10 @@ tr.sel > td { background: var(--accent-soft); }
 /* ---- a long list: its first 10 lines, then Show all */
 li.uxmoreoff { display: none !important; }
 .uxmore { margin-top: 8px; font-size: 13px; }
+
+/* ---- the drawers and Settings: a field's ⓘ on its label's line (inside a span label, at the field's end beside a <label>) */
+.uxhasfld { position: relative; }
+.uxhasfld > label:first-child, .uxhasfld > label.check { padding-inline-end: 28px; }
+.uxi.uxfld { position: absolute; top: -3px; inset-inline-end: 0; margin: 0; }
+.field > .lbl > .uxi, .cntrow > .lbl > .uxi { margin-inline-start: 4px; vertical-align: -4px; }
+.drawer header h2 > .uxi { vertical-align: -2px; }

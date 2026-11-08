@@ -87,7 +87,7 @@ const laptopHtml = (src, dark) => `<div class="laptop"><div class="lid"><div cla
   // the dashboard large, for the slide that points at its parts (make_deck.cjs reads hero.json to place the numbers), and close-ups
   await render('hero-dash', winHtml(shot('dash-light'), 'Cadence · Dashboard'));
   fs.writeFileSync(path.join(out, 'hero.json'), JSON.stringify({ pad: 90, winW: 1500, bar: 46, boxes: JSON.parse(fs.readFileSync(path.join(shots, 'dash-light.json'), 'utf8')) }));
-  for (const [n, fade] of [['z-import', 0], ['z-checks', 0], ['z-email', 1], ['z-templates', 1], ['z-how', 1]]) {
+  for (const [n, fade] of [['z-import', 0], ['z-checks', 1], ['z-email', 1], ['z-templates', 1], ['z-how', 1]]) {
     const f = path.join(shots, n + '.png'), w = fs.readFileSync(f).readUInt32BE(16);
     await render(n, `<div class="zoom${fade ? ' fade' : ''}" style="width:${Math.round(w * 0.8)}px"><img src="${img(f)}"></div>`, { pad: 70 });
   }

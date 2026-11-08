@@ -2664,6 +2664,13 @@ tr.sel > td { background: var(--accent-soft); }
 li.uxmoreoff { display: none !important; }
 .uxmore { margin-top: 8px; font-size: 13px; }
 
+/* ---- the drawers and Settings: a field's ⓘ on its label's line (inside a span label, at the field's end beside a <label>) */
+.uxhasfld { position: relative; }
+.uxhasfld > label:first-child, .uxhasfld > label.check { padding-inline-end: 28px; }
+.uxi.uxfld { position: absolute; top: -3px; inset-inline-end: 0; margin: 0; }
+.field > .lbl > .uxi, .cntrow > .lbl > .uxi { margin-inline-start: 4px; vertical-align: -4px; }
+.drawer header h2 > .uxi { vertical-align: -2px; }
+
 /* ------------------------------------------------------------------------------------------------------------- WFM › Report builder (the analysts) and WFM › Daily emails (the WFM manager) */
 .rb { display: grid; gap: 18px; min-width: 0; }
 .rbgrid { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -3576,6 +3583,12 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
 @media (max-width: 600px) { .shcards.five, .shroles, .shsteps, .shtiles { grid-template-columns: 1fr; } .shtop { flex-direction: column; align-items: flex-start; } .shtable tbody th { white-space: normal; } }
 @media print { .shctl, .viewbar, .mcspot { display: none !important; } html.mczoom body { transform: none !important; } .shsec .shrise { opacity: 1; transform: none; } }
 @media (forced-colors: active) { .shnums > div, .shtile, .shcard.stat, .viewbar, .shctl, .shgtiles > div { border: 1px solid CanvasText; } .mcspot { display: none; } }
+/* the idea's four parts (no numbers: they are not steps) and what Member Care gets (six, three a row) */
+.shsteps.pillars .shstep { padding-top: 18px; }
+.shcards.six { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 1180px) { .shcards.six { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .shcards.six { grid-template-columns: 1fr; } }
+.shgnote b { color: var(--ink); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -4185,7 +4198,7 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
 </aside>
 
 <aside class="drawer wide xwide" id="dScore" role="dialog" aria-modal="true" aria-labelledby="h-score" hidden>
-  <header><div><h2 id="h-score">KPI scorecards</h2><div class="sub">Changes apply straight away and are saved with the tool.</div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <header><div><h2 id="h-score">KPI scorecards</h2><div class="sub uxhelp">Changes apply straight away and are saved with the tool.</div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
   <div class="body" id="scoreBody"></div>
 </aside>
 
@@ -4195,7 +4208,7 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
 </aside>
 
 <aside class="drawer" id="dViewAs" role="dialog" aria-modal="true" aria-labelledby="h-viewas" hidden>
-  <header><div><h2 id="h-viewas">View as another role</h2><div class="sub">Any interface, exactly as that role sees it, on the shared data. Nothing is saved while you view.</div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <header><div><h2 id="h-viewas">View as another role</h2><div class="sub uxhelp">Any interface, exactly as that role sees it, on the shared data. Nothing is saved while you view.</div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
   <div class="body" id="viewAsBody"></div>
 </aside>
 
@@ -37663,7 +37676,8 @@ document.addEventListener('change', e => { const s = e.target.closest('[data-vap
 // One page the admin opens in front of the management team. It follows a messaging framework: the main message, the problem,
 // the answer as a value proposition, the key messages with their proof, a message for every role (each with View, which opens
 // that role's interface live through viewas.js), today's figures from the shared data (totals only, never a name), trust,
-// what changes, what it gives back (the room's own hours, typed in), and how to start. Present turns it into slides: full screen,
+// what changes, what it gives back (the room's own hours, typed in), and what comes next. It tells the idea and its benefits,
+// never how files go in or out. Present turns it into slides: full screen,
 // one section at a time, the arrow keys, speaker notes on N. The line figures are hairline's (vendor/hairline.js), drawn only while
 // the page is open. For the admin, anywhere in the tool: S a spotlight that follows the pointer, Z a zoom where it points, Esc off.
 const showFig = () => (typeof Hairline !== 'undefined' ? Hairline : null);
@@ -37674,24 +37688,24 @@ const shFig = (name, label) => `<div class="shfig" data-fig="${name}" data-label
 const shHead = (eyebrow, title, lead) => `<div class="shhead shrise"><div class="eyebrow">${esc(eyebrow)}</div><h2>${title}</h2>${lead ? `<p class="shlead">${lead}</p>` : ''}</div>`;
 /** the sections, in the order they are told; each with what to say (the speaker notes, on N while presenting) */
 const SHOW_SECTIONS = [
-  { id: 'hero', name: 'Cadence', notes: 'One offline file that runs Member Care\'s month end, from the Genesys exports to the last email, with a page for every role. In the next minutes: what it replaces, how a month runs, every role, why it can be trusted, and how we start.' },
-  { id: 'before', name: 'The challenge', notes: 'Before the tool, month end meant ten or more files from different places, joined by copy and paste, for seven roles who wait on the same numbers and one deadline. A bonus or a deduction was hard to check and harder to explain, and every email was put together by hand.' },
-  { id: 'answer', name: 'The answer', notes: 'The tool is one HTML file in the common folder. The WFM analyst drops the month\'s files, the checks say what needs a decision, the workbook and the incentive data are built in one click, and the emails are ready for Outlook. Four steps, each saying what it still needs.' },
-  { id: 'why', name: 'Why it works', notes: 'Five things change the month. Files are recognised by what is inside them. Nothing is built until the blocking checks are decided. Every bonus shows how it was counted, down to the rounding. The emails are ready but sent by people. And the data stays private.' },
-  { id: 'roles', name: 'Every role', notes: 'Every role signs in to its own page and sees only what is theirs. Press View on a role to open its interface live, on today\'s data. It is a preview: nothing is saved while you view, and Back to Admin returns here.' },
+  { id: 'hero', name: 'Cadence', notes: 'Cadence is one idea: one shared place for Member Care\'s month. Every role works from the same numbers, every number is settled before it counts, and every result is explained to the person it touches. In the next minutes: the problem, the idea, what Member Care gets, every role, trust, and what comes next.' },
+  { id: 'before', name: 'The challenge', notes: 'Month end used to run on people and spreadsheets: numbers from more than ten places, joined by hand, for seven roles waiting on one deadline. Skilled people spent their month assembling instead of improving service, a question about a bonus meant reopening the spreadsheets, and when one person was away the month waited.' },
+  { id: 'idea', name: 'The idea', notes: 'The idea has four parts. One source of truth: everyone works from the same numbers, the same day. Right before it counts: questions are settled before a number reaches a payslip or an email. Every number explained: anyone can see how a result was reached. And a rhythm everyone sees: the close moves step by step, and everyone knows whose turn it is.' },
+  { id: 'gets', name: 'What Member Care gets', notes: 'What Member Care gets: time back for people, fewer errors and fewer disputes, fairness everyone can see, the month at a glance for every manager, no single point of failure, and privacy by design. Each of these is something the team can feel in the first month.' },
+  { id: 'roles', name: 'Every role', notes: 'Every role gets a better month, on its own page, seeing only what is theirs. Press View on a role to open its page live, on today\'s data. It is a preview: nothing is saved while you view, and Back to Admin returns here.' },
   { id: 'live', name: 'Today\'s data', notes: 'These are today\'s numbers from the shared data, the same cards the dashboard shows: totals only, never a name.' },
-  { id: 'trust', name: 'Trust', notes: 'The data is the most sensitive Member Care has. Opened as a file, the page refuses every web address. The shared data is encrypted and only accounts made in the tool can read it. Attachments carry no National IDs. A security review was done, its findings fixed and tested, and every change is tested in the browser before it ships.' },
-  { id: 'change', name: 'What changes', notes: 'In one view, what changes for Member Care: one drop instead of files joined by hand, checks before anything is built, any bonus explained in a click, ready email drafts without National IDs, and a month that no longer lives in one person\'s spreadsheets.' },
-  { id: 'gives', name: 'What it gives back', notes: 'Ask the room, role by role: how many people do month end work, and how many hours a month does it take each of them today? Type their answers. Then ask how many hours they expect with the tool, or use the hours measured in the first month. The totals are the room\'s own numbers, not ours.' },
-  { id: 'start', name: 'How we start', notes: 'Three steps: put the HTML in the common folder next to MC Data, read-only for everyone but its owner; open it in Edge or Chrome on a computer; each person makes an account and the admin gives the roles. Thank you, and questions.' },
+  { id: 'trust', name: 'Trust', notes: 'The data is the most sensitive Member Care has. It stays on our own computers, encrypted, and only accounts made in the tool can read it. Nothing is sent anywhere. A security review was done, its findings fixed and tested, and every change is tested before it ships.' },
+  { id: 'change', name: 'What changes', notes: 'In one view, what changes: time moves from assembling to coaching, mistakes are settled before anything goes out, questions about pay are answered in a click, the whole month is visible to every role, and the month no longer rests on one person.' },
+  { id: 'gives', name: 'What it gives back', notes: 'Ask the room, role by role: how many people do month end work, and how many hours a month does it take each of them today? Type their answers. Then ask how many hours they expect with Cadence, or use the hours measured in the first month. The totals are the room\'s own numbers, not ours, and the last line turns them into people.' },
+  { id: 'start', name: 'What\'s next', notes: 'Three steps: run the next month end in Cadence with the old way beside it for one month; measure what it gives back, hours, corrections and questions about pay, against the month before; then make it how Member Care closes every month. Thank you, and questions.' },
 ];
 const SHOW_ROLES = [
-  ['user', 'WFM analyst', 'Gathered and joined every file by hand.', 'Imports, checks, builds and writes the emails in four steps.', 'i-up'],
-  ['wfm', 'WFM manager', 'Waited on spreadsheets before sending anything.', 'Sends checked emails from one place; analytics, agents and interactions.', 'i-chart'],
-  ['senior', 'Senior manager', 'Chased each step of the close by email.', 'Sees the month close in eight steps and finalizes the results.', 'i-clock'],
-  ['spv', 'Supervisor', 'Filled a sheet for every agent, every day.', 'Sees the team, writes only the exceptions, holds one-to-ones in the tool.', 'i-team'],
-  ['quality', 'Quality team', 'Sent quality scores in separate files.', 'Drops the Final EVAL once; every scorecard uses it.', 'i-star'],
-  ['agent', 'Agent', 'Heard about results second-hand.', 'Sees their own results and forms, in English or Arabic, and signs in the tool.', 'i-user'],
+  ['user', 'WFM analyst', 'Spent the month assembling numbers.', 'Spends it on analysis: the numbers come together and are checked for them.', 'i-up'],
+  ['wfm', 'WFM manager', 'Waited on spreadsheets before sending anything.', 'Sends checked numbers on time and sees every trend in one place.', 'i-chart'],
+  ['senior', 'Senior manager', 'Chased each step of the close by email.', 'Sees the whole close at a glance and decides with every number explained.', 'i-clock'],
+  ['spv', 'Supervisor', 'Filled sheets instead of coaching.', 'Notes only what is different, and coaches from the month\'s own numbers.', 'i-team'],
+  ['quality', 'Quality team', 'Sent scores separately, team by team.', 'Enters quality once; it counts the same everywhere.', 'i-star'],
+  ['agent', 'Agent', 'Heard about results second-hand.', 'Sees their own results, understands them and can question them, in English or Arabic.', 'i-user'],
 ];
 function showLiveHtml() {
   const months = wsMonths(), k = wsMonthNow();
@@ -37718,30 +37732,30 @@ function giveHtml() {
   const m = giveSum(), f = x => Math.round(x).toLocaleString('en-US');
   const tiles = [[m == null ? '–' : f(m), 'hours back a month'], [m == null ? '–' : f(m * 12), 'hours back a year'], [m == null ? '–' : f(m * 12 / 8), 'working days back a year']];
   return `<div class="shgtiles">${tiles.map(([n, l], i) => `<div${i === 2 ? ' class="hot"' : ''}><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('')}</div>
-    <p class="shgnote">${m == null ? 'Type the room\'s numbers: the people in a role, and the hours each gives month end in a month, today and with the tool.' : 'The room\'s own numbers: people × (hours today − hours with the tool), for 12 months, in 8-hour working days.'}</p>`;
+    <p class="shgnote">${m == null ? 'Type the room\'s numbers: the people in a role, and the hours each gives month end in a month, today and with Cadence.' : `The room's own numbers: people × (hours today − hours with Cadence), for 12 months, in 8-hour working days. <b>${m >= 176 ? `As many hours as ${(m / 176).toFixed(1)} full-time people` : `${Math.round(m / 176 * 100)}% of a full-time person`}, every month, back to coaching and service.</b>`}</p>`;
 }
 function giveTableHtml() {
-  const lab = { n: 'people', a: 'hours each a month, today', b: 'hours each a month, with the tool' };
-  return `<table class="shctab"><thead><tr><th scope="col">Role</th><th scope="col">People</th><th scope="col">Hours each a month, today</th><th scope="col">Hours each, with the tool</th></tr></thead>
-    <tbody>${GIVE_ROLES.map((r, i) => `<tr><th scope="row">${esc(r)}</th>${['n', 'a', 'b'].map(c => `<td><input type="number" inputmode="decimal" min="0" max="9999" step="any" data-give="${i}:${c}" value="${esc(giveVals[i][c])}" aria-label="${esc(r)}: ${lab[c]}"></td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const lab = { n: 'people', a: 'hours each a month, today', b: 'hours each a month, with Cadence' }, eg = { n: 'e.g. 3', a: 'e.g. 40', b: 'e.g. 12' };
+  return `<table class="shctab"><thead><tr><th scope="col">Role</th><th scope="col">People</th><th scope="col">Hours each a month, today</th><th scope="col">Hours each, with Cadence</th></tr></thead>
+    <tbody>${GIVE_ROLES.map((r, i) => `<tr><th scope="row">${esc(r)}</th>${['n', 'a', 'b'].map(c => `<td><input type="number" inputmode="decimal" min="0" max="9999" step="any" data-give="${i}:${c}" value="${esc(giveVals[i][c])}"${i ? '' : ` placeholder="${eg[c]}"`} aria-label="${esc(r)}: ${lab[c]}"></td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
 function showHtml() {
   const S = {
     hero: `<div class="shhero">
         <div class="shherotext shrise"><span class="bologo on-light shlogo" aria-hidden="true"></span><div class="eyebrow">Cadence · Member Care performance</div>
-          <h2 class="shbig">Member Care's month end, <b>in one place.</b></h2>
-          <p class="shlead">One offline file turns the month's Genesys exports into the monthly workbook, the incentive data, the emails and the one-to-ones. Nothing is built until the checks are decided. Any bonus can be traced, KPI by KPI, and each role sees only its own page.</p>
+          <h2 class="shbig">Member Care's month, <b>in one place.</b></h2>
+          <p class="shlead">One shared truth for the whole month: the numbers every role works from, settled before they count, and explained to the person they touch. Less time assembling, more time for people.</p>
           <div class="shcta"><button class="btn primary" data-showpresent>Present</button><button class="btn" data-showgo="roles">See every role</button></div>
           <ul class="shstrip" id="showStrip">${showStripHtml()}</ul></div>
-        ${shFig('exploded', 'An app window taken apart into its layers: the tool')}</div>`,
-    before: `${shHead('The challenge', 'Month end ran on <b>copy and paste.</b>', '')}
-        <div class="shnums shrise">${[['10+', 'files joined by hand every month'], ['7', 'roles waiting on the same numbers'], ['1', 'deadline for all of it']].map(([n, l], i) => `<div class="${i === 2 ? 'hot' : ''}"><b>${n}</b><span>${l}</span></div>`).join('')}</div>
-        <div class="shcards three shrise">${[['Files gathered by hand', 'Four Genesys exports, every supervisor\'s attendance sheet and the quality files, joined by copy and paste.'], ['Hard to check, harder to explain', 'A rounding or a missed absence changed a bonus, and finding why meant opening the spreadsheets again.'], ['Emails built one by one', 'The deduction and incentive emails, their tables and attachments, put together by hand every month.']].map(([h, t]) => `<div class="shcard"><b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
-    answer: `${shHead('The answer', 'One file runs <b>the whole month.</b>', 'For Member Care\'s WFM team and managers, who close every month from scattered files, Cadence is one page in the common folder that takes the month from the Genesys exports to the last email. It checks every number before it builds anything, and it shows how every bonus was counted.')}
-        <ol class="shsteps shrise">${[['Import', 'Drop every file of the month at once. Each is recognised by what is inside it.', 'riffle', 'A tray of cards: the month\'s files'], ['Review', 'The checks list what needs a decision before anything is built.', 'sieve', 'Sieves over a pan: the checks'], ['Export', 'The monthly workbook and the incentive data, built in one click.', 'format', 'Crooked lines snapping square: the workbook'], ['Emails', 'Deduction, absences and incentive emails, ready to send from Outlook.', 'relay', 'A hub lighting a path to a leaf: the emails']].map(([h, t, f, l], i) => `<li class="shstep"><span class="shn">${i + 1}</span>${shFig(f, l)}<b>${h}</b><p>${t}</p></li>`).join('')}</ol>`,
-    why: `${shHead('Why it works', 'Five things that <b>change the month.</b>', '')}
-        <div class="shcards five shrise">${[['One drop, every file recognised', 'By its columns, never its name: the Genesys exports, attendance templates, IDs and the quality EVAL.', ''], ['Checked before it is built', 'Blocking checks stop the build until someone decides, and every decision is kept with who made it.', ''], ['Every bonus explains itself', 'Each KPI with its band, ranking and points, then the days and the amount.', '94.96% → 95%'], ['Emails ready, sent by people', 'The tool writes them; people send them from Outlook. Attachments carry no National IDs.', ''], ['Private by design', 'Opened as a file, the page refuses every web address; the shared data is encrypted.', '0 web requests']].map(([h, t, big], i) => `<div class="shcard${big ? ' stat' : ''}">${big ? `<em>${esc(big)}</em>` : `<span class="shno">0${i + 1}</span>`}<b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
-    roles: `${shHead('Every role', 'A page for <b>every role.</b>', 'Press View to open that interface live, on today\'s data, exactly as its role sees it. Nothing is saved and National IDs are hidden while you view; Back to Admin returns here.')}
+        ${shFig('exploded', 'An app window taken apart into its layers: one place for the month')}</div>`,
+    before: `${shHead('The challenge', 'Month end ran on <b>people and spreadsheets.</b>', '')}
+        <div class="shnums shrise">${[['10+', 'sources of numbers, joined by hand'], ['7', 'roles waiting on the same numbers'], ['1', 'deadline for all of it']].map(([n, l], i) => `<div class="${i === 2 ? 'hot' : ''}"><b>${n}</b><span>${l}</span></div>`).join('')}</div>
+        <div class="shcards three shrise">${[['Hours spent assembling', 'Skilled people spent their month joining and checking numbers instead of improving service.'], ['Hard to explain, easy to dispute', 'A question about a bonus or a deduction meant reopening the spreadsheets to find the answer.'], ['The month lived with one person', 'When they were away, the month waited, and what they knew was nowhere else.']].map(([h, t]) => `<div class="shcard"><b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
+    idea: `${shHead('The idea', 'One shared truth, <b>a page for every role.</b>', 'Cadence brings the whole month to one place every role opens: the same numbers for everyone, settled before they count, explained to everyone, at a pace everyone can see.')}
+        <ol class="shsteps pillars shrise">${[['One source of truth', 'Every role works from the same numbers, the same day. No versions to reconcile.', 'stack', 'Layers settling into one stack: one source of truth'], ['Right before it counts', 'Questions are settled before a number reaches a payslip or an email.', 'sieve', 'Sieves over a pan: settled before it counts'], ['Every number explained', 'Anyone can see how a result was reached, down to the rounding.', 'loupe', 'A magnifying glass: every number explained'], ['A rhythm everyone sees', 'The month close moves step by step, and everyone knows whose turn it is.', 'plot', 'A chart drawing itself: the month, seen by everyone']].map(([h, t, f, l]) => `<li class="shstep">${shFig(f, l)}<b>${h}</b><p>${t}</p></li>`).join('')}</ol>`,
+    gets: `${shHead('What Member Care gets', 'What Member Care <b>gets.</b>', '')}
+        <div class="shcards six shrise">${[['Time back for people', 'The hours that went into assembling numbers go back to coaching, quality and service.', 'Hours back'], ['Fewer errors and disputes', 'Problems are settled before anything goes out, so fewer corrections follow the emails.', ''], ['Fairness people can see', 'Every bonus explains itself, the same rules apply to everyone, and agents see their own.', '94.96% → 95%'], ['The month at a glance', 'Managers see where the close stands, what is late and who is next, without chasing anyone.', ''], ['No single point of failure', 'The month is shared, saved and covered during holidays: it never rests on one person.', ''], ['Private by design', 'The data stays on our own computers, encrypted, and each role sees only what is theirs.', '0 web requests']].map(([h, t, big], i) => `<div class="shcard${big ? ' stat' : ''}">${big ? `<em>${esc(big)}</em>` : `<span class="shno">0${i + 1}</span>`}<b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
+    roles: `${shHead('Every role', 'A better month for <b>every role.</b>', 'Press View to open that page live, on today\'s data, exactly as its role sees it. Nothing is saved and National IDs are hidden while you view; Back to Admin returns here.')}
         <div class="shroles shrise">${SHOW_ROLES.map(([r, name, before, now, ico]) => { const R = VIEW_ROLES.find(x => x[0] === r), kind = R && R[3]; return `<div class="shrole"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#${ico}"/></svg></span><b>${esc(name)}</b></div>
             <p class="was"><span>Before</span>${esc(before)}</p><p class="now"><span>Now</span>${esc(now)}</p>
             <div class="shract">${kind ? `<span class="shpick" data-kind="${kind}">${viewPickHtml(kind)}</span>` : ''}<button class="btn sm primary" data-vago="${r}">View</button></div></div>`; }).join('')}
@@ -37749,18 +37763,18 @@ function showHtml() {
           ${shFig('hub', 'A hub and its tiles: one set of data, a page for every role')}</div>`,
     live: `${shHead('Today\'s data', 'This is <b>today\'s data.</b>', 'The same cards the dashboard shows, straight from the shared data: totals only, never a name.')}<div id="showLive">${showLiveHtml()}</div>`,
     trust: `${shHead('Trust', 'Your data <b>stays yours.</b>', '')}
-        <div class="shtrust shrise"><div class="shtiles">${[['0', 'web requests', 'Opened as a file, the browser itself refuses every web address.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read the files in the folder.'], ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['36', 'browser test suites', 'Every role, on a computer, light and dark, before each change ships.'], ['10,000', 'synthetic people', 'The counting rules checked against the previous engine, with the same results.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.']].map(([b, s, t], i) => `<div class="shtile${i ? '' : ' on'}"><b>${b}</b><span>${s}</span><p>${t}</p></div>`).join('')}</div>
+        <div class="shtrust shrise"><div class="shtiles">${[['0', 'web requests', 'Nothing is sent anywhere: the data stays on our own computers.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read the shared data.'], ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['37', 'browser test suites', 'Every role, on a computer, light and dark, before each change ships.'], ['10,000', 'synthetic people', 'The counting rules checked against the previous engine, with the same results.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.']].map(([b, s, t], i) => `<div class="shtile${i ? '' : ' on'}"><b>${b}</b><span>${s}</span><p>${t}</p></div>`).join('')}</div>
           ${shFig('vault', 'A vault door: the shared data, encrypted')}</div>`,
     change: `${shHead('What it means', 'What changes for <b>Member Care.</b>', '')}
-        <div class="shtable shrise"><table><thead><tr><th></th><th>Before</th><th class="hot">With the tool</th></tr></thead><tbody>${[['Gathering the files', 'Each file found and joined by hand', 'One drop, each file recognised'], ['Checking', 'Mistakes found after the emails went out', 'Checks before anything is built'], ['Explaining a bonus', 'Worked out again on request', 'Every person\'s breakdown in one click'], ['Emails', 'Tables and attachments put together by hand', 'Ready drafts, no National IDs'], ['Continuity', 'The month lived in one person\'s files', 'Shared, locked, backed up, vacation cover']].map(([a, b, c]) => `<tr><th scope="row">${a}</th><td>${b}</td><td>${c}</td></tr>`).join('')}</tbody></table></div>`,
-    gives: `${shHead('What it gives back', 'Time back for <b>Member Care.</b>', 'The room\'s own numbers: how many people give month end their hours today, and how many hours it takes with the tool.')}
+        <div class="shtable shrise"><table><thead><tr><th></th><th>Before</th><th class="hot">With Cadence</th></tr></thead><tbody>${[['Time', 'Spent assembling and re-checking numbers', 'Spent on coaching and service'], ['Accuracy', 'Mistakes found after the emails went out', 'Settled before anything goes out'], ['Questions about pay', 'Worked out again on request', 'Answered in a click, the same for everyone'], ['Visibility', 'Status gathered by email and calls', 'The whole month at a glance, for every role'], ['Continuity', 'The month lived in one person\'s files', 'Shared, saved and covered during holidays']].map(([a, b, c]) => `<tr><th scope="row">${a}</th><td>${b}</td><td>${c}</td></tr>`).join('')}</tbody></table></div>`,
+    gives: `${shHead('What it gives back', 'Time back for <b>Member Care.</b>', 'The room\'s own numbers: how many people give month end their hours today, and how many it takes with Cadence. What comes back is time for people.')}
         <div class="shcalc shrise"><div class="shcalctab">${giveTableHtml()}<button class="btn sm ghost" data-giveclear>Clear the numbers</button></div>
           <div class="shgive" id="showGive" aria-live="polite">${giveHtml()}</div></div>`,
     start: `<div class="shend">
-        <div class="shendtext">${shHead('Next steps', 'Ready for <b>the next close.</b>', '')}
-          <ol class="shgo shrise">${[['Put the HTML in the common folder', 'Next to MC Data, read-only for everyone but its owner.'], ['Open it in Edge or Chrome', 'On a computer: nothing to install, no server.'], ['Everyone makes an account', 'The admin gives each person their role.']].map(([h, t], i) => `<li><span class="shn">${i + 1}</span><div><b>${h}</b><p>${t}</p></div></li>`).join('')}</ol>
+        <div class="shendtext">${shHead('What\'s next', 'Ready for <b>the next close.</b>', '')}
+          <ol class="shgo shrise">${[['Run the next month end in Cadence', 'Every role in one place, with the old way beside it for one month.'], ['Measure what it gives back', 'Hours, corrections and questions about pay, against the month before.'], ['Make it how we close', 'Every month, every role, one shared truth.']].map(([h, t], i) => `<li><span class="shn">${i + 1}</span><div><b>${h}</b><p>${t}</p></div></li>`).join('')}</ol>
           <p class="shthanks shrise">Thank <b>you.</b></p></div>
-        ${shFig('laptop', 'A laptop, its lid opening: open the file and start')}</div>`,
+        ${shFig('laptop', 'A laptop, its lid opening: the next close')}</div>`,
   };
   const sec = (s, i) => `<section class="shsec sh-${s.id}" data-shsec="${i}" aria-label="${esc(s.name)}">${S[s.id]}<aside class="shnotes" aria-label="Speaker notes"><b>Speaker notes</b><p>${esc(s.notes)}</p></aside></section>`;
   return `<div class="shtop"><div><div class="eyebrow">Admin</div><h1 id="h-show">Showcase</h1><p>The tool's own story for a meeting: present it full screen, and open any role's interface live from it. Anywhere in the tool: <kbd>S</kbd> spotlight, <kbd>Z</kbd> zoom, <kbd>Esc</kbd> off.</p></div>
@@ -38174,12 +38188,13 @@ function uxTipHere(src) {
   if (!src.id) src.id = 'uxs' + (++UX.n);
   src.classList.add('uxsrc');
   let b = src.previousElementSibling; if (!b || !b.classList.contains('uxi')) { b = document.createElement('button'); b.type = 'button'; b.className = 'uxi uxhere'; b.innerHTML = '<svg aria-hidden="true" width="16" height="16"><use href="#i-info"/></svg>'; b.setAttribute('aria-expanded', 'false'); b.setAttribute('aria-label', 'About this'); src.before(b); }
-  b.setAttribute('aria-describedby', src.id); b.hidden = src.hidden || !uxText(src);
+  if (b.getAttribute('aria-describedby') !== src.id) b.setAttribute('aria-describedby', src.id);
+  const on = !src.hidden && !!uxText(src); if (b.hidden === on) b.hidden = !on;   // only when it changes: the drawers' observer watches `hidden`
 }
 /** the title an explanation belongs to: the heading just before it in its block, else its card's first heading */
 function uxHeadFor(src) {
   for (let el = src.previousElementSibling; el; el = el.previousElementSibling) if (el.matches('h1, h2, h3, h4')) return el;
-  const box = src.closest('.cardhead, .card, article, details'); if (!box || box.matches('.view')) return null;   // its own card's title, never the page's
+  const box = src.closest('.cardhead, .card, article, details, .drawer > header'); if (!box || box.matches('.view')) return null;   // its own card's title, never the page's
   const h = box.querySelector('h1, h2, h3, h4, summary'); return h && !h.contains(src) && !src.contains(h) ? h : null;
 }
 const uxWords = el => uxText(el).split(' ').filter(Boolean).length;
@@ -38192,11 +38207,42 @@ function uxDeclutter() {
   for (const p of main.querySelectorAll('.uxhelp:not(.keep)')) { const h = uxHeadFor(p); if (h) uxTip(p, h); else uxTipHere(p); }
   // a title rewritten by its page (textContent) lost its ⓘ: put it back; an explanation emptied or hidden by its page hides it
   for (const s of main.querySelectorAll('.uxsrc[data-uxh]')) { const h = document.getElementById(s.dataset.uxh); if (h) uxTip(s, h); }
-  for (const b of main.querySelectorAll('.uxi')) { const s = uxSrcOf(b); if (!s || !s.isConnected) b.hidden = true; }
+  for (const b of main.querySelectorAll('.uxi')) { const s = uxSrcOf(b); if ((!s || !s.isConnected) && !b.hidden) b.hidden = true; }
+}
+// ---- the drawers and Settings: a field's help line behind an ⓘ on the field's label line; a drawer's own caption behind the ⓘ on its
+// title. Status lines stay (the person panel's summary, Saved…); How to use, the shortcuts, How this was counted and the forms people fill
+// in are left as they are.
+const UX_DRAWER_SKIP = '#dHelp, #dKeys, #dHow, #dSign, #dForm, #dObj';
+function uxFieldTip(sm) {
+  const box = sm.closest('.cntrow, .field'); if (!box) return;
+  const head = box.querySelector(':scope > .lbl, :scope > label');
+  if (!head) { uxTipHere(sm); return; }
+  if (head.tagName !== 'LABEL') { uxTip(sm, head); return; }   // a span: the ⓘ goes at its end
+  if (!sm.id) sm.id = 'uxs' + (++UX.n);
+  let b = box.querySelector(':scope > .uxi.uxfld');   // a <label> cannot hold a button: the ⓘ sits on its line, at the field's end
+  const other = b && b.getAttribute('aria-describedby'), oe = other && other !== sm.id ? document.getElementById(other) : null;
+  if (oe && oe.isConnected) { uxTipHere(sm); return; }
+  sm.classList.add('uxsrc');
+  if (!b) { b = document.createElement('button'); b.type = 'button'; b.className = 'uxi uxfld'; b.innerHTML = '<svg aria-hidden="true" width="16" height="16"><use href="#i-info"/></svg>'; b.setAttribute('aria-expanded', 'false'); head.after(b); box.classList.add('uxhasfld'); }
+  if (b.getAttribute('aria-describedby') !== sm.id) b.setAttribute('aria-describedby', sm.id);
+  const lab = `About ${uxText(head) || 'this'}`; if (b.getAttribute('aria-label') !== lab) b.setAttribute('aria-label', lab);
+  const on = !sm.hidden && !!uxText(sm); if (b.hidden === on) b.hidden = !on;   // only when it changes (see uxTipHere)
+}
+function uxDrawers() {
+  for (const d of document.querySelectorAll('.drawer:not([hidden])')) {
+    if (d.matches(UX_DRAWER_SKIP)) continue;
+    for (const sm of d.querySelectorAll('.field > small:not(.keep), .cntrow .cntctl > small:not(.keep)')) uxFieldTip(sm);
+    for (const p of d.querySelectorAll('.uxhelp:not(.keep)')) { const h = uxHeadFor(p); if (h) uxTip(p, h); else uxTipHere(p); }
+    for (const sx of d.querySelectorAll('.uxsrc[data-uxh]')) { const h = document.getElementById(sx.dataset.uxh); if (h) uxTip(sx, h); }
+  }
 }
 // after every change to the page, once per frame (the pages draw themselves; this only adds the ⓘ and the tools)
-const uxObs = new MutationObserver(() => { if (UX.mo) return; UX.mo = requestAnimationFrame(() => { UX.mo = 0; try { uxDeclutter(); uxFlowBars(); uxEnhance(); uxLists(); uxRefocus(); } catch (e) { /* a page half drawn: the next pass */ } }); });
-function uxStart() { const m = $('main'); if (m) uxObs.observe(m, { childList: true, subtree: true }); uxDeclutter(); uxFlowBars(); uxEnhance(); uxLists(); }
+const uxObs = new MutationObserver(() => { if (UX.mo) return; UX.mo = requestAnimationFrame(() => { UX.mo = 0; try { uxDeclutter(); uxFlowBars(); uxEnhance(); uxLists(); uxDrawers(); uxRefocus(); } catch (e) { /* a page half drawn: the next pass */ } }); });
+function uxStart() {
+  const m = $('main'); if (m) uxObs.observe(m, { childList: true, subtree: true });
+  document.querySelectorAll('.drawer').forEach(d => uxObs.observe(d, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] }));   // a drawer opening, or drawing itself
+  uxDeclutter(); uxFlowBars(); uxEnhance(); uxLists(); uxDrawers();
+}
 
 // ---- Show guidance: every explanation back on the page (per browser), from the account menu, the shortcuts sheet or Shift+H
 function uxSetGuide(on, quiet) {

@@ -86,12 +86,13 @@ function uxTipHere(src) {
   if (!src.id) src.id = 'uxs' + (++UX.n);
   src.classList.add('uxsrc');
   let b = src.previousElementSibling; if (!b || !b.classList.contains('uxi')) { b = document.createElement('button'); b.type = 'button'; b.className = 'uxi uxhere'; b.innerHTML = '<svg aria-hidden="true" width="16" height="16"><use href="#i-info"/></svg>'; b.setAttribute('aria-expanded', 'false'); b.setAttribute('aria-label', 'About this'); src.before(b); }
-  b.setAttribute('aria-describedby', src.id); b.hidden = src.hidden || !uxText(src);
+  if (b.getAttribute('aria-describedby') !== src.id) b.setAttribute('aria-describedby', src.id);
+  const on = !src.hidden && !!uxText(src); if (b.hidden === on) b.hidden = !on;   // only when it changes: the drawers' observer watches `hidden`
 }
 /** the title an explanation belongs to: the heading just before it in its block, else its card's first heading */
 function uxHeadFor(src) {
   for (let el = src.previousElementSibling; el; el = el.previousElementSibling) if (el.matches('h1, h2, h3, h4')) return el;
-  const box = src.closest('.cardhead, .card, article, details'); if (!box || box.matches('.view')) return null;   // its own card's title, never the page's
+  const box = src.closest('.cardhead, .card, article, details, .drawer > header'); if (!box || box.matches('.view')) return null;   // its own card's title, never the page's
   const h = box.querySelector('h1, h2, h3, h4, summary'); return h && !h.contains(src) && !src.contains(h) ? h : null;
 }
 const uxWords = el => uxText(el).split(' ').filter(Boolean).length;
@@ -104,11 +105,42 @@ function uxDeclutter() {
   for (const p of main.querySelectorAll('.uxhelp:not(.keep)')) { const h = uxHeadFor(p); if (h) uxTip(p, h); else uxTipHere(p); }
   // a title rewritten by its page (textContent) lost its ⓘ: put it back; an explanation emptied or hidden by its page hides it
   for (const s of main.querySelectorAll('.uxsrc[data-uxh]')) { const h = document.getElementById(s.dataset.uxh); if (h) uxTip(s, h); }
-  for (const b of main.querySelectorAll('.uxi')) { const s = uxSrcOf(b); if (!s || !s.isConnected) b.hidden = true; }
+  for (const b of main.querySelectorAll('.uxi')) { const s = uxSrcOf(b); if ((!s || !s.isConnected) && !b.hidden) b.hidden = true; }
+}
+// ---- the drawers and Settings: a field's help line behind an ⓘ on the field's label line; a drawer's own caption behind the ⓘ on its
+// title. Status lines stay (the person panel's summary, Saved…); How to use, the shortcuts, How this was counted and the forms people fill
+// in are left as they are.
+const UX_DRAWER_SKIP = '#dHelp, #dKeys, #dHow, #dSign, #dForm, #dObj';
+function uxFieldTip(sm) {
+  const box = sm.closest('.cntrow, .field'); if (!box) return;
+  const head = box.querySelector(':scope > .lbl, :scope > label');
+  if (!head) { uxTipHere(sm); return; }
+  if (head.tagName !== 'LABEL') { uxTip(sm, head); return; }   // a span: the ⓘ goes at its end
+  if (!sm.id) sm.id = 'uxs' + (++UX.n);
+  let b = box.querySelector(':scope > .uxi.uxfld');   // a <label> cannot hold a button: the ⓘ sits on its line, at the field's end
+  const other = b && b.getAttribute('aria-describedby'), oe = other && other !== sm.id ? document.getElementById(other) : null;
+  if (oe && oe.isConnected) { uxTipHere(sm); return; }
+  sm.classList.add('uxsrc');
+  if (!b) { b = document.createElement('button'); b.type = 'button'; b.className = 'uxi uxfld'; b.innerHTML = '<svg aria-hidden="true" width="16" height="16"><use href="#i-info"/></svg>'; b.setAttribute('aria-expanded', 'false'); head.after(b); box.classList.add('uxhasfld'); }
+  if (b.getAttribute('aria-describedby') !== sm.id) b.setAttribute('aria-describedby', sm.id);
+  const lab = `About ${uxText(head) || 'this'}`; if (b.getAttribute('aria-label') !== lab) b.setAttribute('aria-label', lab);
+  const on = !sm.hidden && !!uxText(sm); if (b.hidden === on) b.hidden = !on;   // only when it changes (see uxTipHere)
+}
+function uxDrawers() {
+  for (const d of document.querySelectorAll('.drawer:not([hidden])')) {
+    if (d.matches(UX_DRAWER_SKIP)) continue;
+    for (const sm of d.querySelectorAll('.field > small:not(.keep), .cntrow .cntctl > small:not(.keep)')) uxFieldTip(sm);
+    for (const p of d.querySelectorAll('.uxhelp:not(.keep)')) { const h = uxHeadFor(p); if (h) uxTip(p, h); else uxTipHere(p); }
+    for (const sx of d.querySelectorAll('.uxsrc[data-uxh]')) { const h = document.getElementById(sx.dataset.uxh); if (h) uxTip(sx, h); }
+  }
 }
 // after every change to the page, once per frame (the pages draw themselves; this only adds the ⓘ and the tools)
-const uxObs = new MutationObserver(() => { if (UX.mo) return; UX.mo = requestAnimationFrame(() => { UX.mo = 0; try { uxDeclutter(); uxFlowBars(); uxEnhance(); uxLists(); uxRefocus(); } catch (e) { /* a page half drawn: the next pass */ } }); });
-function uxStart() { const m = $('main'); if (m) uxObs.observe(m, { childList: true, subtree: true }); uxDeclutter(); uxFlowBars(); uxEnhance(); uxLists(); }
+const uxObs = new MutationObserver(() => { if (UX.mo) return; UX.mo = requestAnimationFrame(() => { UX.mo = 0; try { uxDeclutter(); uxFlowBars(); uxEnhance(); uxLists(); uxDrawers(); uxRefocus(); } catch (e) { /* a page half drawn: the next pass */ } }); });
+function uxStart() {
+  const m = $('main'); if (m) uxObs.observe(m, { childList: true, subtree: true });
+  document.querySelectorAll('.drawer').forEach(d => uxObs.observe(d, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] }));   // a drawer opening, or drawing itself
+  uxDeclutter(); uxFlowBars(); uxEnhance(); uxLists(); uxDrawers();
+}
 
 // ---- Show guidance: every explanation back on the page (per browser), from the account menu, the shortcuts sheet or Shift+H
 function uxSetGuide(on, quiet) {

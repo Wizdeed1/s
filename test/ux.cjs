@@ -7,7 +7,9 @@
 //  - tables: Copy (rich table and tab text), the row filter, Team's copy of every page, a click on a National ID;
 //  - Results: Show and its counts, ticks and bulk eligibility (one logged decision each, Undo), copy IDs;
 //  - Quality: team tabs, Enter goes down and the cursor survives the redraw, a column pasted is one logged change;
-//  - Import: a ready export is one slim line with its Ready chip, the drop zone a slim bar; People opens as the table.
+//  - Import: a ready export is one slim line with its Ready chip, the drop zone a slim bar; People opens as the table;
+//  - the drawers: Settings' field notes and the scorecards' explanation behind ⓘ, back with Show guidance; a person's status stays;
+//  - the Showcase: the idea and the benefits, no word on how files go in or out; What it gives back still adds up.
 // Usage: node test/ux.cjs [page.html] [outDir] [exportsDir]
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -184,6 +186,50 @@ const USERS = { admin: { id: 'u0', name: 'Amal R.', username: 'amal.r', role: 'a
     ok(await p.evaluate(() => window.__mc.state.pview) === 'table' && await p.evaluate(() => !document.getElementById('roster').closest('[hidden]')), 'Review › People opens as the table');
     await p.screenshot({ path: path.join(out, 'ux-import.png') });
   }
+  await ctx.close();
+
+  // ---- 7. the drawers: Settings' field notes and the scorecards' explanation behind ⓘ, Show guidance there too; a person's status stays
+  ({ p, ctx } = await open('admin'));
+  await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(500);
+  const notes = () => p.evaluate(() => { const d = document.getElementById('dSettings'), L = [...d.querySelectorAll('.field > small, .cntrow .cntctl > small')].filter(x => !x.classList.contains('keep'));
+    return { n: L.length, hid: L.filter(x => getComputedStyle(x).display === 'none').length, tied: L.filter(x => x.id && d.querySelector(`.uxi[aria-describedby~="${x.id}"]`)).length, tips: d.querySelectorAll('.uxi').length }; });
+  await p.click('[data-sb="settings"]'); await p.waitForTimeout(500);
+  const sn = await notes();
+  ok(sn.n >= 5 && sn.hid === sn.n && sn.tied === sn.n, `Settings: ${sn.n} field notes, each hidden behind its ⓘ (${sn.tips} ⓘ)`);
+  const tipFor = await p.evaluate(() => { const b = document.querySelectorAll('#dSettings .uxi')[1]; return document.getElementById(b.getAttribute('aria-describedby').split(' ')[0]).textContent.trim(); });
+  await p.hover('#dSettings .uxi >> nth=1'); await p.waitForTimeout(450);
+  ok(await p.evaluate(t => { const el = document.getElementById('uxPop'); return !el.hidden && el.textContent.includes(t); }, tipFor), 'pointing at an ⓘ in Settings shows its note');
+  const calm = await p.evaluate(() => new Promise(res => {   // a note with no words: its ⓘ hides once, and the page stays still (no pass every frame)
+    const sm = document.querySelector('#dSettings .field > small.uxsrc'), keep = sm.textContent; sm.textContent = '';
+    setTimeout(() => { const raf = window.requestAnimationFrame; let n = 0; window.requestAnimationFrame = f => { n++; return raf.call(window, f); };
+      setTimeout(() => { window.requestAnimationFrame = raf; const hid = document.querySelector(`#dSettings .uxi[aria-describedby~="${sm.id}"]`).hidden; sm.textContent = keep; res({ n, hid }); }, 1000); }, 300);
+  }));
+  ok(calm.hid && calm.n < 10, `a note emptied: its ⓘ hides and the page stays still (${calm.n} frames asked for in a second)`);
+  await p.keyboard.press('Escape'); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  await p.keyboard.press('Shift+H'); await p.waitForTimeout(200);
+  await p.click('[data-sb="settings"]'); await p.waitForTimeout(500);
+  const st2 = await notes();
+  ok(st2.n === sn.n && st2.hid === 0, 'with Show guidance, the notes are back under their fields');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400); await p.keyboard.press('Shift+H'); await p.waitForTimeout(200);
+  await p.evaluate(() => window.__mc.openRules()); await p.waitForSelector('#dScore:not([hidden])'); await p.waitForTimeout(400);
+  const sc = await p.evaluate(() => { const d = document.getElementById('dScore'), sub = d.querySelector('header .uxhelp'), b = sub && d.querySelector(`header h2 .uxi[aria-describedby~="${sub.id}"]`);
+    return { hid: !!sub && getComputedStyle(sub).display === 'none', tied: !!b, tips: d.querySelectorAll('.uxi').length }; });
+  ok(sc.hid && sc.tied && sc.tips >= 6, `KPI scorecards: the header's explanation behind the title's ⓘ (${sc.tips} ⓘ in the drawer)`);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  await p.locator('#teamBody [data-open]').first().click(); await p.waitForTimeout(600);
+  ok(await p.evaluate(() => { const h = [...document.querySelectorAll('#dPerson p.hint')].find(x => /Days \d+ of \d+/.test(x.textContent)); return !!h && getComputedStyle(h).display !== 'none'; }), 'a person\'s panel keeps its status line on view');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+
+  // ---- 8. the Showcase: the idea and what Member Care gets, never how files go in or out; the room's numbers still add up
+  await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector('#showBody .shsec');
+  const sh = await p.evaluate(() => ({ secs: [...document.querySelectorAll('#showBody .shsec')].map(s => s.getAttribute('aria-label')), text: document.getElementById('showBody').innerText }));
+  ok(sh.secs.join(' | ') === 'Cadence | The challenge | The idea | What Member Care gets | Every role | Today\'s data | Trust | What changes | What it gives back | What\'s next', `the Showcase: ${sh.secs.join(' · ')}`);
+  const mech = sh.text.match(/\b(import\w*|export\w*|drop|upload\w*|html|common folder|edge|chrome|phones?)\b/gi) || [];
+  ok(!mech.length, `the Showcase never explains how files go in or out${mech.length ? ` (${mech.slice(0, 5).join(', ')})` : ''}`);
+  for (const [f, v] of [['0:n', '3'], ['0:a', '40'], ['0:b', '12']]) await p.fill(`[data-give="${f}"]`, v);
+  await p.waitForTimeout(300);
+  const give = await p.evaluate(() => document.getElementById('showGive').innerText.replace(/\s+/g, ' '));
+  ok(/\b84 hours back a month/.test(give) && /48% of a full-time person/.test(give), `What it gives back: 3 × (40 − 12) = ${(/(\d[\d,]*) hours back a month/.exec(give) || [])[1]} hours a month, 48% of a full-time person`);
   await ctx.close();
   ok(!errs.length, `no errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
   await b.close();

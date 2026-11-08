@@ -228,3 +228,9 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
 @media (max-width: 600px) { .shcards.five, .shroles, .shsteps, .shtiles { grid-template-columns: 1fr; } .shtop { flex-direction: column; align-items: flex-start; } .shtable tbody th { white-space: normal; } }
 @media print { .shctl, .viewbar, .mcspot { display: none !important; } html.mczoom body { transform: none !important; } .shsec .shrise { opacity: 1; transform: none; } }
 @media (forced-colors: active) { .shnums > div, .shtile, .shcard.stat, .viewbar, .shctl, .shgtiles > div { border: 1px solid CanvasText; } .mcspot { display: none; } }
+/* the idea's four parts (no numbers: they are not steps) and what Member Care gets (six, three a row) */
+.shsteps.pillars .shstep { padding-top: 18px; }
+.shcards.six { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 1180px) { .shcards.six { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .shcards.six { grid-template-columns: 1fr; } }
+.shgnote b { color: var(--ink); font-weight: 600; }

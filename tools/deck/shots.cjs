@@ -64,7 +64,7 @@ const HIDE = '#toast, #busy { display: none !important; } *, *::before, *::after
     await p.evaluate(() => scrollTo(0, 0));
     await p.evaluate(() => { window.__mc.setStep('review'); window.__mc.setTab && window.__mc.setTab('checks'); scrollTo(0, 0); });
     await shot(p, 'checks', { wait: 900 });
-    await zoom(p, 'z-checks', ['#checksSum', '#checksTiles', '#checksBody', '#readyCard'], { maxH: 560 });
+    await zoom(p, 'z-checks', ['#checksSum', '#checksTiles', '#checksBody'], { maxH: 560 });
     await p.evaluate(() => { window.__mc.setStep('export'); scrollTo(0, 0); });
     await shot(p, 'export', { wait: 700 });
     await p.click('#wfmTabs [data-wt="emails"]'); await p.waitForTimeout(300);

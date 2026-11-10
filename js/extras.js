@@ -280,15 +280,40 @@ function autoAttendance(ctx) {
 }
 /** the supervisors' corrections, kept live for each month that is looked at (once per month) */
 const attEditsOf = k => state.attEditsBy[k] || null;
+let attRefT = 0;
+const attSeen = new Set();   // the months whose corrections have come in from the shared data at least once
 function watchAttEdits(k) {
   if (!state.db || !k || state.attEditsBy[k]) return;
   state.attEditsBy[k] = new Map();
   try {
     state.db.collection(`att/${k}/edits`).onSnapshot(sn => {
-      state.attEditsBy[k] = new Map(sn.docs.map(d => [d.id, d.data()])); state.attEditsVer++;
-      if (state.ws === 'build' && isBuilder() && ymKey(state.y, state.m) === k) refresh(); else if (state.ws !== 'build') renderWs();
+      state.attEditsBy[k] = new Map(sn.docs.map(d => [d.id, d.data()])); state.attEditsVer++; attSeen.add(k);
+      // the month being built is counted again whenever its corrections change (made here, on another computer, or found when the
+      // page opens), whatever page is open: the incentive file, the workbook and every sheet made from the month have them
+      if (attBuildStale(k)) { clearTimeout(attRefT); attRefT = setTimeout(() => { if (attBuildStale(k)) refresh(); }, 200); }
+      if (state.ws !== 'build') renderWs(); else if (state.step === 'export') renderIncExport();   // its note: is the kept incentive file older?
     }, () => {});
   } catch (e) { /* none */ }
+}
+/** the month being built was counted with other corrections than the month has now */
+const attBuildStale = k => !!state.ctx && isBuilder() && monthKey() === k && attEditsSig(k) !== state.ctxEditsSig;
+/** a month's corrections as one short text: the same corrections give the same text on every computer (keys in order, empty fields
+    left out as the shared data leaves them out) */
+function attEditsSig(k) {
+  const E = attEditsOf(k); if (!E || !E.size) return '';
+  const canon = v => (Array.isArray(v) ? `[${v.map(canon).join(',')}]` : v && typeof v === 'object'
+    ? `{${Object.keys(v).filter(x => v[x] !== undefined).sort().map(x => JSON.stringify(x) + ':' + canon(v[x])).join(',')}}` : JSON.stringify(v));
+  const s = canon([...E.keys()].sort().map(pid => [pid, (E.get(pid) || {}).days || {}]).filter(([, d]) => Object.keys(d).length));
+  let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return s === '[]' ? '' : `${(h >>> 0).toString(36)}.${s.length}`;
+}
+/** why a workbook kept with the shared data may not have the month's corrections: 'changed' (they changed after it was made), 'old'
+    (an earlier Cadence made it without noting the corrections it had, and the month has some), '' (it has them, or it is not known yet) */
+function attNewer(meta, k) {
+  if (!meta || !k || (state.db && !attSeen.has(k))) return '';   // not known until the month's corrections are in
+  const now = attEditsSig(k);
+  if (meta.edits != null) return meta.edits !== now ? 'changed' : '';
+  return now ? 'old' : '';
 }
 /** the corrections on top of the supervisors' sheets, when sheets are used */
 function overlayAttEdits(byPerson) {

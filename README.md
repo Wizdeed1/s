@@ -17,6 +17,25 @@ address (see the security review below).
 **The built file:** [`final/Cadence.html`](final/Cadence.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
 
+## Corrections reach the incentive file (November 2026)
+
+The corrections made on **WFM team › Emails › Deduction and absences** (and a supervisor's) were in the deduction email but could
+be missing from the incentive file. The month being built only took them in when they arrived while Import, Review or Export
+was open. Corrections waiting in the shared data when the page opened, or made on another computer, were left out, and so was
+everything made from the month: the incentive file, the monthly workbook and their sheets. That is why corrected people could
+show empty, with ⚠, in the incentive file's Attendance Report.
+
+| Part | What you see now |
+|---|---|
+| The month being built | It is counted again whenever its corrections change: made here, made on another computer, or found when the page opens, whatever page is open. |
+| Export › Incentive data workbook | When the month's corrections changed after the senior manager's incentive file was built, the card says so (when, by whom) and asks to build it again. |
+| Supervisors › Incentive email | The senior manager sees the same thing among the notes before sending, with whom to ask. The newer file shows there by itself. |
+| Apply in the Corrections box | When the senior manager already has the month's incentive file, the message says to build it again. |
+
+Each workbook kept with the shared data notes the corrections it was made with (`edits`), so every computer can tell when they
+changed. A file kept by an earlier Cadence never noted them. When its month has corrections, Export and the incentive email say
+it may not have every one and ask for it to be built again, once.
+
 ## Report builder: Member Care Report Builder 15.8 (November 2026)
 
 **WFM team › Report builder** is now Member Care Report Builder 15.8, inside Cadence and drawn in its style: the
@@ -446,6 +465,7 @@ node test/tenure.cjs "final/Cadence.html" test/shots           # months in the j
 node test/depts.cjs "final/Cadence.html" test/shots exportsDir  # every department: the SPVs' card (Team Performance, month figures, typed by hand, its own base), a role's card from the person's page, NA ranks 5, Review › KPI results boxes, the card's base
 node test/dailyhist.cjs "final/Cadence.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
 node test/rb158.cjs "final/Cadence.html" test/shots             # Report builder as 15.8: built-in history under this browser's, IVR exports and box, tickets to exclude, IVR scorecard (drawer, Download PNG)
+node test/incedits.cjs "final/Cadence.html" /tmp/exports test/shots   # corrections from anywhere reach the month being built and the incentive file; Export and the incentive email say when the kept file is older
 node test/incmail.cjs "final/Cadence.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see); the final result form with only those who earned it
 node test/steps.cjs "final/Cadence.html" test/shots            # every page in the month's order: the sidebar, the numbered steps (Supervisors, Quality), the dashboard's priority, the agent's waiting one-to-one first
 node test/ctflow.cjs "final/Cadence.html" /tmp/exports test/shots   # the CT team's incentive workbook on Import: its days, its Utilization in the CT scorecard (the KPI file wins), never the IDs file, Remove and Undo

@@ -544,9 +544,9 @@ function refresh(o = {}) {
   const dets = allDets(), ad = attDets(), ros = rosterRows();
   loadAttState();
   state.ctx = dets.length || ad.length ? Glue.makeContext(dets, ros, state.settings, state.y, state.m) : null;
-  state.attRes = null; state.incModelCache = null;
+  state.attRes = null; state.incModelCache = null; state.ctxEditsSig = null;
   if (state.ctx) {   // the supervisors' sheets and templates for the people they list, Genesys for everyone else (CC and SM), with the supervisors' corrections
-    watchAttEdits(monthKey());
+    watchAttEdits(monthKey()); state.ctxEditsSig = attEditsSig(monthKey());   // the corrections this count has: new ones count the month again
     const A = autoAttendance(state.ctx);
     if (ad.length) {
       const nm = list => new Map(list.map(x => [normName(x.name), x.days]));
@@ -1446,7 +1446,12 @@ function renderIncExport() {
   $('buildInc').disabled = !md || state.incBuilding;
   $('buildInc').innerHTML = state.incBuilding ? '<span class="spin" aria-hidden="true"></span>Building…' : '<svg width="18" height="18" aria-hidden="true"><use href="#i-down"/></svg>Build incentive file';
   $('histAdd').disabled = !md; $('histAdd').textContent = md && state.history[ymKey(state.y, state.m)] ? `Update ${MON[state.m - 1]} ${state.y} in the history` : `Add ${MON[state.m - 1]} ${state.y} to the history`;
-  $('incNote').textContent = !md ? 'Drop the exports and the attendance files first.' : state.incBuilt && state.incBuilt.ver === state.ver ? `Saved ${state.incBuilt.fn} at ${state.incBuilt.at}${state.incBuilt.locked === 'ok' ? ': the senior manager has it on Supervisors › Incentive email' : ''}.` : 'Same four tabs as the file sent to the champions. Build it for the senior manager: it is kept with the shared data and the senior manager sends it (Supervisors › Incentive email).';
+  // the newest incentive file kept for the senior manager, when the month's corrections changed after it was made
+  const kept = md ? REP.list.filter(x => x && x.k === monthKey() && x.kind === 'incentive').sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))[0] : null, why = kept ? attNewer(kept, monthKey()) : '';
+  const built = kept ? `${fmtWhen(kept.at)}${kept.by ? ` by ${kept.by}` : ''}` : '';
+  $('incNote').classList.toggle('warnline', !!why);
+  $('incNote').textContent = !md ? 'Drop the exports and the attendance files first.' : why === 'changed' ? `The month's corrections changed after the senior manager's incentive file was built (${built}). Build it again so it has them.`
+    : why === 'old' ? `The senior manager's incentive file (built ${built}) was made by an earlier Cadence and may not have every correction of the month. Build it again so it has them.` : state.incBuilt && state.incBuilt.ver === state.ver ? `Saved ${state.incBuilt.fn} at ${state.incBuilt.at}${state.incBuilt.locked === 'ok' ? ': the senior manager has it on Supervisors › Incentive email' : ''}.` : 'Same four tabs as the file sent to the champions. Build it for the senior manager: it is kept with the shared data and the senior manager sends it (Supervisors › Incentive email).';
   $('incSheets').innerHTML = [['Attendance Report', 'Everyone in the reports: day codes, Tardy, leave counts, Scheduled and Actual days', md ? md.att.length : null],
     ['Adherence -In Detail', 'Daily adherence, NA under the cut-off, Avr.', md ? md.det.length : null],
     ['Adherence', `Monthly average per person${state.settings.incFullAdhTeams.length ? `; ${state.settings.incFullAdhTeams.join(', ')} at 100%` : ''}`, md ? md.adh.length : null],
@@ -2274,6 +2279,10 @@ function incMailModel(stage) {
   if (!d) warns.push(state.incK ? `Nothing to send yet: the WFM analysts have not built the incentive file for ${MONTH_LONG[m - 1]} ${y} (WFM team › Export › Build incentive file). It shows here by itself once they have; or drop the file here.` : 'Nothing to send yet. Drop the exports and the attendance files on Import, or drop the incentive workbook here.');
   else {
     if (state.incK && state.incWb && state.incWb.rows.y && ymKey(state.incWb.rows.y, state.incWb.rows.m) !== state.incK) warns.push(`The workbook is for ${MONTH_LONG[m - 1]} ${y}; the email is for that month.`);
+    const sv = state.incWb && state.incWb.saved; if (sv && sv.k && !monthLocked(sv.k)) watchAttEdits(sv.k);   // the month's corrections, to compare
+    const why = sv && sv.k ? attNewer(sv, sv.k) : '', built = sv ? `${fmtWhen(sv.at)}${sv.by ? ` by ${sv.by}` : ''}` : '', ask = 'Ask the WFM analysts to build it again (WFM team › Export › Build incentive file); the newer file shows here by itself.';
+    if (why === 'changed') warns.push(`The month's corrections changed after this incentive file was built (${built}). ${ask}`);
+    if (why === 'old') warns.push(`This incentive file (built ${built}) was made by an earlier Cadence and may not have every correction of the month. ${ask}`);
     if (!d.att.length) warns.push('The Attendance Report is empty. Drop the supervisors\' attendance files on Import.');
     if (d.src === 'page' && state.attRes && state.attRes.clashes.some(c => c.chosen === undefined)) warns.push(`${plural(state.attRes.clashes.filter(c => c.chosen === undefined).length, 'attendance decision')} still open. Open the notifications to choose.`);
   }

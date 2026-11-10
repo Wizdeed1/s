@@ -23783,9 +23783,9 @@ function refresh(o = {}) {
   const dets = allDets(), ad = attDets(), ros = rosterRows();
   loadAttState();
   state.ctx = dets.length || ad.length ? Glue.makeContext(dets, ros, state.settings, state.y, state.m) : null;
-  state.attRes = null; state.incModelCache = null;
+  state.attRes = null; state.incModelCache = null; state.ctxEditsSig = null;
   if (state.ctx) {   // the supervisors' sheets and templates for the people they list, Genesys for everyone else (CC and SM), with the supervisors' corrections
-    watchAttEdits(monthKey());
+    watchAttEdits(monthKey()); state.ctxEditsSig = attEditsSig(monthKey());   // the corrections this count has: new ones count the month again
     const A = autoAttendance(state.ctx);
     if (ad.length) {
       const nm = list => new Map(list.map(x => [normName(x.name), x.days]));
@@ -24685,7 +24685,12 @@ function renderIncExport() {
   $('buildInc').disabled = !md || state.incBuilding;
   $('buildInc').innerHTML = state.incBuilding ? '<span class="spin" aria-hidden="true"></span>Building…' : '<svg width="18" height="18" aria-hidden="true"><use href="#i-down"/></svg>Build incentive file';
   $('histAdd').disabled = !md; $('histAdd').textContent = md && state.history[ymKey(state.y, state.m)] ? `Update ${MON[state.m - 1]} ${state.y} in the history` : `Add ${MON[state.m - 1]} ${state.y} to the history`;
-  $('incNote').textContent = !md ? 'Drop the exports and the attendance files first.' : state.incBuilt && state.incBuilt.ver === state.ver ? `Saved ${state.incBuilt.fn} at ${state.incBuilt.at}${state.incBuilt.locked === 'ok' ? ': the senior manager has it on Supervisors › Incentive email' : ''}.` : 'Same four tabs as the file sent to the champions. Build it for the senior manager: it is kept with the shared data and the senior manager sends it (Supervisors › Incentive email).';
+  // the newest incentive file kept for the senior manager, when the month's corrections changed after it was made
+  const kept = md ? REP.list.filter(x => x && x.k === monthKey() && x.kind === 'incentive').sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))[0] : null, why = kept ? attNewer(kept, monthKey()) : '';
+  const built = kept ? `${fmtWhen(kept.at)}${kept.by ? ` by ${kept.by}` : ''}` : '';
+  $('incNote').classList.toggle('warnline', !!why);
+  $('incNote').textContent = !md ? 'Drop the exports and the attendance files first.' : why === 'changed' ? `The month's corrections changed after the senior manager's incentive file was built (${built}). Build it again so it has them.`
+    : why === 'old' ? `The senior manager's incentive file (built ${built}) was made by an earlier Cadence and may not have every correction of the month. Build it again so it has them.` : state.incBuilt && state.incBuilt.ver === state.ver ? `Saved ${state.incBuilt.fn} at ${state.incBuilt.at}${state.incBuilt.locked === 'ok' ? ': the senior manager has it on Supervisors › Incentive email' : ''}.` : 'Same four tabs as the file sent to the champions. Build it for the senior manager: it is kept with the shared data and the senior manager sends it (Supervisors › Incentive email).';
   $('incSheets').innerHTML = [['Attendance Report', 'Everyone in the reports: day codes, Tardy, leave counts, Scheduled and Actual days', md ? md.att.length : null],
     ['Adherence -In Detail', 'Daily adherence, NA under the cut-off, Avr.', md ? md.det.length : null],
     ['Adherence', `Monthly average per person${state.settings.incFullAdhTeams.length ? `; ${state.settings.incFullAdhTeams.join(', ')} at 100%` : ''}`, md ? md.adh.length : null],
@@ -25513,6 +25518,10 @@ function incMailModel(stage) {
   if (!d) warns.push(state.incK ? `Nothing to send yet: the WFM analysts have not built the incentive file for ${MONTH_LONG[m - 1]} ${y} (WFM team › Export › Build incentive file). It shows here by itself once they have; or drop the file here.` : 'Nothing to send yet. Drop the exports and the attendance files on Import, or drop the incentive workbook here.');
   else {
     if (state.incK && state.incWb && state.incWb.rows.y && ymKey(state.incWb.rows.y, state.incWb.rows.m) !== state.incK) warns.push(`The workbook is for ${MONTH_LONG[m - 1]} ${y}; the email is for that month.`);
+    const sv = state.incWb && state.incWb.saved; if (sv && sv.k && !monthLocked(sv.k)) watchAttEdits(sv.k);   // the month's corrections, to compare
+    const why = sv && sv.k ? attNewer(sv, sv.k) : '', built = sv ? `${fmtWhen(sv.at)}${sv.by ? ` by ${sv.by}` : ''}` : '', ask = 'Ask the WFM analysts to build it again (WFM team › Export › Build incentive file); the newer file shows here by itself.';
+    if (why === 'changed') warns.push(`The month's corrections changed after this incentive file was built (${built}). ${ask}`);
+    if (why === 'old') warns.push(`This incentive file (built ${built}) was made by an earlier Cadence and may not have every correction of the month. ${ask}`);
     if (!d.att.length) warns.push('The Attendance Report is empty. Drop the supervisors\' attendance files on Import.');
     if (d.src === 'page' && state.attRes && state.attRes.clashes.some(c => c.chosen === undefined)) warns.push(`${plural(state.attRes.clashes.filter(c => c.chosen === undefined).length, 'attendance decision')} still open. Open the notifications to choose.`);
   }
@@ -29249,15 +29258,40 @@ function autoAttendance(ctx) {
 }
 /** the supervisors' corrections, kept live for each month that is looked at (once per month) */
 const attEditsOf = k => state.attEditsBy[k] || null;
+let attRefT = 0;
+const attSeen = new Set();   // the months whose corrections have come in from the shared data at least once
 function watchAttEdits(k) {
   if (!state.db || !k || state.attEditsBy[k]) return;
   state.attEditsBy[k] = new Map();
   try {
     state.db.collection(`att/${k}/edits`).onSnapshot(sn => {
-      state.attEditsBy[k] = new Map(sn.docs.map(d => [d.id, d.data()])); state.attEditsVer++;
-      if (state.ws === 'build' && isBuilder() && ymKey(state.y, state.m) === k) refresh(); else if (state.ws !== 'build') renderWs();
+      state.attEditsBy[k] = new Map(sn.docs.map(d => [d.id, d.data()])); state.attEditsVer++; attSeen.add(k);
+      // the month being built is counted again whenever its corrections change (made here, on another computer, or found when the
+      // page opens), whatever page is open: the incentive file, the workbook and every sheet made from the month have them
+      if (attBuildStale(k)) { clearTimeout(attRefT); attRefT = setTimeout(() => { if (attBuildStale(k)) refresh(); }, 200); }
+      if (state.ws !== 'build') renderWs(); else if (state.step === 'export') renderIncExport();   // its note: is the kept incentive file older?
     }, () => {});
   } catch (e) { /* none */ }
+}
+/** the month being built was counted with other corrections than the month has now */
+const attBuildStale = k => !!state.ctx && isBuilder() && monthKey() === k && attEditsSig(k) !== state.ctxEditsSig;
+/** a month's corrections as one short text: the same corrections give the same text on every computer (keys in order, empty fields
+    left out as the shared data leaves them out) */
+function attEditsSig(k) {
+  const E = attEditsOf(k); if (!E || !E.size) return '';
+  const canon = v => (Array.isArray(v) ? `[${v.map(canon).join(',')}]` : v && typeof v === 'object'
+    ? `{${Object.keys(v).filter(x => v[x] !== undefined).sort().map(x => JSON.stringify(x) + ':' + canon(v[x])).join(',')}}` : JSON.stringify(v));
+  const s = canon([...E.keys()].sort().map(pid => [pid, (E.get(pid) || {}).days || {}]).filter(([, d]) => Object.keys(d).length));
+  let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return s === '[]' ? '' : `${(h >>> 0).toString(36)}.${s.length}`;
+}
+/** why a workbook kept with the shared data may not have the month's corrections: 'changed' (they changed after it was made), 'old'
+    (an earlier Cadence made it without noting the corrections it had, and the month has some), '' (it has them, or it is not known yet) */
+function attNewer(meta, k) {
+  if (!meta || !k || (state.db && !attSeen.has(k))) return '';   // not known until the month's corrections are in
+  const now = attEditsSig(k);
+  if (meta.edits != null) return meta.edits !== now ? 'changed' : '';
+  return now ? 'old' : '';
 }
 /** the corrections on top of the supervisors' sheets, when sheets are used */
 function overlayAttEdits(byPerson) {
@@ -30764,7 +30798,7 @@ async function incSavedLoad(k) {
       const rows = readIncentive(await parse(m.name, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), true));
       if (rows.error) throw new Error(rows.error);
       if (INCS.k !== k) return;
-      state.incWb = { name: m.name, size: m.size || bytes.length, bytes, rows, saved: { id: m.id, k, at: m.at, by: m.by } };
+      state.incWb = { name: m.name, size: m.size || bytes.length, bytes, rows, saved: { id: m.id, k, at: m.at, by: m.by, edits: m.edits } };
       state.mailSubjects = {}; state.mailDeadline = null;
     } else if (!m && w && w.saved) state.incWb = null;
   } catch (e) { INCS.err = errText(e); }
@@ -34010,7 +34044,8 @@ function updApply() {
   markFresh('attendance', `${[...names].slice(0, 2).join(', ')}${names.size > 2 ? ` and ${names.size - 2} more` : ''}: ${plural(n, 'day')}`);
   state.updRes = null; state.updText = ''; state.updPick = {}; state.updOn = {}; state.updNote = '';
   updAfter(ks);
-  toast(`Applied: ${plural(n, 'day')} for ${plural(names.size, 'person', 'people')}. Every sheet, the workbooks and the final email have them.`, { label: 'Undo', fn: () => updRestore(undo, 'Undone: the days are as they were.') });
+  const kept = REP.loaded && [...ks].some(k => REP.list.some(x => x && x.k === k && x.kind === 'incentive'));   // an incentive file the senior manager has already
+  toast(`Applied: ${plural(n, 'day')} for ${plural(names.size, 'person', 'people')}. Every sheet, the workbooks and the final email have them${kept ? '; build the incentive file again (Export) so the senior manager has them too' : ''}.`, { label: 'Undo', fn: () => updRestore(undo, 'Undone: the days are as they were.') });
 }
 /** the corrections as they were before (Undo), or without the ones made from here (Remove) */
 function updRestore(L, msg) {
@@ -34335,7 +34370,8 @@ $('upCard').addEventListener('click', async e => {
 const REP = { list: [], loaded: false, confirm: '' };
 async function repKeep(name, bytes, kind) {
   if (!isBuilder()) return '';
-  const k = monthKey(), meta = { id: upNewId(), k, name, size: bytes.length, kind, at: new Date().toISOString(), by: whoNow() };
+  // edits: the month's corrections it was made with, so a page can say when they changed after it (attNewer)
+  const k = monthKey(), meta = { id: upNewId(), k, name, size: bytes.length, kind, at: new Date().toISOString(), by: whoNow(), edits: state.ctx && state.ctxEditsSig != null ? state.ctxEditsSig : attEditsSig(k) };
   try {
     if (!REP.loaded) { REP.list = await upListNow('rep').catch(() => []); REP.loaded = true; }
     await upPut(meta, bytes, 'rep'); UP.cache.set(meta.id, bytes);
@@ -34345,7 +34381,7 @@ async function repKeep(name, bytes, kind) {
     renderRepCard(); return 'ok';
   } catch (e) { return 'error: ' + (e && e.code === 'too-big' ? 'too big for the online page\'s data' : errText(e)); }
 }
-async function repLoad() { try { REP.list = await upListNow('rep'); } catch (e) { REP.list = []; } REP.loaded = true; renderRepCard(); }
+async function repLoad() { try { REP.list = await upListNow('rep'); } catch (e) { REP.list = []; } REP.loaded = true; renderRepCard(); if (state.ws === 'build' && state.step === 'export') renderIncExport(); }   // the incentive card says whether its kept file is older than the corrections
 function renderRepCard() {
   const el = $('repCard'); if (!el) return;
   if (!isBuilder()) { el.hidden = true; return; }
@@ -36908,7 +36944,7 @@ const DEPT = [
     'On <b>Review › KPI results</b>, under the table: <b>Month figures</b> takes the floor\'s numbers once a month, one per brand (Service Level, Floor QoS / Empowerment, AHT, Resources Adherence, Utilization, Digital and Complaints resolution time) for the SPVs\', specialists\' and managers\' cards; <b>Typed by hand</b> takes a value for one person that is in no file (Staff Satisfaction, Digital projects, CST compliance…), or NA when a KPI does not apply. The scores follow at once.',
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
     '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it). People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
-    '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one.',
+    '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one. The card says so when the month\'s corrections changed after the file was built.',
     '<b>Export › Smart-Link attendance</b>: first, <b>Set Smart-Link\'s list from its file</b> once (any of Smart-Link\'s attendance files: its ID and Name columns), so the file holds exactly Smart-Link\'s agents, the SM agents and those on Virgin too. Then the month\'s attendance of those agents in Smart-Link\'s own file (Smart-Link Attendance -Sep 2026.xlsx): each day\'s code, the late minutes and the counts with Smart-Link\'s formulas, and the National IDs, as Smart-Link\'s file has them. It is made from the shared month, with the supervisors\' corrections, and kept in Saved workbooks; send it to Smart-Link yourself.',
     '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs.',
     '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction (the Diff); a leave changes the Attendance Report and that day\'s deduction goes. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',

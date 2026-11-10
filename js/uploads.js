@@ -214,7 +214,8 @@ $('upCard').addEventListener('click', async e => {
 const REP = { list: [], loaded: false, confirm: '' };
 async function repKeep(name, bytes, kind) {
   if (!isBuilder()) return '';
-  const k = monthKey(), meta = { id: upNewId(), k, name, size: bytes.length, kind, at: new Date().toISOString(), by: whoNow() };
+  // edits: the month's corrections it was made with, so a page can say when they changed after it (attNewer)
+  const k = monthKey(), meta = { id: upNewId(), k, name, size: bytes.length, kind, at: new Date().toISOString(), by: whoNow(), edits: state.ctx && state.ctxEditsSig != null ? state.ctxEditsSig : attEditsSig(k) };
   try {
     if (!REP.loaded) { REP.list = await upListNow('rep').catch(() => []); REP.loaded = true; }
     await upPut(meta, bytes, 'rep'); UP.cache.set(meta.id, bytes);
@@ -224,7 +225,7 @@ async function repKeep(name, bytes, kind) {
     renderRepCard(); return 'ok';
   } catch (e) { return 'error: ' + (e && e.code === 'too-big' ? 'too big for the online page\'s data' : errText(e)); }
 }
-async function repLoad() { try { REP.list = await upListNow('rep'); } catch (e) { REP.list = []; } REP.loaded = true; renderRepCard(); }
+async function repLoad() { try { REP.list = await upListNow('rep'); } catch (e) { REP.list = []; } REP.loaded = true; renderRepCard(); if (state.ws === 'build' && state.step === 'export') renderIncExport(); }   // the incentive card says whether its kept file is older than the corrections
 function renderRepCard() {
   const el = $('repCard'); if (!el) return;
   if (!isBuilder()) { el.hidden = true; return; }

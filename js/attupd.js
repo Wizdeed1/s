@@ -151,7 +151,8 @@ function updApply() {
   markFresh('attendance', `${[...names].slice(0, 2).join(', ')}${names.size > 2 ? ` and ${names.size - 2} more` : ''}: ${plural(n, 'day')}`);
   state.updRes = null; state.updText = ''; state.updPick = {}; state.updOn = {}; state.updNote = '';
   updAfter(ks);
-  toast(`Applied: ${plural(n, 'day')} for ${plural(names.size, 'person', 'people')}. Every sheet, the workbooks and the final email have them.`, { label: 'Undo', fn: () => updRestore(undo, 'Undone: the days are as they were.') });
+  const kept = REP.loaded && [...ks].some(k => REP.list.some(x => x && x.k === k && x.kind === 'incentive'));   // an incentive file the senior manager has already
+  toast(`Applied: ${plural(n, 'day')} for ${plural(names.size, 'person', 'people')}. Every sheet, the workbooks and the final email have them${kept ? '; build the incentive file again (Export) so the senior manager has them too' : ''}.`, { label: 'Undo', fn: () => updRestore(undo, 'Undone: the days are as they were.') });
 }
 /** the corrections as they were before (Undo), or without the ones made from here (Remove) */
 function updRestore(L, msg) {

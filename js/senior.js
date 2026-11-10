@@ -151,7 +151,7 @@ async function incSavedLoad(k) {
       const rows = readIncentive(await parse(m.name, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), true));
       if (rows.error) throw new Error(rows.error);
       if (INCS.k !== k) return;
-      state.incWb = { name: m.name, size: m.size || bytes.length, bytes, rows, saved: { id: m.id, k, at: m.at, by: m.by } };
+      state.incWb = { name: m.name, size: m.size || bytes.length, bytes, rows, saved: { id: m.id, k, at: m.at, by: m.by, edits: m.edits } };
       state.mailSubjects = {}; state.mailDeadline = null;
     } else if (!m && w && w.saved) state.incWb = null;
   } catch (e) { INCS.err = errText(e); }

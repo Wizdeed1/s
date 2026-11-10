@@ -61,6 +61,7 @@ async function recogDaily(f) {
       if (ws && window.WFM.isOwn(ws)) return { kind: 'wfmDaily', why: 'A day\'s export the WFM Daily Review reads' };
       const c = E.classify(f.name, 'csv', E.parseCsv(text));
       if (c.type === 'fpayTickets') return { kind: 'tickets', why: 'The FRiENDi Pay tickets export' };
+      if (/^ivr/.test(c.type) && c.brand) return { kind: 'dailyIvr', why: `A Genesys IVR export (${{ ivrOut: 'Flow Outcome Detail', ivrMs: 'Flow Milestone Detail', ivrDa: 'Data Actions Performance' }[c.type]}), as the Report builder reads it` };
       if (c.type !== 'unknown' && c.brand) return { kind: /queue/i.test(c.type) ? 'dailyQueue' : /call/i.test(c.type) ? 'dailyCalls' : 'dailySm', why: `A ${c.brand} ${c.type} export, as the Report builder reads it` };
     }
   } catch (e) { /* not one of them */ }

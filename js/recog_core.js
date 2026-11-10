@@ -31,6 +31,7 @@ const KINDS = {
   dailyCalls: { label: 'a daily calls export (Report builder)', short: 'daily export', group: 'rb', route: 'rb', routes: ['rb'] },
   dailySm: { label: 'a daily social media and email export (Report builder)', short: 'daily export', group: 'rb', route: 'rb', routes: ['rb'] },
   dailyQueue: { label: 'a daily queue export (Report builder)', short: 'daily export', group: 'rb', route: 'rb', routes: ['rb'] },
+  dailyIvr: { label: 'a daily IVR export (Report builder)', short: 'daily export', group: 'rb', route: 'rb', routes: ['rb'] },
   tickets: { label: 'a tickets export (Report builder)', short: 'daily export', group: 'rb', route: 'rb', routes: ['rb'] },
   wfmDaily: { label: 'a day\'s export for the WFM Daily Review (Report builder)', short: 'daily export', group: 'rb', route: 'rb', routes: ['rb'] },
   scorecard: { label: 'the KPI scorecards (kpi.xlsx)', short: 'scorecards', group: 'other', route: 'scorecards', routes: ['scorecards'] },

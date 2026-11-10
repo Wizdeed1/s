@@ -17,6 +17,25 @@ address (see the security review below).
 **The built file:** [`final/Cadence.html`](final/Cadence.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
 
+## Report builder: Member Care Report Builder 15.8 (November 2026)
+
+**WFM team › Report builder** is now Member Care Report Builder 15.8, inside Cadence and drawn in its style: the
+stand-alone page's engine, email filler, IVR box and IVR scorecard (`dt/`), its email templates and logos, and the brands'
+history built into it. The stand-alone page's own screen is not used: Cadence draws the builder (`js/rbx.js`).
+
+| Part | What you see now |
+|---|---|
+| IVR exports | Genesys's **Flow Outcome Detail**, **Flow Milestone Detail** and **Data Actions Performance** exports are read like the other daily exports and listed by brand and day (*Virgin · IVR outcomes · 07-Oct*; the data actions cover all flows). The brand comes from the flow's name. Recognise files calls them *a daily IVR export* and sends them to the Report builder. |
+| IVR box | Under section 02 of the Virgin Mobile email, and of Virgin Postpaid's, which shares the Virgin IVR: the calls into the IVR, the share that finished in it, the hand-offs to an agent, the top five outcomes after the first menu, the top five milestones after the number check, and the IVR flow's data actions with errors, worst first. A brand without IVR exports has no box. |
+| IVR scorecard | On **Emails › Daily brand emails**, an email with an IVR box has an **IVR scorecard** button. It opens the box as a picture in a drawer: **Copy for Teams** (then Ctrl+V in the message box) and **Download PNG** (`IVR-Scorecard-Virgin-Mobile-<day>.png`). The picture has a text description for screen readers. |
+| Tickets to exclude | The MC Leaders email has a **Tickets to exclude** box for its report day: paste ticket numbers, one a line, or the table from the email. Only numbers of 5 digits or more are read. They are left out of every MC Leaders figure, and the line under the box says how many were read, how many came out and which are not among the day's MC Leaders tickets. Each report day keeps its own list; **Clear the list** empties it. |
+| FRiENDi Pay tickets | Also read from the **Ticket Summary Details** export (.csv) and from the FRiENDi Pay lines of the Crystal tickets export, besides the tickets sheet and the pasted table. The tickets export's line in the list says how many FRiENDi Pay tickets it holds. |
+| History | The brands' history that 15.8 carries (numbers only: months from Jan 2024 to Aug 2026, fewer for some brands' non-voice, and the days 1–16 Sep 2026) is built in, under this browser's copy and the shared one: a month or day those have keeps their numbers, and the built-in history fills the rest. The Brands' history box and Export history count it too. An imported history file goes into the shared copy, so its months win over the built-in ones; the next day saved shares the built-in history with the team. The meeting kit's demo file leaves it out. |
+| Templates and logos | The four brand emails use 15.8's templates and its Virgin Mobile, FRiENDi mobile, FRiENDi pay and Beyond One logos. |
+
+`js/make_rb.py` puts the 15.8 modules, templates, logos and history into the page at build time (`dt/scorecard.js` is new).
+`dt/wfm.js` stays Cadence's own (the WFM Daily Review with the security review's fixes).
+
 ## Interaction design: a quieter page, faster work (November 2026)
 
 The approved look is kept; how the pages are worked changed. The brief, with before-and-after numbers, is
@@ -392,11 +411,7 @@ originals from your own project folder in their place to get them back byte for 
 |---|---|---|
 | `js/fonts.css` | Geist, rebuilt by `tools/build_fonts.py` (Option A) | Inter and Poppins |
 | `js/brand_src.html` | An empty block: no logo is built into the workbooks and KPI cards (one can be chosen in Settings); the pages and decks show the Beyond One logos from `assets/brand` instead | The Beyond One logos |
-| `dt/templates.js` | The three daily email templates as printed, each omitted image replaced by a 1×1 placeholder | The templates with their logo images |
-| `dt/logos.js`, `dt/seed.js` | Empty | The daily emails' logos and the report builder's history seed |
-
-Because of the placeholder images, the four daily brand emails are not byte-identical to Member Care Report Builder 14
-until the original `dt/templates.js` and `dt/logos.js` are put back.
+| `dt/templates.js`, `dt/logos.js`, `dt/seed.js` | Since November 2026, Member Care Report Builder 15.8's own, taken from that page (see *Report builder: Member Care Report Builder 15.8* above) | The daily email templates, their logos and the report builder's history seed |
 
 ## Tests
 
@@ -430,6 +445,7 @@ node test/trust.cjs "final/Cadence.html" test/shots             # accounts plant
 node test/tenure.cjs "final/Cadence.html" test/shots           # months in the job (joined 18 Jan: from Jul), roster import and Edit of the joining date, the absence penalty of 4 days per Absent day
 node test/depts.cjs "final/Cadence.html" test/shots exportsDir  # every department: the SPVs' card (Team Performance, month figures, typed by hand, its own base), a role's card from the person's page, NA ranks 5, Review › KPI results boxes, the card's base
 node test/dailyhist.cjs "final/Cadence.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
+node test/rb158.cjs "final/Cadence.html" test/shots             # Report builder as 15.8: built-in history under this browser's, IVR exports and box, tickets to exclude, IVR scorecard (drawer, Download PNG)
 node test/incmail.cjs "final/Cadence.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see); the final result form with only those who earned it
 node test/steps.cjs "final/Cadence.html" test/shots            # every page in the month's order: the sidebar, the numbered steps (Supervisors, Quality), the dashboard's priority, the agent's waiting one-to-one first
 node test/ctflow.cjs "final/Cadence.html" /tmp/exports test/shots   # the CT team's incentive workbook on Import: its days, its Utilization in the CT scorecard (the KPI file wins), never the IDs file, Remove and Undo

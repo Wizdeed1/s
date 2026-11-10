@@ -1,6 +1,7 @@
 // ================================================================ REPORT BUILDER: the Member Care Report Builder, built into the tool
 // The WFM analyst drops the day's exports on WFM team › Report builder. MC Leaders and the WFM Daily Review are made there, as in
-// Member Care Report Builder 14. The four brand emails (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay) go to the
+// Member Care Report Builder 15.8 (with its IVR box and IVR scorecard, the MC Leaders tickets to exclude, and FRiENDi Pay's tickets
+// from any of its exports). The four brand emails (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay) go to the
 // WFM manager's WFM team › Daily emails: he reads them, writes the SLA insight and sends them. The builder's own modules make every
 // email (they are in the page: script#rb-code), so the emails come out exactly as the stand-alone builder made them. Each day's
 // numbers still go to the shared history, and building the WFM Daily Review still keeps each agent's day.
@@ -8,7 +9,7 @@ Object.assign(state, { rbPrefs: {}, rbIn: {}, dmail: {}, dmBrands: {}, dmSel: ''
 const RB_BRANDS = ['postpaid', 'virgin', 'friendi', 'fpay'];
 const RB_MINE = ['leaders', 'wfm'];
 const RB_RULES = [['all', 'Average of all rows incl. total'], ['facebook', 'Facebook queues only'], ['total', 'Total row only'], ['weighted', 'Weighted by volume']];
-const RB_DAYF = { insight: 1, subject: 1, intro: 1, asaOverride: 1 };
+const RB_DAYF = { insight: 1, subject: 1, intro: 1, asaOverride: 1, exclude: 1 };   // kept per report day
 const RB_TPL = { virgin: 'virgin', postpaid: 'virgin', friendi: 'friendi', fpay: 'fpay' };
 const RB_KEEP_DAYS = 40;
 const rbE = () => window.Engine, rbR = () => window.Render, rbB = () => window.Build;
@@ -100,13 +101,14 @@ const rbVisible = t => state.ws === 'wfm' && (t === 'dmail' ? state.wfmTab === '
 const rbName = key => (rbB() && rbB().REPORTS[key] ? rbB().REPORTS[key].name : { postpaid: 'Virgin Postpaid', virgin: 'Virgin Mobile', friendi: 'FRiENDi Mobile', fpay: 'FRiENDi Pay', leaders: 'MC Leaders', wfm: 'WFM Daily Review' }[key] || key);
 
 // ---------------------------------------------------------------- the dropped files, kept per brand and per day (as the stand-alone builder kept them)
+const RB_BAGT = ['calls', 'sm', 'queue', 'ivrOut', 'ivrMs', 'ivrDa'];   // the Genesys exports, kept per brand and day
 function rbEmptyBag() {
-  return { calls: {}, sm: {}, queue: {}, dated: { calls: {}, sm: {}, queue: {} }, undated: [], datedFiles: [],
+  return { calls: {}, sm: {}, queue: {}, ivrOut: {}, ivrMs: {}, ivrDa: {}, dated: { calls: {}, sm: {}, queue: {}, ivrOut: {}, ivrMs: {}, ivrDa: {} }, undated: [], datedFiles: [],
     history: null, tickets: null, historyFiles: {}, ticketFiles: {}, fpayTicketsFile: null, leaderRows: null };
 }
 function rbComposeBag() {
   const bag = RB.bag;
-  ['calls', 'sm', 'queue'].forEach(t => { bag[t] = {}; Object.keys(bag.dated[t]).forEach(b => { bag[t][b] = Object.assign({}, bag.dated[t][b]); }); });
+  RB_BAGT.forEach(t => { bag[t] = {}; bag.dated[t] = bag.dated[t] || {}; Object.keys(bag.dated[t]).forEach(b => { bag[t][b] = Object.assign({}, bag.dated[t][b]); }); });
   bag.undated.forEach(u => { const m = bag[u.type][u.brand] = bag[u.type][u.brand] || {}; m[u.day || '*'] = u.rows; });
 }
 /** Genesys puts the export time in the file name: "Friendi_Queue_-_2026-09-20T123859.639.csv" */
@@ -134,8 +136,8 @@ function rbShortDays(dates) {
   return contiguous ? R.niceRange(dates[0], dates[dates.length - 1]).replace(/ \d{4}$/, '') : dates.map(R.dayLabel).join(', ');
 }
 function rbLabelFor(c) {
-  const b = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay', postpaid: 'Virgin Postpaid' }[c.brand] || c.brand;
-  return b + ' · ' + ({ calls: 'Calls', sm: 'Social/Email', queue: 'Queue times' }[c.type] || c.type);
+  const b = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay', postpaid: 'Virgin Postpaid', all: 'All flows' }[c.brand] || c.brand;
+  return b + ' · ' + ({ calls: 'Calls', sm: 'Social/Email', queue: 'Queue times', ivrOut: 'IVR outcomes', ivrMs: 'IVR milestones', ivrDa: 'IVR data actions' }[c.type] || c.type);
 }
 async function rbAddFiles(list) {
   await rbBoot(); const E = rbE(), R = rbR();
@@ -164,7 +166,7 @@ async function rbAddFiles(list) {
           if (c.type === 'history') { RB.bag.historyFiles[f.name] = parsed; RB.bag.history = rbCombine(RB.bag.historyFiles); }
           else { RB.bag.ticketFiles[f.name] = parsed; RB.bag.tickets = rbCombine(RB.bag.ticketFiles); }
           const mcl = c.type === 'tickets' ? parsed.filter(r => /^\s*mc\s*leaders?\s*$/i.test(String(r[E.TCOL.group] || ''))).length : 0;
-          notes.push({ name: f.name, label: (c.type === 'history' ? 'Call history' : 'Tickets') + ' · ' + parsed.length + ' rows' + (c.type === 'tickets' ? ' · MC Leaders ' + E.fmtInt(mcl) : '') + (ds.length ? ' · ' + rbShortDays(ds) : '') });
+          notes.push({ name: f.name, label: (c.type === 'history' ? 'Call history' : 'Tickets') + ' · ' + parsed.length + ' rows' + (c.type === 'tickets' ? ' · MC Leaders ' + E.fmtInt(mcl) + ' · FRiENDi Pay ' + E.fmtInt(E.fpayRowsFromTickets(parsed).length) : '') + (ds.length ? ' · ' + rbShortDays(ds) : '') });
         } else notes.push({ name: f.name, label: 'not recognised', bad: true });
         continue;
       }
@@ -174,12 +176,12 @@ async function rbAddFiles(list) {
       if (wslot && window.WFM.isOwn(wslot)) { notes.push({ name: f.name, label: window.WFM.add(wt, wslot) + ' · ' + E.fmtInt(wt.rows) + ' rows', wfm: true }); continue; }
       const payload = E.parseCsv(text), c = E.classify(f.name, 'csv', payload);
       if (wt && c.type === 'calls' && /^(virgin|friendi|fpay)$/.test(c.brand || '')) window.WFM.addCalls(c.brand, wt);
-      if (c.type === 'fpayTickets') rbTicketSheet(f.name, E.parseTicketSheet(payload), notes);
+      if (c.type === 'fpayTickets') rbTicketSheet(f.name, E.isFpayTicketSummary(payload.headers) ? E.parseFpayTicketSummary(payload) : E.parseTicketSheet(payload), notes);
       else if (c.type !== 'unknown' && c.brand) {
         const split = E.splitByDay(payload.rows);
         if (split.span && split.dates.length === 1) { notes.push({ name: f.name, label: rbLabelFor(c) + ' · ' + R.niceRange(split.span.start, split.span.end).replace(/ \d{4}$/, '') + ' in one total; export it by day', bad: true }); continue; }
         if (split.dates.length) {
-          const byDay = RB.bag.dated[c.type][c.brand] = RB.bag.dated[c.type][c.brand] || {};
+          const dt = RB.bag.dated[c.type] = RB.bag.dated[c.type] || {}, byDay = dt[c.brand] = dt[c.brand] || {};
           split.dates.forEach(d => { byDay[d] = split.days[d]; batchDays.add(d); });
           RB.bag.datedFiles.push({ name: f.name, time: rbExportTime(f.name), days: split.dates });
           notes.push({ name: f.name, label: rbLabelFor(c) + ' · ' + rbShortDays(split.dates) });
@@ -206,7 +208,7 @@ async function rbAddFiles(list) {
 }
 function rbTicketSheet(name, rows, notes) {
   const E = rbE(); RB.bag.fpayTicketsFile = { name, rows };
-  const ds = Array.from(new Set(rows.map(r => r.date).filter(Boolean))).sort();
+  const ds = Array.from(new Set(rows.map(r => r.date || r.day).filter(Boolean))).sort();
   notes.push({ name, label: 'FRiENDi Pay · Tickets · ' + E.fmtInt(rows.reduce((a, r) => a + r.count, 0)) + ' tickets' + (ds.length ? ' · ' + rbShortDays(ds) : '') });
 }
 function rbLeaderSheet(name, sheet, rows, notes) {
@@ -227,7 +229,9 @@ function rbSetDate(d, fromUser) { RB.date = d; RB.weekend = rbE().weekday(d) ===
 function rbHist() {
   if (RB.hist) return RB.hist;
   let H = null; try { H = JSON.parse(lsRaw(DH_KEY) || 'null'); } catch (e) { H = null; }
-  if (!H || typeof H !== 'object') H = rbClone(window.HISTORY_SEED || {});
+  // the history built into the tool (the one Member Care Report Builder 15.8 carried) lies under this browser's copy and the shared
+  // one: their days and months win, the built-in ones fill what neither has, and go to the shared copy with the next day saved
+  H = mergeDailyHist(rbClone(window.HISTORY_SEED || {}), H && typeof H === 'object' ? H : {}).out;
   if (state.dhist) H = mergeDailyHist(H, state.dhist).out;
   RB.hist = H; return H;
 }
@@ -329,7 +333,7 @@ function rbRebuild() {
   if (!RB.ready || !RB.date) return;
   const B = rbB(), p = rbPeriod(), dk = rbDayKeyOf(p);
   if (window.WFM) { window.WFM.setReportDate(RB.date, p.days); RB.data.wfm = { warnings: window.WFM.issues() }; RB.models.wfm = { kind: 'wfm' }; }
-  RB.data.leaders = B.computeLeaders(p, RB.bag, {}); RB.models.leaders = rbLeadersModel(p, dk);   // MC Leaders
+  RB.data.leaders = B.computeLeaders(p, RB.bag, { exclude: rbGet('leaders', 'exclude', dk) }); RB.models.leaders = rbLeadersModel(p, dk);   // MC Leaders, without the tickets to exclude
   // the four brands: worked out here for every ASA rule (the WFM manager picks the rule), built on his page. With each rule go the
   // email's numbers, the history it reads, and each dropped day's non-voice row, as the builder kept them when its rule changed.
   RB.docs = {};
@@ -481,18 +485,31 @@ function rbPanelHtml(o) {
       <div class="row2">${rbField('Greeting', 'greeting', o.model.greeting)}${rbField('Signature', 'signature', o.model.footer.signature)}</div>
       <div class="row">${rbField('Intro line', 'intro', o.model.intro)}</div>
       ${asa}
+      ${cfg.kind === 'leaders' && o.mine ? rbExclHtml(o) : ''}
     </div>
     <div class="actions">
       <button class="btn primary" data-rba="copy"><svg width="15" height="15" aria-hidden="true"><use href="#i-copy"/></svg>Copy for Outlook</button>
       <button class="btn" data-rba="eml" title="Opens in Outlook as a new mail with the exact formatting"><svg width="15" height="15" aria-hidden="true"><use href="#i-mail"/></svg>Open in Outlook (.eml)</button>
       <button class="btn" data-rba="subject">Copy subject</button>
       <button class="btn" data-rba="html"><svg width="15" height="15" aria-hidden="true"><use href="#i-down"/></svg>Download .html</button>
+      ${o.data && o.data.ivr ? '<button class="btn" data-rba="ivr" title="The IVR box as a picture to paste into Teams"><svg width="15" height="15" aria-hidden="true"><use href="#i-chart"/></svg>IVR scorecard</button>' : ''}
       ${sent}
       <span class="sp"></span>
       <label class="chk"><input type="checkbox" data-rba="edit"> Edit text directly in the preview</label>
     </div>
     ${o.who ? `<p class="hint rbwho">${o.who}</p>` : ''}
     <div class="previewWrap"><div class="rbload" aria-hidden="true"><span class="spin"></span></div><iframe class="rbprev" title="Preview of the ${esc(rbName(key))} email" sandbox="allow-same-origin"></iframe></div>`;
+}
+/** MC Leaders: the ticket numbers to leave out of the report day's email, and what came of them */
+function rbExclHtml(o) {
+  const E = rbE(), R = rbR(), p = o.period, v = rbGet('leaders', 'exclude', o.dk), asked = E.ticketNumbers(v), x = o.data && o.data.excluded;
+  let st = '';
+  if (asked.length) {
+    st = plural(asked.length, 'ticket number') + ' read';
+    st += x ? ` · ${E.fmtInt(x.removed.length)} left out of the report${x.missing.length ? ` · not among the MC Leaders tickets dropped: ${x.missing.join(', ')}` : ''}` : ': drop the Crystal tickets export to apply them.';
+  }
+  return `<div class="row rbexcl"><label class="fld wide"><span>Tickets to exclude · ${esc(p.multi ? R.niceRange(p.start, p.end) : R.longDate(p.end))}</span><textarea data-rbf="exclude" rows="3" spellcheck="false" placeholder="Paste the ticket numbers to leave out of the MC Leaders report: one a line, or the whole table from the email.">${esc(v)}</textarea></label>
+    <div class="rbexclst"><p class="hint uxhelp">Only the ticket numbers are read (5 digits or more), so dates and times pasted with them are ignored. The list is for this report day only: another day starts with an empty list, and coming back to this day brings it back.</p><p class="hint" role="status">${esc(st)}</p>${v ? '<button class="btn sm ghost" data-rba="exclclear">Clear the list</button>' : ''}</div></div>`;
 }
 /** every preview shows the email as it looks on a computer (900 px wide): a narrower panel shows it scaled down, never in its phone layout */
 const RB_PREVIEW_W = 960;
@@ -569,6 +586,8 @@ const rbFileStem = (key, p) => key + '-' + (p.multi ? p.start + '_to_' + p.end :
 /** the actions of a panel: host = the panel, ctx() = { key, dk, period, model } of what it shows */
 async function rbAction(host, act, ctx) {
   const c = ctx(); if (!c || !c.model) return;
+  if (act === 'ivr') { rbIvrOpen(c); return; }
+  if (act === 'exclclear') { rbSet('leaders', 'exclude', '', c.dk); rbRebuild(); toast('The tickets to exclude are cleared for this report day.'); return; }
   const fr = host.querySelector('iframe.rbprev');
   if (act === 'subject') { const v = (host.querySelector('[data-rbf="subject"]') || {}).value || c.model.subject; try { await navigator.clipboard.writeText(v); toast('Subject copied.'); } catch (e) { toast('Copy blocked by the browser.'); } return; }
   await rbFlush(host);
@@ -633,7 +652,7 @@ function rbSkeleton() {
         <input type="file" multiple accept=".csv,.xls,.xlsx" hidden data-rbpick>
         <div class="rbfiles" data-rbfiles></div>
         <div class="rbmini"><button class="btn sm ghost" data-rbclear>Clear files</button></div>
-        <details class="rbhelp"><summary>What to drop</summary><p>On Sunday, drop Thursday's, Friday's and Saturday's Genesys exports (one set per day, ideally one drop per day), the two Crystal files for Thu–Sat, and the FRiENDi Pay "Tickets by Category" sheet. Queue exports carry no date, so each one takes the day of the files dropped or exported with it; change it in the list if needed. The MC Leaders email is filled from the same Crystal tickets export, so there is nothing extra to drop. For the WFM Daily Review, also drop that day's agent performance, agent status, interactions, adherence (one per brand) and schedule exports.</p></details></div>
+        <details class="rbhelp"><summary>What to drop</summary><p>On Sunday, drop Thursday's, Friday's and Saturday's Genesys exports (one set per day, ideally one drop per day), the two Crystal files for Thu–Sat, and the FRiENDi Pay "Tickets by Category" sheet. Queue exports carry no date, so each one takes the day of the files dropped or exported with it; change it in the list if needed. The MC Leaders email is filled from the same Crystal tickets export, so there is nothing extra to drop. For the WFM Daily Review, also drop that day's agent performance, agent status, interactions, adherence (one per brand) and schedule exports. For the IVR box under section 02, add the Virgin IVR's Flow Outcome Detail and Flow Milestone Detail exports, and the Data Actions Performance export for its error alert; IVR scorecard then makes the box a picture for Teams.</p></details></div>
       <div class="card rbcard"><div class="rbstep"><span class="n">3</span><div><h2>FRiENDi Pay tickets</h2><p class="cap">Only when there is no tickets sheet to drop.</p></div></div>
         <textarea class="rbta" data-rbfpay placeholder="Paste the ticket table from your email here (Date · Category · SubCategory), header row included."></textarea>
         <p class="hint">Easiest: drop the tickets sheet in step 2. Monday to Thursday that is the Date · Category .xlsx, Sunday the "Tickets by Category" sheet. "Category::SubCategory" is split for you, and a dropped sheet takes over from anything pasted here.</p></div>
@@ -751,7 +770,7 @@ $('wfmRb').addEventListener('click', e => {
   const tb = t.closest('[data-rbtab]'); if (tb) { state.rbActive = tb.dataset.rbtab; rbTabsRender(); rbPanelRender(); return; }
   if (t.closest('[data-rbdrop]')) { $('wfmRb').querySelector('[data-rbpick]').click(); return; }
   if (t.closest('[data-rbclear]')) { if (window.WFM) window.WFM.clear(); RB.bag = rbEmptyBag(); RB.files = []; RB.lastSaved = null; rbRebuild(); toast('Files cleared. What was already sent to the WFM manager stays with him.'); return; }
-  const a = t.closest('[data-rba]'); if (a && a.tagName === 'BUTTON') { const host = a.closest('.rbpanel'); rbAction(host, a.dataset.rba, () => ({ key: 'leaders', dk: rbDayKeyOf(rbPeriod()), period: rbPeriod(), model: RB.models.leaders })); }
+  const a = t.closest('[data-rba]'); if (a && a.tagName === 'BUTTON') { const host = a.closest('.rbpanel'); rbAction(host, a.dataset.rba, () => ({ key: 'leaders', dk: rbDayKeyOf(rbPeriod()), period: rbPeriod(), model: RB.models.leaders, data: RB.data.leaders })); }
 });
 // ---- a brand box shows its email, small and whole, while the pointer rests on it (or it has the keyboard focus): how the email
 // the tool made looks now, without opening it. Read only; it follows the pointer's box and never covers it.
@@ -823,6 +842,7 @@ $('wfmRb').addEventListener('input', e => {
 function rbFieldIn(t) {   // MC Leaders' fields (the analyst's own email): the preview follows, the fields stay as typed
   const p = rbPeriod(), dk = rbDayKeyOf(p), f = t.dataset.rbf, host = t.closest('.rbpanel');
   rbSet('leaders', f, t.value, dk);
+  if (f === 'exclude') { rbRebuildSoon(); return; }   // the tickets to exclude change the numbers
   RB.models.leaders = rbLeadersModel(p, dk);
   if (f === 'subject') return;   // the subject is not in the mail itself
   rbLater(host, () => rbFrame(host.querySelector('iframe.rbprev'), rbHtml(RB.models.leaders, 'leaders')), 300);
@@ -879,7 +899,7 @@ function dmRefresh(panel, doc, dk) {
   if (acts) { acts.querySelectorAll('.rbsent, [data-rba="sent"], [data-rba="unsent"]').forEach(n => n.remove()); acts.querySelector('.sp').insertAdjacentHTML('beforebegin', s ? `<span class="rbsent"><svg width="14" height="14" aria-hidden="true"><use href="#i-check"/></svg>Sent ${esc(fmtWhen(s.at))}${s.by ? ' by ' + esc(s.by) : ''}</span><button class="btn sm ghost" data-rba="unsent">Not sent yet</button>` : '<button class="btn" data-rba="sent"><svg width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg>Mark as sent</button>'); }
   rbFrame(panel.querySelector('iframe.rbprev'), rbHtml(b.model, key));
 }
-const dmCtx = () => { const dk = state.dmSel, docs = state.dmBrands[dk], doc = docs && docs[state.dmActive]; if (!doc) return null; return { key: state.dmActive, dk, period: doc.period, model: rbBrandBuild(state.dmActive, doc, dk).model, doc }; };
+const dmCtx = () => { const dk = state.dmSel, docs = state.dmBrands[dk], doc = docs && docs[state.dmActive]; if (!doc) return null; const b = rbBrandBuild(state.dmActive, doc, dk); return { key: state.dmActive, dk, period: doc.period, model: b.model, data: b.data, doc }; };
 /** the ASA the WFM manager chose goes to the history too, so tomorrow's month to date shows what was sent */
 function dmHistAsa(key, doc, dk) {
   const B = rbB(), E = rbE(), cfg = B.REPORTS[key]; if (!cfg.channels.length || cfg.nvFrom || !canDailySave()) return;
@@ -1074,3 +1094,43 @@ for (const page of [$('wfmDm'), $('wfmRb')]) {
     if (t.matches('[data-dmhall]')) { state.dmHistAll = t.checked; dmHistRender(); const c = page.querySelector('[data-dmhall]'); if (c) c.focus(); }
   });
 }
+
+// ---------------------------------------------------------------- the IVR scorecard: the IVR box as a picture for Teams (Member Care Report Builder 15.8's card)
+const RB_IVR_BRAND = { virgin: 'Virgin Mobile', postpaid: 'Virgin Mobile', friendi: 'FRiENDi mobile', fpay: 'FRiENDi PAY' };
+let rbIvrCur = null;
+/** the card's model, as the builder gives it to its scorecard: the brand and flow, the day, the calls, and the busiest outcomes, milestones and data actions */
+function rbIvrCard(key, p, x) {
+  const E = rbE(), R = rbR(), S = window.Scorecard, flows = x.flows || [], skipped = x.skippedMilestones || [];
+  return {
+    brand: flows.length ? S.brandOf(flows[0]) : RB_IVR_BRAND[key], flow: flows.join(', '),
+    date: p.multi ? R.niceRange(p.start, p.end) : R.dayShort(p.end, p.end) + ', ' + R.niceRange(p.end, p.end),
+    span: p.multi ? R.dayShort(p.start, p.end) + ' · ' + p.days.length + ' days' : '24 hours', slug: p.multi ? p.start + '_to_' + p.end : p.end,
+    calls: x.calls, agent: x.agent, ended: x.ended, firstName: x.topOutcome ? x.topOutcome.name : '',
+    afterOut: x.topOutcome ? 'After ' + x.topOutcome.name + ' · ' + E.fmtInt(x.topOutcome.attempts) : '',
+    afterMs: skipped.length ? 'After ' + skipped.map(o => o.name + ' · ' + E.fmtInt(o.hits)).join(', ') : '',
+    busyOut: (x.topOutcomes || []).map(o => ({ name: o.name, n: o.attempts })), busyMs: (x.topMilestones || []).map(o => ({ name: o.name, n: o.hits })),
+    daFile: !!x.daFile, actions: x.actions || 0, errors: x.errorsAll || [],
+  };
+}
+function rbIvrOpen(c) {
+  const x = c.data && c.data.ivr; if (!x || !window.Scorecard) return;
+  if (x.calls === null || x.agent === null) { toast(`The scorecard needs both IVR exports: drop the ${x.calls === null ? 'Flow Outcome Detail' : 'Flow Milestone Detail'} export too.`); return; }
+  const s = rbIvrCard(c.key, c.period, x), cv = window.Scorecard.draw(s, 2);
+  const slug = (s.brand || 'IVR').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'IVR';
+  const cur = rbIvrCur = { name: `IVR-Scorecard-${slug}-${s.slug || 'report'}.png`, blob: null };
+  cur.ready = new Promise(res => cv.toBlob(b => { cur.blob = b; res(b); }, 'image/png'));
+  const img = $('ivrImg'); img.src = cv.toDataURL('image/png'); img.alt = window.Scorecard.alt(s);
+  $('ivrSub').textContent = `${rbName(c.key)} · ${s.date}`; $('ivrStatus').textContent = '';
+  openDrawer('dIvr');
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest && e.target.closest('#dIvr [data-ivr]'); if (!b || !rbIvrCur) return;
+  const cur = rbIvrCur, st = $('ivrStatus'), blocked = 'Copying was blocked: right-click the picture and choose Copy image, or download the PNG.';
+  if (b.dataset.ivr === 'copy') {
+    if (!navigator.clipboard || !window.ClipboardItem) { st.textContent = blocked; return; }
+    try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': cur.blob || cur.ready })]); st.textContent = 'Copied. In Teams, click in the message box and press Ctrl+V.'; } catch (err) { st.textContent = blocked; }
+    return;
+  }
+  const blob = await Promise.resolve(cur.blob || cur.ready); if (!blob) { st.textContent = 'The picture could not be made.'; return; }
+  if (await rbSave(cur.name, blob, `Saved ${cur.name}.`)) st.textContent = `Saved ${cur.name}.`;
+});

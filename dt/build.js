@@ -1,4 +1,3 @@
-
 /* Turns parsed files + history into the report model the renderer consumes. */
 (function (root) {
   'use strict';
@@ -248,6 +247,27 @@
   }
 
   /* Build one report model. `data` carries the period's computed values, `hist` the stored history. */
+  /* The IVR box under section 02: the share that finished in the IVR, the top five outcomes and
+     milestones, and the IVR flow's data actions with errors (only when there are any) */
+  function ivrModel(x, fInt, fPct) {
+    if (!x) return null;
+    const rate = r => r >= 0.01 ? Math.round(r * 100) + '%' : '<1%';
+    return {
+      label: 'IVR REPORT',
+      finished: { label: 'Finished in the IVR', value: fPct(x.pct), sub: x.ended === null ? 'Needs the milestone export' : fInt(x.ended) + ' of ' + fInt(x.calls) + ' calls' },
+      lists: [
+        { title: 'Top 5 outcomes · attempts', empty: 'Needs the outcome export',
+          note: x.topOutcome ? 'After ' + x.topOutcome.name + ' · ' + fInt(x.topOutcome.attempts) : '', items: (x.topOutcomes || []).map(o => ({ name: o.name, value: fInt(o.attempts) })) },
+        { title: 'Top 5 milestones · hits', empty: 'Needs the milestone export',
+          note: (x.skippedMilestones || []).length ? 'After ' + x.skippedMilestones.map(o => o.name + ' · ' + fInt(o.hits)).join(', ') : '', items: (x.topMilestones || []).map(o => ({ name: o.name, value: fInt(o.hits) })) }
+      ],
+      alert: x.errors && x.errors.length ? {
+        title: 'Data action errors' + (x.errorsFrom ? ' · ' + x.errorsFrom : ''),
+        items: x.errors.map(e => ({ name: e.name, value: rate(e.rate) + ' of ' + fInt(e.runs) + ' runs' }))
+      } : null
+    };
+  }
+
   function buildReport(key, periodOrDate, data, hist, opts) {
     opts = opts || {};
     const period = typeof periodOrDate === 'string' ? makePeriod(periodOrDate, periodOrDate) : periodOrDate;
@@ -445,6 +465,7 @@
         ' answered, ' + fPct(v.sl) + ' service level, ' + fInt(tk.total) + ' tickets. ' + (opts.insight || 'Normal operation day.'),
       kpis: kpis,
       sections: sections,
+      ivr: ivrModel(data.ivr, fInt, fPct),
       footer: {
         thanks: 'Thanks.',
         signature: cfg.signature,
@@ -528,6 +549,35 @@
 
     const dates = period.days;
     const when = single ? period.end : R.dayShort(period.start, period.end) + ' (' + R.niceRange(period.start, period.end) + ')';
+    // the IVR box (Flow Outcome Detail + Flow Milestone Detail exports); Virgin Postpaid shares the Virgin Mobile IVR
+    const ivrKey = key === 'postpaid' ? 'virgin' : key;
+    const ivrO = (bag.ivrOut || {})[ivrKey], ivrM = (bag.ivrMs || {})[ivrKey];
+    if (ivrO || ivrM) {
+      const oRows = [], mRows = [], gap = [];
+      period.days.forEach(d => {
+        const o = ivrO && ivrO[d], ms = ivrM && ivrM[d];
+        if (o) oRows.push.apply(oRows, o);
+        if (ms) mRows.push.apply(mRows, ms);
+        if (!o || !ms) gap.push(d);
+      });
+      if (!oRows.length && !mRows.length) out.warnings.push('No IVR exports for ' + (single ? 'the report day' : when) + ' — the IVR box is left out.');
+      else {
+        out.ivr = E.ivrSummary(oRows, mRows);
+        out.ivr.flows = E.flowNames(oRows.concat(mRows));
+        const ivrD = (bag.ivrDa || {}).all;
+        if (ivrD) {
+          const dRows = [];
+          period.days.forEach(d => { if (ivrD[d]) dRows.push.apply(dRows, ivrD[d]); });
+          const errs = E.dataActionErrors(dRows, out.ivr.flows, ivrKey);
+          out.ivr.errors = errs.list; out.ivr.errorsFrom = errs.from;
+          // for the IVR scorecard: every action with errors, and how many of the flow's actions ran
+          out.ivr.errorsAll = errs.all; out.ivr.actions = errs.actions; out.ivr.daFile = dRows.length > 0;
+        }
+        if (!oRows.length) out.warnings.push('IVR box: drop the Flow Outcome Detail export too.');
+        else if (!mRows.length) out.warnings.push('IVR box: drop the Flow Milestone Detail export too.');
+        else if (gap.length) out.warnings.push('IVR box: no IVR exports for ' + gap.map(label).join(', ') + ' — it counts the other days only.');
+      }
+    }
     if (bag.history) {
       const rows = E.sliceHistory(bag.history, key, dates);
       out.mix = E.contactMix(rows, key);
@@ -550,13 +600,19 @@
     if (key === 'fpay') {
       // Sunday: the "Tickets by Category" sheet (already counted for Thu–Sat) wins over the paste
       const sheet = bag.fpayTicketsFile;
+      const pasted = String(opts.fpayTickets || '').trim();
+      // new: with no sheet and nothing pasted, the "FRiENDi Pay" lines of the Crystal tickets export
+      const crystal = (!sheet && !pasted && bag.tickets && bag.tickets.length) ? E.fpayRowsFromTickets(bag.tickets) : [];
       let t;
-      if (sheet) {
+      if (!sheet && crystal.length) {
+        const f = E.ticketsOnDays(crystal, dates);
+        t = Object.assign(E.summariseTickets(f.kept), { dropped: f.dropped });
+      } else if (sheet) {
         // a dated sheet (Monday–Thursday) keeps the report's day(s); the Sunday sheet has no dates
         const f = E.ticketsOnDays(sheet.rows, dates);
         t = Object.assign(E.summariseTickets(f.kept), { dropped: f.dropped });
       } else t = E.parsePastedTickets(opts.fpayTickets || '', dates);
-      const src = sheet ? 'FRiENDi Pay tickets in ' + sheet.name : 'pasted FRiENDi Pay tickets';
+      const src = sheet ? 'FRiENDi Pay tickets in ' + sheet.name : crystal.length ? 'FRiENDi Pay tickets in the tickets export' : 'pasted FRiENDi Pay tickets';
       if (sheet && String(opts.fpayTickets || '').trim()) {
         out.warnings.push('FRiENDi Pay tickets come from ' + sheet.name + ' — the pasted table is ignored while that file is loaded.');
       }
@@ -622,13 +678,25 @@
       out.warnings.push('No tickets export found — drop the Crystal tickets export (.xls) to fill the MC Leaders report.');
       return out;
     }
-    const mine = src.rows.filter(r => LEADER_TEAM.test(r.assigned));
+    let mine = src.rows.filter(r => LEADER_TEAM.test(r.assigned));
     if (!mine.length) {
       out.stats = E.leaderStats([]);
       const who = Array.from(new Set(src.rows.map(r => r.assigned).filter(Boolean))).slice(0, 6);
       out.warnings.push('No tickets assigned to MC Leaders in ' + src.name +
         (who.length ? ' — it has ' + who.join(', ') + '.' : '.'));
       return out;
+    }
+    // ticket numbers pasted in "tickets to exclude" are left out of everything below
+    const excl = E.ticketNumbers(opts.exclude);
+    if (excl.length) {
+      const set = new Set(excl), found = new Set();
+      mine = mine.filter(r => { if (r.ticket && set.has(r.ticket)) { found.add(r.ticket); return false; } return true; });
+      out.excluded = { asked: excl, removed: excl.filter(n => found.has(n)), missing: excl.filter(n => !found.has(n)) };
+      if (!mine.length) {
+        out.stats = E.leaderStats([]);
+        out.warnings.push('Every MC Leaders ticket in ' + src.name + ' is in the tickets to exclude.');
+        return out;
+      }
     }
     const dates = period.days;
     const onDays = mine.filter(r => r.date && dates.indexOf(r.date) >= 0);
@@ -696,4 +764,3 @@
 
   root.Build = { THEMES, REPORTS, SEED_NOTES, BRAND_NOTES, SEED_LABELS, printed, buildReport, computeData, upsert, makePeriod, periodAgg, seedNotes, noteFor, computeLeaders, buildLeaders };
 })(typeof module !== 'undefined' ? module.exports : window);
-

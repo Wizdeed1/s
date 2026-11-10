@@ -2,7 +2,8 @@
 // 1. A report day's four brand emails arriving after the page is open show by themselves (they used to stay grey until a click).
 // 2. The Brands' history box: what the shared history holds; a made-up history file read and shown first (per brand: months and
 //    days to add, the same, different here; what is left out), imported without touching the days the tool already has, then
-//    again with "Use the file's numbers"; a third time there is nothing to import; Export history gives it all back.
+//    again with "Use the file's numbers"; a third time there is nothing to import; Export history gives it all back. The history
+//    built into the tool (dt/seed.js) lies under the shared one: the box and the export count it, an imported month wins over it.
 // 3. Files that are not history files are refused, and odd keys in a file (__proto__, constructor) change nothing.
 // 4. A Report Builder page (the stand-alone .html, made up here) is read for the history built into it, on the Report builder's
 //    History card too (its old Import backup replaced the history unread), and dropped on Recognise files; a page with none is refused.
@@ -28,6 +29,15 @@ file.virgin.voice.daily.push({ presented: 5 }, { date: day(22), note: 'text only
 file.leaders = { voice: { daily: [voice(day(5))] } }; file.virgin.constructor_ = 1;
 let text = JSON.stringify(file, null, 1).replace('"leaders":', '"__proto__": {"polluted": true}, "leaders":').replace('"constructor_": 1', '"constructor": {"monthly": [{"date": "2026-01-01", "presented": 1}]}');
 const fileP = path.join(out, 'member-care-history-test.json'); fs.writeFileSync(fileP, text);
+// the history built into the tool (dt/seed.js, Member Care Report Builder 15.8's) lies under the shared one: the box and Export
+// history say and give the two together, the shared numbers winning
+const SEED = (() => { const w = {}; new Function('window', fs.readFileSync(path.join(__dirname, '..', 'dt', 'seed.js'), 'utf8'))(w); return w.HISTORY_SEED || {}; })();
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const datesOf = (H, l, b0, s0) => BRANDS.filter(b => !b0 || b === b0).flatMap(b => ['voice', 'nonvoice'].filter(x => !s0 || x === s0).flatMap(x => (((H[b] || {})[x] || {})[l] || []).map(r => r && r.date))).filter(d => typeof d === 'string');
+const span = (L, monthly) => { const q = [...new Set(L)].sort(), a = q[0], z = q[q.length - 1], M = k => `${MON[+k.slice(5, 7) - 1]} ${k.slice(0, 4)}`, D = (k, y) => `${+k.slice(8)} ${MON[+k.slice(5, 7) - 1]}${y ? ' ' + k.slice(0, 4) : ''}`;
+  return monthly ? (a === z ? M(a) : `${M(a)} – ${M(z)}`) : (a === z ? D(a, true) : `${D(a, a.slice(0, 4) !== z.slice(0, 4))} – ${D(z, true)}`); };
+const what = (...Hs) => { const m = Hs.flatMap(H => datesOf(H, 'monthly')), d = Hs.flatMap(H => datesOf(H, 'daily')); return [m.length ? `months ${span(m, true)}` : '', d.length ? `days ${span(d)}` : ''].filter(Boolean).join(' · '); };
+const imported = { virgin: { voice: { monthly: months.map(date => ({ date })), daily: [{ date: '2026-09-30' }] } } };   // what the file adds
 (async () => {
   const b = await chromium.launch(), ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce', acceptDownloads: true }), errs = [];
   await ctx.route(URL, r => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: html }));
@@ -60,7 +70,8 @@ const fileP = path.join(out, 'member-care-history-test.json'); fs.writeFileSync(
   // ---- 2. the Brands' history box
   const summary = async () => p.evaluate(() => document.querySelector('#wfmDm [data-dmhist] .dmhtx small').textContent.replace(/\s+/g, ' ').trim());
   let s0 = await summary();
-  ok(/days 1 Oct – 21 Oct 2026/.test(s0) && /Yousef T\./.test(s0), `the box says what the shared history holds: "${s0.slice(0, 120)}"`);
+  const w0 = what(SEED, have);
+  ok(s0.includes(w0) && /Yousef T\./.test(s0), `the box says what the history holds, the built-in one under the shared one (${w0}): "${s0.slice(0, 150)}"`);
   await p.screenshot({ path: path.join(out, 'dailyhist-box.png') });
   await p.setInputFiles('#dmHistPicker', fileP);
   await p.waitForSelector('#wfmDm .dmhprev', { timeout: 15000 });
@@ -81,7 +92,8 @@ const fileP = path.join(out, 'member-care-history-test.json'); fs.writeFileSync(
   ok(a1.empty === '{"date":"2026-03-01","facebook":null,"twitter":null,"email":null,"asa":null}', `a month with no data comes in as it is, so the table shows it as – (${a1.empty})`);
   ok(JSON.stringify(a1.keys.sort()) === JSON.stringify(BRANDS.slice().sort()) && JSON.stringify(a1.ctor.sort()) === '["nonvoice","voice"]' && !a1.polluted, `nothing but the four brands' voice and non-voice went in (${a1.keys.join(', ')}), and nothing was polluted`);
   const s1 = await summary();
-  ok(/months Jan 2025 – Sep 2026 · days 30 Sep – 21 Oct 2026/.test(s1), `the box follows: "${s1.slice(0, 110)}"`);
+  const w1 = what(SEED, have, imported);
+  ok(s1.includes(w1) && w1 !== w0, `the box follows (${w1}): "${s1.slice(0, 110)}"`);
   // again, with the file's numbers for the day that differs
   await p.setInputFiles('#dmHistPicker', fileP); await p.waitForSelector('#wfmDm [data-dmhall]', { timeout: 15000 });
   const go0 = await p.evaluate(() => document.querySelector('#wfmDm [data-dmhgo]').disabled);
@@ -101,7 +113,11 @@ const fileP = path.join(out, 'member-care-history-test.json'); fs.writeFileSync(
   // export
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), p.click('#wfmDm [data-dmhexp]')]);
   const E = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
-  ok(/^member-care-history-\d{4}-\d{2}-\d{2}\.json$/.test(dl.suggestedFilename()) && E.virgin.voice.monthly.length === 21 && E.fpay.nonvoice.daily.length === 22 && E.virgin.voice.daily.find(r => r.date === day(20)).presented === want20 + 7, `Export history: ${dl.suggestedFilename()} with all of it`);
+  const nVm = new Set([...datesOf(SEED, 'monthly', 'virgin', 'voice'), ...months]).size, nFd = new Set([...datesOf(SEED, 'daily', 'fpay', 'nonvoice'), ...datesOf(have, 'daily', 'fpay', 'nonvoice'), '2026-09-30']).size;
+  const both = months.find(m => datesOf(SEED, 'monthly', 'virgin', 'voice').includes(m)), eM = both && E.virgin.voice.monthly.find(r => r.date === both), fM = both && file.virgin.voice.monthly.find(r => r.date === both);
+  ok(/^member-care-history-\d{4}-\d{2}-\d{2}\.json$/.test(dl.suggestedFilename()) && E.virgin.voice.monthly.length === nVm && E.fpay.nonvoice.daily.length === nFd && E.virgin.voice.daily.find(r => r.date === day(20)).presented === want20 + 7,
+    `Export history: ${dl.suggestedFilename()} with all of it, the built-in history too (${E.virgin.voice.monthly.length} Virgin months, ${E.fpay.nonvoice.daily.length} FRiENDi Pay non-voice days)`);
+  ok(both && eM && fM && eM.presented === fM.presented, `  a month both have takes the imported number, not the built-in one (${both}: ${eM && eM.presented})`);
   // ---- 3. files that are not history files
   const refuse = async (name, body) => { const f = path.join(out, name); fs.writeFileSync(f, body); await p.evaluate(() => { document.getElementById('toastMsg').textContent = ''; }); await p.setInputFiles('#dmHistPicker', f); await p.waitForFunction(() => /could not be used/.test(document.getElementById('toastMsg').textContent), null, { timeout: 10000 }).catch(() => {}); return (await p.textContent('#toastMsg')).trim(); };
   const r1 = await refuse('list.json', '[1, 2, 3]'), r2 = await refuse('notes.json', 'not json at all'), r3 = await refuse('other.json', '{"roster": [{"name": "A"}]}');

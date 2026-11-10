@@ -3,12 +3,13 @@
 
   python3 tools/meeting/make_demo.py out/mc.html "final/Meeting kit/05 Cadence - Demo.html"
 
-Made-up people only (test/fixture.js: first names and an initial, made-up IDs), no shared folder, no sign-in, and nothing saved:
+Made-up people only (test/fixture.js: first names and an initial, made-up IDs; the Report builder's built-in history of real brand
+numbers is taken out), no shared folder, no sign-in, and nothing saved:
 not in a folder and not in the browser (its storage is swapped for one that lives only while the page is open, so the demo never
 changes the real tool's settings on that computer). The clock reads 8 October 2026 at the time of day it is, so the September
 2026 close is under way as in the deck's screenshots. Every page, View as and the Showcase work as in the tool.
 """
-import os, sys
+import base64, gzip, json, os, re, sys
 
 here = os.path.dirname(os.path.abspath(__file__)); root = os.path.dirname(os.path.dirname(here))
 src, out = sys.argv[1], sys.argv[2]
@@ -109,6 +110,14 @@ START = r"""<script id="demoStart">
 </script>
 """
 
+# the Report builder's built-in history is the team's real brand numbers: the demo carries none of it (made-up months only)
+def no_seed(m):
+    d = json.loads(gzip.decompress(base64.b64decode(m.group(2))).decode('utf-8'))
+    d['seed'] = {}
+    raw = json.dumps(d, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+    return m.group(1) + base64.b64encode(gzip.compress(raw, 9, mtime=0)).decode('ascii') + m.group(3)
+page, n = re.subn(r'(<script id="rb-data" type="text/plain">)([A-Za-z0-9+/=\s]+)(</script>)', no_seed, page, count=1)
+assert n == 1, 'the report builder data block is not in the page'
 boot = BOOT.replace('%FIXTURE%', fixture.strip())
 csp_end = page.index('</script>', page.index('<script id="cspBoot">')) + len('</script>')
 page = page[:csp_end] + '\n' + boot + page[csp_end:]

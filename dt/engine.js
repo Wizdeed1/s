@@ -1,4 +1,3 @@
-
 /* Member Care daily report engine — parsing, classification and metrics. */
 (function (root) {
   'use strict';
@@ -84,6 +83,65 @@
     return null;
   }
 
+  /* IVR exports (Genesys Flow Outcome Detail / Flow Milestone Detail): the brand comes from the flow's name */
+  function brandFromFlow(rows) {
+    const j = (rows || []).map(r => String(r['Flow Name'] || '')).join(' | ').toLowerCase();
+    if (/fpay|friendi\s*pay/.test(j)) return 'fpay';
+    if (/virgin/.test(j)) return 'virgin';
+    if (/friendi/.test(j)) return 'friendi';
+    return null;
+  }
+
+  /* The IVR box. Calls into the IVR = attempts on the most-visited outcome (the first menu every
+     caller hears); calls that left it for an agent = hits on the milestones named for an agent;
+     the rest finished in the IVR. Also the outcome and the milestone with the most attempts / hits. */
+  function ivrSummary(outRows, msRows) {
+    const sumBy = (rows, nameCol, numCol) => {
+      const t = {};
+      (rows || []).forEach(r => { const n = String(r[nameCol] || '').trim(); if (n) t[n] = (t[n] || 0) + (num(r[numCol]) || 0); });
+      return t;
+    };
+    const out = sumBy(outRows, 'Outcome Name', 'Attempts'), ms = sumBy(msRows, 'Milestone', 'Hits');
+    const order = t => Object.keys(t).sort((a, b) => t[b] - t[a]);
+    const to = order(out)[0] || null, tm = order(ms)[0] || null;
+    const calls = to ? out[to] : null, hasMs = Object.keys(ms).length > 0;
+    const agent = Object.keys(ms).filter(n => /agent/i.test(n)).reduce((a, n) => a + ms[n], 0);
+    const ended = calls !== null && hasMs ? Math.max(0, calls - agent) : null;
+    return {
+      calls: calls, agent: hasMs ? agent : null, ended: ended, pct: ended !== null && calls ? ended / calls : null,
+      topOutcome: to ? { name: to, attempts: out[to] } : null,
+      topMilestone: tm ? { name: tm, hits: ms[tm] } : null,
+      // the lists skip what tops them every day: the first menu (every caller's) and the number check
+      topOutcomes: order(out).slice(1, 6).map(n => ({ name: n, attempts: out[n] })),
+      topMilestones: order(ms).filter(n => !/customer\s*type/i.test(n)).slice(0, 5).map(n => ({ name: n, hits: ms[n] })),
+      skippedMilestones: order(ms).filter(n => /customer\s*type/i.test(n)).map(n => ({ name: n, hits: ms[n] }))
+    };
+  }
+
+  function flowNames(rows) {
+    return Array.from(new Set((rows || []).map(r => String(r['Flow Name'] || '').trim()).filter(Boolean)));
+  }
+
+  /* Data Actions Performance export: the actions of the IVR's own flow (Action Category = the flow's
+     name) that had errors, worst first, at most five. Error % is a fraction there (0.38 = 38%). */
+  function dataActionErrors(rows, flows, brand) {
+    const BRAND_RE = { virgin: /virgin/i, fpay: /fpay|friendi\s*pay/i, friendi: /friendi(?!\s*pay)/i };
+    const want = flows && flows.length ? (c => flows.indexOf(c) >= 0) : (c => !!BRAND_RE[brand] && BRAND_RE[brand].test(c));
+    const det = (rows || []).filter(r => String(r['Aggregate or Detailed'] || '').trim().toLowerCase() !== 'aggregate' &&
+      String(r['Action Name'] || '').trim() && want(String(r['Action Category'] || '').trim()));
+    const scale = det.some(r => (num(r['Error %']) || 0) > 1) ? 100 : 1;   // an export that writes 38 for 38%
+    const acc = {};
+    det.forEach(r => {
+      const n = String(r['Action Name']).trim(), runs = num(r['Executions']) || 0, rate = (num(r['Error %']) || 0) / scale;
+      const a = acc[n] = acc[n] || { name: n, runs: 0, errs: 0 };
+      a.runs += runs; a.errs += runs * rate;
+    });
+    const all = Object.keys(acc).map(k => acc[k]).filter(a => a.errs > 0 && a.runs > 0)
+      .map(a => ({ name: a.name, runs: a.runs, rate: a.errs / a.runs }))
+      .sort((a, b) => b.rate - a.rate || b.runs - a.runs);
+    return { list: all.slice(0, 5), all: all, actions: Object.keys(acc).length, from: flows && flows.length ? flows.join(', ') : null };
+  }
+
   function classify(name, kind, payload) {
     // kind: 'csv' | 'xls'
     if (kind === 'xls') {
@@ -94,7 +152,7 @@
     }
     const h = payload.headers;
     const has = n => h.indexOf(n) >= 0;
-    if (isTicketSheet(payload)) return { type: 'fpayTickets', brand: 'fpay' };
+    if (isFpayTicketSummary(h) || isTicketSheet(payload)) return { type: 'fpayTickets', brand: 'fpay' };
     if (has('Total Queue')) {
       // The Queue column can list several queues for transferred calls, so read the
       // export's own filter string first and fall back to a majority vote.
@@ -120,6 +178,9 @@
       const qs = payload.rows.map(r => r['Queue Name'] || '').filter(Boolean);
       return { type: 'sm', brand: brandFromQueues(qs) };
     }
+    if (has('Outcome Name') && has('Attempts')) return { type: 'ivrOut', brand: brandFromFlow(payload.rows) };
+    if (has('Milestone') && has('Hits')) return { type: 'ivrMs', brand: brandFromFlow(payload.rows) };
+    if (has('Action Category') && has('Action Name') && has('Executions') && has('Error %')) return { type: 'ivrDa', brand: 'all' };
     return { type: 'unknown' };
   }
 
@@ -567,6 +628,24 @@
   }
   const parseTicketsByCategory = parseTicketSheet;
 
+  /* "Ticket Summary Details" export (.csv) — one FRiENDi Pay ticket per line:
+     StartedAt | Category | SubCategory | … (a third layout, beside the two above).
+     The export already covers the report's window (it runs across midnight), so every line
+     counts: the day is kept only to show in the file list, not to filter on. */
+  function isFpayTicketSummary(headers) {
+    const h = headers.map(x => String(x).trim().toLowerCase());
+    return h.indexOf('startedat') >= 0 && h.indexOf('category') >= 0 && h.indexOf('subcategory') >= 0 && h.indexOf('ticketnumber') >= 0;
+  }
+  function parseFpayTicketSummary(payload) {
+    const col = n => payload.headers.find(h => String(h).trim().toLowerCase() === n);
+    const cDate = col('startedat'), cCat = col('category'), cSub = col('subcategory');
+    const s = v => String(v === null || v === undefined ? '' : v).trim();
+    return payload.rows.map(r => {
+      const cat = s(r[cCat]);
+      return { date: null, day: rowDate(s(r[cDate])), category: cat, sub: s(r[cSub]) || cat, count: 1 };
+    }).filter(r => r.category);
+  }
+
   // keep the report's day(s) when lines carry dates — unless that would leave nothing
   function ticketsOnDays(rows, dates) {
     if (!dates) return { kept: rows, dropped: 0 };
@@ -593,11 +672,13 @@
   function leaderTickets(payload) {
     const col = name => payload.headers.find(h => String(h).toLowerCase().trim() === name);
     const cDate = col('call date'), cCat = col('category'), cSub = col('sub category'),
-          cStatus = col('status'), cWho = col('assigned to'), cHours = col('close hours'), cLife = col('life cycle');
+          cStatus = col('status'), cWho = col('assigned to'), cHours = col('close hours'), cLife = col('life cycle'),
+          cTicket = col('ticket id');
     return payload.rows.map(r => {
       const hours = cHours !== undefined ? num(r[cHours]) : null;
       return {
         date: cDate !== undefined ? ticketDate(r[cDate]) : null,
+        ticket: cTicket !== undefined ? ticketKey(r[cTicket]) : '',
         category: String(r[cCat] === null || r[cCat] === undefined ? '' : r[cCat]).trim(),
         sub: String(r[cSub] === null || r[cSub] === undefined ? '' : r[cSub]).trim(),
         status: String(r[cStatus] === null || r[cStatus] === undefined ? '' : r[cStatus]).trim(),
@@ -605,6 +686,17 @@
         hours: hours !== null ? hours : (cLife !== undefined ? lifeCycleHours(r[cLife]) : null)
       };
     }).filter(r => r.category || r.sub || r.assigned);
+  }
+
+  // a ticket number as digits only, without leading zeros: "776220", 776220 and "0776220" are one ticket
+  function ticketKey(v) {
+    return String(v === null || v === undefined ? '' : v).trim().replace(/\.0+$/, '').replace(/\D/g, '').replace(/^0+/, '');
+  }
+  // the ticket numbers in a pasted list or table: every run of 5+ digits (dates and times are shorter)
+  function ticketNumbers(text) {
+    const out = [];
+    (String(text || '').match(/\d{5,}/g) || []).forEach(n => { const k = ticketKey(n); if (k && out.indexOf(k) < 0) out.push(k); });
+    return out;
   }
 
   // the dashboard's own bands: from the lower bound up to (not including) the upper one
@@ -621,12 +713,23 @@
     const s = v => String(v === null || v === undefined ? '' : v).trim();
     return (rows || []).map(r => ({
       date: rowDate(r[TCOL.date]),
+      ticket: ticketKey(r[TCOL.ticketId]),
       category: s(r[TCOL.category]),
       sub: s(r[TCOL.sub]),
       status: s(r[TCOL.status]),
       assigned: s(r[TCOL.group]),
       hours: lifeCycleHours(r[TCOL.lifeCycle])
     })).filter(r => r.category || r.sub || r.assigned);
+  }
+  /* FRiENDi Pay tickets straight from the same Crystal tickets export: the lines whose Type is
+     "FRiENDi Pay", one ticket each (a third way in, beside the tickets sheet and the pasted table). */
+  const FPAY_TYPE = /^\s*friendi\s*pay\s*$/i;
+  function fpayRowsFromTickets(rows) {
+    const s = v => String(v === null || v === undefined ? '' : v).trim();
+    return (rows || []).filter(r => FPAY_TYPE.test(s(r[TCOL.type]))).map(r => {
+      const cat = s(r[TCOL.category]);
+      return { date: rowDate(r[TCOL.date]), category: cat, sub: s(r[TCOL.sub]) || cat, count: 1 };
+    }).filter(r => r.category);
   }
   function leaderStats(rows) {
     // as the dashboard counts them: COUNTIF Status = Closed / Open / Pending, and the time
@@ -715,13 +818,12 @@
 
   root.Engine = {
     parseCsv, dur, num, fmtDur, fmtPct, fmtInt, excelDate, ymd, ymdLocal,
-    classify, totalRow, voiceFromCalls, q85FromQueue, nonVoiceFromSm,
+    classify, brandFromFlow, ivrSummary, flowNames, dataActionErrors, totalRow, voiceFromCalls, q85FromQueue, nonVoiceFromSm,
     historyRows, ticketRows, sliceHistory, sliceTickets, contactMix, topReasons,
     tally, parsePastedTickets, intervalDate, rowDate, monthKey, mean, averageRow,
     addDays, dayDiff, weekday, dateRange, parseStamp, rowStamp, splitByDay, inDates,
-    isTicketsByCategory, parseTicketsByCategory, isTicketSheet, parseTicketSheet, ticketsOnDays, sheetPayload, ticketDate, summariseTickets,
-    isLeaderTickets, leaderTickets, leaderRowsFromTickets, leaderStats, lifeCycleHours, LEADER_BUCKETS,
+    isTicketsByCategory, parseTicketsByCategory, isFpayTicketSummary, parseFpayTicketSummary, isTicketSheet, parseTicketSheet, ticketsOnDays, sheetPayload, ticketDate, summariseTickets,
+    isLeaderTickets, leaderTickets, leaderRowsFromTickets, ticketKey, ticketNumbers, fpayRowsFromTickets, leaderStats, lifeCycleHours, LEADER_BUCKETS,
     DEFAULT_SUPPRESSED, POSTPAID_SERVICES, COL, TCOL
   };
 })(typeof module !== 'undefined' ? module.exports : window);
-

@@ -1,9 +1,11 @@
 """The Member Care Report Builder's engine, built into the page (no inner page, no iframe).
 
 Writes rb_src.html: two script blocks for the page body.
-  <script id="rb-data" type="text/plain">  the email templates, logos and the history seed: gzip + base64 JSON, opened on first use
-  <script id="rb-code">                    the builder's own modules, as they are in Member Care Report Builder 14
-                                           (xls/xlsx reader, engine, renderer, template filler, MC Leaders, WFM Daily Review, build)
+  <script id="rb-data" type="text/plain">  the email templates, logos and the history the builder carries (its built-in history, under
+                                           the shared one): gzip + base64 JSON, opened on first use
+  <script id="rb-code">                    the builder's own modules, as they are in Member Care Report Builder 15.8
+                                           (xls/xlsx reader, engine, renderer, template filler, MC Leaders, WFM Daily Review, build,
+                                           IVR scorecard); its page of its own is not used: WFM team › Report builder draws it (rbx.js)
 Only two things change in the WFM Daily Review module (Dia'a Banjar's, credits and watermark untouched): its preview frame
 gets an id of its own (the page already has an element called "preview"), and its downloads go through the page's own
 save (so they work inside claude.ai too)."""
@@ -50,6 +52,7 @@ for name in ('xls.js', 'engine.js', 'render.js', 'fill.js', 'leaders.js'):
     code.append(read(name))
 code.append(wfm)
 code.append(read('build.js'))
+code.append(read('scorecard.js'))
 js = '\n'.join(code)
 assert '</script' not in js.lower(), 'a closing script tag inside the code'
 

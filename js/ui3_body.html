@@ -34,6 +34,7 @@
   <symbol id="i-chevl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 7-5 5 5 5"/></symbol>
   <symbol id="i-side" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><path d="M12 7.6v.2"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.5-4.6L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.5 4.6L20 16"/><path d="M20 20v-4h-4"/></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H12"/></symbol>
   <symbol id="i-eyeoff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12s3-6 8.5-6c1.6 0 3 .5 4.2 1.2M20.5 12s-3 6-8.5 6c-1.6 0-3-.5-4.2-1.2"/><path d="M9.9 14.1a3 3 0 0 1 4.2-4.2"/><path d="m4 20 16-16"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
@@ -106,6 +107,7 @@
         <button class="btn ghost periodbtn" id="periodBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="periodMenu" hidden><svg class="pl" aria-hidden="true"><use href="#i-day"/></svg><span id="periodLbl">Month</span><span class="pst" id="periodSt"></span><svg class="cv" aria-hidden="true"><use href="#i-chev"/></svg></button>
         <div class="menu periodmenu" id="periodMenu" role="menu" aria-label="Reporting period" hidden></div>
       </div>
+      <button class="btn ghost icon" id="refreshBtn" aria-label="Refresh data" title="Refresh data: read the shared data again and count the month again"><svg><use href="#i-refresh"/></svg></button>
       <button class="btn ghost icon bell" id="bell" aria-label="Notifications" title="Checks and notifications"><svg><use href="#i-bell"/></svg><span class="bn" id="bellN" hidden>0</span></button>
       <button class="btn ghost icon hlp" id="helpBtn" aria-label="How to use" title="How to use"><svg><use href="#i-help"/></svg></button>
       <button class="btn ghost icon" id="setBtn" aria-label="Settings" title="Settings"><svg><use href="#i-gear"/></svg></button>

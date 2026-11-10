@@ -10,6 +10,10 @@
 //    kept file is older again until it is built again.
 // 5. The senior manager's incentive email: no warning while the kept file has every correction; one made after it is said, with
 //    whom to ask; a file an earlier Cadence kept (it never noted its corrections) is asked for again when its month has some.
+// 6. The incentive email has the older kept file open (an admin, or after a preview of the senior manager's page): Build incentive
+//    file still makes the file from the month as it is now, and the incentive email takes the newer one.
+// 7. Refresh data, at the top of every page (and on a phone): a correction made on another computer and not seen here yet is read
+//    again and the month counted again with it.
 // Usage: node test/incedits.cjs page.html exportsDir outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -27,8 +31,10 @@ const store = (mem0, slow) => {
   const fire = id => subs.forEach(s => { if (id.startsWith(s.path + '/')) setTimeout(() => s.cb(snap(s.path)), 0); });
   S.db = { doc: id => ({ set: async v => { mem[id] = JSON.parse(JSON.stringify(v)); fire(id); }, update: async v => { mem[id] = { ...(mem[id] || {}), ...JSON.parse(JSON.stringify(v)) }; fire(id); },
       delete: async () => { delete mem[id]; fire(id); }, get: async () => ({ exists: !!mem[id], data: () => mem[id] }) }),
-    collection: p => ({ onSnapshot: cb => { subs.push({ path: p, cb }); setTimeout(() => cb(snap(p)), slow && /^att\//.test(p) ? slow : 0); return () => {}; }, get: async () => snap(p) }) };
+    collection: p => ({ onSnapshot: cb => { subs.push({ path: p, cb }); setTimeout(() => cb(snap(p)), slow && /^att\//.test(p) ? slow : 0); return () => {}; }, get: async () => snap(p) }),
+    rescan: async () => { window.__rescans = (window.__rescans || 0) + 1; }, poll: async () => {}, resync: () => subs.forEach(s => setTimeout(() => s.cb(snap(s.path)), 0)) };
   window.__other = (id, v) => { mem[id] = v; fire(id); };
+  window.__quiet = (id, v) => { mem[id] = v; };   // written by another computer, not seen here yet (the folder is looked at every few seconds)
   window.__mem = mem;
 };
 const day = (v, by = 'Noura B.') => ({ v, note: 'kindly update', by, at: new Date().toISOString(), src: 'update' });
@@ -75,7 +81,8 @@ const day = (v, by = 'Noura B.') => ({ v, note: 'kindly update', by, at: new Dat
   ok(a0.days[0] !== 'SL' && a1.days[0] === 'SL', `2. a correction from another computer, the page on Emails: ${W.a.name} 1 Sep ${a0.days[0]} → ${a1.days[0]}`);
   ok(c0.mark === '⚠ ' && c1.mark === '' && c1.days.join() === 'Attend,Attend,Attend,OFF,OFF,Attend,Attend', `   ${W.c.name} (CT, no Genesys day): ${c0.mark.trim() || '-'} ${c0.days.join(',') || '(empty)'} → ${c1.days.join(',')}`);
   // 3. Build incentive file: the file itself
-  const build = async () => { const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#buildInc')]); const f = path.join(out, 'incedits-' + dl.suggestedFilename()); await dl.saveAs(f); await p.waitForFunction(() => !window.__mc.state.incBuilding, null, { timeout: 30000 }); await p.waitForTimeout(400); return f; };
+  let nb = 0;   // each build its own file, so an older one can be opened again
+  const build = async () => { const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#buildInc')]); const f = path.join(out, `incedits-${++nb}-${dl.suggestedFilename()}`); await dl.saveAs(f); await p.waitForFunction(() => !window.__mc.state.incBuilding, null, { timeout: 30000 }); await p.waitForTimeout(400); return f; };
   const f1 = await build();
   const AR = (await Core.readXlsx(fs.readFileSync(f1))).find(s => s.name === 'Attendance Report').rows;
   const rowOf = name => AR.find(r => r && typeof r[1] === 'string' && r[1].replace(/^⚠ /, '') === name);
@@ -106,6 +113,29 @@ const day = (v, by = 'Noura B.') => ({ v, note: 'kindly update', by, at: new Dat
   ok(/^Applied: 1 day for 1 person\. Every sheet, the workbooks and the final email have them; build the incentive file again \(Export\) so the senior manager has them too\.$/.test(applied), `   and Apply said so: "${applied}"`);
   await build(); const n5 = await note();
   ok(!n5.warn, '   built again: saved');
+  // 6. the incentive email has the older kept file open: Build incentive file still makes it from the month
+  await p.evaluate(b64 => { const S = window.__mc.state, bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0)); S.incWb = { name: 'MC_all_team_incentive _data -2026-09.xlsx', size: bytes.length, bytes, rows: { att: [], adh: [], aht: [] }, saved: { id: 'older', k: '2026-09', at: '2026-11-01T08:00:00.000Z', by: 'Yousef T.' } }; }, fs.readFileSync(f1).toString('base64'));
+  const f6 = await build(), AR6 = (await Core.readXlsx(fs.readFileSync(f6))).find(s => s.name === 'Attendance Report').rows;
+  const rc6 = AR6.find(r => r && r[1] === W.c.name), rt6 = AR6.find(r => r && typeof r[1] === 'string' && r[1].replace(/^⚠ /, '') === t0.name);
+  ok(rc6 && rc6[11] === 'SL' && rt6 && rt6[13] === 'AL' && await p.evaluate(() => window.__mc.state.incWb === null),
+    `6. the incentive email had the older file open: Build incentive file made it from the month (${W.c.name} 8 Sep ${rc6 && rc6[11]}, ${t0.name} 10 Sep ${rt6 && rt6[13]}), and the email takes the newer one`);
+  // 7. Refresh data: a correction from another computer that this page has not seen yet
+  const pages = await p.evaluate(async () => { const M = window.__mc, out = []; for (const w of ['dash', 'wfm', 'team']) { M.setWs(w); await new Promise(r => setTimeout(r, 150)); const b = document.getElementById('refreshBtn'); out.push(`${w}:${!!b && b.offsetParent !== null && b.getAttribute('aria-label')}`); } M.setWs('build'); M.setStep('export'); return out; });
+  ok(pages.every(x => /:Refresh data$/.test(x)), `7. Refresh data is at the top of every page (${pages.join(', ')})`);
+  await p.evaluate(W => window.__quiet(`att/${W.k}/edits/${W.c.pid}`, { days: { ...window.__mem[`att/${W.k}/edits/${W.c.pid}`].days, 9: { v: 'AL', note: 'from another computer', by: 'Noura B.', at: new Date().toISOString(), src: 'update' } }, n: W.c.name }), W);
+  await p.waitForTimeout(500);
+  const before7 = await p.evaluate(pid => WriterInc.model(window.__mc.state.ctx, {}).att.find(x => x.pid === pid).days[8], W.c.pid);
+  await p.click('#refreshBtn'); await p.waitForFunction(() => !document.getElementById('refreshBtn').classList.contains('busy'), null, { timeout: 15000 }); await p.waitForTimeout(500);
+  const after7 = await p.evaluate(pid => ({ d: WriterInc.model(window.__mc.state.ctx, {}).att.find(x => x.pid === pid).days[8], rescans: window.__rescans, t: document.getElementById('toastMsg').textContent, note: document.getElementById('incNote').classList.contains('warnline') }), W.c.pid);
+  ok(before7 !== 'AL' && after7.d === 'AL' && after7.rescans >= 1 && /^Data refreshed: the shared data read again, and the month counted again with it\.$/.test(after7.t) && after7.note,
+    `   a correction not seen here yet: ${W.c.name} 9 Sep ${before7} → ${after7.d} after Refresh data ("${after7.t}"), and the kept file is older`);
+  await p.screenshot({ path: path.join(out, 'incedits-refresh.png'), clip: { x: 0, y: 0, width: 1440, height: 120 } });
+  await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(500);
+  const ph = await p.evaluate(() => { const b = document.getElementById('refreshBtn'), r = b.getBoundingClientRect(), bar = document.getElementById('appbar'); return { vis: b.offsetParent !== null && r.width > 0, inside: r.right <= innerWidth && r.left >= 0, over: bar.scrollWidth > bar.clientWidth + 1, page: document.documentElement.scrollWidth > innerWidth }; });
+  ok(ph.vis && ph.inside && !ph.over && !ph.page, `   on a phone too: in the top bar, nothing pushed out (${JSON.stringify(ph)})`);
+  await p.screenshot({ path: path.join(out, 'incedits-phone.png') });
+  await p.setViewportSize({ width: 1440, height: 1000 }); await p.waitForTimeout(300);
+  await build();
   // 5. the senior manager's incentive email
   const mem = await p.evaluate(() => JSON.stringify(window.__mem)), months = await p.evaluate(() => JSON.stringify({ h: window.__mc.state.history, f: window.__mc.state.finals }));   // the shared months, as the analyst's page has them
   const ctx2 = await b.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }), q = await ctx2.newPage();
@@ -122,8 +152,9 @@ const day = (v, by = 'Noura B.') => ({ v, note: 'kindly update', by, at: new Dat
   const w1 = await warns();
   ok(w1.some(x => /^The month's corrections changed after this incentive file was built \(.+ by Yousef T\.\)\. Ask the WFM analysts to build it again \(WFM team › Export › Build incentive file\); the newer file shows here by itself\.$/.test(x)), `   a correction after it: "${(w1.find(x => /corrections changed/.test(x)) || w1.join(' | ')).slice(0, 140)}…"`);
   await q.screenshot({ path: path.join(out, 'incedits-senior.png') });
-  // a file an earlier Cadence kept: it never said which corrections it had, so a month with corrections asks for it once more
-  const memOld = JSON.parse(mem); for (const [id, m] of Object.entries(memOld)) if (/^repmeta\//.test(id)) delete m.edits;
+  // a file an earlier Cadence kept (one that noted the corrections but could save an older incentive file again, as the one the
+  // team found): it cannot be trusted to have them, so a month with corrections asks for it once more
+  const memOld = JSON.parse(mem); for (const [id, m] of Object.entries(memOld)) if (/^repmeta\//.test(id)) delete m.made;
   const ctx3 = await b.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }), r = await ctx3.newPage();
   r.on('pageerror', e => errs.push('senior, an older file: ' + e.message));
   await r.addInitScript(([fx]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = { id: 'u5', name: 'Hana S.', username: 'hana.s', role: 'senior' }; }, [fixture]);

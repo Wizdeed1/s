@@ -31,10 +31,13 @@ show empty, with ⚠, in the incentive file's Attendance Report.
 | Export › Incentive data workbook | When the month's corrections changed after the senior manager's incentive file was built, the card says so (when, by whom) and asks to build it again. |
 | Supervisors › Incentive email | The senior manager sees the same thing among the notes before sending, with whom to ask. The newer file shows there by itself. |
 | Apply in the Corrections box | When the senior manager already has the month's incentive file, the message says to build it again. |
+| Build incentive file | It is always made from the month as it is now. Before, once the incentive email had a workbook open (the one kept for the senior manager, or one dropped there; an admin, or a preview of the senior manager's page), Build incentive file saved that same workbook again instead of making a new one. The Monthly Report was made from the month, so the two did not agree. After a build, the incentive email takes the newer file. |
+| Refresh data | The round arrows at the top of every page, next to the bell (on a phone too). They read the shared data again at once (the data folder is otherwise looked at every 5 seconds, 30 when the window is in the background), look again for the saved workbooks and the senior manager's incentive file, count the month being built again and draw the page again. A preview (View as) only reads and draws. |
 
-Each workbook kept with the shared data notes the corrections it was made with (`edits`), so every computer can tell when they
-changed. A file kept by an earlier Cadence never noted them. When its month has corrections, Export and the incentive email say
-it may not have every one and ask for it to be built again, once.
+Each workbook kept with the shared data notes the corrections it was made with (`edits`) and that it was made from the month
+(`made`), so every computer can tell when they changed. A file kept by an earlier Cadence cannot be trusted to have them: it may
+be an older incentive file saved again. When its month has corrections, Export and the incentive email say it may not have every
+one and ask for it to be built again, once.
 
 ## Report builder: Member Care Report Builder 15.8 (November 2026)
 
@@ -465,7 +468,7 @@ node test/tenure.cjs "final/Cadence.html" test/shots           # months in the j
 node test/depts.cjs "final/Cadence.html" test/shots exportsDir  # every department: the SPVs' card (Team Performance, month figures, typed by hand, its own base), a role's card from the person's page, NA ranks 5, Review › KPI results boxes, the card's base
 node test/dailyhist.cjs "final/Cadence.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
 node test/rb158.cjs "final/Cadence.html" test/shots             # Report builder as 15.8: built-in history under this browser's, IVR exports and box, tickets to exclude, IVR scorecard (drawer, Download PNG)
-node test/incedits.cjs "final/Cadence.html" /tmp/exports test/shots   # corrections from anywhere reach the month being built and the incentive file; Export and the incentive email say when the kept file is older
+node test/incedits.cjs "final/Cadence.html" /tmp/exports test/shots   # corrections from anywhere reach the month being built and the incentive file (also with the incentive email's file open); Export and the incentive email say when the kept file is older; Refresh data on every page
 node test/incmail.cjs "final/Cadence.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see); the final result form with only those who earned it
 node test/steps.cjs "final/Cadence.html" test/shots            # every page in the month's order: the sidebar, the numbered steps (Supervisors, Quality), the dashboard's priority, the agent's waiting one-to-one first
 node test/ctflow.cjs "final/Cadence.html" /tmp/exports test/shots   # the CT team's incentive workbook on Import: its days, its Utilization in the CT scorecard (the KPI file wins), never the IDs file, Remove and Undo

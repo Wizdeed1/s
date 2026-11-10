@@ -215,7 +215,7 @@ const REP = { list: [], loaded: false, confirm: '' };
 async function repKeep(name, bytes, kind) {
   if (!isBuilder()) return '';
   // edits: the month's corrections it was made with, so a page can say when they changed after it (attNewer)
-  const k = monthKey(), meta = { id: upNewId(), k, name, size: bytes.length, kind, at: new Date().toISOString(), by: whoNow(), edits: state.ctx && state.ctxEditsSig != null ? state.ctxEditsSig : attEditsSig(k) };
+  const k = monthKey(), meta = { id: upNewId(), k, name, size: bytes.length, kind, at: new Date().toISOString(), by: whoNow(), edits: state.ctx && state.ctxEditsSig != null ? state.ctxEditsSig : attEditsSig(k), made: 2 };   // made 2: made from the month each time (attNewer)
   try {
     if (!REP.loaded) { REP.list = await upListNow('rep').catch(() => []); REP.loaded = true; }
     await upPut(meta, bytes, 'rep'); UP.cache.set(meta.id, bytes);

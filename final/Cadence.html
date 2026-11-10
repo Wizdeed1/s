@@ -389,6 +389,8 @@ body:not(.scrolled) .ptitle { opacity: 0; transform: translateY(4px); pointer-ev
 .ptext { font: 600 15px/20px var(--display); letter-spacing: -0.01em; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .roletag { flex: none; display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: var(--r-pill); color: var(--muted); font: 500 12px/1 var(--text); background: var(--fill); white-space: nowrap; }
 .appbar .tools { flex: none; display: flex; align-items: center; gap: 4px; }
+#refreshBtn.busy svg { animation: rot .8s linear infinite; }   /* Refresh data at work */
+@media (prefers-reduced-motion: reduce) { #refreshBtn.busy svg { animation: none; opacity: .45; } }
 .appbar .btn.ghost { color: var(--ink-2); }
 .appbar .btn.icon { width: 32px; height: 32px; border-radius: 50%; }
 .appbar .btn.icon svg { width: 18px; height: 18px; }
@@ -3560,6 +3562,7 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
   <symbol id="i-chevl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 7-5 5 5 5"/></symbol>
   <symbol id="i-side" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><path d="M12 7.6v.2"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.5-4.6L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.5 4.6L20 16"/><path d="M20 20v-4h-4"/></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H12"/></symbol>
   <symbol id="i-eyeoff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12s3-6 8.5-6c1.6 0 3 .5 4.2 1.2M20.5 12s-3 6-8.5 6c-1.6 0-3-.5-4.2-1.2"/><path d="M9.9 14.1a3 3 0 0 1 4.2-4.2"/><path d="m4 20 16-16"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
@@ -3632,6 +3635,7 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
         <button class="btn ghost periodbtn" id="periodBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="periodMenu" hidden><svg class="pl" aria-hidden="true"><use href="#i-day"/></svg><span id="periodLbl">Month</span><span class="pst" id="periodSt"></span><svg class="cv" aria-hidden="true"><use href="#i-chev"/></svg></button>
         <div class="menu periodmenu" id="periodMenu" role="menu" aria-label="Reporting period" hidden></div>
       </div>
+      <button class="btn ghost icon" id="refreshBtn" aria-label="Refresh data" title="Refresh data: read the shared data again and count the month again"><svg><use href="#i-refresh"/></svg></button>
       <button class="btn ghost icon bell" id="bell" aria-label="Notifications" title="Checks and notifications"><svg><use href="#i-bell"/></svg><span class="bn" id="bellN" hidden>0</span></button>
       <button class="btn ghost icon hlp" id="helpBtn" aria-label="How to use" title="How to use"><svg><use href="#i-help"/></svg></button>
       <button class="btn ghost icon" id="setBtn" aria-label="Settings" title="Settings"><svg><use href="#i-gear"/></svg></button>
@@ -25495,8 +25499,9 @@ function emlFile({ to, cc, subject, text, html, attach, logo }) {
   }
   return [...H, ...body, ''].join('\r\n');
 }
+/** Build incentive file: always made from the month as it is now (its corrections too), never a workbook the incentive email has
+    open (the one the senior manager has, or one dropped there), which would be saved again unchanged */
 async function incBytes() {
-  if (state.incWb) return state.incWb.bytes;
   if (!state.ctx) return null;
   return xlLogo().then(lg => { state.ctx.logo = lg; return WriterInc.build(state.ctx, { model: incModel() }); });
 }
@@ -25508,6 +25513,8 @@ async function buildInc() {
     const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), locked = await repKeep(fn, u8, 'incentive'), kept = await saveToReports(fn, u8);
     if (kept === 'ok') toast(`${fn}: kept in Saved workbooks, and a plain copy in ${reportsWhere()}`); else if (kept) toast(`The copy of ${fn} in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})`);
     if (ok || kept === 'ok' || locked === 'ok') state.incBuilt = { ver: state.ver, fn, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), kept, locked };
+    // the incentive email takes the newer file the next time it is opened (the one it has open is now the older one)
+    if (locked === 'ok' && state.incWb && state.incWb.saved && state.incWb.saved.k === monthKey()) { state.incWb = null; state.mailSubjects = {}; state.mailDeadline = null; INCS.k = ''; }
   }
   catch (e) { toast('Could not build the incentive file: ' + (e && e.message ? e.message : e)); }
   finally { state.incBuilding = false; renderExport(); }
@@ -28152,6 +28159,27 @@ function watchShared(db) {
   try { db.doc('config/calendar').get().then(s => { if (s.exists) { state.calCfg = s.data(); if (state.ws !== 'build') renderWs(); } }).catch(() => {}); } catch (e) { /* none */ }
   loadPeople();
 }
+/** Refresh data (the top bar, on every page): the shared data read again now (the data folder is otherwise looked at every few
+    seconds), the saved workbooks and the senior manager's incentive file looked for again, the month being built counted again with
+    all of it, and the page drawn again. A preview (View as) only reads and draws: it never counts or saves for the person it shows. */
+async function refreshData() {
+  const b = $('refreshBtn'); if (!b || b.classList.contains('busy')) return;
+  b.classList.add('busy'); b.setAttribute('aria-busy', 'true');
+  try {
+    const db = state.db;
+    if (db && db.rescan) await db.rescan();   // the data folder: every record this page reads, read again
+    if (db && db.poll) await db.poll();
+    if (db && db.resync) db.resync();         // every part of the page told again what the shared data holds
+    await new Promise(r => setTimeout(r, 40));   // the listeners take it in first (they are told on the next turn): the count below has it
+    if (db && isBuilder()) await repLoad();   // the saved workbooks (the incentive file the senior manager has)
+    if (state.incWb && state.incWb.saved) { state.incWb = null; state.mailSubjects = {}; state.mailDeadline = null; }
+    INCS.k = '';                              // the incentive email looks for the newest saved file again
+    if (!viewing() && (state.ctx || allDets().length || attDets().length)) refresh(); else render();
+    toast(state.ctx && !viewing() ? 'Data refreshed: the shared data read again, and the month counted again with it.' : 'Data refreshed: the shared data read again.');
+  } catch (e) { toast(`The data could not be read again (${errText(e)}). Try again in a moment.`); }
+  finally { b.classList.remove('busy'); b.removeAttribute('aria-busy'); }
+}
+$('refreshBtn').addEventListener('click', refreshData);
 let peopleTimer = 0;
 function loadPeople() { clearTimeout(peopleTimer); peopleTimer = setTimeout(async () => { const was = rolesNow().join(); state.people = await Auth.people(); watchSigs(); watchReplies(); watchObjs(); if (rolesNow().join() !== was) { applyRole(); return; } if (state.ws !== 'build') renderWs(); else renderToday(); }, 150); }   // a cover ticked for an account that changed
 /** the supervisors: roster people who are someone's Supervisor (the roster's Supervisor column) */
@@ -29204,11 +29232,12 @@ function attEditsSig(k) {
   return s === '[]' ? '' : `${(h >>> 0).toString(36)}.${s.length}`;
 }
 /** why a workbook kept with the shared data may not have the month's corrections: 'changed' (they changed after it was made), 'old'
-    (an earlier Cadence made it without noting the corrections it had, and the month has some), '' (it has them, or it is not known yet) */
+    (an earlier Cadence made it, which did not note them or could save an older incentive file again, and the month has some), ''
+    (it has them, or it is not known yet) */
 function attNewer(meta, k) {
   if (!meta || !k || (state.db && !attSeen.has(k))) return '';   // not known until the month's corrections are in
   const now = attEditsSig(k);
-  if (meta.edits != null) return meta.edits !== now ? 'changed' : '';
+  if (meta.edits != null && meta.made >= 2) return meta.edits !== now ? 'changed' : '';
   return now ? 'old' : '';
 }
 /** the corrections on top of the supervisors' sheets, when sheets are used */
@@ -30716,7 +30745,7 @@ async function incSavedLoad(k) {
       const rows = readIncentive(await parse(m.name, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), true));
       if (rows.error) throw new Error(rows.error);
       if (INCS.k !== k) return;
-      state.incWb = { name: m.name, size: m.size || bytes.length, bytes, rows, saved: { id: m.id, k, at: m.at, by: m.by, edits: m.edits } };
+      state.incWb = { name: m.name, size: m.size || bytes.length, bytes, rows, saved: { id: m.id, k, at: m.at, by: m.by, edits: m.edits, made: m.made } };
       state.mailSubjects = {}; state.mailDeadline = null;
     } else if (!m && w && w.saved) state.incWb = null;
   } catch (e) { INCS.err = errText(e); }
@@ -34289,7 +34318,7 @@ const REP = { list: [], loaded: false, confirm: '' };
 async function repKeep(name, bytes, kind) {
   if (!isBuilder()) return '';
   // edits: the month's corrections it was made with, so a page can say when they changed after it (attNewer)
-  const k = monthKey(), meta = { id: upNewId(), k, name, size: bytes.length, kind, at: new Date().toISOString(), by: whoNow(), edits: state.ctx && state.ctxEditsSig != null ? state.ctxEditsSig : attEditsSig(k) };
+  const k = monthKey(), meta = { id: upNewId(), k, name, size: bytes.length, kind, at: new Date().toISOString(), by: whoNow(), edits: state.ctx && state.ctxEditsSig != null ? state.ctxEditsSig : attEditsSig(k), made: 2 };   // made 2: made from the month each time (attNewer)
   try {
     if (!REP.loaded) { REP.list = await upListNow('rep').catch(() => []); REP.loaded = true; }
     await upPut(meta, bytes, 'rep'); UP.cache.set(meta.id, bytes);
@@ -36863,6 +36892,7 @@ const DEPT = [
     '<b>Review › People</b>: use <b>Match system names</b> to apply every Genesys name at once, and <b>Duplicates</b> to combine people entered twice. <b>Checks</b> lists what the tool needs you to decide.',
     '<b>Export</b>: <b>Build Excel</b> makes the deduction workbook, kept locked in <b>Saved workbooks</b> to download again (a plain copy in MC Data › MC Reports only if you choose it). People with no schedule in the month are left out of every sheet (Settings; Review › Checks names them).',
     '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one. The card says so when the month\'s corrections changed after the file was built.',
+    '<b>Refresh data</b> (the round arrows at the top of every page) reads the shared data again at once and counts the month again: use it when a change made on another computer has not shown yet.',
     '<b>Export › Smart-Link attendance</b>: first, <b>Set Smart-Link\'s list from its file</b> once (any of Smart-Link\'s attendance files: its ID and Name columns), so the file holds exactly Smart-Link\'s agents, the SM agents and those on Virgin too. Then the month\'s attendance of those agents in Smart-Link\'s own file (Smart-Link Attendance -Sep 2026.xlsx): each day\'s code, the late minutes and the counts with Smart-Link\'s formulas, and the National IDs, as Smart-Link\'s file has them. It is made from the shared month, with the supervisors\' corrections, and kept in Saved workbooks; send it to Smart-Link yourself.',
     '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs.',
     '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction (the Diff); a leave changes the Attendance Report and that day\'s deduction goes. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
@@ -36880,7 +36910,8 @@ const DEPT = [
     'When a WFM analyst is on vacation, tick their name under <b>Vacation cover</b> on the WFM team page: you then have their tabs (Import, Review, Export, Report builder) until you untick it.',
     '<b>WFM team › Data</b>: export all the data to one file locked with a password, or import such a file. Accounts and passwords are never in it.',
     '<b>Team › Objections</b>: fix the accepted objections on adherence and AHT.',
-    'The <b>Dashboard</b> and <b>WFM team › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.']],
+    'The <b>Dashboard</b> and <b>WFM team › Analytics</b> show the month against the months before. The <b>bell</b> lists what is due.',
+    '<b>Refresh data</b> (the round arrows at the top of every page) reads the shared data again at once: use it when a correction or an email made on another computer has not shown yet.']],
   ['senior', 'Senior manager', [
     '<b>Supervisors › Month close</b> is the month in eight numbered steps, in the order they are done; each shows when it is done, and the next one is marked: 1 the incentive data for review to the champions, 2 the results on the agents\' pages, 3 the one-to-ones deadline and the "One-to-ones are ready" email, 4 the supervisors who finished and the objections (with the deadline reminder), 5 the results for review to the VP, 6 Finalize on Results, 7 the final result form (only those who earned it: 0 or no earned SR left off), 8 the final incentive data.',
     'Under the steps, <b>Set once</b>: the supervisor scorecard, the email addresses and the month close days. <b>Incentive rules</b> (at the top) keeps the scorecards, the bases, who is eligible and how the days and KPIs are counted. Percent KPIs and the Final % are rounded to a whole % before they count (94.99% → 95%); the days % is never rounded.',
@@ -36920,6 +36951,7 @@ const DEPT = [
     '<b>Manage accounts</b> (the account menu): give each person a role, link supervisors to their names and choose their agents, reset passwords and open access again.',
     '<b>Settings</b>: targets, the deduction scope, the logo, the sign-in lock time, and the scorecards.',
     'Admins can do everything the analysts do on the WFM team page and see every page, <b>WFM team › Data</b> too (export and import all the data).',
+    '<b>Refresh data</b> (the round arrows at the top of every page) reads the shared data again at once and draws the page again.',
     'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome. Opening the shared data shows what it waits for: if it is slow on a computer, MC Data is often in OneDrive or SharePoint with its files not downloaded yet. Right-click it in File Explorer and choose <b>Always keep on this device</b>.']],
 ];
 let deptSel = '', deptRole = '';

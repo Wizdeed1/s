@@ -2338,8 +2338,9 @@ function emlFile({ to, cc, subject, text, html, attach, logo }) {
   }
   return [...H, ...body, ''].join('\r\n');
 }
+/** Build incentive file: always made from the month as it is now (its corrections too), never a workbook the incentive email has
+    open (the one the senior manager has, or one dropped there), which would be saved again unchanged */
 async function incBytes() {
-  if (state.incWb) return state.incWb.bytes;
   if (!state.ctx) return null;
   return xlLogo().then(lg => { state.ctx.logo = lg; return WriterInc.build(state.ctx, { model: incModel() }); });
 }
@@ -2351,6 +2352,8 @@ async function buildInc() {
     const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), locked = await repKeep(fn, u8, 'incentive'), kept = await saveToReports(fn, u8);
     if (kept === 'ok') toast(`${fn}: kept in Saved workbooks, and a plain copy in ${reportsWhere()}`); else if (kept) toast(`The copy of ${fn} in ${REPORTS_DIR} failed (${kept.replace(/^error: /, '')})`);
     if (ok || kept === 'ok' || locked === 'ok') state.incBuilt = { ver: state.ver, fn, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), kept, locked };
+    // the incentive email takes the newer file the next time it is opened (the one it has open is now the older one)
+    if (locked === 'ok' && state.incWb && state.incWb.saved && state.incWb.saved.k === monthKey()) { state.incWb = null; state.mailSubjects = {}; state.mailDeadline = null; INCS.k = ''; }
   }
   catch (e) { toast('Could not build the incentive file: ' + (e && e.message ? e.message : e)); }
   finally { state.incBuilding = false; renderExport(); }

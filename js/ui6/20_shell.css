@@ -99,6 +99,8 @@ body:not(.scrolled) .ptitle { opacity: 0; transform: translateY(4px); pointer-ev
 .ptext { font: 600 15px/20px var(--display); letter-spacing: -0.01em; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .roletag { flex: none; display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: var(--r-pill); color: var(--muted); font: 500 12px/1 var(--text); background: var(--fill); white-space: nowrap; }
 .appbar .tools { flex: none; display: flex; align-items: center; gap: 4px; }
+#refreshBtn.busy svg { animation: rot .8s linear infinite; }   /* Refresh data at work */
+@media (prefers-reduced-motion: reduce) { #refreshBtn.busy svg { animation: none; opacity: .45; } }
 .appbar .btn.ghost { color: var(--ink-2); }
 .appbar .btn.icon { width: 32px; height: 32px; border-radius: 50%; }
 .appbar .btn.icon svg { width: 18px; height: 18px; }

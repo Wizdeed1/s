@@ -308,11 +308,12 @@ function attEditsSig(k) {
   return s === '[]' ? '' : `${(h >>> 0).toString(36)}.${s.length}`;
 }
 /** why a workbook kept with the shared data may not have the month's corrections: 'changed' (they changed after it was made), 'old'
-    (an earlier Cadence made it without noting the corrections it had, and the month has some), '' (it has them, or it is not known yet) */
+    (an earlier Cadence made it, which did not note them or could save an older incentive file again, and the month has some), ''
+    (it has them, or it is not known yet) */
 function attNewer(meta, k) {
   if (!meta || !k || (state.db && !attSeen.has(k))) return '';   // not known until the month's corrections are in
   const now = attEditsSig(k);
-  if (meta.edits != null) return meta.edits !== now ? 'changed' : '';
+  if (meta.edits != null && meta.made >= 2) return meta.edits !== now ? 'changed' : '';
   return now ? 'old' : '';
 }
 /** the corrections on top of the supervisors' sheets, when sheets are used */

@@ -99,6 +99,27 @@ function watchShared(db) {
   try { db.doc('config/calendar').get().then(s => { if (s.exists) { state.calCfg = s.data(); if (state.ws !== 'build') renderWs(); } }).catch(() => {}); } catch (e) { /* none */ }
   loadPeople();
 }
+/** Refresh data (the top bar, on every page): the shared data read again now (the data folder is otherwise looked at every few
+    seconds), the saved workbooks and the senior manager's incentive file looked for again, the month being built counted again with
+    all of it, and the page drawn again. A preview (View as) only reads and draws: it never counts or saves for the person it shows. */
+async function refreshData() {
+  const b = $('refreshBtn'); if (!b || b.classList.contains('busy')) return;
+  b.classList.add('busy'); b.setAttribute('aria-busy', 'true');
+  try {
+    const db = state.db;
+    if (db && db.rescan) await db.rescan();   // the data folder: every record this page reads, read again
+    if (db && db.poll) await db.poll();
+    if (db && db.resync) db.resync();         // every part of the page told again what the shared data holds
+    await new Promise(r => setTimeout(r, 40));   // the listeners take it in first (they are told on the next turn): the count below has it
+    if (db && isBuilder()) await repLoad();   // the saved workbooks (the incentive file the senior manager has)
+    if (state.incWb && state.incWb.saved) { state.incWb = null; state.mailSubjects = {}; state.mailDeadline = null; }
+    INCS.k = '';                              // the incentive email looks for the newest saved file again
+    if (!viewing() && (state.ctx || allDets().length || attDets().length)) refresh(); else render();
+    toast(state.ctx && !viewing() ? 'Data refreshed: the shared data read again, and the month counted again with it.' : 'Data refreshed: the shared data read again.');
+  } catch (e) { toast(`The data could not be read again (${errText(e)}). Try again in a moment.`); }
+  finally { b.classList.remove('busy'); b.removeAttribute('aria-busy'); }
+}
+$('refreshBtn').addEventListener('click', refreshData);
 let peopleTimer = 0;
 function loadPeople() { clearTimeout(peopleTimer); peopleTimer = setTimeout(async () => { const was = rolesNow().join(); state.people = await Auth.people(); watchSigs(); watchReplies(); watchObjs(); if (rolesNow().join() !== was) { applyRole(); return; } if (state.ws !== 'build') renderWs(); else renderToday(); }, 150); }   // a cover ticked for an account that changed
 /** the supervisors: roster people who are someone's Supervisor (the roster's Supervisor column) */

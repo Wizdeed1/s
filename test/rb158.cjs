@@ -18,10 +18,13 @@ const D0 = '10/7/2026 12:00 AM', D1 = '10/8/2026 12:00 AM';   // Wednesday 7 Oct
 const files = {
   'Virgin_Queue_Performance_-_2026-10-08T070512.120.csv': csv([['Queue Name', 'Interval Start', 'Interval End', 'Offer', 'Answer', 'Abandon', 'Service Level %', 'Avg Handle', 'ASA'],
     ['', D0, D1, 1000, 950, 50, '86.5%', '00:03:10', '00:00:21'], ['Virgin Mobile CC', D0, D1, 1000, 950, 50, '86.5%', '00:03:10', '00:00:21']]),
-  'Virgin_Flow_Outcome_Detail_-_2026-10-08T070612.120.csv': csv([['Interval Start', 'Interval End', 'Flow Name', 'Outcome Name', 'Attempts'],
-    ...[['Main Menu', 1000], ['Balance Inquiry', 300], ['Bill Payment', 120], ['Data Bundle', 80], ['Language', 60], ['Recharge', 40], ['Complaint', 20]].map(([o, n]) => [D0, D1, 'Virgin Main IVR', o, n])]),
-  'Virgin_Flow_Milestone_Detail_-_2026-10-08T070712.120.csv': csv([['Interval Start', 'Interval End', 'Flow Name', 'Milestone', 'Hits'],
-    ...[['Customer Type Check', 900], ['Transfer to Agent', 420], ['Self Service Balance', 250], ['Self Service Recharge', 100], ['Promo Played', 80], ['Agent Callback', 30]].map(([m, n]) => [D0, D1, 'Virgin Main IVR', m, n])]),
+  // the IVR exports mark abandoned calls (Abandoned: Yes): those are left out of every number
+  'Virgin_Flow_Outcome_Detail_-_2026-10-08T070612.120.csv': csv([['Interval Start', 'Interval End', 'Flow Name', 'Outcome Name', 'Attempts', 'Abandoned'],
+    ...[['Main Menu', 1000], ['Balance Inquiry', 300], ['Bill Payment', 120], ['Data Bundle', 80], ['Language', 60], ['Recharge', 40], ['Complaint', 20]].map(([o, n]) => [D0, D1, 'Virgin Main IVR', o, n, 'No']),
+    [D0, D1, 'Virgin Main IVR', 'Main Menu', 40, 'Yes'], [D0, D1, 'Virgin Main IVR', 'Balance Inquiry', 15, 'Yes']]),
+  'Virgin_Flow_Milestone_Detail_-_2026-10-08T070712.120.csv': csv([['Interval Start', 'Interval End', 'Flow Name', 'Milestone', 'Hits', 'Abandoned'],
+    ...[['Customer Type Check', 900], ['Transfer to Agent', 420], ['Self Service Balance', 250], ['Self Service Recharge', 100], ['Promo Played', 80], ['Agent Callback', 30], ['Transfer_Billing', 25], ['ReachedAgent', 10]].map(([m, n]) => [D0, D1, 'Virgin Main IVR', m, n, 'No']),
+    [D0, D1, 'Virgin Main IVR', 'Transfer to Agent', 12, 'Yes']]),
   'Data_Actions_Performance_-_2026-10-08T070812.120.csv': csv([['Interval Start', 'Interval End', 'Action Category', 'Action Name', 'Executions', 'Error %', 'Aggregate or Detailed'],
     [D0, D1, 'Virgin Main IVR', 'Get Balance', 500, 0.02, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Check Customer', 800, 0, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Create Callback', 30, 0.1, 'Detailed'],
     [D0, D1, 'Another Flow', 'Lookup', 10, 0.5, 'Detailed'], [D0, D1, '', '', 1340, 0.01, 'Aggregate']]),
@@ -62,13 +65,13 @@ const files = {
   ok(/daily IVR export/.test(rk.lead) && /Flow Outcome Detail/.test(rk.all) && /Report builder/i.test(rk.use), `Recognise files: an IVR export is a daily IVR export, for the Report builder ("${rk.lead.slice(0, 90)}" · ${rk.use.trim()})`);
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   // ---- 3. the IVR box
-  const ivr = await p.evaluate(() => { const x = (window.__mc.rb().data.virgin || {}).ivr; return x && { calls: x.calls, agent: x.agent, ended: x.ended, out: x.topOutcomes.map(o => o.name).join(','), ms: x.topMilestones.map(o => o.name).join(','), skip: x.skippedMilestones.map(o => o.name).join(','), errs: (x.errors || []).map(e => `${e.name} ${Math.round(e.rate * 100)}%`).join(',') }; });
-  ok(ivr && ivr.calls === 1000 && ivr.agent === 450 && ivr.ended === 550, `Virgin's IVR: ${ivr && ivr.calls} calls in, ${ivr && ivr.agent} left for an agent, ${ivr && ivr.ended} finished in the IVR`);
-  ok(ivr && ivr.out === 'Balance Inquiry,Bill Payment,Data Bundle,Language,Recharge' && ivr.ms === 'Transfer to Agent,Self Service Balance,Self Service Recharge,Promo Played,Agent Callback' && ivr.skip === 'Customer Type Check',
-    `  the top five outcomes after the first menu, and the top milestones without the number check (${ivr && ivr.skip})`);
+  const ivr = await p.evaluate(() => { const x = (window.__mc.rb().data.virgin || {}).ivr; return x && { calls: x.calls, agent: x.agent, ended: x.ended, abandoned: x.abandoned, out: x.topOutcomes.map(o => o.name).join(','), ms: x.topMilestones.map(o => o.name).join(','), skip: x.skippedMilestones.map(o => o.name).join(','), errs: (x.errors || []).map(e => `${e.name} ${Math.round(e.rate * 100)}%`).join(',') }; });
+  ok(ivr && ivr.calls === 1000 && ivr.abandoned === 40 && ivr.agent === 460 && ivr.ended === 540, `Virgin's IVR: ${ivr && ivr.calls} calls in (${ivr && ivr.abandoned} abandoned left out), ${ivr && ivr.agent} transferred to an agent (the ReachedAgent too, not the abandoned transfer), ${ivr && ivr.ended} finished in the IVR`);
+  ok(ivr && ivr.out === 'Balance Inquiry,Bill Payment,Data Bundle,Language,Recharge' && ivr.ms === 'Self Service Balance,Self Service Recharge,Promo Played,Agent Callback' && ivr.skip === 'Customer Type Check',
+    `  the top five outcomes after the first menu, and the top milestones without the number check (${ivr && ivr.skip}), ReachedAgent or a Transfer (${ivr && ivr.ms})`);
   ok(ivr && ivr.errs === 'Create Callback 10%,Get Balance 2%', `  the IVR flow's data actions with errors, worst first; another flow's left out (${ivr && ivr.errs})`);
   const box = await p.evaluate(() => { const M = window.__mc.rb().models; const t = k => { const d = document.createElement('div'); d.innerHTML = window.Templater.render(window.TEMPLATES[k === 'postpaid' ? 'virgin' : k], M[k], window.Build.REPORTS[k]); return d.textContent.replace(/\s+/g, ' '); }; return { v: t('virgin'), pp: t('postpaid'), fr: t('friendi') }; });
-  ok(/IVR REPORT/.test(box.v) && /Finished in the IVR/.test(box.v) && /55%/.test(box.v) && /Balance Inquiry/.test(box.v) && /Data action errors/.test(box.v) && /Create Callback/.test(box.v), 'the Virgin email has the IVR box: 55% finished in the IVR, its outcomes, milestones and data action errors');
+  ok(/IVR REPORT/.test(box.v) && /Finished in the IVR/.test(box.v) && /54%/.test(box.v) && /Balance Inquiry/.test(box.v) && !/ReachedAgent|Transfer_Billing/.test(box.v) && /Data action errors/.test(box.v) && /Create Callback/.test(box.v), 'the Virgin email has the IVR box with the same numbers: 54% finished in the IVR, its outcomes, milestones and data action errors');
   ok(/IVR REPORT/.test(box.pp) && !/IVR REPORT/.test(box.fr), 'Virgin Postpaid shares the Virgin IVR; FRiENDi (no IVR exports) has no box');
   // ---- 4. MC Leaders: the tickets to exclude
   await p.evaluate(() => {
@@ -93,7 +96,9 @@ const files = {
   await p.waitForSelector('#wfmDm [data-rba="ivr"]', { timeout: 20000 });
   await p.click('#wfmDm [data-rba="ivr"]'); await p.waitForSelector('#dIvr:not([hidden]) #ivrImg', { timeout: 10000 }); await p.waitForTimeout(400);
   const card = await p.evaluate(() => { const i = document.getElementById('ivrImg'); return { w: i.naturalWidth, h: i.naturalHeight, alt: i.alt, sub: document.getElementById('ivrSub').textContent, title: document.getElementById('h-ivr').textContent }; });
-  ok(card.w === 1280 && card.h > 600 && /Virgin Mobile/.test(card.alt) && /Balance Inquiry/.test(card.alt) && /Virgin Mobile · /.test(card.sub), `IVR scorecard: the card in a drawer of the tool's own (${card.w}×${card.h}), described for screen readers`);
+  ok(card.w === 1280 && card.h > 600 && /Balance Inquiry/.test(card.alt) && /Virgin Mobile · /.test(card.sub), `IVR scorecard: the card in a drawer of the tool's own (${card.w}×${card.h}), described for screen readers`);
+  const names = ['IVR Summary daily report · Wed, 7 Oct 2026.', 'IVR Calls: 1,000, visits to Main Menu · 40 abandoned left out.', 'IVR deflection: 54%, 540 of 1,000 calls.', 'Transfer to Agent: 46%, 460 transfers.', 'Errors: 2, worst: 10% of 30 runs.', 'Top milestones: Self Service Balance 250, Self Service Recharge 100, Promo Played 80, Agent Callback 30.'];
+  ok(names.every(t => card.alt.includes(t)) && !/Calls into the IVR|Finished in the IVR|Went to an agent|Data actions failing|ReachedAgent|Transfer_Billing/.test(card.alt), `  the team's names on the card, abandoned calls left out, Top milestones without ReachedAgent or a Transfer: "${card.alt.slice(0, 200)}…"`);
   await p.screenshot({ path: path.join(out, 'rb158-scorecard.png') });
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.click('#dIvr [data-ivr="save"]')]);
   const png = path.join(out, dl.suggestedFilename()); await dl.saveAs(png); const head = fs.readFileSync(png).subarray(0, 8).toString('hex');

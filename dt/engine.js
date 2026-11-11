@@ -95,25 +95,34 @@
   /* The IVR box. Calls into the IVR = attempts on the most-visited outcome (the first menu every
      caller hears); calls that left it for an agent = hits on the milestones named for an agent;
      the rest finished in the IVR. Also the outcome and the milestone with the most attempts / hits. */
+  /* the column an IVR export marks abandoned calls in ("Abandoned": Yes), when it has one */
+  function abandonedCol(rows) { const r = (rows || [])[0]; return r ? Object.keys(r).find(k => /abandon/i.test(k)) || null : null; }
+  const isYes = v => /^\s*(yes|y|true|1)\s*$/i.test(String(v === null || v === undefined ? '' : v));
   function ivrSummary(outRows, msRows) {
     const sumBy = (rows, nameCol, numCol) => {
       const t = {};
       (rows || []).forEach(r => { const n = String(r[nameCol] || '').trim(); if (n) t[n] = (t[n] || 0) + (num(r[numCol]) || 0); });
       return t;
     };
-    const out = sumBy(outRows, 'Outcome Name', 'Attempts'), ms = sumBy(msRows, 'Milestone', 'Hits');
+    // the calls the exports mark abandoned are left out of every number: the calls, the hand-offs, the lists
+    const ca = abandonedCol(outRows), cm = abandonedCol(msRows), kept = (rows, c) => (c ? (rows || []).filter(r => !isYes(r[c])) : (rows || []));
+    const outAll = sumBy(outRows, 'Outcome Name', 'Attempts'), out = sumBy(kept(outRows, ca), 'Outcome Name', 'Attempts'), ms = sumBy(kept(msRows, cm), 'Milestone', 'Hits');
     const order = t => Object.keys(t).sort((a, b) => t[b] - t[a]);
     const to = order(out)[0] || null, tm = order(ms)[0] || null;
     const calls = to ? out[to] : null, hasMs = Object.keys(ms).length > 0;
     const agent = Object.keys(ms).filter(n => /agent/i.test(n)).reduce((a, n) => a + ms[n], 0);
     const ended = calls !== null && hasMs ? Math.max(0, calls - agent) : null;
+    // milestones that only say the call went on to an agent (ReachedAgent, a Transfer) are counted in the hand-offs, not listed
+    const listed = n => !/customer\s*type/i.test(n) && !/reached\s*agent|transfer/i.test(n);
     return {
       calls: calls, agent: hasMs ? agent : null, ended: ended, pct: ended !== null && calls ? ended / calls : null,
+      // calls into the IVR the export marks abandoned (on its first menu), left out; null when it has no such column
+      abandoned: ca && to ? Math.max(0, (outAll[to] || 0) - out[to]) : null,
       topOutcome: to ? { name: to, attempts: out[to] } : null,
       topMilestone: tm ? { name: tm, hits: ms[tm] } : null,
       // the lists skip what tops them every day: the first menu (every caller's) and the number check
       topOutcomes: order(out).slice(1, 6).map(n => ({ name: n, attempts: out[n] })),
-      topMilestones: order(ms).filter(n => !/customer\s*type/i.test(n)).slice(0, 5).map(n => ({ name: n, hits: ms[n] })),
+      topMilestones: order(ms).filter(listed).slice(0, 5).map(n => ({ name: n, hits: ms[n] })),
       skippedMilestones: order(ms).filter(n => /customer\s*type/i.test(n)).map(n => ({ name: n, hits: ms[n] }))
     };
   }

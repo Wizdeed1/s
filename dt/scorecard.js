@@ -81,22 +81,23 @@
     ctx.strokeStyle = stroke; ctx.lineWidth = bw; ctx.strokeRect(x + bw / 2, y + bw / 2, w - bw, h - bw);
   }
 
-  /* What the card says. s: { brand, flow, date, span, calls, agent, ended, firstName, afterOut, afterMs,
-     busyOut: [{name, n}], busyMs: [{name, n}], daFile, actions, errors: [{name, runs, rate}] (worst first) } */
+  /* What the card says. s: { brand, flow, date, span, calls, agent, ended, abandoned, firstName, afterOut, afterMs,
+     busyOut: [{name, n}], busyMs: [{name, n}], daFile, actions, errors: [{name, runs, rate}] (worst first) }.
+     The names are the team's: IVR Summary daily report, IVR Calls, IVR deflection, Transfer to Agent, Errors. */
   function cardText(s) {
-    const title = (s.brand ? s.brand + ' IVR' : 'IVR') + (s.date ? ' · ' + s.date : '');
+    const title = 'IVR Summary daily report' + (s.date ? ' · ' + s.date : '');
     const sub = [s.flow ? s.flow + ' flow' : 'Flow not named in the exports', s.span].filter(Boolean).join(' · ');
     const worst = s.errors[0];
     const tiles = [
-      { lab: 'Calls into the IVR', val: fmt(s.calls), note: s.firstName ? 'visits to ' + s.firstName : 'no outcomes in the export' },
-      { lab: 'Finished in the IVR', val: pctOf(s.ended, s.calls), note: fmt(s.ended) + ' of ' + fmt(s.calls) + ' calls' },
-      { lab: 'Went to an agent', val: pctOf(s.agent, s.calls), note: fmt(s.agent) + ' hand-offs' },
-      !s.daFile ? { lab: 'Data actions failing', val: '–', note: 'no data actions export' }
-        : !s.actions ? { lab: 'Data actions failing', val: '–', note: 'no actions for this flow' }
-        : { lab: 'Data actions failing', val: String(s.errors.length), note: worst ? 'worst: ' + rateTxt(worst.rate) + ' of ' + fmt(worst.runs) + ' runs' : 'none of ' + fmt(s.actions) + ' failed', alert: !!worst }
+      { lab: 'IVR Calls', val: fmt(s.calls), note: (s.firstName ? 'visits to ' + s.firstName : 'no outcomes in the export') + (s.abandoned ? ' · ' + fmt(s.abandoned) + ' abandoned left out' : '') },
+      { lab: 'IVR deflection', val: pctOf(s.ended, s.calls), note: fmt(s.ended) + ' of ' + fmt(s.calls) + ' calls' },
+      { lab: 'Transfer to Agent', val: pctOf(s.agent, s.calls), note: fmt(s.agent) + ' transfers' },
+      !s.daFile ? { lab: 'Errors', val: '–', note: 'no data actions export' }
+        : !s.actions ? { lab: 'Errors', val: '–', note: 'no actions for this flow' }
+        : { lab: 'Errors', val: String(s.errors.length), note: worst ? 'worst: ' + rateTxt(worst.rate) + ' of ' + fmt(worst.runs) + ' runs' : 'none of ' + fmt(s.actions) + ' failed', alert: !!worst }
     ];
     const sources = s.daFile ? 'Flow Outcome Detail, Flow Milestone Detail and Data Actions Performance' : 'Flow Outcome Detail and Flow Milestone Detail';
-    const foot = 'Finished in the IVR = calls into the IVR minus hand-offs to an agent. Source: Genesys ' + sources + ' exports' + (s.date ? ', ' + s.date : '') + '.';
+    const foot = 'IVR deflection = IVR calls minus transfers to an agent' + (s.abandoned != null ? ', abandoned calls left out' : '') + '. Source: Genesys ' + sources + ' exports' + (s.date ? ', ' + s.date : '') + '.';
     return { title: title, sub: sub, tiles: tiles, foot: foot };
   }
 

@@ -1105,7 +1105,7 @@ function rbIvrCard(key, p, x) {
     brand: flows.length ? S.brandOf(flows[0]) : RB_IVR_BRAND[key], flow: flows.join(', '),
     date: p.multi ? R.niceRange(p.start, p.end) : R.dayShort(p.end, p.end) + ', ' + R.niceRange(p.end, p.end),
     span: p.multi ? R.dayShort(p.start, p.end) + ' · ' + p.days.length + ' days' : '24 hours', slug: p.multi ? p.start + '_to_' + p.end : p.end,
-    calls: x.calls, agent: x.agent, ended: x.ended, firstName: x.topOutcome ? x.topOutcome.name : '',
+    calls: x.calls, agent: x.agent, ended: x.ended, abandoned: x.abandoned != null ? x.abandoned : null, firstName: x.topOutcome ? x.topOutcome.name : '',
     afterOut: x.topOutcome ? 'After ' + x.topOutcome.name + ' · ' + E.fmtInt(x.topOutcome.attempts) : '',
     afterMs: skipped.length ? 'After ' + skipped.map(o => o.name + ' · ' + E.fmtInt(o.hits)).join(', ') : '',
     busyOut: (x.topOutcomes || []).map(o => ({ name: o.name, n: o.attempts })), busyMs: (x.topMilestones || []).map(o => ({ name: o.name, n: o.hits })),

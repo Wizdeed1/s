@@ -122,3 +122,40 @@ Beyond One adds the brand's mosaic colours (`--px1…px8` from `js/ui6/00_tokens
   - the headline panel filling about 58 % of the height, with the drawn picture behind the two-line headline on the left;
   - the month tabs in the notch at the top right, the glass import card at the bottom right;
   - the three cards in one row underneath.
+
+## 8. B · Glass (`make-glass.cjs` → `B-glass.html`)
+Option B, made glassy and floating, with the motion of the team's reference reel (an admin dashboard: glass panels over floating glossy spheres). It has three screens you can move between; each is a real Cadence job:
+- **Dashboard:** B's layout.
+- **Emails:** the daily brand emails as a board: To check, Ready to send, Sent.
+- **Team:** the agents table.
+
+**Background:**
+- six glossy spheres in Beyond One's colours (orange, blue, teal, cyan, silver, pink): radial-gradient highlight, inner shadow and a soft glow;
+- `position: fixed` on a deep navy (#05070d), behind everything;
+- each page gives them new places, and they glide there in 1.4 s;
+- they drift slowly (11–20 s);
+- with a mouse they follow the pointer a little, by depth.
+
+**Glass (one material):**
+- `rgba(13,18,29,.5)` with a 155° white sheen, `blur(28px) saturate(1.5)`;
+- a 1 px gradient rim (masked pseudo-element), a deep soft shadow;
+- a light that follows the pointer across the panel;
+- panels lift 3 px on hover.
+
+The headline panel keeps the notch: the glass is cut around the month tabs (`clip-path: path()`, measured in the page), with an SVG rim along the cut.
+
+**Motion, as in the reel:**
+| Moment | What moves |
+|---|---|
+| First visit | the spheres rise out of the dark; the nav drops in; the blocks come in one after another; the headline words come out of a blur; the team tiles light up in a wave; the numbers count up; the chart line draws itself; the ring and the bars fill |
+| Page change | the old page fades up and blurs out (0.3 s); the spheres glide to the new page's places; the blue nav pill slides; the new title arrives word by word, then its blocks and rows (45–70 ms apart) |
+| Clicks | a ripple where you click; tab underlines and the range thumb slide |
+| Chart range (6M / 30D / 7D) | the line and the August line reshape from one range to the other (0.9 s) |
+| Emails board | after 6 px of drag the card lifts as a ghost (scale 1.04, −2°, back-out); the lane under it is outlined in blue; on drop the card lands in the lane and a toast rises with Undo; arrow keys move a focused card too |
+
+With reduced motion nothing moves, and every screen and the board still work.
+
+**Checks (scripts in the scratchpad, not kept):**
+- the drag test reads the ghost's transform while dragging: scale 1.04 at −2°;
+- it checks that the Sent lane lights up, that the card lands there with the toast "Virgin Mobile · marked as sent", and that Undo puts it back;
+- there are no page errors and no requests.

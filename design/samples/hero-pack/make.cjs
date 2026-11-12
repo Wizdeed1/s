@@ -304,4 +304,6 @@ const OPTIONS = [
   { file: 'B-beyond-one.html', title: 'B · Beyond One', cls: 'brand', brand: true, art: mosaic, micro: '164 agents · by team · brighter is better adherence' },
   { file: 'C-daylight.html', title: 'C · Daylight', cls: 'light', light: true, art: blinds, micro: 'Calls offered each day · 1–30 September' },
 ];
-for (const o of OPTIONS) { fs.writeFileSync(path.join(here, o.file), page(o)); console.log(o.file, Math.round(fs.statSync(path.join(here, o.file)).size / 1024) + ' KB'); }
+// the pieces B · Glass (make-glass.cjs) builds on
+module.exports = { FONTS, MARK, GRAIN, CALLS, AGENTS, ADH, KPIS, ATTN, STEPS, PX, INITIALS, HOT, f1, smooth, avg, norm, ICON, ic, emailsArt, adhBars, teamArt, spark };
+if (require.main === module) for (const o of OPTIONS) { fs.writeFileSync(path.join(here, o.file), page(o)); console.log(o.file, Math.round(fs.statSync(path.join(here, o.file)).size / 1024) + ' KB'); }

@@ -90,3 +90,28 @@ What changes:
 - every page gets the frame and panel materials;
 - each workspace's first screen gets a headline panel when it has a state to say (Dashboard, the month's build, Emails);
 - Archivo goes into `vendor/fonts` with its OFL.
+
+## Glass layer (B · Glass, the team's choice of November 2026)
+The WFM team picked B and asked for it glassy, with everything floating over the background and the motion of their reference reel. The sample is `design/samples/hero-pack/B-glass.html`, and section 8 of SPEC.md has the details.
+
+**Background:**
+- six glossy spheres in the brand colours, fixed behind the page;
+- each page has its own places for them, and they glide there in 1.4 s;
+- a slow drift, and a little pointer depth.
+
+**Material:** one glass (blur 28 px, saturate 1.5, translucent navy, 1 px gradient rim, pointer light) on every panel. The headline panel's notch is a `clip-path: path()` measured in the page.
+
+**Colour:**
+- blue (#2384e8) for the current page and the main action of a page;
+- white for the headline panel's action.
+
+**Motion:** GSAP (already in `vendor/`):
+- page change: the old page blurs out, the spheres glide, the nav pill slides, the new page comes in staggered;
+- the headline words come out of a blur;
+- count-ups, a chart that draws itself and reshapes between ranges;
+- drag and drop with a lifted, tilted ghost and a toast with Undo;
+- a ripple where you click.
+
+With reduced motion nothing moves.
+
+**Cost:** `backdrop-filter` on many large panels is the heaviest part. On slow PCs, offer a "less transparency" setting: solid panels and still spheres.

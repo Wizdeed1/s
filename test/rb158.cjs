@@ -7,7 +7,8 @@
 //    the data actions with errors. No brand email has an IVR box (the WFM team took it out), nor a check about it.
 // 4. MC Leaders: the tickets to exclude of the report day: read, left out of the email, the ones not found named; Clear the list.
 // 5. Emails › Daily brand emails: the Virgin email still has IVR scorecard; it opens the card in a drawer of the tool's own, with
-//    Copy for Teams and Download PNG (a PNG of the card is saved).
+//    Copy for Teams and Download PNG (a PNG of the card is saved), and Open in Outlook (.eml): the IVR Summary Daily Report email
+//    with the card written into its body as text and tables (no picture of it), in the shape Word keeps.
 // Usage: node test/rb158.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -108,14 +109,30 @@ const files = {
   const emlP = path.join(out, de.suggestedFilename()); await de.saveAs(emlP); const eml = fs.readFileSync(emlP, 'latin1');
   const parts = eml.split(/\r\n--[^\r\n]+\r\n/).slice(1), part = t => parts.find(x => x.startsWith('Content-Type: ' + t));
   const body = s => Buffer.from(s.split('\r\n\r\n').slice(1).join('').replace(/[\r\n-]|--.*$/g, ''), 'base64');
-  const html = part('text/html') ? body(part('text/html')).toString('utf8') : '', pngP = part('image/png'), gifP = part('image/gif');
+  const html = part('text/html') ? body(part('text/html')).toString('utf8') : '', gifP = part('image/gif');
   const cids = [...html.matchAll(/src="cid:([^"]+)"/g)].map(m => m[1]), own = x => (x && (x.match(/Content-ID: <([^>]+)>/) || [])[1]) || '';
-  const pngB = pngP ? body(pngP) : Buffer.alloc(0), gifB = gifP ? body(gifP) : Buffer.alloc(0);
+  const gifB = gifP ? body(gifP) : Buffer.alloc(0), pics = parts.filter(x => /^Content-Type: image\//.test(x)).length;
   ok(/^IVR-Summary-Daily-Report-2026-10-07\.eml$/.test(de.suggestedFilename()) && /^X-Unsent: 1\r\nSubject: IVR Summary Daily Report\r\n/.test(eml)
     && /MC Workforce/.test(html) && /IVR Summary Daily Report/.test(html) && /Beyond One &copy; All Rights Reserved\./.test(html) && /7051 Prince Sultan Rd, As Salamah, Jeddah 23525/.test(html)
-    && cids.length === 2 && cids.includes(own(pngP)) && cids.includes(own(gifP)) && pngB.readUInt32BE(16) === 1280 && gifB.subarray(0, 6).toString() === 'GIF89a'
-    && /IVR Summary daily report/.test(html) && !/Customer_Type/.test(html),
-    `Open in Outlook (.eml): ${de.suggestedFilename()}, "IVR Summary Daily Report", the team's header and footer, the card (${pngB.readUInt32BE(16)} px) and the moving Beyond One mark inside it, no Customer Type among the errors`);
+    && pics === 1 && cids.length === 1 && cids[0] === own(gifP) && gifB.subarray(0, 6).toString() === 'GIF89a' && !/image\/png/i.test(eml),
+    `Open in Outlook (.eml): ${de.suggestedFilename()}, "IVR Summary Daily Report", the team's header and footer; its one picture is the moving Beyond One mark (no PNG of the card)`);
+  // the card written into the body: the words and numbers as text, the bars as table cells as long as their numbers
+  const mt = await p.evaluate(h => {
+    const d = new DOMParser().parseFromString(h.replace(/</g, ' <'), 'text/html'), dark = [...d.querySelectorAll('td[bgcolor="#201e1d"]')].map(td => +td.getAttribute('width'));
+    return { txt: d.body.textContent.replace(/\s+/g, ' '), dark, imgs: d.images.length };
+  }, html);
+  const said = ['IVR SCORECARD IVR Summary daily report · Wed, 7 Oct 2026 Virgin Main IVR flow · 24 hours', 'IVR CALLS 1,000 visits to Main Menu · 40 abandoned left out', 'IVR DEFLECTION 54% 540 of 1,000 calls',
+    'TRANSFER TO AGENT 46% 460 transfers', 'ERRORS 2 worst: 10% of 30 runs', 'TOP 5 OUTCOMES · ATTEMPTS After Main Menu · 1,000 Balance Inquiry 300 Bill Payment 120 Data Bundle 80 Language 60 Recharge 40',
+    'TOP 5 MILESTONES · HITS After Customer Type Check · 900 Self Service Balance 250 Self Service Recharge 100 Promo Played 80 Agent Callback 30',
+    'DATA ACTION ERRORS · VIRGIN MAIN IVR Create Callback 10% failed of 30 runs Get Balance 2% failed of 500 runs', 'IVR deflection = IVR calls minus transfers to an agent, abandoned calls left out.'];
+  const missing = said.filter(x => !mt.txt.includes(x));
+  ok(!missing.length && mt.imgs === 1 && !/Customer_Type|ReachedAgent|Transfer_Billing/.test(mt.txt), `  the card in the body as text: the tiles, both top 5 lists and the data action errors (no Customer Type)${missing.length ? '; missing: ' + missing.join(' | ') : ''}`);
+  ok(mt.dark.join() === '280,112,75,56,37,280,112,90,34', `  the bars as table cells, each as long as its number against the top one (${mt.dark.join(', ')} of 280 px)`);
+  // the shape Word keeps (Outlook writes mail with Word): a table never ends a cell, two tables never touch, every paragraph has its text's size
+  const from = html.indexOf('padding:.5in 42.0pt .5in 42.0pt">'), mail = html.slice(from, html.indexOf('border-top:solid #F1F5F9', from));
+  const sized = [...mail.matchAll(/<p class="MsoNormal"[^>]*style="([^"]*)"/g)].map(m => m[1]);
+  ok(from > 0 && /IVR SCORECARD/.test(mail) && !/<\/table>\s*<\/td>/.test(mail) && !/<\/table>\s*<table/.test(mail) && sized.length > 60 && sized.every(st => /font-size:[\d.]+pt/.test(st)),
+    `  written as Word keeps it: every cell ends with a paragraph, a paragraph between two tables, all ${sized.length} paragraphs sized`);
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   ok(await p.evaluate(() => document.getElementById('dIvr').hidden), 'Esc closes it');
   console.log(errs.length ? errs.join('\n') : 'no errors'); if (bad || errs.length) process.exitCode = 1;

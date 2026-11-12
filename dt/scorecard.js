@@ -1,4 +1,5 @@
-/* IVR scorecard: the day's IVR numbers drawn as a picture for Teams, the same card as the IVR Scorecard tool (the emails have no IVR box).
+/* IVR scorecard: the day's IVR numbers drawn as a picture for Teams, the same card as the IVR Scorecard tool (the emails have no IVR box),
+   and the same card written as an email body (mailHtml) for the IVR Summary Daily Report email.
    Scorecard.open(model) shows it in a dialog with Copy for Teams and Download PNG. */
 (function (root) {
   'use strict';
@@ -218,6 +219,93 @@
     return parts.join(' ');
   }
 
+  /* The card as the body of an email: the same words and numbers written as text, the tiles, rows and bars as tables, every style
+     inline. Outlook lays mail out with Word, so it is written the way Word keeps it: every cell ends with a paragraph (Word adds an
+     empty line after a table that ends a cell), a paragraph sits between two tables (Word joins touching tables into one), and each
+     paragraph has its text's size (Word sizes the last line by the paragraph's own size). Sharp at any zoom, no picture, and the
+     numbers can be changed before it goes. W: the width it fills, in px (688 in the IVR Summary Daily Report email). */
+  function mailHtml(s, W) {
+    W = W || 688;
+    const t = cardText(s), F = 'font-family:&quot;Aptos&quot;,Arial,sans-serif;';
+    const pt = px => +(px * 0.75).toFixed(2) + 'pt';
+    const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    // a paragraph of one run: size in pt; o: bold, ls (letter spacing, pt), mt/mb (margins, pt), align, box (more of the paragraph's style)
+    const line = (text, size, color, o) => {
+      o = o || {};
+      const al = o.align ? ` align="${o.align}"` : '', ta = o.align ? ';text-align:' + o.align : '';
+      const sp = `<span style="font-size:${size}pt;${F}color:${color}${o.ls ? ';letter-spacing:' + o.ls + 'pt' : ''}">${esc(text)}</span>`;
+      return `<p class="MsoNormal"${al} style="margin:${o.mt || 0}pt 0in ${o.mb || 0}pt 0in;font-size:${size}pt${ta}${o.box ? ';' + o.box : ''}">${o.bold ? '<b>' + sp + '</b>' : sp}</p>`;
+    };
+    // an empty paragraph exactly h px high: the space between two parts, and the paragraph a cell ends with
+    const gap = h => `<p class="MsoNormal" style="margin:0in;font-size:${pt(h)};line-height:${pt(h)};mso-line-height-rule:exactly"><span style="font-size:${pt(h)}">&nbsp;</span></p>`;
+    const table = (w, rows) => `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="${w}" style="width:${typeof w === 'number' ? pt(w) : '100.0%'};border-collapse:collapse">${rows}</table>`;
+    const cell = (w, inner, style, attrs) => `<td${w ? ` width="${w}"` : ''}${attrs || ''} style="${w ? 'width:' + pt(w) + ';' : ''}${style}">${inner}</td>`;
+
+    // eyebrow, title and the flow
+    const head = line('IVR SCORECARD', 8.5, COL.red, { bold: 1, ls: 1.5 })
+      + line(t.title, 18, COL.ink, { bold: 1, ls: -0.3, mt: 4.5 })
+      + line(t.sub, 10, COL.mute, { mt: 1.5 });
+
+    // four tiles, two by two; the tiles of a row are one table row, so they share its height
+    const TW = (W - 10) / 2;
+    const tile = k => {
+      const bg = k.alert ? COL.pink : COL.white;
+      return cell(TW, line(k.lab.toUpperCase(), 7.5, k.alert ? COL.red2 : COL.mute, { bold: 1, ls: 0.9 })
+        + line(k.val, 24, COL.ink, { bold: 1, ls: -0.45, mt: 1.5 })
+        + line(k.note, 8.5, COL.mute, { mt: 0.75 }),
+        `border:solid ${k.alert ? COL.red : COL.ink} 1.5pt;background:${bg};padding:${pt(12)} ${pt(16)} ${pt(11)} ${pt(16)}`, ` valign="top" bgcolor="${bg}"`);
+    };
+    const tileRow = r => '<tr>' + tile(t.tiles[2 * r]) + cell(10, gap(10), 'padding:0in') + tile(t.tiles[2 * r + 1]) + '</tr>';
+    const tiles = table(W, tileRow(0) + `<tr><td colspan="3" style="padding:0in">${gap(10)}</td></tr>` + tileRow(1));
+
+    // the top 5 lists: name | bar | number, a hairline above each row; a bar is a row of two cells, the dark one as long as the number
+    const BW = 280, NUM = 92, NAME = W - BW - NUM;
+    const bar = (n, max) => {
+      const on = n > 0 ? Math.min(BW, Math.max(3, Math.round(BW * n / max))) : 0;
+      const piece = (w, c) => cell(w, gap(8), `height:6.0pt;background:${c};padding:0in`, ` bgcolor="${c}"`);
+      return table(BW, `<tr style="height:6.0pt">${on ? piece(on, COL.ink) : ''}${on < BW ? piece(BW - on, COL.track) : ''}</tr>`) + gap(1);
+    };
+    const list = (title, after, rows) => {
+      const pad = `padding:${pt(6)} 0in ${pt(6)} 0in`, rule = `border-top:solid ${COL.rule} 1.0pt;`;
+      const max = Math.max.apply(null, rows.map(r => r.n).concat(1));
+      const body = rows.length ? rows.map(r => '<tr>'
+        + cell(NAME, line(r.name, 10, COL.ink), `${rule}padding:${pt(6)} ${pt(14)} ${pt(6)} 0in`, ' valign="middle"')
+        + cell(BW, bar(r.n, max), rule + pad, ' valign="middle"')
+        + cell(NUM, line(fmt(r.n), 10, COL.ink, { bold: 1, align: 'right' }), rule + pad, ' valign="middle" align="right"')
+        + '</tr>').join('')
+        : '<tr>' + cell(0, line('Nothing else in the export', 10, COL.mute), rule + pad, ' colspan="3"') + '</tr>';
+      return line(title.toUpperCase(), 8, COL.mute, { bold: 1, ls: 0.9 })
+        + (after ? line(after, 8.5, COL.mute, { mt: 1.5 }) : '')
+        + gap(6) + table(W, body);
+    };
+
+    // data action errors, only when there are some: a pink box; each row the action, a pill with the share that failed, the runs
+    let errs = '';
+    if (s.daFile && s.actions && s.errors.length) {
+      const rows = s.errors.slice(0, 5), more = s.errors.length - rows.length;
+      const pad = (i, l) => `${i ? `border-top:solid ${COL.erule} 1.0pt;` : ''}padding:${pt(5)} 0in ${pt(5)} ${pt(l)}`;
+      const pill = e => {
+        const hi = e.rate >= 0.05, c = hi ? COL.red : COL.ink, bg = hi ? COL.red : COL.white;
+        return line(rateTxt(e.rate) + ' failed', 8.5, hi ? COL.white : COL.ink, { bold: 1, align: 'center', box: `border:solid ${c} 1.0pt;padding:1.0pt 0in 1.0pt 0in;background:${bg};border-radius:9px` });
+      };
+      const body = rows.map((e, i) => '<tr>'
+        + cell(0, line(e.name, 10, COL.ink), pad(i, 0), ' valign="middle"')
+        + cell(86, pill(e), pad(i, 10), ' valign="middle"')
+        + cell(96, line('of ' + fmt(e.runs) + ' runs', 8.5, COL.mute, { align: 'right' }), pad(i, 10), ' valign="middle" align="right"')
+        + '</tr>').join('')
+        + (more ? '<tr>' + cell(0, line('+' + more + ' more ' + (more === 1 ? 'action' : 'actions') + ' with errors', 8.5, COL.mute), pad(1, 0), ' colspan="3"') + '</tr>' : '');
+      errs = table(W, '<tr>' + cell(W, line(('Data action errors' + (s.flow ? ' · ' + s.flow : '')).toUpperCase(), 8, COL.red, { bold: 1, ls: 0.9 }) + gap(4) + table('100%', body) + gap(4),
+        `border:solid ${COL.ink} 1.5pt;background:${COL.pink};padding:${pt(14)} ${pt(16)} ${pt(8)} ${pt(16)}`, ` bgcolor="${COL.pink}"`) + '</tr>');
+    }
+
+    // the parts one under the other, a paragraph of space between them; the footnote under a rule (the paragraph's own border)
+    return head + gap(18) + tiles + gap(22)
+      + list('Top 5 outcomes · attempts', s.afterOut, s.busyOut) + gap(16)
+      + list('Top 5 milestones · hits', s.afterMs, s.busyMs) + gap(errs ? 18 : 16)
+      + (errs ? errs + gap(16) : '')
+      + line(t.foot, 8, COL.mute, { box: `border-top:solid ${COL.ink} 1.5pt;padding:${pt(12)} 0in 0in 0in` });
+  }
+
   /* The dialog: the picture, Copy for Teams and Download PNG */
   let dlg = null, cur = null;
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
@@ -275,5 +363,5 @@
     dlg.querySelector('.sc-stage').scrollTop = 0;
   }
 
-  root.Scorecard = { draw: draw, alt: alt, brandOf: brandOf, open: open };
+  root.Scorecard = { draw: draw, alt: alt, mailHtml: mailHtml, brandOf: brandOf, open: open };
 })(window);

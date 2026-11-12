@@ -4146,9 +4146,9 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
 <aside class="drawer wide" id="dIvr" role="dialog" aria-modal="true" aria-labelledby="h-ivr" hidden>
   <header><div><h2 id="h-ivr">IVR scorecard</h2><div class="sub keep" id="ivrSub"></div></div><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
   <div class="body">
-    <div class="ivracts"><button class="btn primary" data-ivr="eml" title="The IVR Summary Daily Report email with this card in it: Outlook opens it as a new mail, ready to send"><svg width="15" height="15" aria-hidden="true"><use href="#i-mail"/></svg>Open in Outlook (.eml)</button><button class="btn" data-ivr="copy"><svg width="15" height="15" aria-hidden="true"><use href="#i-copy"/></svg>Copy for Teams</button><button class="btn" data-ivr="save"><svg width="15" height="15" aria-hidden="true"><use href="#i-down"/></svg>Download PNG</button><span class="hint" id="ivrStatus" role="status" aria-live="polite"></span></div>
+    <div class="ivracts"><button class="btn primary" data-ivr="eml" title="The IVR Summary Daily Report email with this card written into its body as text, not a picture: Outlook opens it as a new mail, ready to send"><svg width="15" height="15" aria-hidden="true"><use href="#i-mail"/></svg>Open in Outlook (.eml)</button><button class="btn" data-ivr="copy"><svg width="15" height="15" aria-hidden="true"><use href="#i-copy"/></svg>Copy for Teams</button><button class="btn" data-ivr="save"><svg width="15" height="15" aria-hidden="true"><use href="#i-down"/></svg>Download PNG</button><span class="hint" id="ivrStatus" role="status" aria-live="polite"></span></div>
     <div class="ivrstage"><img id="ivrImg" alt=""></div>
-    <p class="hint uxhelp">Open in Outlook (.eml) makes the IVR Summary Daily Report email with this card in it, ready to send. For Teams, click in the message box and paste with Ctrl+V. If copying is blocked, right-click the picture and choose Copy image, or download the PNG and attach it.</p>
+    <p class="hint uxhelp">Open in Outlook (.eml) makes the IVR Summary Daily Report email, ready to send, with this card written into its body as text and tables, so it stays sharp. For Teams, click in the message box and paste with Ctrl+V. If copying is blocked, right-click the picture and choose Copy image, or download the PNG and attach it.</p>
   </div>
 </aside>
 
@@ -9827,7 +9827,8 @@ root.WFM = {
   root.Build = { THEMES, REPORTS, SEED_NOTES, BRAND_NOTES, SEED_LABELS, printed, buildReport, computeData, upsert, makePeriod, periodAgg, seedNotes, noteFor, computeLeaders, buildLeaders };
 })(typeof module !== 'undefined' ? module.exports : window);
 
-/* IVR scorecard: the day's IVR numbers drawn as a picture for Teams, the same card as the IVR Scorecard tool (the emails have no IVR box).
+/* IVR scorecard: the day's IVR numbers drawn as a picture for Teams, the same card as the IVR Scorecard tool (the emails have no IVR box),
+   and the same card written as an email body (mailHtml) for the IVR Summary Daily Report email.
    Scorecard.open(model) shows it in a dialog with Copy for Teams and Download PNG. */
 (function (root) {
   'use strict';
@@ -10047,6 +10048,93 @@ root.WFM = {
     return parts.join(' ');
   }
 
+  /* The card as the body of an email: the same words and numbers written as text, the tiles, rows and bars as tables, every style
+     inline. Outlook lays mail out with Word, so it is written the way Word keeps it: every cell ends with a paragraph (Word adds an
+     empty line after a table that ends a cell), a paragraph sits between two tables (Word joins touching tables into one), and each
+     paragraph has its text's size (Word sizes the last line by the paragraph's own size). Sharp at any zoom, no picture, and the
+     numbers can be changed before it goes. W: the width it fills, in px (688 in the IVR Summary Daily Report email). */
+  function mailHtml(s, W) {
+    W = W || 688;
+    const t = cardText(s), F = 'font-family:&quot;Aptos&quot;,Arial,sans-serif;';
+    const pt = px => +(px * 0.75).toFixed(2) + 'pt';
+    const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    // a paragraph of one run: size in pt; o: bold, ls (letter spacing, pt), mt/mb (margins, pt), align, box (more of the paragraph's style)
+    const line = (text, size, color, o) => {
+      o = o || {};
+      const al = o.align ? ` align="${o.align}"` : '', ta = o.align ? ';text-align:' + o.align : '';
+      const sp = `<span style="font-size:${size}pt;${F}color:${color}${o.ls ? ';letter-spacing:' + o.ls + 'pt' : ''}">${esc(text)}</span>`;
+      return `<p class="MsoNormal"${al} style="margin:${o.mt || 0}pt 0in ${o.mb || 0}pt 0in;font-size:${size}pt${ta}${o.box ? ';' + o.box : ''}">${o.bold ? '<b>' + sp + '</b>' : sp}</p>`;
+    };
+    // an empty paragraph exactly h px high: the space between two parts, and the paragraph a cell ends with
+    const gap = h => `<p class="MsoNormal" style="margin:0in;font-size:${pt(h)};line-height:${pt(h)};mso-line-height-rule:exactly"><span style="font-size:${pt(h)}">&nbsp;</span></p>`;
+    const table = (w, rows) => `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="${w}" style="width:${typeof w === 'number' ? pt(w) : '100.0%'};border-collapse:collapse">${rows}</table>`;
+    const cell = (w, inner, style, attrs) => `<td${w ? ` width="${w}"` : ''}${attrs || ''} style="${w ? 'width:' + pt(w) + ';' : ''}${style}">${inner}</td>`;
+
+    // eyebrow, title and the flow
+    const head = line('IVR SCORECARD', 8.5, COL.red, { bold: 1, ls: 1.5 })
+      + line(t.title, 18, COL.ink, { bold: 1, ls: -0.3, mt: 4.5 })
+      + line(t.sub, 10, COL.mute, { mt: 1.5 });
+
+    // four tiles, two by two; the tiles of a row are one table row, so they share its height
+    const TW = (W - 10) / 2;
+    const tile = k => {
+      const bg = k.alert ? COL.pink : COL.white;
+      return cell(TW, line(k.lab.toUpperCase(), 7.5, k.alert ? COL.red2 : COL.mute, { bold: 1, ls: 0.9 })
+        + line(k.val, 24, COL.ink, { bold: 1, ls: -0.45, mt: 1.5 })
+        + line(k.note, 8.5, COL.mute, { mt: 0.75 }),
+        `border:solid ${k.alert ? COL.red : COL.ink} 1.5pt;background:${bg};padding:${pt(12)} ${pt(16)} ${pt(11)} ${pt(16)}`, ` valign="top" bgcolor="${bg}"`);
+    };
+    const tileRow = r => '<tr>' + tile(t.tiles[2 * r]) + cell(10, gap(10), 'padding:0in') + tile(t.tiles[2 * r + 1]) + '</tr>';
+    const tiles = table(W, tileRow(0) + `<tr><td colspan="3" style="padding:0in">${gap(10)}</td></tr>` + tileRow(1));
+
+    // the top 5 lists: name | bar | number, a hairline above each row; a bar is a row of two cells, the dark one as long as the number
+    const BW = 280, NUM = 92, NAME = W - BW - NUM;
+    const bar = (n, max) => {
+      const on = n > 0 ? Math.min(BW, Math.max(3, Math.round(BW * n / max))) : 0;
+      const piece = (w, c) => cell(w, gap(8), `height:6.0pt;background:${c};padding:0in`, ` bgcolor="${c}"`);
+      return table(BW, `<tr style="height:6.0pt">${on ? piece(on, COL.ink) : ''}${on < BW ? piece(BW - on, COL.track) : ''}</tr>`) + gap(1);
+    };
+    const list = (title, after, rows) => {
+      const pad = `padding:${pt(6)} 0in ${pt(6)} 0in`, rule = `border-top:solid ${COL.rule} 1.0pt;`;
+      const max = Math.max.apply(null, rows.map(r => r.n).concat(1));
+      const body = rows.length ? rows.map(r => '<tr>'
+        + cell(NAME, line(r.name, 10, COL.ink), `${rule}padding:${pt(6)} ${pt(14)} ${pt(6)} 0in`, ' valign="middle"')
+        + cell(BW, bar(r.n, max), rule + pad, ' valign="middle"')
+        + cell(NUM, line(fmt(r.n), 10, COL.ink, { bold: 1, align: 'right' }), rule + pad, ' valign="middle" align="right"')
+        + '</tr>').join('')
+        : '<tr>' + cell(0, line('Nothing else in the export', 10, COL.mute), rule + pad, ' colspan="3"') + '</tr>';
+      return line(title.toUpperCase(), 8, COL.mute, { bold: 1, ls: 0.9 })
+        + (after ? line(after, 8.5, COL.mute, { mt: 1.5 }) : '')
+        + gap(6) + table(W, body);
+    };
+
+    // data action errors, only when there are some: a pink box; each row the action, a pill with the share that failed, the runs
+    let errs = '';
+    if (s.daFile && s.actions && s.errors.length) {
+      const rows = s.errors.slice(0, 5), more = s.errors.length - rows.length;
+      const pad = (i, l) => `${i ? `border-top:solid ${COL.erule} 1.0pt;` : ''}padding:${pt(5)} 0in ${pt(5)} ${pt(l)}`;
+      const pill = e => {
+        const hi = e.rate >= 0.05, c = hi ? COL.red : COL.ink, bg = hi ? COL.red : COL.white;
+        return line(rateTxt(e.rate) + ' failed', 8.5, hi ? COL.white : COL.ink, { bold: 1, align: 'center', box: `border:solid ${c} 1.0pt;padding:1.0pt 0in 1.0pt 0in;background:${bg};border-radius:9px` });
+      };
+      const body = rows.map((e, i) => '<tr>'
+        + cell(0, line(e.name, 10, COL.ink), pad(i, 0), ' valign="middle"')
+        + cell(86, pill(e), pad(i, 10), ' valign="middle"')
+        + cell(96, line('of ' + fmt(e.runs) + ' runs', 8.5, COL.mute, { align: 'right' }), pad(i, 10), ' valign="middle" align="right"')
+        + '</tr>').join('')
+        + (more ? '<tr>' + cell(0, line('+' + more + ' more ' + (more === 1 ? 'action' : 'actions') + ' with errors', 8.5, COL.mute), pad(1, 0), ' colspan="3"') + '</tr>' : '');
+      errs = table(W, '<tr>' + cell(W, line(('Data action errors' + (s.flow ? ' · ' + s.flow : '')).toUpperCase(), 8, COL.red, { bold: 1, ls: 0.9 }) + gap(4) + table('100%', body) + gap(4),
+        `border:solid ${COL.ink} 1.5pt;background:${COL.pink};padding:${pt(14)} ${pt(16)} ${pt(8)} ${pt(16)}`, ` bgcolor="${COL.pink}"`) + '</tr>');
+    }
+
+    // the parts one under the other, a paragraph of space between them; the footnote under a rule (the paragraph's own border)
+    return head + gap(18) + tiles + gap(22)
+      + list('Top 5 outcomes · attempts', s.afterOut, s.busyOut) + gap(16)
+      + list('Top 5 milestones · hits', s.afterMs, s.busyMs) + gap(errs ? 18 : 16)
+      + (errs ? errs + gap(16) : '')
+      + line(t.foot, 8, COL.mute, { box: `border-top:solid ${COL.ink} 1.5pt;padding:${pt(12)} 0in 0in 0in` });
+  }
+
   /* The dialog: the picture, Copy for Teams and Download PNG */
   let dlg = null, cur = null;
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
@@ -10104,7 +10192,7 @@ root.WFM = {
     dlg.querySelector('.sc-stage').scrollTop = 0;
   }
 
-  root.Scorecard = { draw: draw, alt: alt, brandOf: brandOf, open: open };
+  root.Scorecard = { draw: draw, alt: alt, mailHtml: mailHtml, brandOf: brandOf, open: open };
 })(window);
 
 </script>
@@ -32638,10 +32726,11 @@ function rbIvrCard(key, p, x) {
   };
 }
 /** the IVR Summary Daily Report email, laid out as the WFM team sends it: a light page, a white card with a navy header (MC Workforce,
-    the title, the moving Beyond One mark), the scorecard, and the Beyond One footer. The pictures go in as data and rbEml makes
-    them the email's own inline pictures (cid). cur: the card (png, w, h, alt) */
+    the title, the moving Beyond One mark), the scorecard written into the body as text and tables (Scorecard.mailHtml: sharp in
+    Outlook at any zoom, no picture of it), and the Beyond One footer. The mark goes in as data and rbEml makes it the email's own
+    inline picture (cid). cur: the card (s, its model) */
 function rbIvrMailHtml(cur) {
-  const F = 'font-family:&quot;Aptos&quot;,sans-serif;', W = 688, H = Math.round(W * cur.h / cur.w), inch = px => (px / 96).toFixed(4) + 'in';
+  const F = 'font-family:&quot;Aptos&quot;,sans-serif;';
   const mark = typeof BoLogos !== 'undefined' && BoLogos.markNavyAnim ? `<img width="30" height="30" style="width:.3125in;height:.3125in" src="${BoLogos.markNavyAnim.dataUrl}" alt="Beyond One">` : '';
   return `<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style>p.MsoNormal{margin:0in;font-size:12.0pt;font-family:"Aptos",sans-serif;}</style></head>
 <body lang="EN-US" style="word-wrap:break-word;background:#ffffff"><div class="WordSection1">
@@ -32654,7 +32743,7 @@ function rbIvrMailHtml(cur) {
 <p class="MsoNormal"><b><span style="font-size:15.0pt;${F}color:white;letter-spacing:-.25pt">IVR Summary Daily Report</span></b></p></td>
 <td valign="middle" align="right" width="30" style="width:22.5pt;padding:0in"><p class="MsoNormal" align="right" style="text-align:right">${mark}</p></td>
 </tr></table></td></tr>
-<tr><td style="border:none;padding:.5in 42.0pt 27.0pt 42.0pt"><p class="MsoNormal" style="margin-bottom:.25in"><img width="${W}" height="${H}" style="width:${inch(W)};height:${inch(H)}" src="${cur.png}" alt="${esc(cur.alt)}"></p></td></tr>
+<tr><td style="border:none;padding:.5in 42.0pt .5in 42.0pt">${window.Scorecard.mailHtml(cur.s, 688)}</td></tr>
 <tr><td style="border:none;border-top:solid #F1F5F9 1.0pt;background:#FAFAFA;padding:21.0pt 42.0pt 21.0pt 42.0pt">
 <p class="MsoNormal" align="center" style="margin-bottom:4.5pt;text-align:center"><b><span style="font-size:9.0pt;${F}color:#475569">Beyond One &copy; All Rights Reserved.</span></b></p>
 <p class="MsoNormal" align="center" style="text-align:center"><span style="font-size:8.5pt;${F}color:#94A3B8">7051 Prince Sultan Rd, As Salamah, Jeddah 23525</span></p>
@@ -32668,7 +32757,7 @@ function rbIvrOpen(c) {
   if (x.calls === null || x.agent === null) { toast(`The scorecard needs both IVR exports: drop the ${x.calls === null ? 'Flow Outcome Detail' : 'Flow Milestone Detail'} export too.`); return; }
   const s = rbIvrCard(c.key, c.period, x), cv = window.Scorecard.draw(s, 2);
   const slug = (s.brand || 'IVR').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'IVR';
-  const cur = rbIvrCur = { name: `IVR-Scorecard-${slug}-${s.slug || 'report'}.png`, blob: null, day: s.slug || 'report', png: cv.toDataURL('image/png'), w: cv.width, h: cv.height, alt: window.Scorecard.alt(s) };
+  const cur = rbIvrCur = { name: `IVR-Scorecard-${slug}-${s.slug || 'report'}.png`, blob: null, day: s.slug || 'report', s, png: cv.toDataURL('image/png'), alt: window.Scorecard.alt(s) };
   cur.ready = new Promise(res => cv.toBlob(b => { cur.blob = b; res(b); }, 'image/png'));
   const img = $('ivrImg'); img.src = cur.png; img.alt = cur.alt;
   $('ivrSub').textContent = `${rbName(c.key)} · ${s.date}`;
@@ -36884,7 +36973,7 @@ const DEPT = [
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
     'The <b>bell</b> holds your deadlines and the checks; nothing takes space on the pages.']],
   ['wfm', 'WFM manager', [
-    'Every morning, <b>WFM team › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them. The Virgin Mobile and Virgin Postpaid emails have <b>IVR scorecard</b> when the day\'s IVR exports are in: the IVR numbers as a picture. There, <b>Open in Outlook (.eml)</b> makes the IVR Summary Daily Report email with it, ready to send; or paste the picture into Teams (the brand emails themselves have no IVR box).',
+    'Every morning, <b>WFM team › Emails › Daily brand emails</b>: the four emails the analysts made (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay). Write the SLA insight, check the warnings, <b>Copy for Outlook</b>, send, then <b>Mark as sent</b>. The analysts can do the same, so whoever is in sends them. The Virgin Mobile and Virgin Postpaid emails have <b>IVR scorecard</b> when the day\'s IVR exports are in: the IVR numbers as a picture. There, <b>Open in Outlook (.eml)</b> makes the IVR Summary Daily Report email, ready to send, with the card written into it as text (sharp, not a picture); or paste the picture into Teams (the brand emails themselves have no IVR box).',
     'Every week, <b>WFM team › Weekly commercial</b>: the Weekly Commercial Presentation for the VP. The service level and the daily and monthly trends come from the brands\' history by themselves; drop the month-to-date <b>Call history</b> export from Crystal for the call reasons, and the <b>complaints email</b> (the Complaint Management team\'s answer to Weekly commercial meeting, saved from Outlook as .msg) for the complaints logged, resolved on time, still open and the top tickets (the Tickets export still works without it); add each outage once to the <b>Outages</b> list (or paste the rows from Excel), and the last 3 months go in the deck. <b>Download deck</b> makes the PowerPoint; <b>Email with the deck</b> the Outlook draft to the VP with it attached.',
     '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Drop your old deck (.pptx) once too: its OTP and final termination numbers are kept as they are, and the exports only add the days after them. For the brands\' slides drop the month\'s Call history export (Top Call Reasons) and the complaints email, the answer to Weekly commercial meeting (complaints logged, resolved on time, still open, Top Complaint Drivers), in step 2; the Tickets export still works without the email; without them those boxes show –. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',

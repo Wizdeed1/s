@@ -28,7 +28,7 @@ open(os.path.join(here, 'ui6', '05_brand.css'), 'w', encoding='utf-8').write(css
 logos = {k: png(f) for k, f in [('stackedBlack', 'beyond-one-stacked-black.png'), ('stackedWhite', 'beyond-one-stacked-white.png'),
                                 ('black', 'beyond-one-black.png'), ('white', 'beyond-one-white.png'), ('mark', 'beyond-one-mark.png'),
                                 ('virgin', 'virgin-mobile.png'), ('friendi', 'friendi-mobile.png'), ('fpay', 'friendi-pay.png')]}
-logos.update({k: gif(f) for k, f in [('stackedBlackAnim', 'beyond-one-stacked-black.gif'), ('stackedWhiteAnim', 'beyond-one-stacked-white.gif')]})
+logos.update({k: gif(f) for k, f in [('stackedBlackAnim', 'beyond-one-stacked-black.gif'), ('stackedWhiteAnim', 'beyond-one-stacked-white.gif'), ('markNavyAnim', 'beyond-one-mark-navy.gif')]})   # the last for the IVR Summary Daily Report email's header
 kind = lambda d: 'gif' if d[:4] == b'GIF8' else 'png'
 js = ('/* Beyond One and the brands\' logos for the decks (made by js/make_brand.py from assets/brand): the picture\'s bytes (PNG; GIF for\n'
       '   the moving stacked logos, which PowerPoint plays) with their size. */\n'

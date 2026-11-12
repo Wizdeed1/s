@@ -1112,14 +1112,40 @@ function rbIvrCard(key, p, x) {
     daFile: !!x.daFile, actions: x.actions || 0, errors: x.errorsAll || [],
   };
 }
+/** the IVR Summary Daily Report email, laid out as the WFM team sends it: a light page, a white card with a navy header (MC Workforce,
+    the title, the moving Beyond One mark), the scorecard, and the Beyond One footer. The pictures go in as data and rbEml makes
+    them the email's own inline pictures (cid). cur: the card (png, w, h, alt) */
+function rbIvrMailHtml(cur) {
+  const F = 'font-family:&quot;Aptos&quot;,sans-serif;', W = 688, H = Math.round(W * cur.h / cur.w), inch = px => (px / 96).toFixed(4) + 'in';
+  const mark = typeof BoLogos !== 'undefined' && BoLogos.markNavyAnim ? `<img width="30" height="30" style="width:.3125in;height:.3125in" src="${BoLogos.markNavyAnim.dataUrl}" alt="Beyond One">` : '';
+  return `<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style>p.MsoNormal{margin:0in;font-size:12.0pt;font-family:"Aptos",sans-serif;}</style></head>
+<body lang="EN-US" style="word-wrap:break-word;background:#ffffff"><div class="WordSection1">
+<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100.0%;background:white"><tr><td style="padding:15.0pt 7.5pt 15.0pt 7.5pt">
+<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100.0%;background:#F1F5F9"><tr><td style="padding:45.0pt 0in 45.0pt 0in">
+<div align="center"><table class="MsoNormalTable" border="1" cellspacing="0" cellpadding="0" width="800" style="width:600.0pt;background:white;border:solid #E2E8F0 1.0pt">
+<tr style="height:82.5pt"><td style="border:none;background:#0F172A;padding:0in 42.0pt 0in 42.0pt;height:82.5pt">
+<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100.0%"><tr>
+<td valign="middle" style="padding:0in"><p class="MsoNormal"><b><span style="font-size:8.5pt;${F}color:#38BDF8;text-transform:uppercase;letter-spacing:1.15pt">MC Workforce</span></b></p>
+<p class="MsoNormal"><b><span style="font-size:15.0pt;${F}color:white;letter-spacing:-.25pt">IVR Summary Daily Report</span></b></p></td>
+<td valign="middle" align="right" width="30" style="width:22.5pt;padding:0in"><p class="MsoNormal" align="right" style="text-align:right">${mark}</p></td>
+</tr></table></td></tr>
+<tr><td style="border:none;padding:.5in 42.0pt 27.0pt 42.0pt"><p class="MsoNormal" style="margin-bottom:.25in"><img width="${W}" height="${H}" style="width:${inch(W)};height:${inch(H)}" src="${cur.png}" alt="${esc(cur.alt)}"></p></td></tr>
+<tr><td style="border:none;border-top:solid #F1F5F9 1.0pt;background:#FAFAFA;padding:21.0pt 42.0pt 21.0pt 42.0pt">
+<p class="MsoNormal" align="center" style="margin-bottom:4.5pt;text-align:center"><b><span style="font-size:9.0pt;${F}color:#475569">Beyond One &copy; All Rights Reserved.</span></b></p>
+<p class="MsoNormal" align="center" style="text-align:center"><span style="font-size:8.5pt;${F}color:#94A3B8">7051 Prince Sultan Rd, As Salamah, Jeddah 23525</span></p>
+</td></tr></table></div>
+</td></tr></table>
+</td></tr></table>
+</div></body></html>`;
+}
 function rbIvrOpen(c) {
   const x = c.data && c.data.ivr; if (!x || !window.Scorecard) return;
   if (x.calls === null || x.agent === null) { toast(`The scorecard needs both IVR exports: drop the ${x.calls === null ? 'Flow Outcome Detail' : 'Flow Milestone Detail'} export too.`); return; }
   const s = rbIvrCard(c.key, c.period, x), cv = window.Scorecard.draw(s, 2);
   const slug = (s.brand || 'IVR').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'IVR';
-  const cur = rbIvrCur = { name: `IVR-Scorecard-${slug}-${s.slug || 'report'}.png`, blob: null };
+  const cur = rbIvrCur = { name: `IVR-Scorecard-${slug}-${s.slug || 'report'}.png`, blob: null, day: s.slug || 'report', png: cv.toDataURL('image/png'), w: cv.width, h: cv.height, alt: window.Scorecard.alt(s) };
   cur.ready = new Promise(res => cv.toBlob(b => { cur.blob = b; res(b); }, 'image/png'));
-  const img = $('ivrImg'); img.src = cv.toDataURL('image/png'); img.alt = window.Scorecard.alt(s);
+  const img = $('ivrImg'); img.src = cur.png; img.alt = cur.alt;
   $('ivrSub').textContent = `${rbName(c.key)} · ${s.date}`;
   $('ivrStatus').textContent = (x.gapDays || []).length ? `No IVR exports for ${x.gapDays.join(', ')}: the card counts the other days only.` : '';
   openDrawer('dIvr');
@@ -1127,6 +1153,12 @@ function rbIvrOpen(c) {
 document.addEventListener('click', async e => {
   const b = e.target.closest && e.target.closest('#dIvr [data-ivr]'); if (!b || !rbIvrCur) return;
   const cur = rbIvrCur, st = $('ivrStatus'), blocked = 'Copying was blocked: right-click the picture and choose Copy image, or download the PNG.';
+  if (b.dataset.ivr === 'eml') {   // the IVR Summary Daily Report email, as the WFM team sends it
+    const name = `IVR-Summary-Daily-Report-${cur.day}.eml`, said = `Saved ${name}. Double-click it and Outlook opens it as a new mail, ready to send.`;
+    try { if (await rbSave(name, new Blob([rbEml(rbIvrMailHtml(cur), 'IVR Summary Daily Report')], { type: 'message/rfc822' }), said)) st.textContent = said; }
+    catch (err) { st.textContent = 'The Outlook file could not be made: ' + ((err && err.message) || err); }
+    return;
+  }
   if (b.dataset.ivr === 'copy') {
     if (!navigator.clipboard || !window.ClipboardItem) { st.textContent = blocked; return; }
     try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': cur.blob || cur.ready })]); st.textContent = 'Copied. In Teams, click in the message box and press Ctrl+V.'; } catch (err) { st.textContent = blocked; }

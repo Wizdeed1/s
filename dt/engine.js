@@ -136,8 +136,9 @@
   function dataActionErrors(rows, flows, brand) {
     const BRAND_RE = { virgin: /virgin/i, fpay: /fpay|friendi\s*pay/i, friendi: /friendi(?!\s*pay)/i };
     const want = flows && flows.length ? (c => flows.indexOf(c) >= 0) : (c => !!BRAND_RE[brand] && BRAND_RE[brand].test(c));
+    // the number check (Customer Type) runs on every call: the WFM team leaves its errors out of the list and the count
     const det = (rows || []).filter(r => String(r['Aggregate or Detailed'] || '').trim().toLowerCase() !== 'aggregate' &&
-      String(r['Action Name'] || '').trim() && want(String(r['Action Category'] || '').trim()));
+      String(r['Action Name'] || '').trim() && !/customer[\s_-]*type/i.test(String(r['Action Name'])) && want(String(r['Action Category'] || '').trim()));
     const scale = det.some(r => (num(r['Error %']) || 0) > 1) ? 100 : 1;   // an export that writes 38 for 38%
     const acc = {};
     det.forEach(r => {

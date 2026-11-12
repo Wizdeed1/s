@@ -26,7 +26,7 @@ const files = {
     ...[['Customer Type Check', 900], ['Transfer to Agent', 420], ['Self Service Balance', 250], ['Self Service Recharge', 100], ['Promo Played', 80], ['Agent Callback', 30], ['Transfer_Billing', 25], ['ReachedAgent', 10]].map(([m, n]) => [D0, D1, 'Virgin Main IVR', m, n, 'No']),
     [D0, D1, 'Virgin Main IVR', 'Transfer to Agent', 12, 'Yes']]),
   'Data_Actions_Performance_-_2026-10-08T070812.120.csv': csv([['Interval Start', 'Interval End', 'Action Category', 'Action Name', 'Executions', 'Error %', 'Aggregate or Detailed'],
-    [D0, D1, 'Virgin Main IVR', 'Get Balance', 500, 0.02, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Check Customer', 800, 0, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Create Callback', 30, 0.1, 'Detailed'],
+    [D0, D1, 'Virgin Main IVR', 'Get Balance', 500, 0.02, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Check Customer', 800, 0, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Customer_Type', 3000, 0.03, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Create Callback', 30, 0.1, 'Detailed'],
     [D0, D1, 'Another Flow', 'Lookup', 10, 0.5, 'Detailed'], [D0, D1, '', '', 1340, 0.01, 'Aggregate']]),
   'Ticket Summary Details.csv': csv([['TicketNumber', 'StartedAt', 'Category', 'SubCategory'], ['900001', '2026-10-07 09:10', 'Remittance', 'Technical error'], ['900002', '2026-10-07 11:40', 'Card', 'Already used'], ['900003', '2026-10-07 13:05', 'Remittance', 'Technical error']]),
 };
@@ -103,6 +103,19 @@ const files = {
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.click('#dIvr [data-ivr="save"]')]);
   const png = path.join(out, dl.suggestedFilename()); await dl.saveAs(png); const head = fs.readFileSync(png).subarray(0, 8).toString('hex');
   ok(/^IVR-Scorecard-Virgin-Mobile-2026-10-07\.png$/.test(dl.suggestedFilename()) && head === '89504e470d0a1a0a', `Download PNG: ${dl.suggestedFilename()}, a real PNG`);
+  // the IVR Summary Daily Report email (.eml), as the WFM team sends it
+  const [de] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.click('#dIvr [data-ivr="eml"]')]);
+  const emlP = path.join(out, de.suggestedFilename()); await de.saveAs(emlP); const eml = fs.readFileSync(emlP, 'latin1');
+  const parts = eml.split(/\r\n--[^\r\n]+\r\n/).slice(1), part = t => parts.find(x => x.startsWith('Content-Type: ' + t));
+  const body = s => Buffer.from(s.split('\r\n\r\n').slice(1).join('').replace(/[\r\n-]|--.*$/g, ''), 'base64');
+  const html = part('text/html') ? body(part('text/html')).toString('utf8') : '', pngP = part('image/png'), gifP = part('image/gif');
+  const cids = [...html.matchAll(/src="cid:([^"]+)"/g)].map(m => m[1]), own = x => (x && (x.match(/Content-ID: <([^>]+)>/) || [])[1]) || '';
+  const pngB = pngP ? body(pngP) : Buffer.alloc(0), gifB = gifP ? body(gifP) : Buffer.alloc(0);
+  ok(/^IVR-Summary-Daily-Report-2026-10-07\.eml$/.test(de.suggestedFilename()) && /^X-Unsent: 1\r\nSubject: IVR Summary Daily Report\r\n/.test(eml)
+    && /MC Workforce/.test(html) && /IVR Summary Daily Report/.test(html) && /Beyond One &copy; All Rights Reserved\./.test(html) && /7051 Prince Sultan Rd, As Salamah, Jeddah 23525/.test(html)
+    && cids.length === 2 && cids.includes(own(pngP)) && cids.includes(own(gifP)) && pngB.readUInt32BE(16) === 1280 && gifB.subarray(0, 6).toString() === 'GIF89a'
+    && /IVR Summary daily report/.test(html) && !/Customer_Type/.test(html),
+    `Open in Outlook (.eml): ${de.suggestedFilename()}, "IVR Summary Daily Report", the team's header and footer, the card (${pngB.readUInt32BE(16)} px) and the moving Beyond One mark inside it, no Customer Type among the errors`);
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   ok(await p.evaluate(() => document.getElementById('dIvr').hidden), 'Esc closes it');
   console.log(errs.length ? errs.join('\n') : 'no errors'); if (bad || errs.length) process.exitCode = 1;

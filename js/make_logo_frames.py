@@ -5,6 +5,7 @@ frames of 400 ms; the mosaic moves, the words stay). Run when they change (needs
   beyond-one-words-black.png
   beyond-one-stacked-white.gif  the template's stacked logo with the moving mosaic, for the decks (PowerPoint plays GIFs)
   beyond-one-stacked-black.gif
+  beyond-one-mark-navy.gif      the moving mosaic on navy, 60 px, for the dark header of the IVR Summary Daily Report email
 The frame-0 mosaic is the logo's own shape, so a page that keeps still (reduced motion) shows the logo as printed."""
 import os, sys
 from PIL import Image
@@ -60,5 +61,14 @@ for name in ('white', 'black'):
         out.append(gif_frame(c))
     out[0].save(P(f'beyond-one-stacked-{name}.gif'), save_all=True, append_images=out[1:], duration=[d for _, d in white], loop=0, transparency=255, disposal=2, optimize=False)
 
-for n in ('beyond-one-mark-frames.png', 'beyond-one-words-white.png', 'beyond-one-words-black.png', 'beyond-one-stacked-white.gif', 'beyond-one-stacked-black.gif'):
+# the moving mark on the dark header of the IVR Summary Daily Report email (60 px, shown at 30 px): the mosaic on the header's navy,
+# so its edges stay clean in Outlook (a GIF has no soft edges on a transparent ground)
+NAVY = (15, 23, 42, 255)   # #0F172A
+mail = []
+for f, _ in white:
+    c = Image.new('RGBA', (60, 60), NAVY); c.alpha_composite(fit(f.crop((0, 0, M, M)), 60, 60))
+    mail.append(c.convert('RGB').quantize(colors=255, method=Image.Quantize.MEDIANCUT))
+mail[0].save(P('beyond-one-mark-navy.gif'), save_all=True, append_images=mail[1:], duration=[d for _, d in white], loop=0, optimize=False)
+
+for n in ('beyond-one-mark-frames.png', 'beyond-one-words-white.png', 'beyond-one-words-black.png', 'beyond-one-stacked-white.gif', 'beyond-one-stacked-black.gif', 'beyond-one-mark-navy.gif'):
     im = Image.open(P(n)); print(f'{n}: {im.size[0]}x{im.size[1]}, {getattr(im, "n_frames", 1)} frame(s), {os.path.getsize(P(n)) // 1024} KB')

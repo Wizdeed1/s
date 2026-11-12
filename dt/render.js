@@ -186,34 +186,6 @@
 
   /* ----- the whole email ----- */
 
-  // the IVR box between sections 02 and 03: the share that finished in the IVR, the top five outcomes and
-  // milestones, and (only when there are any) the IVR flow's data actions with errors
-  function ivrBoxHtml(x, t) {
-    const F = FONT, acc = t.onAccent === '#ffffff' ? t.accent : t.ink;
-    const lab = (s, c) => '<div style="font-family:' + F + ';font-size:10px;line-height:14px;color:' + (c || t.muted) + ';font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">' + esc(s) + '</div>';
-    const brk = s => esc(s).replace(/_/g, '_&#8203;');
-    const list = (items, empty) => items.length
-      ? '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border-collapse:collapse;margin-top:6px;">' +
-        items.map((it, i) => '<tr><td valign="top" style="font-family:' + F + ';font-size:11px;line-height:15px;color:' + t.ink + ';padding:3px 8px 3px 0;' + (i ? 'border-top:1px solid #eeeeee;' : '') + '">' + brk(it.name) + '</td>' +
-          '<td align="right" valign="top" style="font-family:' + F + ';font-size:11px;line-height:15px;color:' + t.ink + ';font-weight:700;padding:3px 0;white-space:nowrap;' + (i ? 'border-top:1px solid #eeeeee;' : '') + '">' + esc(it.value) + '</td></tr>').join('') +
-        '</table>'
-      : '<div style="font-family:' + F + ';font-size:10px;line-height:14px;color:' + t.muted + ';padding-top:6px;">' + esc(empty || '') + '</div>';
-    const cell = (w, inner, first) => '<td class="kpi" width="' + w + '%" valign="top" style="width:' + w + '%;padding:12px;' + (first ? '' : 'border-left:1px solid #e3e3e3;') + '">' + inner + '</td>';
-    const f = x.finished;
-    let inner = '<tr>' + cell(26, lab(f.label) +
-        '<div style="font-family:' + F + ';font-size:23px;line-height:29px;mso-line-height-rule:exactly;color:' + t.ink + ';font-weight:700;letter-spacing:-.5px;padding-top:3px;">' + esc(f.value) + '</div>' +
-        '<div style="font-family:' + F + ';font-size:10px;line-height:14px;color:' + t.muted + ';padding-top:2px;">' + esc(f.sub || '') + '</div>', true) +
-      x.lists.map(l => cell(37, lab(l.title) +
-        (l.note ? '<div style="font-family:' + F + ';font-size:10px;line-height:14px;color:' + t.muted + ';padding-top:2px;">' + esc(l.note) + '</div>' : '') +
-        list(l.items, l.empty))).join('') + '</tr>';
-    if (x.alert) inner += '<tr><td colspan="3" style="padding:10px 12px 12px 12px;border-top:2px solid ' + t.ink + ';background-color:' + t.soft + ';">' +
-      lab(x.alert.title, acc) + list(x.alert.items, '') + '</td></tr>';
-    return '<tr><td class="pad" style="padding:24px 32px 0 32px;">' +
-      '<div style="font-family:' + F + ';font-size:11px;line-height:15px;color:' + acc + ';font-weight:700;letter-spacing:2px;padding:0 0 8px 0;">' + esc(x.label) + '</div>' +
-      '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;background-color:#ffffff;border:2px solid ' + t.ink + ';border-collapse:collapse;">' + inner + '</table>' +
-      '</td></tr>';
-  }
-
   function renderEmail(r) {
     const t = r.theme;
     let body = '';
@@ -297,7 +269,6 @@
         body += '<tr><td class="pad" style="padding:8px 32px 0 32px;font-family:' + FONT + ';font-size:11px;line-height:16px;color:' + t.muted + ';">' + esc(s.footnote) + '</td></tr>';
       }
       if (s.extra) body += s.extra;
-      if (s.number === '02' && r.ivr) body += ivrBoxHtml(r.ivr, t);
     });
 
     // footer — signature on the left, Beyond One logo on the right
@@ -333,6 +304,6 @@
       '</table></td></tr></table></body></html>';
   }
 
-  root.Render = { renderEmail, ivrBoxHtml, monthLabel, dayLabel, longDate, shortStamp, esc, MONTHS, FULL,
+  root.Render = { renderEmail, monthLabel, dayLabel, longDate, shortStamp, esc, MONTHS, FULL,
     dayName, dmy, longRange, niceRange, stampRange, dayWords, dayShort };
 })(typeof module !== 'undefined' ? module.exports : window);

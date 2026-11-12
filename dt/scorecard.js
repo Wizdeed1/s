@@ -1,4 +1,4 @@
-/* IVR scorecard: the IVR box drawn as a picture for Teams, the same card as the IVR Scorecard tool.
+/* IVR scorecard: the day's IVR numbers drawn as a picture for Teams, the same card as the IVR Scorecard tool (the emails have no IVR box).
    Scorecard.open(model) shows it in a dialog with Copy for Teams and Download PNG. */
 (function (root) {
   'use strict';

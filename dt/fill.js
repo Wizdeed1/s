@@ -451,14 +451,6 @@
       else if (cfg.signatureFrom && s === cfg.signatureFrom) setText(el, m.footer.signature);
     });
 
-    // the IVR box between sections 02 and 03, drawn in the same theme as the report
-    const Rd = typeof window !== 'undefined' ? window.Render : null;
-    if (m.ivr && headIdx.length >= 3 && Rd && Rd.ivrBoxHtml) {
-      const holder = doc.createElement('tbody');
-      holder.innerHTML = Rd.ivrBoxHtml(m.ivr, m.theme);
-      const box = holder.firstElementChild, anchor = rows[headIdx[2]];
-      if (box && anchor && anchor.parentNode) anchor.parentNode.insertBefore(box, anchor);
-    }
     // the parser inserts <tbody>; the original markup has none, so take them back out
     return '<!DOCTYPE html>' + doc.documentElement.outerHTML.replace(/<\/?tbody>/g, '');
   }

@@ -247,27 +247,6 @@
   }
 
   /* Build one report model. `data` carries the period's computed values, `hist` the stored history. */
-  /* The IVR box under section 02: the share that finished in the IVR, the top five outcomes and
-     milestones, and the IVR flow's data actions with errors (only when there are any) */
-  function ivrModel(x, fInt, fPct) {
-    if (!x) return null;
-    const rate = r => r >= 0.01 ? Math.round(r * 100) + '%' : '<1%';
-    return {
-      label: 'IVR REPORT',
-      finished: { label: 'Finished in the IVR', value: fPct(x.pct), sub: x.ended === null ? 'Needs the milestone export' : fInt(x.ended) + ' of ' + fInt(x.calls) + ' calls' },
-      lists: [
-        { title: 'Top 5 outcomes · attempts', empty: 'Needs the outcome export',
-          note: x.topOutcome ? 'After ' + x.topOutcome.name + ' · ' + fInt(x.topOutcome.attempts) : '', items: (x.topOutcomes || []).map(o => ({ name: o.name, value: fInt(o.attempts) })) },
-        { title: 'Top 5 milestones · hits', empty: 'Needs the milestone export',
-          note: (x.skippedMilestones || []).length ? 'After ' + x.skippedMilestones.map(o => o.name + ' · ' + fInt(o.hits)).join(', ') : '', items: (x.topMilestones || []).map(o => ({ name: o.name, value: fInt(o.hits) })) }
-      ],
-      alert: x.errors && x.errors.length ? {
-        title: 'Data action errors' + (x.errorsFrom ? ' · ' + x.errorsFrom : ''),
-        items: x.errors.map(e => ({ name: e.name, value: rate(e.rate) + ' of ' + fInt(e.runs) + ' runs' }))
-      } : null
-    };
-  }
-
   function buildReport(key, periodOrDate, data, hist, opts) {
     opts = opts || {};
     const period = typeof periodOrDate === 'string' ? makePeriod(periodOrDate, periodOrDate) : periodOrDate;
@@ -465,7 +444,6 @@
         ' answered, ' + fPct(v.sl) + ' service level, ' + fInt(tk.total) + ' tickets. ' + (opts.insight || 'Normal operation day.'),
       kpis: kpis,
       sections: sections,
-      ivr: ivrModel(data.ivr, fInt, fPct),
       footer: {
         thanks: 'Thanks.',
         signature: cfg.signature,
@@ -549,7 +527,8 @@
 
     const dates = period.days;
     const when = single ? period.end : R.dayShort(period.start, period.end) + ' (' + R.niceRange(period.start, period.end) + ')';
-    // the IVR box (Flow Outcome Detail + Flow Milestone Detail exports); Virgin Postpaid shares the Virgin Mobile IVR
+    // the IVR numbers (Flow Outcome Detail + Flow Milestone Detail exports) for the IVR scorecard; Virgin Postpaid shares the Virgin
+    // Mobile IVR. They are not in the report itself (the WFM team took the IVR box out of the emails), so nothing here is a check of it
     const ivrKey = key === 'postpaid' ? 'virgin' : key;
     const ivrO = (bag.ivrOut || {})[ivrKey], ivrM = (bag.ivrMs || {})[ivrKey];
     if (ivrO || ivrM) {
@@ -560,8 +539,7 @@
         if (ms) mRows.push.apply(mRows, ms);
         if (!o || !ms) gap.push(d);
       });
-      if (!oRows.length && !mRows.length) out.warnings.push('No IVR exports for ' + (single ? 'the report day' : when) + ' — the IVR box is left out.');
-      else {
+      if (oRows.length || mRows.length) {
         out.ivr = E.ivrSummary(oRows, mRows);
         out.ivr.flows = E.flowNames(oRows.concat(mRows));
         const ivrD = (bag.ivrDa || {}).all;
@@ -573,9 +551,7 @@
           // for the IVR scorecard: every action with errors, and how many of the flow's actions ran
           out.ivr.errorsAll = errs.all; out.ivr.actions = errs.actions; out.ivr.daFile = dRows.length > 0;
         }
-        if (!oRows.length) out.warnings.push('IVR box: drop the Flow Outcome Detail export too.');
-        else if (!mRows.length) out.warnings.push('IVR box: drop the Flow Milestone Detail export too.');
-        else if (gap.length) out.warnings.push('IVR box: no IVR exports for ' + gap.map(label).join(', ') + ' — it counts the other days only.');
+        out.ivr.gapDays = gap.map(label);   // days of the period with no IVR exports: the scorecard says it counts the others only
       }
     }
     if (bag.history) {

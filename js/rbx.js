@@ -1,6 +1,6 @@
 // ================================================================ REPORT BUILDER: the Member Care Report Builder, built into the tool
 // The WFM analyst drops the day's exports on WFM team › Report builder. MC Leaders and the WFM Daily Review are made there, as in
-// Member Care Report Builder 15.8 (with its IVR box and IVR scorecard, the MC Leaders tickets to exclude, and FRiENDi Pay's tickets
+// Member Care Report Builder 15.8 (with its IVR scorecard, but no IVR box in the emails; the MC Leaders tickets to exclude; FRiENDi Pay's tickets
 // from any of its exports). The four brand emails (Virgin Postpaid, Virgin Mobile, FRiENDi Mobile, FRiENDi Pay) go to the
 // WFM manager's WFM team › Daily emails: he reads them, writes the SLA insight and sends them. The builder's own modules make every
 // email (they are in the page: script#rb-code), so the emails come out exactly as the stand-alone builder made them. Each day's
@@ -492,7 +492,7 @@ function rbPanelHtml(o) {
       <button class="btn" data-rba="eml" title="Opens in Outlook as a new mail with the exact formatting"><svg width="15" height="15" aria-hidden="true"><use href="#i-mail"/></svg>Open in Outlook (.eml)</button>
       <button class="btn" data-rba="subject">Copy subject</button>
       <button class="btn" data-rba="html"><svg width="15" height="15" aria-hidden="true"><use href="#i-down"/></svg>Download .html</button>
-      ${o.data && o.data.ivr ? '<button class="btn" data-rba="ivr" title="The IVR box as a picture to paste into Teams"><svg width="15" height="15" aria-hidden="true"><use href="#i-chart"/></svg>IVR scorecard</button>' : ''}
+      ${o.data && o.data.ivr ? '<button class="btn" data-rba="ivr" title="The IVR numbers as a picture to paste into Teams"><svg width="15" height="15" aria-hidden="true"><use href="#i-chart"/></svg>IVR scorecard</button>' : ''}
       ${sent}
       <span class="sp"></span>
       <label class="chk"><input type="checkbox" data-rba="edit"> Edit text directly in the preview</label>
@@ -652,7 +652,7 @@ function rbSkeleton() {
         <input type="file" multiple accept=".csv,.xls,.xlsx" hidden data-rbpick>
         <div class="rbfiles" data-rbfiles></div>
         <div class="rbmini"><button class="btn sm ghost" data-rbclear>Clear files</button></div>
-        <details class="rbhelp"><summary>What to drop</summary><p>On Sunday, drop Thursday's, Friday's and Saturday's Genesys exports (one set per day, ideally one drop per day), the two Crystal files for Thu–Sat, and the FRiENDi Pay "Tickets by Category" sheet. Queue exports carry no date, so each one takes the day of the files dropped or exported with it; change it in the list if needed. The MC Leaders email is filled from the same Crystal tickets export, so there is nothing extra to drop. For the WFM Daily Review, also drop that day's agent performance, agent status, interactions, adherence (one per brand) and schedule exports. For the IVR box under section 02, add the Virgin IVR's Flow Outcome Detail and Flow Milestone Detail exports, and the Data Actions Performance export for its error alert; IVR scorecard then makes the box a picture for Teams.</p></details></div>
+        <details class="rbhelp"><summary>What to drop</summary><p>On Sunday, drop Thursday's, Friday's and Saturday's Genesys exports (one set per day, ideally one drop per day), the two Crystal files for Thu–Sat, and the FRiENDi Pay "Tickets by Category" sheet. Queue exports carry no date, so each one takes the day of the files dropped or exported with it; change it in the list if needed. The MC Leaders email is filled from the same Crystal tickets export, so there is nothing extra to drop. For the WFM Daily Review, also drop that day's agent performance, agent status, interactions, adherence (one per brand) and schedule exports. For the IVR scorecard (a picture for Teams, on Emails › Daily brand emails), add the Virgin IVR's Flow Outcome Detail and Flow Milestone Detail exports, and the Data Actions Performance export for its errors. The IVR numbers are not in the emails.</p></details></div>
       <div class="card rbcard"><div class="rbstep"><span class="n">3</span><div><h2>FRiENDi Pay tickets</h2><p class="cap">Only when there is no tickets sheet to drop.</p></div></div>
         <textarea class="rbta" data-rbfpay placeholder="Paste the ticket table from your email here (Date · Category · SubCategory), header row included."></textarea>
         <p class="hint">Easiest: drop the tickets sheet in step 2. Monday to Thursday that is the Date · Category .xlsx, Sunday the "Tickets by Category" sheet. "Category::SubCategory" is split for you, and a dropped sheet takes over from anything pasted here.</p></div>
@@ -1095,7 +1095,7 @@ for (const page of [$('wfmDm'), $('wfmRb')]) {
   });
 }
 
-// ---------------------------------------------------------------- the IVR scorecard: the IVR box as a picture for Teams (Member Care Report Builder 15.8's card)
+// ---------------------------------------------------------------- the IVR scorecard: the day's IVR numbers as a picture for Teams (Member Care Report Builder 15.8's card)
 const RB_IVR_BRAND = { virgin: 'Virgin Mobile', postpaid: 'Virgin Mobile', friendi: 'FRiENDi mobile', fpay: 'FRiENDi PAY' };
 let rbIvrCur = null;
 /** the card's model, as the builder gives it to its scorecard: the brand and flow, the day, the calls, and the busiest outcomes, milestones and data actions */
@@ -1120,7 +1120,8 @@ function rbIvrOpen(c) {
   const cur = rbIvrCur = { name: `IVR-Scorecard-${slug}-${s.slug || 'report'}.png`, blob: null };
   cur.ready = new Promise(res => cv.toBlob(b => { cur.blob = b; res(b); }, 'image/png'));
   const img = $('ivrImg'); img.src = cv.toDataURL('image/png'); img.alt = window.Scorecard.alt(s);
-  $('ivrSub').textContent = `${rbName(c.key)} · ${s.date}`; $('ivrStatus').textContent = '';
+  $('ivrSub').textContent = `${rbName(c.key)} · ${s.date}`;
+  $('ivrStatus').textContent = (x.gapDays || []).length ? `No IVR exports for ${x.gapDays.join(', ')}: the card counts the other days only.` : '';
   openDrawer('dIvr');
 }
 document.addEventListener('click', async e => {

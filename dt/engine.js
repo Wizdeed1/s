@@ -92,7 +92,7 @@
     return null;
   }
 
-  /* The IVR box. Calls into the IVR = attempts on the most-visited outcome (the first menu every
+  /* The IVR numbers (for the IVR scorecard). Calls into the IVR = attempts on the most-visited outcome (the first menu every
      caller hears); calls that left it for an agent = hits on the milestones named for an agent;
      the rest finished in the IVR. Also the outcome and the milestone with the most attempts / hits. */
   /* the column an IVR export marks abandoned calls in ("Abandoned": Yes), when it has one */

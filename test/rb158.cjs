@@ -3,11 +3,11 @@
 //    browser has keeps its own numbers.
 // 2. The day's Genesys exports with the three IVR ones (Flow Outcome Detail, Flow Milestone Detail, Data Actions Performance) and
 //    FRiENDi Pay's Ticket Summary Details: each recognised and listed by brand and day; Recognise files sends an IVR export there.
-// 3. The IVR box: the share that finished in the IVR, the top outcomes and milestones, and the data actions with errors, in the
-//    Virgin email (and Postpaid's, which shares the Virgin IVR).
+// 3. The IVR numbers (for the IVR scorecard): the calls, the share that finished in the IVR, the top outcomes and milestones, and
+//    the data actions with errors. No brand email has an IVR box (the WFM team took it out), nor a check about it.
 // 4. MC Leaders: the tickets to exclude of the report day: read, left out of the email, the ones not found named; Clear the list.
-// 5. Emails › Daily brand emails: the brand email has IVR scorecard; it opens the card in a drawer of the tool's own, with Copy for
-//    Teams and Download PNG (a PNG of the card is saved).
+// 5. Emails › Daily brand emails: the Virgin email still has IVR scorecard; it opens the card in a drawer of the tool's own, with
+//    Copy for Teams and Download PNG (a PNG of the card is saved).
 // Usage: node test/rb158.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -70,9 +70,9 @@ const files = {
   ok(ivr && ivr.out === 'Balance Inquiry,Bill Payment,Data Bundle,Language,Recharge' && ivr.ms === 'Self Service Balance,Self Service Recharge,Promo Played,Agent Callback' && ivr.skip === 'Customer Type Check',
     `  the top five outcomes after the first menu, and the top milestones without the number check (${ivr && ivr.skip}), ReachedAgent or a Transfer (${ivr && ivr.ms})`);
   ok(ivr && ivr.errs === 'Create Callback 10%,Get Balance 2%', `  the IVR flow's data actions with errors, worst first; another flow's left out (${ivr && ivr.errs})`);
-  const box = await p.evaluate(() => { const M = window.__mc.rb().models; const t = k => { const d = document.createElement('div'); d.innerHTML = window.Templater.render(window.TEMPLATES[k === 'postpaid' ? 'virgin' : k], M[k], window.Build.REPORTS[k]); return d.textContent.replace(/\s+/g, ' '); }; return { v: t('virgin'), pp: t('postpaid'), fr: t('friendi') }; });
-  ok(/IVR REPORT/.test(box.v) && /Finished in the IVR/.test(box.v) && /54%/.test(box.v) && /Balance Inquiry/.test(box.v) && !/ReachedAgent|Transfer_Billing/.test(box.v) && /Data action errors/.test(box.v) && /Create Callback/.test(box.v), 'the Virgin email has the IVR box with the same numbers: 54% finished in the IVR, its outcomes, milestones and data action errors');
-  ok(/IVR REPORT/.test(box.pp) && !/IVR REPORT/.test(box.fr), 'Virgin Postpaid shares the Virgin IVR; FRiENDi (no IVR exports) has no box');
+  const box = await p.evaluate(() => { const RB = window.__mc.rb(), M = RB.models, txt = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.replace(/\s+/g, ' '); }; const o = {}; for (const k of ['virgin', 'postpaid', 'friendi', 'fpay']) o[k] = { t: txt(window.Templater.render(window.TEMPLATES[k === 'postpaid' ? 'virgin' : k], M[k], window.Build.REPORTS[k])), r: txt(window.Render.renderEmail(M[k])), w: (RB.data[k].warnings || []).join(' | ') }; return o; });
+  const IVRBOX = /IVR REPORT|Finished in the IVR|Top 5 outcomes|Top 5 milestones|Data action errors|Balance Inquiry|Create Callback/;
+  ok(Object.values(box).every(b => !IVRBOX.test(b.t) && !IVRBOX.test(b.r) && !/IVR/.test(b.w)) && /Calls Presented|Inbound Voice/i.test(box.virgin.t), `no IVR box in any brand email (Virgin, Postpaid, FRiENDi, FRiENDi Pay; the template and the plain one), and no check about it (Virgin: "${box.virgin.w.slice(0, 80)}")`);
   // ---- 4. MC Leaders: the tickets to exclude
   await p.evaluate(() => {
     const E = window.Engine, RB = window.__mc.rb();

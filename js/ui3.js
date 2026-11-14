@@ -3789,7 +3789,7 @@ const themeMq = matchMedia('(prefers-color-scheme: dark)');
 function applyTheme(t = themeNow()) {
   const dark = t === 'dark' || (t === 'system' && themeMq.matches);
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#0c0c0e' : '#f4f4f5'));
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#0f1829' : '#f7faff'));   // the top of the ground (--sky in ui6/00_tokens.css)
   document.dispatchEvent(new CustomEvent('mc-theme'));
 }
 function syncTheme() {

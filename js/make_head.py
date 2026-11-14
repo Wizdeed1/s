@@ -11,8 +11,8 @@ theme = open(os.path.join(here, 'theme_boot.html'), encoding='utf-8').read()   #
 csp = open(os.path.join(here, 'csp_boot.html'), encoding='utf-8').read()   # the browser refuses any web address (a file only)
 out = ('<title>Cadence</title>\n'
        + csp.rstrip('\n') + '\n'
-       '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#eef4fc">\n'
-       '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#05070d">\n'
+       '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7faff">\n'
+       '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1829">\n'
        '<meta name="color-scheme" content="light dark">\n'
        + theme.rstrip('\n') + '\n' + boot.rstrip('\n') + '\n<style>\n' + '\n'.join(css) + '</style>\n')
 assert '</style' not in ''.join(css).lower()

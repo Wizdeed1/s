@@ -1,22 +1,22 @@
 /* ==========================================================================================================================
    Cadence: the interface, glass over Beyond One's colours (November 2026). The look the WFM team chose: frosted glass panels
-   that float over slow glossy spheres in the brand's colours (orange, blue, teal, cyan, silver, pink), the wide Archivo
-   headline, the brand blue for the page you are on and a page's main action.
+   that float over a clean, still ground (one soft wash of colour, no shapes behind them), the wide Archivo headline, the
+   brand blue for the page you are on and a page's main action.
    Two appearances, chosen in the account menu or Settings (System, Light, Dark); the page carries it as data-theme:
-   - Light: bright. A near-white sky, vivid spheres, white glass, navy ink.
-   - Dark: a deep navy night, the same spheres glowing, smoked glass, near-white ink.
-   Text is 4.5:1 or better on its glass over the brightest sphere (secondary text near 7:1 on the plain ground), controls and
+   - Light: bright. A near-white ground with a little of the brand's blue in it, white glass, navy ink.
+   - Dark: a deep navy night, smoked glass, near-white ink.
+   Text is 4.5:1 or better on its glass and on the plain ground (secondary text near 7:1), controls and
    focus rings 3:1; a state is always a word and an icon, never colour alone; numbers in tabular figures.
-   "Less transparency" (the account menu, or the computer's own reduced-transparency setting) makes every panel solid and
-   stills the spheres: the page carries it as data-glass="solid".
-   The look itself (materials, the top bar, the spheres, motion) is ui6/98_glass.css, the last layer over 98_beyond.css; this file
+   "Less transparency" (the account menu, or the computer's own reduced-transparency setting) makes every panel solid, with
+   no blur behind what floats: the page carries it as data-glass="solid".
+   The look itself (materials, the top bar, motion) is ui6/98_glass.css, the last layer over 98_beyond.css; this file
    only names the values.
    ========================================================================================================================== */
 
 :root {
   color-scheme: light;
-  /* the ground: the sky behind the spheres (its base colour for the few places that need one colour) */
-  --bg: #eef4fc; --sky: radial-gradient(130% 100% at 78% -12%, #ffffff 0%, #eef5ff 42%, #e3edfb 100%);
+  /* the ground: one clean wash behind every page, nothing drawn on it (its base colour for the few places that need one colour) */
+  --bg: #eaf1fb; --sky: linear-gradient(168deg, #f7faff 0%, #ebf2fd 46%, #dfe9f9 100%);
   /* glass: panels on the sky, what is raised on them, what floats above (nearly solid), wells inside a panel.
      --solid hides what scrolls under it (sticky heads and columns) */
   --surface: rgba(255, 255, 255, .7); --raised: rgba(255, 255, 255, .84); --overlay: rgba(249, 252, 255, .92); --sunk: rgba(255, 255, 255, .5);
@@ -33,14 +33,6 @@
   --accent-soft: rgba(18, 115, 212, .12); --accent-line: rgba(18, 115, 212, .45); --accent-glow: 0 10px 26px -10px rgba(18, 115, 212, .75);
   /* the template's pixel colours: red, orange, pink, blue, lavender, lilac, teal, teal blue, black */
   --px1: #ed1c24; --px2: #ed7d31; --px3: #f6adcc; --px4: #0d76bd; --px5: #9693c8; --px6: #bf9dca; --px7: #0c7b6c; --px8: #007fa2; --px9: #080808;
-  /* the spheres: highlight, body, shade and the light each throws (bright in light) */
-  --orb1-a: #ffd9a8; --orb1-b: #ff8f2e; --orb1-c: #d95f06; --orb1-g: rgba(255, 143, 46, .5);
-  --orb2-a: #a9d8ff; --orb2-b: #2a8cf0; --orb2-c: #0b57b8; --orb2-g: rgba(42, 140, 240, .5);
-  --orb3-a: #a8f7e2; --orb3-b: #1fc7a6; --orb3-c: #0a8f78; --orb3-g: rgba(31, 199, 166, .5);
-  --orb4-a: #c2f3ff; --orb4-b: #2cc3ee; --orb4-c: #0a8fc2; --orb4-g: rgba(44, 195, 238, .5);
-  --orb5-a: #ffffff; --orb5-b: #d5dcec; --orb5-c: #9aa7c2; --orb5-g: rgba(150, 165, 200, .35);
-  --orb6-a: #ffe1ef; --orb6-b: #ff7fb6; --orb6-c: #d93f85; --orb6-g: rgba(255, 127, 182, .5);
-  --orb-shade: rgba(20, 40, 90, .2); --orb-shine: rgba(255, 255, 255, .85); --grain: .05;
   /* the glass itself: blur and colour boost behind a panel, its sheen, its rim (top and bottom), the light under the pointer */
   --glass-blur: blur(26px) saturate(1.7); --glass-blur-sm: blur(14px) saturate(1.5);
   --glass-sheen: linear-gradient(155deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .08) 46%);
@@ -108,10 +100,10 @@
   /* a team's own logo (Settings) on the bar: the version for light backgrounds in light, for dark in dark */
   --bl-light: block; --bl-dark: none;
 }
-/* dark: a deep navy night, the spheres glowing through smoked glass */
+/* dark: a deep navy night under smoked glass */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #05070d; --sky: radial-gradient(130% 100% at 72% -6%, #0e1729 0%, #070b14 46%, #05070d 100%);
+  --bg: #070b14; --sky: linear-gradient(168deg, #0f1829 0%, #090e19 48%, #05070d 100%);
   --surface: rgba(13, 18, 29, .6); --raised: rgba(26, 34, 52, .72); --overlay: rgba(13, 18, 30, .92); --sunk: rgba(255, 255, 255, .04);
   --solid: #0c111b; --solid-2: #090d15;
   --fill: rgba(255, 255, 255, .06); --fill-2: rgba(255, 255, 255, .1);
@@ -121,13 +113,6 @@
   --nav-hover: rgba(255, 255, 255, .07); --nav-current: #1a73d6;
   --accent: #4aa3ff; --accent-hover: #6cb6ff; --accent-fill: #1a73d6; --accent-fill-hover: #2382e8; --accent-text: #7cc0ff; --on-accent: #ffffff;
   --accent-soft: rgba(74, 163, 255, .16); --accent-line: rgba(74, 163, 255, .5); --accent-glow: 0 10px 28px -10px rgba(35, 132, 232, .9);
-  --orb1-a: #ffb877; --orb1-b: #d9741f; --orb1-c: #5e2405; --orb1-g: rgba(237, 125, 49, .3);
-  --orb2-a: #86c8ff; --orb2-b: #1873c9; --orb2-c: #05264a; --orb2-g: rgba(13, 118, 189, .42);
-  --orb3-a: #7fe6cb; --orb3-b: #0f8372; --orb3-c: #032c26; --orb3-g: rgba(12, 123, 108, .4);
-  --orb4-a: #96e2f7; --orb4-b: #108cad; --orb4-c: #03364a; --orb4-g: rgba(0, 127, 162, .4);
-  --orb5-a: #f7f9fc; --orb5-b: #9ca5b4; --orb5-c: #2f343d; --orb5-g: rgba(190, 200, 220, .16);
-  --orb6-a: #ffd6e8; --orb6-b: #d9739f; --orb6-c: #521c38; --orb6-g: rgba(246, 173, 204, .28);
-  --orb-shade: rgba(0, 0, 0, .42); --orb-shine: rgba(255, 255, 255, .62); --grain: .07;
   --glass-blur: blur(28px) saturate(1.5); --glass-blur-sm: blur(14px) saturate(1.4);
   --glass-sheen: linear-gradient(155deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .015) 42%);
   --rim-a: rgba(255, 255, 255, .28); --rim-b: rgba(255, 255, 255, .07); --rim-c: rgba(255, 255, 255, .15); --glass-light: rgba(255, 255, 255, .075);

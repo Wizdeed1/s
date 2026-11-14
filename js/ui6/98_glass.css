@@ -1,82 +1,36 @@
 /* ==========================================================================================================================
    Glass: the look of the whole tool (November 2026), the last layer over 98_beyond.css. Same page, same parts, same names
    (every id, class and data attribute the scripts use is untouched): only how they look and where the navigation sits.
-   - The ground: a sky with slow glossy spheres in Beyond One's colours, fixed behind every page. Each page has its own
-     places for them; they glide there when the page changes (body[data-ws] does it; a tab nudges them, glass.js sets --ti).
-   - One material: frosted glass (the panel's tint, a blur of what is behind it, a rim of light, a soft shadow). Panels float.
-     Nothing sits straight on the sky: a page's header, a step and a loose note each have their own glass.
+   - The ground: clean. One soft, still wash of colour fixed behind every page; nothing is drawn on it and nothing moves.
+   - One material: glass (the panel's tint, a rim of light, a soft shadow, a light that follows the pointer). Panels float
+     on the ground; what floats over the page as it scrolls (the bar, a menu, a drawer, a dialog, a sticky bar) also blurs
+     what is behind it.
    - The navigation: the old sidebar is a floating glass bar across the top (logo, the role's pages with a blue pill on the
      current one, Search), the toolbar's buttons sit at its right end. On a phone: a glass bar on top, a glass tab bar below.
-   - Light is bright (white glass on a near-white sky, vivid spheres); Dark is a navy night (smoked glass, glowing spheres).
-   - Less transparency (data-glass="solid"): solid panels, still spheres. Reduced motion: nothing drifts or glides.
+   - Light is bright (white glass on a near-white ground); Dark is a navy night (smoked glass).
+   - Less transparency (data-glass="solid"): solid panels, no blur. Reduced motion: nothing slides or ripples.
    The values are named in 00_tokens.css.
    ========================================================================================================================== */
 
-/* ---------- the ground: the sky and the spheres ---------- */
+/* ---------- the ground: one clean wash, fixed behind every page ---------- */
 html { background: var(--bg); }
 body { background: transparent; }
-.orbs { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: var(--sky); contain: strict; }
-.orbs::after { content: ""; position: absolute; inset: 0; opacity: var(--grain); mix-blend-mode: overlay;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-.ob { position: absolute; inset: 0; transform: translate3d(calc(var(--px, 0) * var(--d, 1) * 26px), calc(var(--py, 0) * var(--d, 1) * 16px), 0); transition: transform 1s var(--ease-out); }
-.orb { position: absolute; left: 0; top: 0; width: var(--s); height: var(--s); border-radius: 50%; transform: translate3d(var(--x), var(--y), 0); will-change: transform;
-  transition: transform 1.4s var(--ease-out), width 1.4s var(--ease-out), height 1.4s var(--ease-out);
-  background: radial-gradient(circle at 33% 28%, var(--orb-shine), transparent 24%), radial-gradient(circle at 42% 40%, var(--a), var(--b) 56%, var(--c) 100%);
-  box-shadow: inset calc(var(--s) * -.08) calc(var(--s) * -.1) calc(var(--s) * .2) var(--orb-shade), 0 0 calc(var(--s) * .3) var(--g);
-  animation: orbIn 1.8s var(--ease-out) both, orbDrift var(--dd, 15s) ease-in-out 1.8s infinite alternate; }
-.o1 { --a: var(--orb1-a); --b: var(--orb1-b); --c: var(--orb1-c); --g: var(--orb1-g); }
-.o2 { --a: var(--orb2-a); --b: var(--orb2-b); --c: var(--orb2-c); --g: var(--orb2-g); --dd: 18s; }
-.o3 { --a: var(--orb3-a); --b: var(--orb3-b); --c: var(--orb3-c); --g: var(--orb3-g); --dd: 13s; }
-.o4 { --a: var(--orb4-a); --b: var(--orb4-b); --c: var(--orb4-c); --g: var(--orb4-g); --dd: 20s; }
-.o5 { --a: var(--orb5-a); --b: var(--orb5-b); --c: var(--orb5-c); --g: var(--orb5-g); --dd: 11s; }
-.o6 { --a: var(--orb6-a); --b: var(--orb6-b); --c: var(--orb6-c); --g: var(--orb6-g); --dd: 12s; }
-@keyframes orbIn { from { opacity: 0; scale: .7; } }
-@keyframes orbDrift { to { translate: 0 -2.2vh; } }
-/* where the spheres rest: the sign-in screen, the Dashboard and any page without its own places */
-.o1 { --x: 66vw; --y: -15vh; --s: 36vw; } .o2 { --x: -19vw; --y: 28vh; --s: 42vw; } .o3 { --x: 36vw; --y: 72vh; --s: 15vw; }
-.o4 { --x: 80vw; --y: 50vh; --s: 32vw; } .o5 { --x: 3vw; --y: 82vh; --s: 6vw; } .o6 { --x: 60vw; --y: 88vh; --s: 3.6vw; }
-/* each page's own places (the page carries its name as body[data-ws]); a tab of a page nudges them a little (--ti, set by glass.js) */
-.orb { --tx: calc(var(--ti, 0) * 2.4vw); }
-body[data-ws="wfm"] .o1, body[data-ws="build"] .o1 { --x: calc(72vw - var(--tx)); --y: -22vh; --s: 30vw; }
-body[data-ws="wfm"] .o2, body[data-ws="build"] .o2 { --x: calc(-24vw + var(--tx)); --y: 42vh; --s: 40vw; }
-body[data-ws="wfm"] .o3, body[data-ws="build"] .o3 { --x: calc(30vw + var(--tx) * 2); --y: 56vh; --s: 12vw; }
-body[data-ws="wfm"] .o4, body[data-ws="build"] .o4 { --x: calc(74vw - var(--tx)); --y: 60vh; --s: 38vw; }
-body[data-ws="wfm"] .o5, body[data-ws="build"] .o5 { --x: calc(46vw - var(--tx) * 3); --y: 26vh; --s: 7vw; }
-body[data-ws="wfm"] .o6, body[data-ws="build"] .o6 { --x: calc(62vw + var(--tx)); --y: 84vh; --s: 4vw; }
-body[data-ws="team"] .o1 { --x: 79vw; --y: -8vh; --s: 26vw; } body[data-ws="team"] .o2 { --x: -12vw; --y: 58vh; --s: 32vw; } body[data-ws="team"] .o3 { --x: calc(58vw - var(--tx) * 2); --y: 24vh; --s: 11vw; }
-body[data-ws="team"] .o4 { --x: 64vw; --y: 70vh; --s: 42vw; } body[data-ws="team"] .o5 { --x: calc(27vw + var(--tx) * 2); --y: 64vh; --s: 8vw; } body[data-ws="team"] .o6 { --x: 44vw; --y: 92vh; --s: 5vw; }
-body[data-ws="results"] .o1 { --x: -10vw; --y: -18vh; --s: 30vw; } body[data-ws="results"] .o2 { --x: 70vw; --y: 34vh; --s: 44vw; } body[data-ws="results"] .o3 { --x: 12vw; --y: 66vh; --s: 14vw; }
-body[data-ws="results"] .o4 { --x: 38vw; --y: -24vh; --s: 24vw; } body[data-ws="results"] .o5 { --x: 60vw; --y: 16vh; --s: 6vw; } body[data-ws="results"] .o6 { --x: 30vw; --y: 86vh; --s: 5vw; }
-body[data-ws="cycle"] .o1 { --x: 58vw; --y: 60vh; --s: 34vw; } body[data-ws="cycle"] .o2 { --x: 76vw; --y: -20vh; --s: 30vw; } body[data-ws="cycle"] .o3 { --x: -6vw; --y: 8vh; --s: 16vw; }
-body[data-ws="cycle"] .o4 { --x: -18vw; --y: 52vh; --s: 36vw; } body[data-ws="cycle"] .o5 { --x: 40vw; --y: 30vh; --s: 7vw; } body[data-ws="cycle"] .o6 { --x: 22vw; --y: 78vh; --s: 4.4vw; }
-body[data-ws="quality"] .o1 { --x: 18vw; --y: -26vh; --s: 28vw; } body[data-ws="quality"] .o2 { --x: 72vw; --y: 54vh; --s: 36vw; } body[data-ws="quality"] .o3 { --x: 78vw; --y: -6vh; --s: 14vw; }
-body[data-ws="quality"] .o4 { --x: -22vw; --y: 46vh; --s: 40vw; } body[data-ws="quality"] .o5 { --x: 52vw; --y: 70vh; --s: 8vw; } body[data-ws="quality"] .o6 { --x: 8vw; --y: 20vh; --s: 5vw; }
-body[data-ws="me"] .o1 { --x: 70vw; --y: 48vh; --s: 30vw; } body[data-ws="me"] .o2 { --x: -16vw; --y: -18vh; --s: 36vw; } body[data-ws="me"] .o3 { --x: 44vw; --y: 78vh; --s: 13vw; }
-body[data-ws="me"] .o4 { --x: 62vw; --y: -22vh; --s: 28vw; } body[data-ws="me"] .o5 { --x: 20vw; --y: 58vh; --s: 7vw; } body[data-ws="me"] .o6 { --x: 86vw; --y: 22vh; --s: 5vw; }
-body[data-ws="show"] .o1 { --x: 40vw; --y: -30vh; --s: 34vw; } body[data-ws="show"] .o2 { --x: -20vw; --y: 20vh; --s: 38vw; } body[data-ws="show"] .o3 { --x: 70vw; --y: 66vh; --s: 16vw; }
-body[data-ws="show"] .o4 { --x: 78vw; --y: 8vh; --s: 30vw; } body[data-ws="show"] .o5 { --x: 30vw; --y: 74vh; --s: 8vw; } body[data-ws="show"] .o6 { --x: 52vw; --y: 40vh; --s: 4vw; }
-@media (max-width: 767.98px) {   /* a phone: fewer in view, and out of the top's way */
-  .orb.o1, body[data-ws] .orb.o1 { --x: 52vw; --y: -14vh; --s: 78vw; } .orb.o2, body[data-ws] .orb.o2 { --x: -46vw; --y: 34vh; --s: 96vw; } .orb.o3, body[data-ws] .orb.o3 { --x: 58vw; --y: 62vh; --s: 44vw; }
-  .orb.o4, body[data-ws] .orb.o4 { --x: 40vw; --y: 78vh; --s: 90vw; } .orb.o5, body[data-ws] .orb.o5 { --x: 80vw; --y: 40vh; --s: 14vw; } .orb.o6, body[data-ws] .orb.o6 { --x: 4vw; --y: 90vh; --s: 9vw; }
-}
-/* still, and plainer, with less transparency; still with reduced motion */
-:root[data-glass="solid"] .orb { animation: none; transition: none; opacity: .5; }
-:root[data-glass="solid"] .ob { transform: none; transition: none; }
-@media (prefers-reduced-motion: reduce) { .orb { animation: none; transition: none; } .ob { transform: none; transition: none; } }
-@media print { .orbs { display: none; } html { background: #fff; } }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--sky); }
+@media print { body::before { display: none; } html { background: #fff; } }
 
 /* ---------- the material: one glass for every panel ---------- */
-/* a panel on the sky: its tint, the blur of what is behind it, a rim of light, a soft shadow, a light that follows the pointer
-   (--mx, --my: where the pointer is on the panel; glass.js sets them, and takes them away when it leaves) */
+/* a panel on the ground: its tint, a rim of light, a soft shadow, a light that follows the pointer (--mx, --my: where the
+   pointer is on the panel; glass.js sets them, and takes them away when it leaves). The ground behind it is plain, so a panel
+   that stays in its place has nothing to blur; the bars that stay put while the page scrolls under them do (below) */
 .card, .kpi, .qa, .tile, .buildbar, .fbar, .board, .todaymini, .monthbox, .note, .autonote, .kpicard, .ctile, .chks, .atile, .slot, .csatbox, .rcard, .rgroup, .flowbar, .bulkbar,
 .kpistrip .kpi, .shsec, .lockcard, .tablewrap, .wsstatus, .rb .editor, .secnav, .viewbar, .dropallbox, .mlist, .tk, .varow {
   background: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), var(--glass-light), transparent 46%), var(--glass-sheen), var(--surface);
-  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   border-color: var(--card-line); box-shadow: inset 0 1px 0 var(--rim-a), var(--shadow-card); }
+.secnav, .viewbar, .bulkbar, .buildbar, .flowbar, .mailpreview { -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
 .card, .kpi, .qa, .tile, .buildbar, .fbar, .board, .monthbox, .kpicard, .ctile, .chks, .atile, .slot, .csatbox, .rcard, .rgroup, .kpistrip .kpi, .shsec, .tablewrap, .rb .editor { border-radius: var(--r-card); }
-/* a panel inside a panel: a tint only (one blur per stack is enough) */
+/* a panel inside a panel: a tint only */
 :is(.card, .tile, .board, .flowstep, .drawer, .dlgbox, .rcard, .rgroup, .shsec) :is(.card, .kpi, .tile, .note, .autonote, .kpicard, .ctile, .chks, .atile, .slot, .csatbox, .rcard, .rgroup, .tablewrap, .monthbox, .fbar, .todaymini, .wsstatus, .mlist, .tk, .dropallbox, .rb .editor) {
-  -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 1px 0 var(--rim-b); background: var(--sunk); }
+  box-shadow: inset 0 1px 0 var(--rim-b); background: var(--sunk); }
 .card:hover, .kpi:hover, .tile:hover { border-color: var(--card-line-hover); }
 /* what must hide what scrolls under it: the heads of tables and their fixed columns */
 thead th, .tteam thead th, .ehead, .histgrid td:first-child, .dedtab th:first-child, .dedtab td:first-child, .attgrid th.an,
@@ -85,20 +39,12 @@ thead th { border-bottom: 1px solid var(--line); }
 .tablewrap { overflow: clip; }
 .tablewrap table { background: transparent; }
 
-/* ---------- nothing sits straight on the sky: a page's header, a step, a small heading and a loose note each get their glass ---------- */
-.view > .viewhead, .wfmhead, .shtop, .flowstep, .phase {
+/* ---------- on the ground: a page's header, a small heading and a loose note sit straight on it (it is plain, so they read);
+   a step of a flow is a panel of its own ---------- */
+.flowstep {
   background: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), var(--glass-light), transparent 46%), var(--glass-sheen), var(--surface);
-  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--rim-a), inset 0 0 0 1px var(--rim-b), var(--shadow-card); }
-.view > .viewhead, .wfmhead, .shtop { padding: 20px 24px; border-radius: var(--r-card); }
-.wfmhead > .viewhead { padding: 0; border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
-.view > .viewhead:has(h2.vt) { padding: 14px 20px; }
-.flowstep { padding: 14px 18px 14px 14px; border-radius: var(--r-card); }
+  box-shadow: inset 0 1px 0 var(--rim-a), inset 0 0 0 1px var(--rim-b), var(--shadow-card); padding: 14px 18px 14px 14px; border-radius: var(--r-card); }
 .flowstep::before { display: none; }   /* each step floats on its own: no line between them */
-.phase { justify-self: start; margin-top: var(--s2); padding: 9px 16px; border: 0; border-radius: 14px; }
-.fline .fscope, .impgrp, .impmain .next > .hint, .slot.opt, .dwhy {
-  background: var(--surface); -webkit-backdrop-filter: var(--glass-blur-sm); backdrop-filter: var(--glass-blur-sm); box-shadow: inset 0 1px 0 var(--rim-b); }
-.fline .fscope, .impgrp, .impmain .next > .hint, .dwhy { width: fit-content; padding: 5px 12px; border-radius: var(--r-pill); }
-.impgrp { margin-bottom: 2px; }
 
 /* ---------- type: the wide headline for a page's title ---------- */
 .viewhead h1, .lockhead h1 { font: 800 clamp(24px, 2.5vw, 36px)/1.04 var(--display-x); letter-spacing: 0; text-transform: uppercase; }

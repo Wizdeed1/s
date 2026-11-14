@@ -1,13 +1,13 @@
-// ================================================================ GLASS: the floating bar, the spheres, the light on the glass
+// ================================================================ GLASS: the floating bar, the light on the glass
 // The look is ui6/98_glass.css; this is the little it cannot do alone. Nothing here reads or writes any data.
 // - The bar: the sidebar's pages lie across the top with the toolbar's buttons at their right end. The buttons' width is measured
 //   (--tools-w) so the pages keep clear of them; when the pages do not fit, Search shrinks to its icon (tight), then the pages go
 //   to icons with the name of the page you are on (compact); a blue pill slides to the page you are on.
-// - Less transparency (the account menu, or the computer's own setting): solid panels and still spheres, kept in this browser as
+// - Less transparency (the account menu, or the computer's own setting): solid panels and no blur, kept in this browser as
 //   mc-glass ('solid' or 'glass'; nothing kept follows the computer). The page carries it as data-glass="solid".
-// - Where the pointer is: a soft light on the panel under it, the spheres drift a little with it (depth), a ripple where you click.
-// With reduced motion nothing drifts, slides or ripples.
-const GLASS_SEL = '.card, .kpi, .qa, .tile, .tablewrap, .board, .fbar, .buildbar, .kpicard, .ctile, .chks, .atile, .rcard, .rgroup, .slot, .shsec, .lockcard, .dhero, .flowstep, .wfmhead, .view > .viewhead';
+// - Where the pointer is: a soft light on the panel under it, a ripple where you click.
+// The ground behind the panels is plain and still (no shapes): nothing here draws on it. With reduced motion nothing slides or ripples.
+const GLASS_SEL = '.card, .kpi, .qa, .tile, .tablewrap, .board, .fbar, .buildbar, .kpicard, .ctile, .chks, .atile, .rcard, .rgroup, .slot, .shsec, .lockcard, .dhero, .flowstep';
 const glassFine = () => { try { return matchMedia('(hover: hover) and (pointer: fine)').matches; } catch (e) { return false; } };
 
 // ---------------------------------------------------------------- less transparency
@@ -49,20 +49,11 @@ try { document.fonts.ready.then(glassBarSoon); } catch (e) { /* none */ }
 // the bar follows the navigation: after every change of page, role or month
 const syncNavGlass0 = syncNav;
 syncNav = function () { syncNavGlass0(); glassBar(); glassBarSoon(); };
-// a tab of the WFM team page nudges the spheres (its place among the role's tabs)
-const renderWfmHeadGlass0 = renderWfmHead;
-renderWfmHead = function () {
-  renderWfmHeadGlass0();
-  try { const on = state.ws === 'wfm' || state.ws === 'build', i = on ? Math.max(0, wfmTabsFor().findIndex(x => x[0] === wfmTabNow())) : 0; document.body.style.setProperty('--ti', String(i % 6)); } catch (e) { /* the page has not started */ }
-};
-
-// ---------------------------------------------------------------- the pointer: light on the panel under it, the spheres drift with it, a ripple on a click
+// ---------------------------------------------------------------- the pointer: light on the panel under it, a ripple on a click
 (() => {
   let raf = 0, ev = null, lit = null;
-  const orbs = $('orbs');
   const step = () => {
     raf = 0; if (!ev) return;
-    if (orbs && glassNow() !== 'solid') { orbs.style.setProperty('--px', (ev.clientX / innerWidth - 0.5).toFixed(3)); orbs.style.setProperty('--py', (ev.clientY / innerHeight - 0.5).toFixed(3)); }
     const g = ev.target && ev.target.closest ? ev.target.closest(GLASS_SEL) : null;
     if (lit && lit !== g) { lit.style.removeProperty('--mx'); lit.style.removeProperty('--my'); }
     lit = g;

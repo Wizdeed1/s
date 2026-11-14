@@ -1,78 +1,100 @@
 /* ==========================================================================================================================
-   Cadence: the interface, in Beyond One's colours (November 2026). Taken from the Beyond One template the team's
-   decks are made with: near-black ink (080808) on white, the brand blue (0D76BD) for whatever can be clicked, chosen or is in
-   progress, and the template's pixel colours (lavender, orange, teal, red, pink, lilac) for data and the small square marks.
-   A workplace tool first: solid surfaces (no glass, no blur), one hairline under everything, numbers in tabular figures, text
-   4.5:1 or better on its surface (secondary text near 7:1), controls and focus rings 3:1. The sidebar is the brand's black panel
-   in both appearances, as on the template's title slides. Headings in Poppins (the template's typeface), text and figures in
-   Geist. Light or dark as chosen in the account menu or Settings (System, Light, Dark): the page carries it as data-theme.
-   The look itself (shell, cards, tables, controls) is ui6/98_beyond.css, the last layer; this file only names the values.
+   Cadence: the interface, glass over Beyond One's colours (November 2026). The look the WFM team chose: frosted glass panels
+   that float over slow glossy spheres in the brand's colours (orange, blue, teal, cyan, silver, pink), the wide Archivo
+   headline, the brand blue for the page you are on and a page's main action.
+   Two appearances, chosen in the account menu or Settings (System, Light, Dark); the page carries it as data-theme:
+   - Light: bright. A near-white sky, vivid spheres, white glass, navy ink.
+   - Dark: a deep navy night, the same spheres glowing, smoked glass, near-white ink.
+   Text is 4.5:1 or better on its glass over the brightest sphere (secondary text near 7:1 on the plain ground), controls and
+   focus rings 3:1; a state is always a word and an icon, never colour alone; numbers in tabular figures.
+   "Less transparency" (the account menu, or the computer's own reduced-transparency setting) makes every panel solid and
+   stills the spheres: the page carries it as data-glass="solid".
+   The look itself (materials, the top bar, the spheres, motion) is ui6/98_glass.css, the last layer over 98_beyond.css; this file
+   only names the values.
    ========================================================================================================================== */
 
 :root {
   color-scheme: light;
-  /* surfaces: the ground, panels on it, what floats above */
-  --bg: #f4f4f5; --surface: #ffffff; --raised: #ffffff; --overlay: #ffffff; --sunk: #fafafa;
-  --fill: rgba(8, 8, 8, .045); --fill-2: rgba(8, 8, 8, .085);   /* hover, selection, tracks */
-  --line: #e4e4e7; --line-2: #d4d4d8; --line-3: #a1a1aa; --ctl-line: #8b8b94;
+  /* the ground: the sky behind the spheres (its base colour for the few places that need one colour) */
+  --bg: #eef4fc; --sky: radial-gradient(130% 100% at 78% -12%, #ffffff 0%, #eef5ff 42%, #e3edfb 100%);
+  /* glass: panels on the sky, what is raised on them, what floats above (nearly solid), wells inside a panel.
+     --solid hides what scrolls under it (sticky heads and columns) */
+  --surface: rgba(255, 255, 255, .7); --raised: rgba(255, 255, 255, .84); --overlay: rgba(249, 252, 255, .92); --sunk: rgba(255, 255, 255, .5);
+  --solid: #f6f9fe; --solid-2: #eef4fc;
+  --fill: rgba(16, 38, 78, .05); --fill-2: rgba(16, 38, 78, .09);   /* hover, selection, tracks */
+  --line: rgba(16, 38, 78, .1); --line-2: rgba(16, 38, 78, .17); --line-3: rgba(16, 38, 78, .36); --ctl-line: rgba(16, 38, 78, .46);
   /* text: label, secondary, tertiary */
-  --ink: #0a0a0b; --ink-2: #27272a; --muted: #52525b; --faint: #6b6b73; --disabled: #a1a1aa; --inverse: #ffffff;
-  /* the sidebar and the tab bar: Beyond One's black panel, in light and in dark */
-  --nav: #080808; --nav-2: #111113; --nav-ink: #ffffff; --nav-muted: #d4d4d8; --nav-faint: #8f8f98; --nav-line: rgba(255, 255, 255, .09);
-  --nav-hover: rgba(255, 255, 255, .07); --nav-current: rgba(255, 255, 255, .11);
-  /* the brand blue: whatever is clicked, chosen, focused or in progress. accent-fill under white text (4.8:1), accent-text on panels */
-  --accent: #0d76bd; --accent-hover: #0a66a6; --accent-fill: #0d76bd; --accent-fill-hover: #0a5f99; --accent-text: #0b65a3; --on-accent: #ffffff;
-  --accent-soft: rgba(13, 118, 189, .1); --accent-line: rgba(13, 118, 189, .45);
+  --ink: #0a1222; --ink-2: #1b2840; --muted: #41506a; --faint: #4f5c74; --disabled: #97a3b6; --inverse: #ffffff;
+  /* the top bar and the phone's tab bar: glass like the panels, their text the page's ink, the page you are on in the brand blue */
+  --nav: rgba(255, 255, 255, .66); --nav-2: #f6f9fe; --nav-ink: #0a1222; --nav-muted: #1b2840; --nav-faint: #4f5c74; --nav-line: rgba(16, 38, 78, .1);
+  --nav-hover: rgba(16, 38, 78, .06); --nav-current: #1273d4;
+  /* the brand blue: whatever is clicked, chosen, focused or in progress. accent-fill under white text (4.7:1), accent-text on glass */
+  --accent: #1273d4; --accent-hover: #0f66bd; --accent-fill: #1273d4; --accent-fill-hover: #0e63b8; --accent-text: #0b5cae; --on-accent: #ffffff;
+  --accent-soft: rgba(18, 115, 212, .12); --accent-line: rgba(18, 115, 212, .45); --accent-glow: 0 10px 26px -10px rgba(18, 115, 212, .75);
   /* the template's pixel colours: red, orange, pink, blue, lavender, lilac, teal, teal blue, black */
   --px1: #ed1c24; --px2: #ed7d31; --px3: #f6adcc; --px4: #0d76bd; --px5: #9693c8; --px6: #bf9dca; --px7: #0c7b6c; --px8: #007fa2; --px9: #080808;
+  /* the spheres: highlight, body, shade and the light each throws (bright in light) */
+  --orb1-a: #ffd9a8; --orb1-b: #ff8f2e; --orb1-c: #d95f06; --orb1-g: rgba(255, 143, 46, .5);
+  --orb2-a: #a9d8ff; --orb2-b: #2a8cf0; --orb2-c: #0b57b8; --orb2-g: rgba(42, 140, 240, .5);
+  --orb3-a: #a8f7e2; --orb3-b: #1fc7a6; --orb3-c: #0a8f78; --orb3-g: rgba(31, 199, 166, .5);
+  --orb4-a: #c2f3ff; --orb4-b: #2cc3ee; --orb4-c: #0a8fc2; --orb4-g: rgba(44, 195, 238, .5);
+  --orb5-a: #ffffff; --orb5-b: #d5dcec; --orb5-c: #9aa7c2; --orb5-g: rgba(150, 165, 200, .35);
+  --orb6-a: #ffe1ef; --orb6-b: #ff7fb6; --orb6-c: #d93f85; --orb6-g: rgba(255, 127, 182, .5);
+  --orb-shade: rgba(20, 40, 90, .2); --orb-shine: rgba(255, 255, 255, .85); --grain: .05;
+  /* the glass itself: blur and colour boost behind a panel, its sheen, its rim (top and bottom), the light under the pointer */
+  --glass-blur: blur(26px) saturate(1.7); --glass-blur-sm: blur(14px) saturate(1.5);
+  --glass-sheen: linear-gradient(155deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .08) 46%);
+  --rim-a: rgba(255, 255, 255, .95); --rim-b: rgba(255, 255, 255, .5); --rim-c: rgba(16, 38, 78, .08); --glass-light: rgba(255, 255, 255, .5);
   /* states: word and icon always, colour never alone. The text colours pass 4.5:1 on their own tint */
-  --good: #0b6e50; --good-bg: rgba(12, 123, 108, .1); --good-line: rgba(12, 123, 108, .36); --good-mark: #0c7b6c;
-  --warn: #9a4a0b; --warn-bg: rgba(237, 125, 49, .12); --warn-line: rgba(237, 125, 49, .44); --warn-mark: #ed7d31;
-  --bad: #c4141b; --bad-bg: rgba(237, 28, 36, .08); --bad-line: rgba(237, 28, 36, .34); --bad-mark: #ed1c24;
-  --info: #0b65a3; --info-bg: rgba(13, 118, 189, .09); --info-line: rgba(13, 118, 189, .32); --info-mark: #0d76bd;
-  --badge: #ed1c24; --on-badge: #ffffff;   /* a red square with white text, for critical counts only */
-  --focus: #0d76bd;
-  --field-focus: #0d76bd;
-  /* the message at the bottom: the brand's black bar in both appearances */
-  --toast-bg: #080808; --toast-ink: #ffffff; --toast-line: rgba(255, 255, 255, .1); --toast-act: #7cc2f2;
+  --good: #0a6a4d; --good-bg: rgba(12, 150, 118, .14); --good-line: rgba(12, 123, 108, .4); --good-mark: #0c9b80;
+  --warn: #93450a; --warn-bg: rgba(237, 125, 49, .16); --warn-line: rgba(237, 125, 49, .5); --warn-mark: #ed7d31;
+  --bad: #bd1219; --bad-bg: rgba(237, 28, 36, .1); --bad-line: rgba(237, 28, 36, .38); --bad-mark: #ed1c24;
+  --info: #0b5cae; --info-bg: rgba(18, 115, 212, .12); --info-line: rgba(18, 115, 212, .36); --info-mark: #1273d4;
+  --badge: #ed1c24; --on-badge: #ffffff;   /* a red mark with white text, for critical counts only */
+  --focus: #1273d4;
+  --field-focus: #1273d4;
+  /* the message at the bottom: a dark pill in light, a light pill in dark */
+  --toast-bg: rgba(12, 20, 38, .92); --toast-ink: #ffffff; --toast-line: rgba(255, 255, 255, .14); --toast-act: #8cc8ff;
   /* attendance codes */
-  --at: #e3f2ee; --at-ink: #0b5e47; --off: #efeff1; --off-ink: #52525b; --al: #dbeee8; --al-ink: #0a5340; --sl: #fbefd9; --sl-ink: #7a4708;
-  --abs: #fde5e6; --abs-ink: #a3141a; --tardy: #a04a0b; --ot: #ecebf6; --ot-ink: #4e4a8c;
+  --at: #dff3ec; --at-ink: #0b5e47; --off: #e9eef6; --off-ink: #44526a; --al: #d5eee6; --al-ink: #0a5340; --sl: #fbefd9; --sl-ink: #7a4708;
+  --abs: #fde2e4; --abs-ink: #a3141a; --tardy: #a04a0b; --ot: #e9e8f8; --ot-ink: #4e4a8c;
   /* data: six series in a fixed order, never cycled; the brands keep their own colours (below) */
-  --c1: #0d76bd; --c2: #0c7b6c; --c3: #6e68b8; --c4: #c93c76; --c5: #c2621b; --c6: #007fa2; --heat: #0d76bd; --bar: #0d76bd;
+  --c1: #1273d4; --c2: #0c9b80; --c3: #6e68b8; --c4: #d6438a; --c5: #d2691a; --c6: #0a8fc2; --heat: #1273d4; --bar: #1273d4;
   --brand-virgin: #d7141a; --brand-friendi: #1e9aa3; --brand-fpay: #0b6e78; --brand-postpaid: #3a5a8c;
-  /* type: headings in Poppins (the template's), text and figures in Geist */
+  /* type: the wide Archivo for the headline of a page, Poppins for headings, Geist for text and figures */
+  --display-x: "Archivo Expanded", "Poppins", "Arial Black", sans-serif;
   --display: "Poppins", "Geist", "Segoe UI", system-ui, sans-serif;
   --text: "Geist", "Segoe UI Variable Text", "Segoe UI", -apple-system, system-ui, sans-serif;
-  /* layout: sidebar 248, rail 72, toolbar 56 (56 on phones), content up to 1,440, prose and forms up to 820 */
-  --side-w: 248px; --rail-w: 72px; --head-h: 56px; --tab-h: 60px;
+  /* layout: the top bar floats 10 px from the top and is 64 px high (--head-h is the room it takes); content up to 1,440,
+     prose and forms up to 820. The sidebar is gone: --side-cur stays 0 for the parts that still ask */
+  --side-w: 0px; --rail-w: 0px; --bar-top: 10px; --bar-height: 64px; --head-h: 86px; --tab-h: 64px;
   --maxw: 1440px; --prose: 820px; --gutter: 32px; --bar-h: 52px;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s7: 32px; --s8: 40px; --s9: 48px; --s10: 64px;
-  --ctl: 34px; --ctl-sm: 28px; --ctl-lg: 42px; --row: 44px; --row-h: 36px;
-  /* corners: crisp, the pixel's square close by (chips are almost square) */
-  --r-chip: 4px; --r-ctl: 8px; --r-card: 12px; --r-widget: 14px; --r-dlg: 14px; --r-pill: 999px; --r: var(--r-ctl);
-  /* depth: a hairline does the work; shadows only on what floats */
-  --card-line: #e4e4e7;
-  --shadow-card: 0 1px 2px rgba(8, 8, 8, .04);
-  --shadow-raise: 0 1px 2px rgba(8, 8, 8, .05), 0 12px 32px rgba(8, 8, 8, .09);
-  --shadow-hover: 0 1px 2px rgba(8, 8, 8, .05), 0 8px 20px rgba(8, 8, 8, .07); --card-line-hover: #c9c9cf;
-  --shadow-pop: 0 0 0 1px rgba(8, 8, 8, .07), 0 14px 36px rgba(8, 8, 8, .14);
-  --shadow-modal: 0 0 0 1px rgba(8, 8, 8, .07), 0 24px 64px rgba(8, 8, 8, .22);
-  --shadow-sheet: 0 0 0 1px rgba(8, 8, 8, .07), 0 18px 54px rgba(8, 8, 8, .2);
-  --scrim: rgba(8, 8, 8, .42);
-  /* materials: none. Every bar and panel is solid */
-  --mat-bar: #ffffff; --mat-side: #080808; --mat-menu: #ffffff; --mat-blur: none;
+  --ctl: 36px; --ctl-sm: 30px; --ctl-lg: 44px; --row: 44px; --row-h: 38px;
+  /* corners: round, as glass is */
+  --r-chip: 999px; --r-ctl: 12px; --r-card: 20px; --r-widget: 20px; --r-dlg: 24px; --r-pill: 999px; --r: var(--r-ctl);
+  /* depth: a soft shadow under what floats, the rim does the edge */
+  --card-line: rgba(255, 255, 255, .7);
+  --shadow-card: 0 26px 60px -34px rgba(24, 60, 130, .45), 0 2px 6px -2px rgba(24, 60, 130, .08);
+  --shadow-raise: 0 34px 80px -34px rgba(24, 60, 130, .5), 0 3px 10px -3px rgba(24, 60, 130, .1);
+  --shadow-hover: 0 38px 80px -32px rgba(24, 60, 130, .58), 0 3px 10px -3px rgba(24, 60, 130, .12); --card-line-hover: #ffffff;
+  --shadow-pop: 0 0 0 1px rgba(16, 38, 78, .06), 0 26px 64px -20px rgba(20, 50, 110, .42);
+  --shadow-modal: 0 0 0 1px rgba(16, 38, 78, .06), 0 44px 110px -28px rgba(16, 40, 96, .55);
+  --shadow-sheet: 0 0 0 1px rgba(16, 38, 78, .06), 0 30px 80px -24px rgba(16, 40, 96, .5);
+  --scrim: rgba(20, 34, 64, .3);
+  /* materials: the bar, the menus */
+  --mat-bar: var(--nav); --mat-side: var(--nav); --mat-menu: var(--overlay); --mat-blur: var(--glass-blur);
   /* controls */
-  --btn-fill: rgba(8, 8, 8, .045); --btn-fill-hover: rgba(8, 8, 8, .085); --zebra: rgba(8, 8, 8, .022);
+  --btn-fill: rgba(255, 255, 255, .6); --btn-fill-hover: rgba(255, 255, 255, .9); --zebra: rgba(16, 38, 78, .025);
   --seg-thumb: #ffffff;   /* the chosen segment of a segmented control */
-  --tt-bg: #080808; --tt-ink: #ffffff; --tt-line: rgba(255, 255, 255, .08);
-  --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%2352525b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --tt-bg: rgba(12, 20, 38, .94); --tt-ink: #ffffff; --tt-line: rgba(255, 255, 255, .1);
+  --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%2344526a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --glow: none; --horizon: none;
-  /* motion: brief, and never on frequent interactions */
-  --t-micro: 120ms; --t-hover: 150ms; --t-press: 120ms; --t-small: 200ms; --t-panel: 280ms; --t-ws: 320ms; --t-chart: 520ms; --t-exit: 180ms; --stagger: 36ms;
-  --ease-out: cubic-bezier(.23, 1, .32, 1); --ease-in: cubic-bezier(.55, 0, 1, .45); --ease-in-out: cubic-bezier(.77, 0, .175, 1); --ease-drawer: cubic-bezier(.32, .72, 0, 1);
+  /* motion: the page arrives in turn; hovers are brief */
+  --t-micro: 120ms; --t-hover: 180ms; --t-press: 120ms; --t-small: 220ms; --t-panel: 320ms; --t-ws: 360ms; --t-chart: 620ms; --t-exit: 200ms; --stagger: 45ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1); --ease-in: cubic-bezier(.55, 0, 1, .45); --ease-in-out: cubic-bezier(.77, 0, .175, 1); --ease-drawer: cubic-bezier(.32, .72, 0, 1);
   /* layers */
-  --z-bar: 30; --z-side: 32; --z-menu: 40; --z-scrim: 50; --z-sheet: 55; --z-dlg: 60; --z-pop: 65; --z-tt: 70; --z-toast: 75; --z-find: 90; --z-lock: 100;
+  --z-bar: 34; --z-side: 32; --z-menu: 40; --z-scrim: 50; --z-sheet: 55; --z-dlg: 60; --z-pop: 65; --z-tt: 70; --z-toast: 75; --z-find: 90; --z-lock: 100;
   /* names the older parts of the page still use */
   --panel: var(--surface); --panel-2: var(--fill); --panel-3: var(--fill-2);
   --shell: var(--nav); --shell-2: var(--nav-2); --shell-ink: var(--nav-ink); --shell-muted: var(--nav-muted); --shell-faint: var(--nav-faint); --shell-line: var(--nav-line); --shell-hover: var(--nav-hover);
@@ -80,54 +102,77 @@
   --t-fast: var(--t-hover); --t-base: var(--t-small); --t-move: var(--t-small); --t-sheet: var(--t-panel);
   --surface-2: var(--fill); --surface-3: var(--fill-2); --accent-2: var(--ink-2); --accent-ink: var(--on-accent);
   --good-soft: var(--good-bg); --warn-soft: var(--warn-bg); --bad-soft: var(--bad-bg);
-  --cta: #080808; --cta-ink: #ffffff; --cta-hover: #27272a; --thumb: var(--ink); --thumb-ink: var(--inverse);
+  /* a page's main action: the brand blue. The headline panel's own action: navy in light, white in dark */
+  --cta: #1273d4; --cta-ink: #ffffff; --cta-hover: #0e63b8; --hero-cta: #0a1222; --hero-cta-ink: #ffffff; --thumb: var(--ink); --thumb-ink: var(--inverse);
   --sans: var(--text); --mono: var(--text);
-  /* a team's own logo (Settings) on the black sidebar: the version for dark backgrounds, in both appearances */
-  --bl-light: none; --bl-dark: block;
+  /* a team's own logo (Settings) on the bar: the version for light backgrounds in light, for dark in dark */
+  --bl-light: block; --bl-dark: none;
 }
-/* dark: a near-black ground, panels a step lighter, the sidebar black as in light */
+/* dark: a deep navy night, the spheres glowing through smoked glass */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0c0c0e; --surface: #151518; --raised: #1c1c20; --overlay: #1c1c20; --sunk: #111114;
+  --bg: #05070d; --sky: radial-gradient(130% 100% at 72% -6%, #0e1729 0%, #070b14 46%, #05070d 100%);
+  --surface: rgba(13, 18, 29, .6); --raised: rgba(26, 34, 52, .72); --overlay: rgba(13, 18, 30, .92); --sunk: rgba(255, 255, 255, .04);
+  --solid: #0c111b; --solid-2: #090d15;
   --fill: rgba(255, 255, 255, .06); --fill-2: rgba(255, 255, 255, .1);
-  --line: #27272c; --line-2: #34343a; --line-3: #52525b; --ctl-line: #71717a;
-  --ink: #f4f4f5; --ink-2: #d4d4d8; --muted: #a1a1aa; --faint: #8b8b94; --disabled: #52525b; --inverse: #0c0c0e;
-  --nav: #000000; --nav-2: #0a0a0b; --nav-ink: #ffffff; --nav-muted: #d4d4d8; --nav-faint: #8f8f98; --nav-line: rgba(255, 255, 255, .08);
-  --nav-hover: rgba(255, 255, 255, .06); --nav-current: rgba(255, 255, 255, .1);
-  --accent: #3b9be6; --accent-hover: #5aaeec; --accent-fill: #1877c2; --accent-fill-hover: #2083cf; --accent-text: #6cb8f0; --on-accent: #ffffff;
-  --accent-soft: rgba(59, 155, 230, .16); --accent-line: rgba(59, 155, 230, .5);
-  --good: #3cc9a8; --good-bg: rgba(12, 123, 108, .24); --good-line: rgba(60, 201, 168, .42); --good-mark: #2db394;
-  --warn: #f5a060; --warn-bg: rgba(237, 125, 49, .18); --warn-line: rgba(245, 160, 96, .44); --warn-mark: #ed7d31;
-  --bad: #ff6b70; --bad-bg: rgba(237, 28, 36, .16); --bad-line: rgba(255, 107, 112, .44); --bad-mark: #ed1c24;
-  --info: #6cb8f0; --info-bg: rgba(13, 118, 189, .2); --info-line: rgba(108, 184, 240, .44); --info-mark: #3b9be6;
-  --badge: #ed1c24; --focus: #6cb8f0; --field-focus: #3b9be6;
-  --toast-bg: #f4f4f5; --toast-ink: #0c0c0e; --toast-line: rgba(0, 0, 0, .1); --toast-act: #0b65a3;
-  --at: rgba(12, 123, 108, .26); --at-ink: #7fdcc5; --off: #1e1e22; --off-ink: #a1a1aa; --al: #0f2e28; --al-ink: #8ed9c6; --sl: #33270f; --sl-ink: #f1cc85;
-  --abs: #3a1416; --abs-ink: #ff9ea2; --tardy: #f5a060; --ot: #24213a; --ot-ink: #cbc6f2;
-  --c1: #3b9be6; --c2: #2db394; --c3: #a6a2e0; --c4: #f17fa9; --c5: #f0975a; --c6: #39b4d6; --heat: #3b9be6; --bar: #3b9be6;
+  --line: rgba(255, 255, 255, .09); --line-2: rgba(255, 255, 255, .15); --line-3: rgba(255, 255, 255, .32); --ctl-line: rgba(255, 255, 255, .42);
+  --ink: #f3f5fa; --ink-2: #dce1ec; --muted: #b3bbcb; --faint: #9ba5b9; --disabled: #56607a; --inverse: #05070d;
+  --nav: rgba(13, 18, 29, .62); --nav-2: #0c111b; --nav-ink: #f3f5fa; --nav-muted: #dce1ec; --nav-faint: #9ba5b9; --nav-line: rgba(255, 255, 255, .09);
+  --nav-hover: rgba(255, 255, 255, .07); --nav-current: #1a73d6;
+  --accent: #4aa3ff; --accent-hover: #6cb6ff; --accent-fill: #1a73d6; --accent-fill-hover: #2382e8; --accent-text: #7cc0ff; --on-accent: #ffffff;
+  --accent-soft: rgba(74, 163, 255, .16); --accent-line: rgba(74, 163, 255, .5); --accent-glow: 0 10px 28px -10px rgba(35, 132, 232, .9);
+  --orb1-a: #ffb877; --orb1-b: #d9741f; --orb1-c: #5e2405; --orb1-g: rgba(237, 125, 49, .3);
+  --orb2-a: #86c8ff; --orb2-b: #1873c9; --orb2-c: #05264a; --orb2-g: rgba(13, 118, 189, .42);
+  --orb3-a: #7fe6cb; --orb3-b: #0f8372; --orb3-c: #032c26; --orb3-g: rgba(12, 123, 108, .4);
+  --orb4-a: #96e2f7; --orb4-b: #108cad; --orb4-c: #03364a; --orb4-g: rgba(0, 127, 162, .4);
+  --orb5-a: #f7f9fc; --orb5-b: #9ca5b4; --orb5-c: #2f343d; --orb5-g: rgba(190, 200, 220, .16);
+  --orb6-a: #ffd6e8; --orb6-b: #d9739f; --orb6-c: #521c38; --orb6-g: rgba(246, 173, 204, .28);
+  --orb-shade: rgba(0, 0, 0, .42); --orb-shine: rgba(255, 255, 255, .62); --grain: .07;
+  --glass-blur: blur(28px) saturate(1.5); --glass-blur-sm: blur(14px) saturate(1.4);
+  --glass-sheen: linear-gradient(155deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .015) 42%);
+  --rim-a: rgba(255, 255, 255, .28); --rim-b: rgba(255, 255, 255, .07); --rim-c: rgba(255, 255, 255, .15); --glass-light: rgba(255, 255, 255, .075);
+  --good: #6fe0b4; --good-bg: rgba(111, 224, 180, .14); --good-line: rgba(111, 224, 180, .4); --good-mark: #2db394;
+  --warn: #ffbb6b; --warn-bg: rgba(255, 187, 107, .15); --warn-line: rgba(255, 187, 107, .42); --warn-mark: #ed7d31;
+  --bad: #ff8f86; --bad-bg: rgba(255, 143, 134, .15); --bad-line: rgba(255, 143, 134, .42); --bad-mark: #ed1c24;
+  --info: #7cc0ff; --info-bg: rgba(74, 163, 255, .16); --info-line: rgba(124, 192, 255, .42); --info-mark: #4aa3ff;
+  --badge: #ed1c24; --focus: #8cc4ff; --field-focus: #4aa3ff;
+  --toast-bg: rgba(240, 243, 250, .92); --toast-ink: #0a1222; --toast-line: rgba(0, 0, 0, .08); --toast-act: #0b5cae;
+  --at: rgba(12, 123, 108, .28); --at-ink: #7fdcc5; --off: rgba(255, 255, 255, .07); --off-ink: #a5aec0; --al: rgba(15, 80, 66, .5); --al-ink: #8ed9c6; --sl: rgba(120, 86, 20, .42); --sl-ink: #f1cc85;
+  --abs: rgba(150, 30, 36, .42); --abs-ink: #ff9ea2; --tardy: #ffbb6b; --ot: rgba(90, 84, 160, .4); --ot-ink: #cbc6f2;
+  --c1: #4aa3ff; --c2: #2fd0ad; --c3: #a6a2e0; --c4: #f58bb6; --c5: #f5a060; --c6: #3fc3e6; --heat: #4aa3ff; --bar: #4aa3ff;
   --brand-virgin: #ff5a5f; --brand-friendi: #48c2c9; --brand-fpay: #3fb2bd; --brand-postpaid: #8aa6d6;
-  --card-line: #27272c;
-  --shadow-card: none;
-  --shadow-raise: 0 0 0 1px rgba(255, 255, 255, .06), 0 16px 40px rgba(0, 0, 0, .55);
-  --shadow-hover: 0 0 0 1px rgba(255, 255, 255, .07), 0 8px 24px rgba(0, 0, 0, .45); --card-line-hover: #3d3d45;
-  --shadow-pop: 0 0 0 1px rgba(255, 255, 255, .08), 0 16px 40px rgba(0, 0, 0, .6);
-  --shadow-modal: 0 0 0 1px rgba(255, 255, 255, .08), 0 32px 80px rgba(0, 0, 0, .7);
-  --shadow-sheet: 0 0 0 1px rgba(255, 255, 255, .08), 0 22px 60px rgba(0, 0, 0, .6);
-  --scrim: rgba(0, 0, 0, .6);
-  --mat-bar: #0f0f12; --mat-side: #000000; --mat-menu: #1c1c20;
-  --btn-fill: rgba(255, 255, 255, .06); --btn-fill-hover: rgba(255, 255, 255, .1); --zebra: rgba(255, 255, 255, .025);
-  --seg-thumb: #2a2a30;
-  --tt-bg: #f4f4f5; --tt-ink: #0c0c0e; --tt-line: rgba(0, 0, 0, .1);
-  --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%23a1a1aa' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  --cta: #ffffff; --cta-ink: #0c0c0e; --cta-hover: #e4e4e7;
+  --card-line: rgba(255, 255, 255, .1);
+  --shadow-card: 0 34px 70px -30px rgba(0, 0, 0, .75);
+  --shadow-raise: 0 34px 70px -30px rgba(0, 0, 0, .8), 0 0 0 1px rgba(255, 255, 255, .04);
+  --shadow-hover: 0 44px 80px -30px rgba(0, 0, 0, .88), 0 0 0 1px rgba(255, 255, 255, .06); --card-line-hover: rgba(255, 255, 255, .2);
+  --shadow-pop: 0 0 0 1px rgba(255, 255, 255, .08), 0 26px 60px -16px rgba(0, 0, 0, .75);
+  --shadow-modal: 0 0 0 1px rgba(255, 255, 255, .08), 0 44px 110px -24px rgba(0, 0, 0, .85);
+  --shadow-sheet: 0 0 0 1px rgba(255, 255, 255, .08), 0 30px 80px -20px rgba(0, 0, 0, .8);
+  --scrim: rgba(2, 4, 10, .6);
+  --btn-fill: rgba(255, 255, 255, .07); --btn-fill-hover: rgba(255, 255, 255, .13); --zebra: rgba(255, 255, 255, .025);
+  --seg-thumb: rgba(255, 255, 255, .16);
+  --tt-bg: rgba(240, 243, 250, .96); --tt-ink: #0a1222; --tt-line: rgba(0, 0, 0, .1);
+  --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%23a5aec0' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cta: #1a73d6; --cta-ink: #ffffff; --cta-hover: #2382e8; --hero-cta: #ffffff; --hero-cta-ink: #0a1222;
   --bl-light: none; --bl-dark: block;
+}
+/* less transparency (the account menu, or the computer's own setting): every panel solid, no blur behind it */
+:root[data-glass="solid"] {
+  --surface: #ffffff; --raised: #ffffff; --overlay: #ffffff; --sunk: #f3f7fd; --nav: #ffffff;
+  --glass-blur: none; --glass-blur-sm: none; --glass-sheen: none; --btn-fill: #f3f7fd; --btn-fill-hover: #e8eff9; --card-line: rgba(16, 38, 78, .12);
+}
+:root[data-glass="solid"][data-theme="dark"] {
+  --surface: #0f1522; --raised: #172032; --overlay: #121a2a; --sunk: #0b101a; --nav: #0f1522;
+  --btn-fill: #172032; --btn-fill-hover: #1f2a40; --card-line: rgba(255, 255, 255, .12);
 }
 /* increased contrast: darker hairlines and secondary text, visible panel edges */
 @media (prefers-contrast: more) {
-  :root { --line: #a1a1aa; --line-2: #8b8b94; --card-line: #8b8b94; --card-line-hover: #52525b; --muted: #27272a; --faint: #3f3f46; --nav-line: rgba(255, 255, 255, .4); }
+  :root { --line: rgba(16, 38, 78, .4); --line-2: rgba(16, 38, 78, .5); --card-line: rgba(16, 38, 78, .5); --card-line-hover: #44526a; --muted: #1b2840; --faint: #2c3a52; --nav-line: rgba(16, 38, 78, .4);
+    --surface: rgba(255, 255, 255, .86); --nav: rgba(255, 255, 255, .9); }
 }
 @media (prefers-contrast: more) {
-  :root[data-theme="dark"] { --line: #71717a; --line-2: #8b8b94; --card-line: #8b8b94; --card-line-hover: #d4d4d8; --muted: #d4d4d8; --faint: #c4c4cc; --nav-line: rgba(255, 255, 255, .4); }
+  :root[data-theme="dark"] { --line: rgba(255, 255, 255, .4); --line-2: rgba(255, 255, 255, .5); --card-line: rgba(255, 255, 255, .5); --card-line-hover: #d6dbe7; --muted: #d6dbe7; --faint: #c2c9d8; --nav-line: rgba(255, 255, 255, .4);
+    --surface: rgba(9, 13, 21, .86); --nav: rgba(9, 13, 21, .9); }
 }
 /* series colours by name (lines, legends): a team keeps its colour when a filter hides another; the brands keep their own */
 .s1 { --sc: var(--c1); } .s2 { --sc: var(--c2); } .s3 { --sc: var(--c3); } .s4 { --sc: var(--c4); } .s5 { --sc: var(--c5); } .s6 { --sc: var(--c6); }

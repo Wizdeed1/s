@@ -1,7 +1,7 @@
-"""Brand assets, built into the page from assets/brand (pictures) and vendor/fonts/poppins-*.woff2 (run when one of them changes;
+"""Brand assets, built into the page from assets/brand (pictures) and vendor/fonts/*.woff2 (run when one of them changes;
 js/make_logo_frames.py first when the moving logos change):
   ui6/05_brand.css  the logos the interface shows (CSS custom properties: the moving mosaic's frames and the still words, the
-                    still logo and mark) and the Poppins typeface (the Beyond One template's)
+                    still logo and mark), the Poppins typeface (the Beyond One template's) and the wide Archivo headline face
   bologos.js        the logos the decks use (PNG bytes, and GIF for the moving stacked logos), as BoLogos
 No web address anywhere: every picture and the typeface are data in the page."""
 import base64, os, struct
@@ -17,8 +17,12 @@ faces = ''.join(
     '@font-face { font-family: "Poppins"; font-style: normal; font-weight: %d; font-display: swap; unicode-range: %s; src: url(data:font/woff2;base64,%s) format("woff2"); }\n'
     % (w, UNI, base64.b64encode(open(os.path.join(root, 'vendor', 'fonts', 'poppins-latin-%d-normal.woff2' % w), 'rb').read()).decode())
     for w in (300, 500, 600, 700))
+# the wide headline face of the glass look: Archivo at width 125 %, weight 800 (one static cut made from the variable font, see vendor/README.md)
+faces += ('@font-face { font-family: "Archivo Expanded"; font-style: normal; font-weight: 800; font-display: swap; unicode-range: %s; src: url(data:font/woff2;base64,%s) format("woff2"); }\n'
+          % (UNI, base64.b64encode(open(os.path.join(root, 'vendor', 'fonts', 'archivo-expanded-latin-800-normal.woff2'), 'rb').read()).decode()))
 css = ('/* Beyond One: the logos the interface shows and the template\'s typeface. Made by js/make_brand.py from assets/brand and vendor/fonts.\n'
-       '   Typeface: Poppins (Indian Type Foundry), SIL Open Font License 1.1 (vendor/fonts/Poppins-OFL.txt), latin subset, 300 500 600 700. */\n'
+       '   Typeface: Poppins (Indian Type Foundry), SIL Open Font License 1.1 (vendor/fonts/Poppins-OFL.txt), latin subset, 300 500 600 700.\n'
+       '   Headlines: Archivo (Omnibus-Type), SIL Open Font License 1.1 (vendor/fonts/Archivo-OFL.txt), latin subset, width 125 %%, weight 800. */\n'
        + faces +
        ':root { --bo-logo-white: url(%s); --bo-mark: url(%s);\n'
        '  /* the moving logo: the mosaic\'s eleven frames one under the other (stepped every 400 ms), and the words beside it */\n'

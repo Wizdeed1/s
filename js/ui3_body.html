@@ -42,6 +42,9 @@
   <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></symbol>
 </svg>
 
+<!-- the ground: slow glossy spheres in the brand's colours, fixed behind every page (ui6/98_glass.css gives each page its own places) -->
+<div class="orbs" id="orbs" aria-hidden="true"><b class="ob" style="--d:.6"><i class="orb o1"></i></b><b class="ob" style="--d:1"><i class="orb o2"></i></b><b class="ob" style="--d:1.6"><i class="orb o3"></i></b><b class="ob" style="--d:.8"><i class="orb o4"></i></b><b class="ob" style="--d:2.2"><i class="orb o5"></i></b><b class="ob" style="--d:2.6"><i class="orb o6"></i></b></div>
+
 <div class="lock" id="lock" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
   <span class="lockbrand bologo on-dark" aria-hidden="true"></span>
   <form class="lockcard" id="lockForm" novalidate>
@@ -75,7 +78,7 @@
 <a class="skip" href="#main" id="skipLink">Skip to content</a>
 <nav class="sidebar" id="sidebar" aria-label="Workspaces">
   <div class="sbtop">
-    <div class="brand"><img class="bl on-dark" id="blDark" alt="Beyond One" height="28"><img class="bl on-light" id="blLight" alt="Beyond One" height="28"><span class="mark" aria-hidden="true">WF</span><b>Cadence<br>Member Care</b></div>
+    <div class="brand"><img class="bl on-dark" id="blDark" alt="Beyond One" height="28"><img class="bl on-light" id="blLight" alt="Beyond One" height="28"><span class="mark" aria-hidden="true">WF</span><b>Cadence<i>Member Care</i></b></div>
   </div>
   <div class="sbsearch">
     <button class="sbitem" data-sb="find" data-tip="Search (Ctrl K)"><svg aria-hidden="true"><use href="#i-search"/></svg><span>Search</span><kbd class="kbd">Ctrl K</kbd></button>
@@ -116,6 +119,7 @@
         <div class="acctmenu menu" id="acctMenu" role="menu" hidden>
           <div class="who"><b id="acctName" dir="auto"></b><span id="acctEmail"></span><span><span class="pill" id="acctRole">User</span></span></div>
           <div class="appear" role="group" aria-labelledby="l-appear"><span id="l-appear">Appearance</span><div class="seg appearseg"><button role="menuitemradio" aria-checked="true" data-theme-set="system"><svg aria-hidden="true"><use href="#i-monitor"/></svg>System</button><button role="menuitemradio" aria-checked="false" data-theme-set="light"><svg aria-hidden="true"><use href="#i-sun"/></svg>Light</button><button role="menuitemradio" aria-checked="false" data-theme-set="dark"><svg aria-hidden="true"><use href="#i-moon"/></svg>Dark</button></div></div>
+          <button role="menuitemcheckbox" aria-checked="false" data-glassless title="Solid panels and still spheres: easier on an older computer"><svg aria-hidden="true"><use href="#i-eyeoff"/></svg><span>Less transparency</span></button>
           <button role="menuitemcheckbox" aria-checked="false" data-uxguide><svg aria-hidden="true"><use href="#i-info"/></svg><span>Show guidance</span></button>
           <button role="menuitem" data-uxkeys><svg aria-hidden="true"><use href="#i-grid"/></svg><span>Keyboard shortcuts</span><kbd aria-hidden="true">?</kbd></button>
           <button role="menuitem" data-acct="accounts" hidden>Manage accounts</button>

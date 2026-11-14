@@ -1,0 +1,321 @@
+/* ==========================================================================================================================
+   Glass: the look of the whole tool (November 2026), the last layer over 98_beyond.css. Same page, same parts, same names
+   (every id, class and data attribute the scripts use is untouched): only how they look and where the navigation sits.
+   - The ground: a sky with slow glossy spheres in Beyond One's colours, fixed behind every page. Each page has its own
+     places for them; they glide there when the page changes (body[data-ws] does it; a tab nudges them, glass.js sets --ti).
+   - One material: frosted glass (the panel's tint, a blur of what is behind it, a rim of light, a soft shadow). Panels float.
+     Nothing sits straight on the sky: a page's header, a step and a loose note each have their own glass.
+   - The navigation: the old sidebar is a floating glass bar across the top (logo, the role's pages with a blue pill on the
+     current one, Search), the toolbar's buttons sit at its right end. On a phone: a glass bar on top, a glass tab bar below.
+   - Light is bright (white glass on a near-white sky, vivid spheres); Dark is a navy night (smoked glass, glowing spheres).
+   - Less transparency (data-glass="solid"): solid panels, still spheres. Reduced motion: nothing drifts or glides.
+   The values are named in 00_tokens.css.
+   ========================================================================================================================== */
+
+/* ---------- the ground: the sky and the spheres ---------- */
+html { background: var(--bg); }
+body { background: transparent; }
+.orbs { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: var(--sky); contain: strict; }
+.orbs::after { content: ""; position: absolute; inset: 0; opacity: var(--grain); mix-blend-mode: overlay;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.ob { position: absolute; inset: 0; transform: translate3d(calc(var(--px, 0) * var(--d, 1) * 26px), calc(var(--py, 0) * var(--d, 1) * 16px), 0); transition: transform 1s var(--ease-out); }
+.orb { position: absolute; left: 0; top: 0; width: var(--s); height: var(--s); border-radius: 50%; transform: translate3d(var(--x), var(--y), 0); will-change: transform;
+  transition: transform 1.4s var(--ease-out), width 1.4s var(--ease-out), height 1.4s var(--ease-out);
+  background: radial-gradient(circle at 33% 28%, var(--orb-shine), transparent 24%), radial-gradient(circle at 42% 40%, var(--a), var(--b) 56%, var(--c) 100%);
+  box-shadow: inset calc(var(--s) * -.08) calc(var(--s) * -.1) calc(var(--s) * .2) var(--orb-shade), 0 0 calc(var(--s) * .3) var(--g);
+  animation: orbIn 1.8s var(--ease-out) both, orbDrift var(--dd, 15s) ease-in-out 1.8s infinite alternate; }
+.o1 { --a: var(--orb1-a); --b: var(--orb1-b); --c: var(--orb1-c); --g: var(--orb1-g); }
+.o2 { --a: var(--orb2-a); --b: var(--orb2-b); --c: var(--orb2-c); --g: var(--orb2-g); --dd: 18s; }
+.o3 { --a: var(--orb3-a); --b: var(--orb3-b); --c: var(--orb3-c); --g: var(--orb3-g); --dd: 13s; }
+.o4 { --a: var(--orb4-a); --b: var(--orb4-b); --c: var(--orb4-c); --g: var(--orb4-g); --dd: 20s; }
+.o5 { --a: var(--orb5-a); --b: var(--orb5-b); --c: var(--orb5-c); --g: var(--orb5-g); --dd: 11s; }
+.o6 { --a: var(--orb6-a); --b: var(--orb6-b); --c: var(--orb6-c); --g: var(--orb6-g); --dd: 12s; }
+@keyframes orbIn { from { opacity: 0; scale: .7; } }
+@keyframes orbDrift { to { translate: 0 -2.2vh; } }
+/* where the spheres rest: the sign-in screen, the Dashboard and any page without its own places */
+.o1 { --x: 66vw; --y: -15vh; --s: 36vw; } .o2 { --x: -19vw; --y: 28vh; --s: 42vw; } .o3 { --x: 36vw; --y: 72vh; --s: 15vw; }
+.o4 { --x: 80vw; --y: 50vh; --s: 32vw; } .o5 { --x: 3vw; --y: 82vh; --s: 6vw; } .o6 { --x: 60vw; --y: 88vh; --s: 3.6vw; }
+/* each page's own places (the page carries its name as body[data-ws]); a tab of a page nudges them a little (--ti, set by glass.js) */
+.orb { --tx: calc(var(--ti, 0) * 2.4vw); }
+body[data-ws="wfm"] .o1, body[data-ws="build"] .o1 { --x: calc(72vw - var(--tx)); --y: -22vh; --s: 30vw; }
+body[data-ws="wfm"] .o2, body[data-ws="build"] .o2 { --x: calc(-24vw + var(--tx)); --y: 42vh; --s: 40vw; }
+body[data-ws="wfm"] .o3, body[data-ws="build"] .o3 { --x: calc(30vw + var(--tx) * 2); --y: 56vh; --s: 12vw; }
+body[data-ws="wfm"] .o4, body[data-ws="build"] .o4 { --x: calc(74vw - var(--tx)); --y: 60vh; --s: 38vw; }
+body[data-ws="wfm"] .o5, body[data-ws="build"] .o5 { --x: calc(46vw - var(--tx) * 3); --y: 26vh; --s: 7vw; }
+body[data-ws="wfm"] .o6, body[data-ws="build"] .o6 { --x: calc(62vw + var(--tx)); --y: 84vh; --s: 4vw; }
+body[data-ws="team"] .o1 { --x: 79vw; --y: -8vh; --s: 26vw; } body[data-ws="team"] .o2 { --x: -12vw; --y: 58vh; --s: 32vw; } body[data-ws="team"] .o3 { --x: calc(58vw - var(--tx) * 2); --y: 24vh; --s: 11vw; }
+body[data-ws="team"] .o4 { --x: 64vw; --y: 70vh; --s: 42vw; } body[data-ws="team"] .o5 { --x: calc(27vw + var(--tx) * 2); --y: 64vh; --s: 8vw; } body[data-ws="team"] .o6 { --x: 44vw; --y: 92vh; --s: 5vw; }
+body[data-ws="results"] .o1 { --x: -10vw; --y: -18vh; --s: 30vw; } body[data-ws="results"] .o2 { --x: 70vw; --y: 34vh; --s: 44vw; } body[data-ws="results"] .o3 { --x: 12vw; --y: 66vh; --s: 14vw; }
+body[data-ws="results"] .o4 { --x: 38vw; --y: -24vh; --s: 24vw; } body[data-ws="results"] .o5 { --x: 60vw; --y: 16vh; --s: 6vw; } body[data-ws="results"] .o6 { --x: 30vw; --y: 86vh; --s: 5vw; }
+body[data-ws="cycle"] .o1 { --x: 58vw; --y: 60vh; --s: 34vw; } body[data-ws="cycle"] .o2 { --x: 76vw; --y: -20vh; --s: 30vw; } body[data-ws="cycle"] .o3 { --x: -6vw; --y: 8vh; --s: 16vw; }
+body[data-ws="cycle"] .o4 { --x: -18vw; --y: 52vh; --s: 36vw; } body[data-ws="cycle"] .o5 { --x: 40vw; --y: 30vh; --s: 7vw; } body[data-ws="cycle"] .o6 { --x: 22vw; --y: 78vh; --s: 4.4vw; }
+body[data-ws="quality"] .o1 { --x: 18vw; --y: -26vh; --s: 28vw; } body[data-ws="quality"] .o2 { --x: 72vw; --y: 54vh; --s: 36vw; } body[data-ws="quality"] .o3 { --x: 78vw; --y: -6vh; --s: 14vw; }
+body[data-ws="quality"] .o4 { --x: -22vw; --y: 46vh; --s: 40vw; } body[data-ws="quality"] .o5 { --x: 52vw; --y: 70vh; --s: 8vw; } body[data-ws="quality"] .o6 { --x: 8vw; --y: 20vh; --s: 5vw; }
+body[data-ws="me"] .o1 { --x: 70vw; --y: 48vh; --s: 30vw; } body[data-ws="me"] .o2 { --x: -16vw; --y: -18vh; --s: 36vw; } body[data-ws="me"] .o3 { --x: 44vw; --y: 78vh; --s: 13vw; }
+body[data-ws="me"] .o4 { --x: 62vw; --y: -22vh; --s: 28vw; } body[data-ws="me"] .o5 { --x: 20vw; --y: 58vh; --s: 7vw; } body[data-ws="me"] .o6 { --x: 86vw; --y: 22vh; --s: 5vw; }
+body[data-ws="show"] .o1 { --x: 40vw; --y: -30vh; --s: 34vw; } body[data-ws="show"] .o2 { --x: -20vw; --y: 20vh; --s: 38vw; } body[data-ws="show"] .o3 { --x: 70vw; --y: 66vh; --s: 16vw; }
+body[data-ws="show"] .o4 { --x: 78vw; --y: 8vh; --s: 30vw; } body[data-ws="show"] .o5 { --x: 30vw; --y: 74vh; --s: 8vw; } body[data-ws="show"] .o6 { --x: 52vw; --y: 40vh; --s: 4vw; }
+@media (max-width: 767.98px) {   /* a phone: fewer in view, and out of the top's way */
+  .orb.o1, body[data-ws] .orb.o1 { --x: 52vw; --y: -14vh; --s: 78vw; } .orb.o2, body[data-ws] .orb.o2 { --x: -46vw; --y: 34vh; --s: 96vw; } .orb.o3, body[data-ws] .orb.o3 { --x: 58vw; --y: 62vh; --s: 44vw; }
+  .orb.o4, body[data-ws] .orb.o4 { --x: 40vw; --y: 78vh; --s: 90vw; } .orb.o5, body[data-ws] .orb.o5 { --x: 80vw; --y: 40vh; --s: 14vw; } .orb.o6, body[data-ws] .orb.o6 { --x: 4vw; --y: 90vh; --s: 9vw; }
+}
+/* still, and plainer, with less transparency; still with reduced motion */
+:root[data-glass="solid"] .orb { animation: none; transition: none; opacity: .5; }
+:root[data-glass="solid"] .ob { transform: none; transition: none; }
+@media (prefers-reduced-motion: reduce) { .orb { animation: none; transition: none; } .ob { transform: none; transition: none; } }
+@media print { .orbs { display: none; } html { background: #fff; } }
+
+/* ---------- the material: one glass for every panel ---------- */
+/* a panel on the sky: its tint, the blur of what is behind it, a rim of light, a soft shadow, a light that follows the pointer
+   (--mx, --my: where the pointer is on the panel; glass.js sets them, and takes them away when it leaves) */
+.card, .kpi, .qa, .tile, .buildbar, .fbar, .board, .todaymini, .monthbox, .note, .autonote, .kpicard, .ctile, .chks, .atile, .slot, .csatbox, .rcard, .rgroup, .flowbar, .bulkbar,
+.kpistrip .kpi, .shsec, .lockcard, .tablewrap, .wsstatus, .rb .editor, .secnav, .viewbar, .dropallbox, .mlist, .tk, .varow {
+  background: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), var(--glass-light), transparent 46%), var(--glass-sheen), var(--surface);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border-color: var(--card-line); box-shadow: inset 0 1px 0 var(--rim-a), var(--shadow-card); }
+.card, .kpi, .qa, .tile, .buildbar, .fbar, .board, .monthbox, .kpicard, .ctile, .chks, .atile, .slot, .csatbox, .rcard, .rgroup, .kpistrip .kpi, .shsec, .tablewrap, .rb .editor { border-radius: var(--r-card); }
+/* a panel inside a panel: a tint only (one blur per stack is enough) */
+:is(.card, .tile, .board, .flowstep, .drawer, .dlgbox, .rcard, .rgroup, .shsec) :is(.card, .kpi, .tile, .note, .autonote, .kpicard, .ctile, .chks, .atile, .slot, .csatbox, .rcard, .rgroup, .tablewrap, .monthbox, .fbar, .todaymini, .wsstatus, .mlist, .tk, .dropallbox, .rb .editor) {
+  -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 1px 0 var(--rim-b); background: var(--sunk); }
+.card:hover, .kpi:hover, .tile:hover { border-color: var(--card-line-hover); }
+/* what must hide what scrolls under it: the heads of tables and their fixed columns */
+thead th, .tteam thead th, .ehead, .histgrid td:first-child, .dedtab th:first-child, .dedtab td:first-child, .attgrid th.an,
+#rwrap .ptable th:first-child, #rwrap .ptable td:first-child, #rwrap .ptable th:nth-child(2), #rwrap .ptable td:nth-child(2), #rwrap .ptable th:last-child, #rwrap .ptable td:last-child { background: var(--solid); }
+thead th { border-bottom: 1px solid var(--line); }
+.tablewrap { overflow: clip; }
+.tablewrap table { background: transparent; }
+
+/* ---------- nothing sits straight on the sky: a page's header, a step, a small heading and a loose note each get their glass ---------- */
+.view > .viewhead, .wfmhead, .shtop, .flowstep, .phase {
+  background: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), var(--glass-light), transparent 46%), var(--glass-sheen), var(--surface);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--rim-a), inset 0 0 0 1px var(--rim-b), var(--shadow-card); }
+.view > .viewhead, .wfmhead, .shtop { padding: 20px 24px; border-radius: var(--r-card); }
+.wfmhead > .viewhead { padding: 0; border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+.view > .viewhead:has(h2.vt) { padding: 14px 20px; }
+.flowstep { padding: 14px 18px 14px 14px; border-radius: var(--r-card); }
+.flowstep::before { display: none; }   /* each step floats on its own: no line between them */
+.phase { justify-self: start; margin-top: var(--s2); padding: 9px 16px; border: 0; border-radius: 14px; }
+.fline .fscope, .impgrp, .impmain .next > .hint, .slot.opt, .dwhy {
+  background: var(--surface); -webkit-backdrop-filter: var(--glass-blur-sm); backdrop-filter: var(--glass-blur-sm); box-shadow: inset 0 1px 0 var(--rim-b); }
+.fline .fscope, .impgrp, .impmain .next > .hint, .dwhy { width: fit-content; padding: 5px 12px; border-radius: var(--r-pill); }
+.impgrp { margin-bottom: 2px; }
+
+/* ---------- type: the wide headline for a page's title ---------- */
+.viewhead h1, .lockhead h1 { font: 800 clamp(24px, 2.5vw, 36px)/1.04 var(--display-x); letter-spacing: 0; text-transform: uppercase; }
+.viewhead > div:first-child > p { font-size: 14px; color: var(--muted); }
+.eyebrow::before { border-radius: 2px; }
+
+/* ---------- controls: pills; the main action in the brand blue with its glow ---------- */
+.btn { border-radius: var(--r-pill); }
+.btn:not(.ghost):not(.primary):not(.danger):not(.linkbtn) { background: var(--btn-fill); border: 1px solid var(--line-2); -webkit-backdrop-filter: var(--glass-blur-sm); backdrop-filter: var(--glass-blur-sm); }
+.btn:not(.ghost):not(.primary):not(.danger):not(.linkbtn):hover:not(:disabled) { background: var(--btn-fill-hover); border-color: var(--line-3); }
+.btn.primary { background: var(--cta); border-color: transparent; color: var(--cta-ink); box-shadow: var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, .28); }
+.btn.primary:hover:not(:disabled) { background: var(--cta-hover); border-color: transparent; }
+:root[data-theme="dark"] .btn.primary { box-shadow: var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.btn.icon { border-radius: 50%; }
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), select, textarea { border-radius: var(--r-ctl); }
+.seg { border-radius: var(--r-pill); padding: 3px; }
+.seg button, .seg.thumbed > .sthumb { border-radius: var(--r-pill); }
+.pill, .badge, .chip { border-radius: var(--r-pill); }
+.stepn { border-radius: 50%; }
+.avatar { border-radius: 50%; background: linear-gradient(135deg, #ffd9b8, #f6adcc); color: #1b1220; }
+.bell .bn, .badge.n, .wsdot { border-radius: 6px; }
+.rip { position: relative; overflow: hidden; }
+.ripple { position: absolute; z-index: 0; border-radius: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; background: currentColor; opacity: .28; pointer-events: none; animation: ripple .65s var(--ease-out) forwards; }
+@keyframes ripple { to { transform: scale(18); opacity: 0; } }
+
+/* ---------- what floats: menus, drawers, dialogs, the message ---------- */
+.menu, .pop, .attpop, .findbox, .drawer, .dlgbox, .sheet-more, .rbpeek { -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
+.menu, .pop, .attpop { background: var(--glass-sheen), var(--overlay); border: 1px solid var(--card-line); border-radius: 18px; box-shadow: var(--shadow-pop); }
+.menu button { border-radius: 10px; }
+.drawer { background: var(--glass-sheen), var(--overlay); border: 1px solid var(--card-line); }
+.dlgbox, .findbox, .sheet-more { background: var(--glass-sheen), var(--overlay); border: 1px solid var(--card-line); }
+.toast { border-radius: var(--r-pill); padding-inline: 18px 8px; -webkit-backdrop-filter: var(--glass-blur-sm); backdrop-filter: var(--glass-blur-sm); box-shadow: 0 18px 40px -12px rgba(0, 0, 0, .45); }
+.toast button { border-radius: var(--r-pill); }
+.tt, .railtip { border-radius: 10px; }
+.scrim { -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+:root[data-glass="solid"] .scrim { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ---------- the navigation on a computer: one floating glass bar ---------- */
+@media (min-width: 768px) {
+  :root, html.rail { --side-cur: 0px; }
+  .sidebar { inset: var(--bar-top) 14px auto 14px; width: auto; height: var(--bar-height); z-index: var(--z-side); flex-direction: row; align-items: center; gap: 14px;
+    padding: 0 calc(var(--tools-w, 380px) + 22px) 0 18px; border: 0; border-radius: 20px; overflow: visible; color: var(--nav-ink);
+    background: var(--glass-sheen), var(--nav); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: inset 0 1px 0 var(--rim-a), inset 0 0 0 1px var(--rim-b), var(--shadow-card); transition: none; }
+  html.rail .sidebar { padding-inline: 18px calc(var(--tools-w, 380px) + 22px); }
+  .sbtop { height: auto; min-height: 0; padding: 0; flex: none; }
+  .brand, html.rail .brand { display: flex; align-items: center; justify-items: start; justify-content: flex-start; gap: 11px; width: auto; }
+  .brand::before, html.rail .brand::before { --h: 30px; width: var(--h); height: var(--h); background: var(--bo-mark-frames) 0 0 / var(--h) calc(var(--h) * 11) no-repeat; animation-name: boMark; }
+  .brand b, html.rail .brand b { display: grid; gap: 4px; font: 800 15px/1 var(--display-x); letter-spacing: .08em; text-transform: uppercase; color: var(--nav-ink); white-space: nowrap; }
+  .brand b i { font: 600 8.5px/1 var(--display); font-style: normal; letter-spacing: .2em; color: var(--nav-faint); }
+  .brand.has-logo .bl { height: 30px; }
+  /* the role's pages: links in a row, a blue pill slides to the current one */
+  .sbnav { order: 2; flex: 1 1 auto; min-width: 0; position: relative; display: flex; justify-content: center; gap: 2px; padding: 0; overflow-x: auto; scrollbar-width: none; }
+  .sbnav::-webkit-scrollbar { display: none; }
+  .sbnav::before { content: none; }
+  .sbnav button, html.rail .sbnav button { z-index: 1; flex: none; height: 40px; padding: 0 16px; gap: 8px; justify-content: center; border-radius: var(--r-pill); color: var(--nav-muted); font: 500 13.5px/1 var(--text); box-shadow: none;
+    transition: color .3s ease, background-color var(--t-hover) ease; }
+  .sbnav button > span:not(.wsdot), html.rail .sbnav button > span:not(.wsdot) { display: inline; }
+  .sbnav button svg { display: none; width: 18px; height: 18px; color: currentColor; }
+  .sbnav button:hover { background: var(--nav-hover); color: var(--nav-ink); }
+  .sbnav button[aria-current="page"], .sbnav button[aria-current="page"]:hover { background: transparent; color: #fff; font-weight: 500; box-shadow: none; }
+  .sbnav button[aria-current="page"] svg { color: currentColor; }
+  html:not(.navjs) .sbnav button[aria-current="page"] { background: var(--nav-current); }
+  .sbnav button:focus-visible, .sbitem:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .navind { position: absolute; z-index: 0; top: 0; left: 0; height: 40px; width: 0; border-radius: var(--r-pill); background: var(--nav-current); box-shadow: var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, .28); pointer-events: none;
+    transition: transform .55s var(--ease-out), width .55s var(--ease-out); }
+  .navind.still { transition: none; }
+  .wsdot, html.rail .wsdot { position: static; margin: 0 -4px 0 2px; min-width: 18px; height: 18px; font-size: 10.5px; line-height: 18px; padding: 0 5px; }
+  /* more pages than fit: Search shrinks to its icon first (tight); then icons, and the name of the page you are on (compact) */
+  .sidebar.tight .sbnav button { padding: 0 13px; }
+  .sidebar.compact .sbnav { justify-content: flex-start; }
+  .sidebar.compact .sbnav button { padding: 0 12px; }
+  .sidebar.compact .sbnav button svg { display: block; }
+  .sidebar.compact .sbnav button:not([aria-current="page"]) > span:not(.wsdot) { display: none; }
+  /* Search: a field at the end of the links; How to use, Settings and the account sit in the toolbar's buttons beside it */
+  .sbsearch { order: 3; flex: none; padding: 0; }
+  .sbsearch .sbitem, html.rail .sbsearch .sbitem { width: 200px; height: 42px; gap: 10px; padding: 0 8px 0 16px; justify-content: flex-start; border-radius: var(--r-pill); background: var(--btn-fill); border: 0; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); font-size: 13px; }
+  .sbsearch .sbitem:hover { background: var(--btn-fill-hover); color: var(--ink); }
+  .sbsearch .sbitem svg { width: 17px; height: 17px; color: currentColor; }
+  .sbsearch .sbitem > span, html.rail .sbsearch .sbitem > span { display: inline; }
+  .sbsearch .sbitem .kbd, html.rail .sbsearch .sbitem .kbd { display: inline-block; margin-inline-start: auto; background: transparent; border: 1px solid var(--line); border-radius: 7px; padding: 2px 7px; color: var(--faint); font: 500 11px/1.2 var(--text); }
+  .sidebar.tight .sbsearch .sbitem, .sidebar.compact .sbsearch .sbitem { width: 42px; padding: 0; justify-content: center; }
+  .sidebar.tight .sbsearch .sbitem > span, .sidebar.tight .sbsearch .sbitem .kbd, .sidebar.compact .sbsearch .sbitem > span, .sidebar.compact .sbsearch .sbitem .kbd { display: none; }
+  .sbsec, .sbfoot { display: none; }
+  .railtip { left: 0; transform: translate(-50%, 0); }   /* under an icon of the compact bar (shell.js places it) */
+  /* the toolbar: no bar of its own any more, its buttons at the right end of the glass bar */
+  .appbar { position: fixed; inset: var(--bar-top) 14px auto auto; height: var(--bar-height); margin: 0; padding: 0; border: 0; z-index: var(--z-bar); transition: none; }
+  .appbar::before { content: none; }
+  .appbar .in { height: 100%; max-width: none; margin: 0; padding: 0 11px 0 0; gap: 8px; }
+  .ptitle { display: none; }
+  .appbar .tools { gap: 8px; }
+  .appbar .btn.icon, .appbar .acctbtn { width: 42px; height: 42px; border-radius: 50%; }
+  .appbar .btn.icon { background: var(--btn-fill); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-2); }
+  .appbar .btn.icon:hover { background: var(--btn-fill-hover); color: var(--ink); }
+  .appbar .acctbtn { background: none; box-shadow: none; }
+  .avatar { width: 42px; height: 42px; font: 600 13px/1 var(--display); }
+  .periodbtn { height: 42px; padding: 0 14px; border: 0 !important; border-radius: var(--r-pill); background: var(--btn-fill) !important; box-shadow: inset 0 0 0 1px var(--line); }
+  .periodbtn:hover { background: var(--btn-fill-hover) !important; }
+  .acct { margin-inline-start: 0; }
+  .menu { top: calc(100% + 12px); }
+  /* the page: under the bar, the full width */
+  main { margin-inline-start: 0; padding-top: calc(var(--head-h) + 10px); }
+  .sitefoot { margin-inline-start: 0; }
+  .toast, .busy { left: 50%; }
+  .busy { top: calc(var(--head-h) + 8px); }
+}
+
+/* ---------- the navigation on a phone: a glass bar on top, a glass tab bar at the bottom ---------- */
+@media (max-width: 767.98px) {
+  :root { --head-h: 72px; --tab-h: 74px; }
+  .appbar { position: fixed; inset: 8px 8px auto 8px; margin: 0; border: 0; border-radius: 18px; padding-top: 0; }
+  .appbar::before { border: 0; border-radius: inherit; background: var(--glass-sheen), var(--nav); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--rim-a), inset 0 0 0 1px var(--rim-b), var(--shadow-card); }
+  .appbar .in { height: 56px; padding: 0 8px 0 16px; }
+  body:not(.scrolled) .ptitle, .ptitle { opacity: 1; transform: none; pointer-events: auto; }
+  .ptitle::before { content: ""; flex: none; width: 28px; height: 28px; background: var(--bo-mark-frames) 0 0 / 28px 308px no-repeat; animation: boMark 4.4s steps(11, jump-none) infinite; }
+  .ptext { display: none; }
+  main { padding-top: calc(var(--head-h) + 8px); }
+  .tabbar { left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); height: 64px; padding: 6px; border: 0; border-radius: 22px;
+    background: var(--glass-sheen), var(--nav); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--rim-a), inset 0 0 0 1px var(--rim-b), var(--shadow-raise); }
+  .tabbar button { border-radius: 16px; color: var(--nav-faint); min-height: 0; height: 52px; transition: background-color .3s ease, color .3s ease; }
+  .tabbar button[aria-current="page"] { background: var(--nav-current); color: #fff; box-shadow: var(--accent-glow); }
+  .menu { border-radius: 24px 24px 0 0; }
+}
+
+/* ---------- sign-in: the card floats on the sky ---------- */
+.lock { background: transparent; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; align-content: center; justify-items: center; gap: 26px; padding: 24px 16px; }
+.lock::before, .lock::after { content: none; }
+.lock .lockbrand { --h: 46px; display: block; grid-column: 1; grid-row: auto; place-self: center; --bo-words: var(--bo-words-black); }
+:root[data-theme="dark"] .lock .lockbrand { --bo-words: var(--bo-words-white); }
+.lock .lockcard { grid-column: 1; grid-row: auto; margin: 0; border-radius: var(--r-dlg); }
+#lockForm .lockin, #lockForm .pwfield input { background: var(--sunk); border-radius: var(--r-ctl); }
+@media (max-height: 640px) { .lock .lockbrand { display: none; } }
+
+/* ---------- the dashboard's headline panel ----------
+   Where the month stands, in the wide headline; the next step and the way to it; the months as tabs in the top corner (the
+   glass is cut around them: dash.js measures the cut); the team as a wall of tiles; the source that came in last. */
+.dhead::after { content: none; }
+.dhead { gap: var(--s3); }
+.dhwrap { position: relative; }
+.dhero { position: relative; display: block; min-height: clamp(330px, 46vh, 450px); overflow: hidden; border-radius: 20px; --wflag: #ff3b3b;
+  background: radial-gradient(520px circle at var(--mx, -999px) var(--my, -999px), var(--glass-light), transparent 46%), var(--glass-sheen), var(--surface);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--rim-a), inset 0 0 0 1px var(--rim-b), var(--shadow-card); }
+.dhero.cut { box-shadow: none; }   /* the rim follows the cut (the path below) */
+.dhrim { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; display: none; }
+.dhero.cut .dhrim { display: block; }
+.dhrim path { stroke: var(--rim-a); stroke-width: 1.5; opacity: .7; }
+:root[data-theme="dark"] .dhrim path { opacity: 1; stroke: rgba(255, 255, 255, .22); }
+/* the wall: a tile an agent, a colour a team (the largest first), brighter for better adherence, the five lowest in red */
+.dhwall { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.dhtilt { transform: perspective(1800px) rotateY(-16deg); transform-origin: 100% 50%; transform-box: view-box; }
+.dhwall .w1 { fill: var(--c1); } .dhwall .w2 { fill: var(--c2); } .dhwall .w3 { fill: var(--c5); } .dhwall .w4 { fill: var(--c3); } .dhwall .w5 { fill: var(--c4); } .dhwall .w6 { fill: var(--c6); }
+.dhwall .wf { fill: var(--wflag); animation: wallPulse 2.4s ease-in-out infinite; }
+.dhglow { opacity: .5; }
+:root:not([data-theme="dark"]) .dhglow { opacity: .28; }
+@keyframes wallPulse { 50% { opacity: .35; } }
+#dashBody.intro .dhwall g > rect { animation: wallIn .7s var(--ease-out) both; animation-delay: calc(.25s + var(--c) * 30ms); }
+#dashBody.intro .dhwall g > rect.wf { animation: wallIn .7s var(--ease-out) both, wallPulse 2.4s ease-in-out 1.6s infinite; animation-delay: calc(.25s + var(--c) * 30ms), 1.6s; }
+@keyframes wallIn { from { opacity: 0; } }
+.dhshade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, var(--hero-shade) 0%, var(--hero-shade-2) 46%, transparent 66%); }
+:root { --hero-shade: rgba(255, 255, 255, .72); --hero-shade-2: rgba(255, 255, 255, .3); }
+:root[data-theme="dark"] { --hero-shade: rgba(6, 9, 16, .55); --hero-shade-2: rgba(6, 9, 16, .15); }
+.dhcopy { position: relative; z-index: 2; max-width: 48rem; padding: clamp(28px, 5.4vh, 54px) 5% 62px; }
+.dheye { margin: 0 0 16px; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13.5px; color: var(--ink-2); }
+.dheye b { font-weight: 600; }
+.dheye span + span::before { content: "·"; margin-inline-end: 14px; color: var(--faint); }
+.dhh { margin: 0; font: 800 clamp(30px, 4vw, 58px)/1 var(--display-x); letter-spacing: 0; text-transform: uppercase; color: var(--ink); text-wrap: balance; }
+.dhh > span { display: block; }
+:root[data-theme="dark"] .dhh { text-shadow: 0 16px 38px rgba(0, 0, 0, .35); }
+.dhsub { margin: 16px 0 22px; max-width: 34rem; font-size: 14.5px; line-height: 1.55; color: var(--ink-2); text-wrap: pretty; }
+.dhacts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
+.dhcta { all: unset; box-sizing: border-box; position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px 0 20px; border-radius: 12px; cursor: pointer;
+  background: var(--hero-cta); color: var(--hero-cta-ink); font: 500 14px/1 var(--text); transition: transform .25s var(--ease-out), box-shadow .25s var(--ease-out); box-shadow: 0 14px 30px -14px rgba(10, 18, 34, .6); }
+.dhcta svg { width: 16px; height: 16px; }
+.dhcta:hover { transform: translateY(-2px); }
+.dhcta:active { transform: scale(.98); }
+.dhcta:focus-visible, .dhlink:focus-visible, .dhtab:focus-visible, .dhgo:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.dhlink { all: unset; cursor: pointer; font-size: 13.5px; color: var(--ink-2); padding: 4px 0 3px; border-bottom: 1px solid var(--line-3); }
+.dhlink:hover { color: var(--ink); border-color: var(--ink); }
+.dhmicro { position: absolute; z-index: 2; left: 5%; bottom: 22px; margin: 0; max-width: 60%; font: 600 10.5px/1.4 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+/* the source that came in last: a small glass card in the corner */
+.dhimp { position: absolute; z-index: 2; right: 14px; bottom: 14px; max-width: min(420px, 46%); display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 16px;
+  background: var(--raised); -webkit-backdrop-filter: var(--glass-blur-sm); backdrop-filter: var(--glass-blur-sm); box-shadow: inset 0 1px 0 var(--rim-a), inset 0 0 0 1px var(--rim-b), 0 16px 34px -18px rgba(10, 20, 50, .5); }
+.dhthumb { flex: none; width: 58px; height: 46px; display: grid; place-items: center; border-radius: 10px; background: var(--fill-2); color: var(--ink-2); }
+.dhthumb svg { width: 22px; height: 22px; }
+.dhit { display: grid; gap: 1px; min-width: 0; }
+.dhit small { font-size: 10.5px; color: var(--faint); }
+.dhit b { font: 600 12.5px/1.35 var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dhit span { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dhgo { all: unset; box-sizing: border-box; flex: none; cursor: pointer; width: 46px; height: 58px; margin-inline-start: 4px; display: grid; place-items: center; border-radius: 12px; background: var(--hero-cta); color: var(--hero-cta-ink); transition: transform .25s var(--ease-out); }
+.dhgo svg { width: 18px; height: 18px; }
+.dhgo:hover { transform: translateX(2px); }
+/* the months: tabs in the panel's top corner */
+.dhtabs { position: absolute; z-index: 4; top: 0; right: 0; display: flex; gap: 8px; }
+.dhtab { all: unset; box-sizing: border-box; position: relative; overflow: hidden; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: var(--r-pill); font: 500 13px/1 var(--text); color: var(--ink-2);
+  background: var(--glass-sheen), var(--surface); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--rim-a), inset 0 0 0 1px var(--rim-b); transition: background-color .3s ease, color .3s ease; font-variant-numeric: tabular-nums; }
+.dhtab:hover { color: var(--ink); }
+.dhtab[aria-pressed="true"] { background: var(--hero-cta); color: var(--hero-cta-ink); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+.dhdot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.dhdot.fin { background: var(--good-mark); }
+.dhero.empty { min-height: 0; }
+.dhero.empty .dhcopy { padding-bottom: clamp(28px, 5.4vh, 54px); }
+/* the quick actions: a row of glass cards under the panel */
+.qacts { gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); }
+.qa { min-height: 76px; padding: 14px 16px; border-radius: 18px; }
+.qa svg { width: 40px; height: 40px; padding: 10px; border-radius: 12px; }
+@media (max-width: 767.98px) {
+  .dhero { min-height: 0; }
+  .dhcopy { padding: 70px 20px 20px; max-width: none; }
+  .dhh { font-size: clamp(26px, 8.4vw, 34px); }
+  .dhsub { font-size: 13.5px; margin: 12px 0 18px; }
+  .dhshade { background: linear-gradient(180deg, var(--hero-shade) 0%, var(--hero-shade) 60%, var(--hero-shade-2) 100%); }
+  .dhwall { opacity: .55; }
+  .dhmicro { display: none; }
+  .dhimp { position: relative; right: auto; bottom: auto; max-width: none; margin: 0 10px 10px; }
+  .dhit { flex: 1; }
+  .dhtab { height: 38px; padding: 0 13px; font-size: 12px; }
+  .dhtab .dhy { display: none; }
+  .dhtabs { gap: 5px; }
+}
+@media (prefers-reduced-motion: reduce) { .dhwall .wf { animation: none; } #dashBody.intro .dhwall g > rect { animation: none; } }

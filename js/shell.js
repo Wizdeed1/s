@@ -33,9 +33,10 @@ $('sidebar').addEventListener('click', e => {   // Search at the top, How to use
 (() => {
   let tip = null;
   const show = b => {
-    if (!document.documentElement.classList.contains('rail') || mqPhone.matches || !b.dataset.tip) return;
+    const lab = b.querySelector('span:not(.wsdot)');   // the bar's icons carry their names as a tip while the names are hidden (the compact bar)
+    if (mqPhone.matches || !b.dataset.tip || (lab && lab.getClientRects().length)) return;
     tip = tip || Object.assign(document.createElement('div'), { className: 'railtip', role: 'tooltip', id: 'railTip' }); document.body.appendChild(tip);
-    tip.textContent = b.dataset.tip; const r = b.getBoundingClientRect(); tip.style.top = Math.round(r.top + r.height / 2) + 'px'; tip.hidden = false; b.setAttribute('aria-describedby', 'railTip');
+    tip.textContent = b.dataset.tip; const r = b.getBoundingClientRect(); tip.style.top = Math.round(r.bottom + 10) + 'px'; tip.style.left = Math.round(r.left + r.width / 2) + 'px'; tip.hidden = false; b.setAttribute('aria-describedby', 'railTip');
   };
   const hide = () => { if (tip) tip.hidden = true; };
   const side = $('sidebar');

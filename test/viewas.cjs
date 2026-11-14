@@ -166,7 +166,7 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
     const tabs = await wfmTabs(), chips = await chipsNow();
     ok(!/\bdaily\b|\bbuilder\b/.test(tabs) && !/every day/i.test(v.groups) && !v.sub && /^The month's deduction and absences emails/.test(v.lead) && !/Daily|Agents' days/.test(chips) && /Quality EVAL/.test(chips) && !v.badge && !acts.some(a => /Report builder|Daily data|Daily brand/.test(a)),
       `View as ${label}: no Daily or Report builder tab (${tabs}); Emails is the deduction and absences only; Last data without the daily (${chips}); shortcuts: ${acts.map(a => a.split(' ')[0]).join(', ')}`);
-    await p.click('[data-sb="help"]'); await p.waitForSelector('#dHelp:not([hidden]) #deptBody li');
+    await p.click('#helpBtn'); await p.waitForSelector('#dHelp:not([hidden]) #deptBody li');
     const how = await p.evaluate(() => document.getElementById('deptBody').textContent);
     ok(!/Report builder|daily brand emails/i.test(how) && /deduction and absences/i.test(how), `  How to use (${label}): no step about the daily report`);
     await p.keyboard.press('Escape'); await p.waitForTimeout(200);

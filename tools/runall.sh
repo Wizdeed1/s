@@ -4,6 +4,8 @@
 #   page.html  the built page (default out/mc.html; a path from the repository's folder, or a full path)
 #   workDir    where the made-up exports, the screenshots and the logs go (default: a new temporary folder)
 # The exports are made up by test/exports.cjs; nothing here uses real data. Exit code 0 when every suite passes.
+# A suite that ends with "Target page, context or browser has been closed" and no failed check is the browser dying, not the
+# page: some Chromium builds stop (SIGTRAP) when a page that keeps a data folder is opened a second time (datafolder, folder, trust).
 cd "$(dirname "$0")/.." || exit 2
 case "${1:-out/mc.html}" in /*) PAGE="$1" ;; *) PAGE="$(pwd)/${1:-out/mc.html}" ;; esac; [ -f "$PAGE" ] || { echo "no page at $PAGE (npm run build first)"; exit 2; }
 WORK="${2:-$(mktemp -d)}"; EX="$WORK/exports"; OUT="$WORK/shots"; LOG="$WORK/logs"; mkdir -p "$EX" "$OUT" "$LOG"; rm -f "$LOG"/*.log

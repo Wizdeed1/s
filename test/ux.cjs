@@ -194,7 +194,7 @@ const USERS = { admin: { id: 'u0', name: 'Amal R.', username: 'amal.r', role: 'a
   await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(500);
   const notes = () => p.evaluate(() => { const d = document.getElementById('dSettings'), L = [...d.querySelectorAll('.field > small, .cntrow .cntctl > small')].filter(x => !x.classList.contains('keep'));
     return { n: L.length, hid: L.filter(x => getComputedStyle(x).display === 'none').length, tied: L.filter(x => x.id && d.querySelector(`.uxi[aria-describedby~="${x.id}"]`)).length, tips: d.querySelectorAll('.uxi').length }; });
-  await p.click('[data-sb="settings"]'); await p.waitForTimeout(500);
+  await p.click('#setBtn'); await p.waitForTimeout(500);
   const sn = await notes();
   ok(sn.n >= 5 && sn.hid === sn.n && sn.tied === sn.n, `Settings: ${sn.n} field notes, each hidden behind its ⓘ (${sn.tips} ⓘ)`);
   const tipFor = await p.evaluate(() => { const b = document.querySelectorAll('#dSettings .uxi')[1]; return document.getElementById(b.getAttribute('aria-describedby').split(' ')[0]).textContent.trim(); });
@@ -208,7 +208,7 @@ const USERS = { admin: { id: 'u0', name: 'Amal R.', username: 'amal.r', role: 'a
   ok(calm.hid && calm.n < 10, `a note emptied: its ⓘ hides and the page stays still (${calm.n} frames asked for in a second)`);
   await p.keyboard.press('Escape'); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
   await p.keyboard.press('Shift+H'); await p.waitForTimeout(200);
-  await p.click('[data-sb="settings"]'); await p.waitForTimeout(500);
+  await p.click('#setBtn'); await p.waitForTimeout(500);
   const st2 = await notes();
   ok(st2.n === sn.n && st2.hid === 0, 'with Show guidance, the notes are back under their fields');
   await p.keyboard.press('Escape'); await p.waitForTimeout(400); await p.keyboard.press('Shift+H'); await p.waitForTimeout(200);

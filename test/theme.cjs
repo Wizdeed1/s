@@ -20,10 +20,10 @@ let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? 'âœ“ ' : 'âœ
     await p.waitForFunction(() => window.__mc && window.__mc.state && window.__mc.state.rosterReady, null, { timeout: 15000 });
     return { p, ctx };
   };
-  const look = p => p.evaluate(() => ({ theme: document.documentElement.dataset.theme, atBody: window.__themeAtBody, bg: getComputedStyle(document.body).backgroundColor, stored: localStorage.getItem('mc-theme'),
+  const look = p => p.evaluate(() => ({ theme: document.documentElement.dataset.theme, atBody: window.__themeAtBody, bg: getComputedStyle(document.documentElement).backgroundColor, stored: localStorage.getItem('mc-theme'),
     checked: [...document.querySelectorAll('#acctMenu [data-theme-set]')].filter(x => x.getAttribute('aria-checked') === 'true').map(x => x.dataset.themeSet).join(),
     meta: [...document.querySelectorAll('meta[name="theme-color"]')].map(m => m.content).join() }));
-  const DARK = 'rgb(12, 12, 14)', LIGHT = 'rgb(244, 244, 245)';   // the page's ground (--bg in ui6/00_tokens.css, Beyond One)
+  const DARK = 'rgb(7, 11, 20)', LIGHT = 'rgb(234, 241, 251)';   // the page's ground (--bg in ui6/00_tokens.css: the colour under the clean wash)
 
   // a computer set to dark, nothing chosen yet: System, so dark
   let { p, ctx } = await open(admin);
@@ -34,7 +34,7 @@ let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? 'âœ“ ' : 'âœ
   await p.screenshot({ path: path.join(out, 'appearance-menu-dark.png') });
   await p.click('#acctMenu [data-theme-set="light"]'); await p.waitForTimeout(150);
   s = await look(p);
-  ok(s.theme === 'light' && s.bg === LIGHT && s.stored === 'light' && s.checked === 'light' && s.meta === '#f4f4f5,#f4f4f5', `Light from the account menu: ${s.bg}, kept as ${s.stored}, toolbar colour ${s.meta}`);
+  ok(s.theme === 'light' && s.bg === LIGHT && s.stored === 'light' && s.checked === 'light' && s.meta === '#f7faff,#f7faff', `Light from the account menu: ${s.bg}, kept as ${s.stored}, toolbar colour ${s.meta}`);
   ok(await p.evaluate(() => !document.getElementById('acctMenu').hidden), 'the menu stays open after the choice');
   await p.screenshot({ path: path.join(out, 'appearance-menu-light.png') });
   // the keyboard: right arrow moves to Dark

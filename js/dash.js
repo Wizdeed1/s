@@ -169,16 +169,86 @@ const DASH_ACTS = {
   admin: [['Build the month', 'Import, review, export, email', 'step:import', 'i-up'], ['Supervisors', 'The senior manager\'s page', 'ws:cycle', 'i-clock'], ['Results', 'Every agent for the month', 'ws:results', 'i-check'], ['Manage accounts', 'Roles, access, resets', 'accounts', 'i-user']],
 };
 function greetWord() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
+// ---- the headline panel: where the month stands in two short lines, the next step with its day and the way to it, the months as
+// tabs in its top corner, the team as a wall of tiles (one per agent, by team, brighter for better adherence, the five lowest in
+// red) and the source that came in last. Every word and tile comes from what the page already has; nothing new is stored.
+function dashHeroState(k) {
+  let S = []; try { S = calSteps(k); } catch (e) { S = []; }
+  const F = state.finals[k], fin = monthLocked(k), past = k < closeMonthNow();
+  const open = S.filter(s => s.st !== 'done' && s.st !== 'past'), doneN = S.filter(s => s.st === 'done').length, late = open.filter(s => s.st === 'late');
+  const mine = open.filter(calMine), next = mine.find(s => s.st === 'late') || mine.find(s => s.st === 'soon') || mine[0] || late[0] || open[0] || null;
+  const due = s => (s.st === 'late' ? `${plural(-s.days, 'day')} late` : s.days === 0 ? 'due today' : s.days === 1 ? 'due tomorrow' : `due ${fmtDue(s.due)}`);
+  let line, sub;
+  if (fin) { line = 'final.'; sub = `Finalized${F && F.at ? ' ' + ago(F.at) : ''}${F && F.byName ? ' by ' + F.byName : ''}. Every number is read-only.`; }
+  else if (past) { line = 'still a draft.'; sub = `${doneN} of ${S.length} steps recorded. The numbers can change until the senior manager finalizes the month.`; }
+  else {
+    line = late.length ? `${late.length === 1 ? 'one step' : late.length + ' steps'} late.` : !open.length ? 'ready to finalize.' : doneN / Math.max(1, S.length) >= 0.6 ? 'almost closed.' : doneN ? 'closing.' : 'open.';
+    sub = `${doneN} of ${S.length} steps done.${next ? ` ${calMine(next) ? 'Yours next' : 'Next'}: ${next.label}, ${due(next)}.` : ''}`;
+  }
+  return { line, sub, next: fin || past ? null : next };
+}
+/** the team as a wall of tiles: one per agent of the month, the largest team first, each team's best adherence first */
+function dashWallSvg(k) {
+  const a = dashAgg(k), R = a ? a.rows : []; if (!R.length) return { svg: '', n: 0 };
+  const fn = GROUPS.unit[1], size = new Map(); for (const r of R) { const u = fn(r); size.set(u, (size.get(u) || 0) + 1); }
+  const units = [...size.keys()].sort((x, y) => size.get(y) - size.get(x)), ui = r => units.indexOf(fn(r));
+  const A = R.filter(r => r.adh != null), lo = A.length ? Math.min(...A.map(r => r.adh)) : 0, hi = A.length ? Math.max(...A.map(r => r.adh)) : 1;
+  const low = new Set(A.slice().sort((x, y) => x.adh - y.adh).slice(0, 5));
+  const rows = R.slice().sort((x, y) => ui(x) - ui(y) || (y.adh == null ? -1 : y.adh) - (x.adh == null ? -1 : x.adh));
+  const n = rows.length, W = 1400, H = 640, cols = Math.max(8, Math.ceil(Math.sqrt(n * 1.8))), rws = Math.ceil(n / cols), gap = 9;
+  const sz = Math.max(8, Math.min(34, Math.floor((W * 0.52) / cols) - gap, Math.floor((H * 0.66) / rws) - gap)), step = sz + gap, x0 = W - cols * step - 26, y0 = Math.round((H - rws * step) / 2) + 14;
+  let tiles = '', glow = '';
+  rows.forEach((r, i) => {
+    const c = i % cols, y = Math.floor(i / cols), flag = low.has(r), op = flag ? 1 : r.adh == null ? 0.16 : +(0.28 + 0.72 * Math.pow(hi > lo ? (r.adh - lo) / (hi - lo) : 1, 1.4)).toFixed(2);
+    const t = `<rect x="${x0 + c * step}" y="${y0 + y * step}" width="${sz}" height="${sz}" rx="${Math.max(2, Math.round(sz / 6))}" class="${flag ? 'wf' : 'w' + (Math.min(ui(r), 5) + 1)}" fill-opacity="${op}" style="--c:${(c + y * 0.6).toFixed(1)}"><title>${esc(r.n)} · ${esc(fn(r))} · ${r.adh == null ? 'no adherence' : pct(r.adh, 1)}</title></rect>`;
+    tiles += t; if (op > 0.62) glow += t.replace(/<title>.*?<\/title>/, '');
+  });
+  const svg = `<svg class="dhwall" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMaxYMid slice" aria-hidden="true"><defs><filter id="dhGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter>
+    <linearGradient id="dhFade" x1="${x0}" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".38" stop-color="#fff"/></linearGradient><mask id="dhMask"><rect width="${W}" height="${H}" fill="url(#dhFade)"/></mask></defs>
+    <g mask="url(#dhMask)" class="dhtilt"><g filter="url(#dhGlow)" class="dhglow">${glow}</g>${tiles}</g></svg>`;
+  return { svg, n, teams: units.length };
+}
+/** the source that came in last (the same ones as Data status, and nothing of the daily report in a preview) */
+function dashLatest() {
+  const K = FRESH_KINDS.filter(([k]) => (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool()) && (dailyShown() || !['daily', 'dailymail', 'dayagents'].includes(k)));
+  return K.map(([k, l]) => ({ l, f: state.fresh[k] })).filter(x => x.f && x.f.at).sort((x, y) => String(y.f.at).localeCompare(String(x.f.at)))[0] || null;
+}
+function dashHeroHtml(k, months, greet, date) {
+  const eye = `<p class="dheye"><span>${greet}</span><span>${esc(date)}</span></p>`;
+  if (!k) return `<section class="dhero empty" aria-label="No month yet"><div class="dhcopy">${eye}<h2 class="dhh"><span>No month</span> <span>yet.</span></h2>
+    <p class="dhsub">${stillReading() ? 'Reading the shared data. The months, the roster and the results appear here in a moment.' : isBuilder() ? 'Build the month on WFM team › Import: it is saved to the shared history as you work, and every number here comes from it.' : 'The WFM analysts build the month from the Genesys exports; it appears here as soon as they start.'}</p>
+    ${isBuilder() && !stillReading() ? '<div class="dhacts"><button type="button" class="dhcta" data-tgo="step:import">Go to Import<svg aria-hidden="true"><use href="#i-chevr"/></svg></button></div>' : ''}</div></section>`;
+  const st = dashHeroState(k), wall = dashWallSvg(k), last = dashLatest(), mon = MONTH_LONG[+k.slice(5) - 1], i = months.indexOf(k), a = Math.max(0, Math.min(i - 1, months.length - 3));
+  const tabs = months.slice(a, a + 3).map(x => `<button type="button" class="dhtab" data-period="${esc(x)}" aria-pressed="${x === k}" title="${esc(ymLabel(x))}${monthLocked(x) ? ', final' : ', open'}"><span class="dhdot${monthLocked(x) ? ' fin' : ''}" aria-hidden="true"></span>${esc(MON[+x.slice(5) - 1])}<span class="dhy">&nbsp;${esc(x.slice(0, 4))}</span></button>`).join('');
+  const go = st.next ? (calCanGo(st.next.go, true) ? `<button type="button" class="dhcta" data-tgo="${esc(st.next.go + '@' + k)}">Continue<svg aria-hidden="true"><use href="#i-chevr"/></svg></button>` : '') : '';
+  return `<section class="dhero" aria-label="${esc(ymLabel(k))}">${wall.svg}<div class="dhshade" aria-hidden="true"></div>
+    <svg class="dhrim" aria-hidden="true"><path fill="none"/></svg>
+    <div class="dhcopy">${eye}<h2 class="dhh"><span>${esc(mon)},</span> <span>${esc(st.line)}</span></h2><p class="dhsub">${esc(st.sub)}</p>
+      <div class="dhacts">${go}<button type="button" class="dhlink" data-dopenbell>Every deadline</button></div></div>
+    ${wall.n ? `<p class="dhmicro">${plural(wall.n, 'agent')} · by team · brighter is better adherence · red: the five lowest</p>` : ''}
+    ${last ? `<div class="dhimp"><span class="dhthumb" aria-hidden="true"><svg><use href="#i-table"/></svg></span><span class="dhit"><small>Latest data</small><b dir="auto">${esc(last.l)}${last.f.what ? ': ' + esc(last.f.what) : ''}</b><span>${esc(ago(last.f.at))}${last.f.by ? ' · ' + esc(last.f.by) : ''}</span></span><button type="button" class="dhgo" data-dscroll="h-ddata" aria-label="Data status: when each source last came in"><svg aria-hidden="true"><use href="#i-chevr"/></svg></button></div>` : ''}
+  </section><div class="dhtabs" role="group" aria-label="Month">${tabs}</div>`;
+}
+/** the panel is cut around the month tabs in its top corner (a path measured here: the tabs' size is the text's), with a rim along the cut */
+function dashNotch() {
+  const B = $('dashBody'), hero = B && B.querySelector('.dhero'), tabs = B && B.querySelector('.dhtabs'); if (!hero) return;
+  const rim = hero.querySelector('.dhrim'), w = hero.offsetWidth, h = hero.offsetHeight;
+  if (!rim || !tabs || !w || !h || tabs.offsetWidth + 80 > w) { hero.style.clipPath = ''; hero.classList.remove('cut'); return; }
+  const r = 20, nw = tabs.offsetWidth + 10, nh = tabs.offsetHeight + 10;
+  const d = `M${r},0 H${w - nw - r} A${r},${r} 0 0 1 ${w - nw},${r} V${nh - r} A${r},${r} 0 0 0 ${w - nw + r},${nh} H${w - r} A${r},${r} 0 0 1 ${w},${nh + r} V${h - r} A${r},${r} 0 0 1 ${w - r},${h} H${r} A${r},${r} 0 0 1 0,${h - r} V${r} A${r},${r} 0 0 1 ${r},0 Z`;
+  hero.style.clipPath = `path('${d}')`; hero.classList.add('cut'); rim.setAttribute('viewBox', `0 0 ${w} ${h}`); rim.querySelector('path').setAttribute('d', d);
+}
+try { new ResizeObserver(() => dashNotch()).observe($('dashBody')); } catch (e) { window.addEventListener('resize', dashNotch); }
 function renderDash() {
   const el = $('dashBody'); if (!el) return;
   const u = Auth.user() || {}, r = roleNow(), months = wsMonths(), k = wsMonthNow(), first = firstName(u.name || u.username || '');
   const d = new Date(), date = `${{ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[Core.weekday(d.getFullYear(), d.getMonth() + 1, d.getDate())]} ${d.getDate()} ${MONTH_LONG[d.getMonth()]} ${d.getFullYear()}`;
-  const st = k ? (monthLocked(k) ? `<span class="pill"><svg width="11" height="11" aria-hidden="true"><use href="#i-lock"/></svg>Final</span>` : '<span class="pill info">Draft</span>') : '';
   const acts = [...new Map(rolesNow().flatMap(x => DASH_ACTS[x] || []).map(x => [x[2], x])).values()].slice(0, 5).filter(([, , go]) => { const kind = go.split(':')[0], x = go.split(':')[1]; const W = wsOfNow(); return kind === 'accounts' ? Auth.isAdmin() || r === 'admin' : kind === 'step' ? W.includes('build') : kind === 'wfm' ? W.includes('wfm') && (x !== 'dmail' || canDailyMail()) && (x !== 'builder' || canDailyTool()) && (x !== 'daily' || dailyShown()) && (x !== 'mail' || canDailyMail()) : W.includes(x); })
     .map(a => (a[2] === 'wfm:emails' && !dailyShown() ? [a[0], 'Deduction and absences: edit and send', a[2], a[3]] : a));   // a preview: nothing of the daily report
-  const head = `<div class="dhead"><div class="greet"><h2 class="gt">${esc(greetWord())}${first ? ', <b>' + esc(first) + '</b>' : ''}</h2><p class="gs"><span>${esc(date)}</span>${k ? `<span>Showing ${esc(ymLabel(k))} ${st}</span>` : ''}</p></div>
+  const head = `<div class="dhead"><div class="dhwrap">${dashHeroHtml(state.rosterReady && months.length ? k : '', months, `${esc(greetWord())}${first ? ', <b>' + esc(first) + '</b>' : ''}`, date)}</div>
     ${acts.length ? `<nav class="qacts" aria-label="Quick actions">${acts.map(([t, s, go, ico]) => `<button class="qa" data-tgo="${esc(go)}"><svg aria-hidden="true"><use href="#${ico}"/></svg><span><b>${esc(t)}</b><small>${esc(s)}</small></span></button>`).join('')}</nav>` : ''}</div>`;
   if ($('today').closest('#dashBody')) $('main').prepend($('today'));   // Today lives in the dashboard's side column; kept safe while it is drawn again
+  requestAnimationFrame(dashNotch);
   if (!state.rosterReady) { el.innerHTML = `${head}<div class="kpis">${DASH_KPIS.map(K => `<div class="kpi sk-card"><span class="kl">${esc(K.label)}</span><span class="sk w40"></span><span class="sk w70"></span></div>`).join('')}</div><div class="card"><span class="sk tall"></span></div>`; return; }
   if (!months.length || !k) {
     if (stillReading()) { el.innerHTML = `${head}<div class="dgrid"><div class="dmain"><div class="card empty"><b>Reading the shared data…</b>The months, the roster and the results appear here in a moment.</div></div><aside class="dside">${dashData()}</aside></div>`; return; }
@@ -191,6 +261,7 @@ function renderDash() {
     <div class="drow r3">${safeHtml(dashAttention, k)}</div>
     <div class="drow r2">${safeHtml(dashTrendCard, months)}${safeHtml(dashData)}</div>`;   // by priority: the month and its steps, what needs someone, then the trend
   el.querySelectorAll('.kpi').forEach(x => x.setAttribute('role', 'listitem'));
+  dashNotch();
   if (intro) { el.classList.add('intro'); clearTimeout(dashIntroT); dashIntroT = setTimeout(() => el.classList.remove('intro'), 1500); }
 }
 // ---- events
@@ -201,6 +272,8 @@ $('dashBody').addEventListener('click', e => {
   const s = t.closest('[data-dser]'); if (s) { const n = s.dataset.dser; if (state.dashHide.has(n)) state.dashHide.delete(n); else state.dashHide.add(n); renderDash(); const b = $('dashBody').querySelector(`[data-dser="${CSS.escape(n)}"]`); if (b) b.focus(); return; }
   if (t.closest('[data-dtable]')) { state.dashTable = !state.dashTable; renderDash(); const b = $('dashBody').querySelector('[data-dtable]'); if (b) b.focus(); return; }
   const o = t.closest('[data-open]'); if (o) { openPerson(o.dataset.open); }
+  const pd = t.closest('.dhtab[data-period]'); if (pd) { const x = pd.dataset.period; setPeriod(x); const b = $('dashBody').querySelector(`.dhtab[data-period="${CSS.escape(x)}"]`); if (b) b.focus({ preventScroll: true }); return; }
+  const sc = t.closest('[data-dscroll]'); if (sc) { const h = document.getElementById(sc.dataset.dscroll); if (h) { h.setAttribute('tabindex', '-1'); h.scrollIntoView({ block: 'center', behavior: RM() ? 'auto' : 'smooth' }); h.focus({ preventScroll: true }); } }
 });
 $('dashBody').addEventListener('mouseover', e => { const h = e.target.closest('[data-dpt]'); if (h && +h.dataset.dpt !== state.dashPt) { state.dashPt = +h.dataset.dpt; dashChartOnly(); } });
 $('dashBody').addEventListener('mouseleave', e => { if (!e.target.classList || !e.target.classList.contains('dchart')) return; if (state.dashPt >= 0 && !$('dashBody').querySelector('[data-dchart]:focus')) { state.dashPt = -1; dashChartOnly(); } }, true);   // leaving the chart itself, not one of its parts

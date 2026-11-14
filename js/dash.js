@@ -3,7 +3,9 @@
 // manager's month close steps and when each source last came in. Nothing new is stored. The first load of a visit plays
 // once (the ambient light, the KPI cards, the chart lines, a sweep over the greeting); returning or changing a filter does not.
 Object.assign(state, { dashMetric: 'adh', dashGroup: 'unit', dashHide: new Set(), dashTable: false, dashPt: -1 });
-let dashPlayed = false, dashIntroT = 0;
+let dashShown = null, dashIntroT = 0;   // the month the dashboard last played its moment for (null: not since you arrived)
+/** leaving the dashboard: its moment plays again when you come back */
+function dashLeft() { dashShown = null; }
 const DASH_KPIS = [
   { k: 'n', label: 'Agents', dir: 0, info: 'People in this month\'s results, one row per agent. Source: the month in the shared history.', fmt: v => Math.round(v).toLocaleString('en-US') },
   { k: 'adh', label: 'Adherence', dir: 1, info: 'Average of each agent\'s monthly adherence; days blank or under the NA cut-off are left out. Source: Genesys Monthly Adherence.', fmt: v => pct(v, 1), why: 'No adherence in this month\'s data' },
@@ -213,9 +215,11 @@ function dashLatest() {
   const K = FRESH_KINDS.filter(([k]) => (k !== 'roster' || isBuilder()) && (k !== 'dailymail' || canDailyMail() || canDailyTool()) && (dailyShown() || !['daily', 'dailymail', 'dayagents'].includes(k)));
   return K.map(([k, l]) => ({ l, f: state.fresh[k] })).filter(x => x.f && x.f.at).sort((x, y) => String(y.f.at).localeCompare(String(x.f.at)))[0] || null;
 }
+/** the headline's lines, each word its own piece: they come out of a blur one after the other (--w is the word's place) */
+function dashWords(lines) { let n = 0; return lines.map(l => `<span>${String(l).split(/\s+/).filter(Boolean).map(w => `<span class="dw" style="--w:${n++}">${esc(w)}</span>`).join(' ')}</span>`).join(' '); }
 function dashHeroHtml(k, months, greet, date) {
   const eye = `<p class="dheye"><span>${greet}</span><span>${esc(date)}</span></p>`;
-  if (!k) return `<section class="dhero empty" aria-label="No month yet"><div class="dhcopy">${eye}<h2 class="dhh"><span>No month</span> <span>yet.</span></h2>
+  if (!k) return `<section class="dhero empty" aria-label="No month yet"><div class="dhcopy">${eye}<h2 class="dhh">${dashWords(['No month', 'yet.'])}</h2>
     <p class="dhsub">${stillReading() ? 'Reading the shared data. The months, the roster and the results appear here in a moment.' : isBuilder() ? 'Build the month on WFM team › Import: it is saved to the shared history as you work, and every number here comes from it.' : 'The WFM analysts build the month from the Genesys exports; it appears here as soon as they start.'}</p>
     ${isBuilder() && !stillReading() ? '<div class="dhacts"><button type="button" class="dhcta" data-tgo="step:import">Go to Import<svg aria-hidden="true"><use href="#i-chevr"/></svg></button></div>' : ''}</div></section>`;
   const st = dashHeroState(k), wall = dashWallSvg(k), last = dashLatest(), mon = MONTH_LONG[+k.slice(5) - 1], i = months.indexOf(k), a = Math.max(0, Math.min(i - 1, months.length - 3));
@@ -223,7 +227,7 @@ function dashHeroHtml(k, months, greet, date) {
   const go = st.next ? (calCanGo(st.next.go, true) ? `<button type="button" class="dhcta" data-tgo="${esc(st.next.go + '@' + k)}">Continue<svg aria-hidden="true"><use href="#i-chevr"/></svg></button>` : '') : '';
   return `<section class="dhero" aria-label="${esc(ymLabel(k))}">${wall.svg}<div class="dhshade" aria-hidden="true"></div>
     <svg class="dhrim" aria-hidden="true"><path fill="none"/></svg>
-    <div class="dhcopy">${eye}<h2 class="dhh"><span>${esc(mon)},</span> <span>${esc(st.line)}</span></h2><p class="dhsub">${esc(st.sub)}</p>
+    <div class="dhcopy">${eye}<h2 class="dhh">${dashWords([mon + ',', st.line])}</h2><p class="dhsub">${esc(st.sub)}</p>
       <div class="dhacts">${go}<button type="button" class="dhlink" data-dopenbell>Every deadline</button></div></div>
     ${wall.n ? `<p class="dhmicro">${plural(wall.n, 'agent')} · by team · brighter is better adherence · red: the five lowest</p>` : ''}
     ${last ? `<div class="dhimp"><span class="dhthumb" aria-hidden="true"><svg><use href="#i-table"/></svg></span><span class="dhit"><small>Latest data</small><b dir="auto">${esc(last.l)}${last.f.what ? ': ' + esc(last.f.what) : ''}</b><span>${esc(ago(last.f.at))}${last.f.by ? ' · ' + esc(last.f.by) : ''}</span></span><button type="button" class="dhgo" data-dscroll="h-ddata" aria-label="Data status: when each source last came in"><svg aria-hidden="true"><use href="#i-chevr"/></svg></button></div>` : ''}
@@ -255,7 +259,7 @@ function renderDash() {
     el.innerHTML = `${head}<div class="dgrid"><div class="dmain"><div class="card empty"><b>No months yet</b>${isBuilder() ? 'Build the month on WFM team › Import: it is saved to the shared history as you work, and every number here comes from it.' : 'The WFM analysts build the month from the Genesys exports; it appears here as soon as they start.'}${isBuilder() ? '<div class="acts" style="justify-content:center;margin-top:14px"><button class="btn primary" data-tgo="step:import">Go to Import</button></div>' : ''}</div></div><aside class="dside">${dashData()}</aside></div>`;
     return;
   }
-  const intro = !dashPlayed && !RM(); dashPlayed = true;
+  const intro = !RM() && dashShown !== k; dashShown = k;   // on arriving, and when the month changes; any other redraw stays still
   el.innerHTML = `${head}
     <div class="drow r1"><div class="kpis" role="list" aria-label="${esc(ymLabel(k))} at a glance">${dashKpisHtml(k, months)}</div>${safeHtml(dashClose, k)}</div>
     <div class="drow r3">${safeHtml(dashAttention, k)}</div>

@@ -691,7 +691,7 @@ function render(o = {}) {
   if (state.step === 'email') renderEmail();
   if (!$('dPerson').hidden && state.personId) renderPerson();
   setSave(); renderToday(); renderCsat();
-  requestAnimationFrame(() => { if (state.ws === 'build') introOnce($('v-' + state.step)); });
+  requestAnimationFrame(() => { if (state.ws === 'build') introPlay($('v-' + state.step)); });
 }
 function renderHeader() {
   $('monthBtn').textContent = monthLabel();
@@ -3652,7 +3652,7 @@ window.__mcSave = async (name, blob) => {
 // ---- motion: views rise in, a thumb slides under the current tab and step, cards reveal as you scroll
 function animIn(el) {
   if (!el || RM()) return;
-  el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); introOnce(el);
+  el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); introPlay(el);
   el.addEventListener('animationend', function done(e) { if (e.target === el) { el.classList.remove('enter'); el.removeEventListener('animationend', done); } });
 }
 function moveThumb(box, sel) {

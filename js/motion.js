@@ -104,24 +104,45 @@ function fillBars(root, key) {
 }
 try { const cb = $('cycleBody'); if (cb) new MutationObserver(() => { const c = $('spvDone'); if (c) fillBars(c, 'spv:' + wsMonthNow()); }).observe(cb, { childList: true }); } catch (e) { /* none */ }
 
-// ---- every page and tab: the dashboard's moment, once a visit. The boxes on screen rise in turn and their numbers count up the
-// first time a page or tab is shown; a return, a redraw or a filter stays still (the dashboard keeps its own, in dash.js).
-const introSeen = new Set();
-const INTRO_SEL = '.card, .tile, .kpistrip .kpi, .chks, .ctile, .slot, .rcard, .fbar, .note, .csatbox, .atile, .egrid > .ecard, .rbbrands > li, .rb .editor, .wsstatus';
-/** the page and tab now on screen, as a key: the intro plays once for each */
+// ---- every page and tab: its moment each time you arrive (the motion the team chose). The panels on screen rise in turn, the
+// page's title comes out of a blur, the numbers count up and a chart's lines draw themselves. A redraw of the page you are on, a
+// filter, a sort or fresh data stays still (the dashboard keeps its own moment, in dash.js). With reduced motion: nothing.
+let introLast = '', introLastWs = '';
+const INTRO_SEL = '.card, .tile, .kpistrip .kpi, .chks, .ctile, .slot, .rcard, .fbar, .note, .csatbox, .atile, .egrid > .ecard, .rbbrands > li, .rb .editor, .wsstatus, .flowstep, .mlane';
+/** the page and tab now on screen, as a key: the moment plays when it changes */
 const introKey = () => state.ws === 'build' ? `build|${state.step}${state.step === 'review' ? '|' + state.tab : ''}`
   : state.ws === 'team' ? `team|${state.teamTab || ''}` : state.ws === 'wfm' ? `wfm|${state.wfmTab || ''}${state.wfmTab === 'emails' ? '|' + state.mailSub : ''}` : state.ws;
-function introOnce(root) {
-  if (!root || RM() || !state.rosterReady || state.ws === 'dash' || !root.getClientRects().length) return;
-  const key = introKey(); if (introSeen.has(key)) return;
+/** a class that plays one animation and leaves no trace (also when the element is hidden before its end) */
+function playOnce(el, cls, ms) {
+  const done = e => { if (e && e.target !== el) return; el.classList.remove(cls); el.style.removeProperty('--ii'); el.removeEventListener('animationend', done); };
+  el.classList.add(cls); el.addEventListener('animationend', done); setTimeout(done, ms);
+}
+/** a chart's lines draw themselves from the left, then their points appear */
+function drawLines(root) {
+  const g = gsapOk(); if (!g || !root) return;
+  [...root.querySelectorAll('.trendsvg path.ln:not(.dash)')].filter(el => el.getClientRects().length).slice(0, 24).forEach((el, i) => {
+    let len = 0; try { len = el.getTotalLength(); } catch (e) { return; }
+    if (!(len > 0)) return;
+    g.fromTo(el, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 0.9, delay: 0.1 + Math.min(i, 8) * 0.05, ease: 'power2.out', clearProps: 'strokeDasharray,strokeDashoffset' });
+  });
+  const pts = [...root.querySelectorAll('.trendsvg circle.dt')].filter(el => el.getClientRects().length).slice(0, 160);
+  if (pts.length) g.fromTo(pts, { opacity: 0 }, { opacity: 1, duration: 0.3, delay: 0.75, ease: 'power1.out', clearProps: 'opacity' });
+}
+function introPlay(root) {
+  if (!root || !state.rosterReady) return;
+  const key = introKey(); if (key === introLast) return;   // the page you are already on: a redraw stays still
+  if (state.ws !== 'dash') dashLeft();   // back on the dashboard, its own moment plays again
+  if (RM() || state.ws === 'dash') { introLast = key; introLastWs = state.ws; return; }
+  if (!root.getClientRects().length) return;
   const all = [...root.querySelectorAll(INTRO_SEL)].filter(el => el.getClientRects().length && !el.closest('[hidden], .sk-card'));
   if (!all.length) return;   // nothing drawn yet (the data is still coming): the first real drawing plays it
-  introSeen.add(key);
+  const newPage = state.ws !== introLastWs; introLast = key; introLastWs = state.ws;
   const vh = window.innerHeight, top = all.filter(el => !all.some(o => o !== el && o.contains(el)));   // the outer boxes; what is inside moves with them
-  top.filter(el => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < vh; }).slice(0, 16).forEach((el, i) => {
-    const done = e => { if (e && e.target !== el) return; el.classList.remove('rise-in'); el.style.removeProperty('--ii'); el.removeEventListener('animationend', done); };
-    el.style.setProperty('--ii', i); el.classList.add('rise-in'); el.addEventListener('animationend', done);
-    setTimeout(done, 1400);   // a box hidden before its end never says so
-  });
+  top.filter(el => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < vh; }).slice(0, 16).forEach((el, i) => { el.style.setProperty('--ii', i); playOnce(el, 'rise-in', 1400); });
+  if (newPage) {   // a tab of the same page keeps its title still (the WFM team page's title is above its tabs, outside the view)
+    const wh = $('wfmHead'), h = root.querySelector('.viewhead h1') || (wh && !wh.hidden ? wh.querySelector('h1') : null);
+    if (h && h.getClientRects().length) playOnce(h, 'title-in', 1000);
+  }
   countUp(root, '.tile b, .kpistrip .kpi b, .kpi .kval');
+  drawLines(root);
 }

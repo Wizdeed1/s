@@ -83,7 +83,7 @@
   --select-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%2344526a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --glow: none; --horizon: none;
   /* motion: the page arrives in turn; hovers are brief */
-  --t-micro: 120ms; --t-hover: 180ms; --t-press: 120ms; --t-small: 220ms; --t-panel: 320ms; --t-ws: 360ms; --t-chart: 620ms; --t-exit: 200ms; --stagger: 45ms;
+  --t-micro: 120ms; --t-hover: 180ms; --t-press: 120ms; --t-small: 220ms; --t-panel: 320ms; --t-ws: 380ms; --t-chart: 620ms; --t-exit: 200ms; --stagger: 40ms;
   --ease-out: cubic-bezier(.22, 1, .36, 1); --ease-in: cubic-bezier(.55, 0, 1, .45); --ease-in-out: cubic-bezier(.77, 0, .175, 1); --ease-drawer: cubic-bezier(.32, .72, 0, 1);
   /* layers */
   --z-bar: 34; --z-side: 32; --z-menu: 40; --z-scrim: 50; --z-sheet: 55; --z-dlg: 60; --z-pop: 65; --z-tt: 70; --z-toast: 75; --z-find: 90; --z-lock: 100;

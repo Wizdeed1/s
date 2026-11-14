@@ -101,11 +101,12 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),
   .sbnav::-webkit-scrollbar { display: none; }
   .sbnav::before { content: none; }
   .sbnav button, html.rail .sbnav button { z-index: 1; flex: none; height: 40px; padding: 0 16px; gap: 8px; justify-content: center; border-radius: var(--r-pill); color: var(--nav-muted); font: 500 13.5px/1 var(--text); box-shadow: none;
-    transition: color .3s ease, background-color var(--t-hover) ease; }
+    transition: color .16s ease, background-color var(--t-hover) ease; }   /* the page you leave: dark again as the pill goes */
   .sbnav button > span:not(.wsdot), html.rail .sbnav button > span:not(.wsdot) { display: inline; }
   .sbnav button svg { display: none; width: 18px; height: 18px; color: currentColor; }
   .sbnav button:hover { background: var(--nav-hover); color: var(--nav-ink); }
   .sbnav button[aria-current="page"], .sbnav button[aria-current="page"]:hover { background: transparent; color: #fff; font-weight: 500; box-shadow: none; }
+  html.navjs .sbnav button[aria-current="page"] { transition: color .28s ease .13s, background-color var(--t-hover) ease; }   /* the page you go to: white once the pill is under it */
   .sbnav button[aria-current="page"] svg { color: currentColor; }
   html:not(.navjs) .sbnav button[aria-current="page"] { background: var(--nav-current); }
   .sbnav button:focus-visible, .sbitem:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -213,6 +214,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),
 @media (max-width: 767.98px) { .dheye { display: grid; gap: 2px; } .dheye span + span { color: var(--muted); } .dheye span + span::before { content: none; } }   /* a phone: the date on its own line, no dot */
 .dhh { margin: 0; font: 800 clamp(30px, 4vw, 58px)/1 var(--display-x); letter-spacing: 0; text-transform: uppercase; color: var(--ink); text-wrap: balance; }
 .dhh > span { display: block; }
+.dhh .dw { display: inline-block; }
 :root[data-theme="dark"] .dhh { text-shadow: 0 16px 38px rgba(0, 0, 0, .35); }
 .dhsub { margin: 16px 0 22px; max-width: 34rem; font-size: 14.5px; line-height: 1.55; color: var(--ink-2); text-wrap: pretty; }
 .dhacts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
@@ -265,4 +267,24 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),
   .dhtab .dhy { display: none; }
   .dhtabs { gap: 5px; }
 }
-@media (prefers-reduced-motion: reduce) { .dhwall .wf { animation: none; } #dashBody.intro .dhwall g > rect { animation: none; } }
+/* the panel's moment (on arriving at the Dashboard, and when the month changes): the headline's words come out of a blur one
+   after the other, then the line under them, the buttons and the notes rise; the wall's tiles wave in (above) */
+#dashBody.intro .dhh .dw { animation: wordIn 640ms var(--ease-out) both; animation-delay: calc(90ms + var(--w, 0) * 85ms); }
+#dashBody.intro .dheye { animation: rise 460ms var(--ease-out) both; }
+#dashBody.intro .dhsub { animation: rise 520ms var(--ease-out) 380ms both; }
+#dashBody.intro .dhacts { animation: rise 520ms var(--ease-out) 470ms both; }
+#dashBody.intro .dhmicro, #dashBody.intro .dhimp { animation: rise 520ms var(--ease-out) 620ms both; }
+#dashBody.intro .qacts .qa { animation: floatIn 480ms var(--ease-out) both; animation-delay: calc(260ms + var(--qi, 0) * 60ms); }
+#dashBody.intro .kpi { animation-name: floatIn; }
+#dashBody.intro .card.dclose, #dashBody.intro .card.dattn, #dashBody.intro .card.dlow, #dashBody.intro .card.dtrend, #dashBody.intro .card.ddata { animation: floatIn 520ms var(--ease-out) 300ms both; }
+#dashBody.intro .card.dtrend, #dashBody.intro .card.ddata { animation-delay: 420ms; }
+#dashBody.intro .qacts .qa:nth-child(2) { --qi: 1; } #dashBody.intro .qacts .qa:nth-child(3) { --qi: 2; } #dashBody.intro .qacts .qa:nth-child(4) { --qi: 3; }
+@keyframes wordIn { from { opacity: 0; filter: blur(12px); transform: translateY(.2em); } }
+@keyframes floatIn { from { opacity: 0; transform: translateY(16px) scale(.985); } }
+@media (prefers-reduced-motion: reduce) { .dhwall .wf { animation: none; } #dashBody.intro .dhwall g > rect, #dashBody.intro .dhh .dw, #dashBody.intro .dheye, #dashBody.intro .dhsub, #dashBody.intro .dhacts, #dashBody.intro .dhmicro, #dashBody.intro .dhimp, #dashBody.intro .qacts .qa, #dashBody.intro .card { animation: none; } }
+
+/* ---------- every other page, each time you arrive (js/motion.js introPlay): its panels float up in turn, its title comes out of a blur ---------- */
+.rise-in { animation: floatIn 420ms var(--ease-out) both !important; animation-delay: calc(min(var(--ii, 0), 10) * var(--stagger)) !important; }
+.title-in { animation: titleIn 620ms var(--ease-out) both; }
+@keyframes titleIn { from { opacity: 0; filter: blur(10px); transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .rise-in, .title-in { animation: none !important; } }

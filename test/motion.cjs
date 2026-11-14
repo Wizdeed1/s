@@ -1,5 +1,6 @@
-// Motion and speed: the dashboard's first-load moment plays once (and not on return), the Build step moment, and the Team table
-// sorts, filters and pages within the budget (under 100 ms). Then the KPI cards of a row keep their values level, the Supervisors
+// Motion and speed: the dashboard's moment plays each time you arrive and when the month changes (never on a redraw), every other
+// page's panels rise in turn and its title comes out of a blur on each arrival, and the Team table sorts, filters and pages within
+// the budget (under 100 ms). Then the KPI cards of a row keep their values level, the Supervisors
 // bars grow only when their numbers change (from where they were), and the phone's More sheet closes on a flick or a slow pull
 // past half and goes back otherwise. Usage: node test/motion.cjs page.html outDir
 const { chromium } = require('playwright'); const fs = require('node:fs'), path = require('node:path');
@@ -23,15 +24,24 @@ async function later(b) {
     ok(rows.length && rows.every(r => r.every(x => x.every((v, i) => v === r[0][i]))), `${vp.width} px: the KPI values of a row are level (${rows.map(r => r.length).join(' + ')} cards)`);
     await p.context().close();
   }
-  // every page and tab: its boxes rise in turn the first time it is shown in a visit, never on a return; a tile lifts under the mouse
+  // every page and tab: its panels rise in turn and its title comes out of a blur each time you arrive (a first visit or a return);
+  // a redraw of the page you are on stays still, and a tab of the same page keeps the title still; a tile lifts under the mouse
   {
     const p = await as(b, { id: 'u2', name: 'Noura B.', username: 'noura.b', role: 'wfm' });
-    const rising = () => p.evaluate(() => document.querySelectorAll('.rise-in').length);
-    await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(60); const team1 = await rising();
-    await p.waitForTimeout(900); const left = await rising();
-    await p.evaluate(() => window.__mc.setWs('wfm')); await p.waitForTimeout(60); const wfm1 = await rising();
-    await p.waitForTimeout(900); await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(60); const team2 = await rising();
-    ok(team1 > 2 && left === 0 && wfm1 > 1 && team2 === 0, `the boxes rise in on the first visit of a page (Team ${team1}, WFM ${wfm1}), the class is gone after (${left}), a return stays still (${team2})`);
+    const rising = () => p.evaluate(() => document.querySelectorAll('.rise-in').length), titles = () => p.evaluate(() => document.querySelectorAll('.title-in').length);
+    await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(60); const team1 = await rising(), title1 = await titles();
+    await p.waitForTimeout(1100); const left = await rising() + await titles();
+    await p.evaluate(() => window.__mc.renderWs()); await p.waitForTimeout(60); const redraw = await rising();
+    await p.evaluate(() => window.__mc.setWs('wfm')); await p.waitForTimeout(60); const wfm1 = await rising(), title2 = await titles();
+    await p.waitForTimeout(1100); await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(60); const team2 = await rising();
+    ok(team1 > 2 && title1 === 1 && left === 0 && redraw === 0 && wfm1 > 1 && title2 === 1 && team2 > 2,
+      `the panels rise in on arriving at a page (Team ${team1}, WFM ${wfm1}) with its title (${title1}, ${title2}), nothing is left after (${left}), a redraw stays still (${redraw}), a return plays again (${team2})`);
+    await p.waitForTimeout(1100);
+    await p.evaluate(() => window.__mc.setWs('wfm')); await p.waitForTimeout(1100);
+    const tabs = await p.evaluate(() => [...document.querySelectorAll('#wfmTabs [data-wt]')].filter(x => x.getAttribute('aria-pressed') !== 'true').map(x => x.dataset.wt));
+    await p.click(`#wfmTabs [data-wt="${tabs.includes('agents') ? 'agents' : tabs[0]}"]`); await p.waitForTimeout(60); const tabRise = await rising(), tabTitle = await titles();
+    ok(tabRise > 0 && tabTitle === 0, `another tab of the same page: its panels rise (${tabRise}), the page's title stays still (${tabTitle})`);
+    await p.waitForTimeout(1100); await p.evaluate(() => window.__mc.setWs('team')); await p.waitForTimeout(1100);
     const tile = await p.$('#teamBody .tile, #teamBody .kpistrip .kpi'); await tile.hover(); await p.waitForTimeout(350);
     const lift = await tile.evaluate(el => getComputedStyle(el).transform);
     ok(/matrix\(1, 0, 0, 1, 0, -2\)/.test(lift), `a tile rises 2 px under the mouse (${lift})`);
@@ -86,9 +96,16 @@ async function later(b) {
   await p.waitForTimeout(90); const mid = await p.evaluate(() => document.querySelector('#dashBody').classList.contains('intro'));
   await p.screenshot({ path: path.join(out, 'dash-intro-mid.png') });
   await p.waitForTimeout(1600); const after = await p.evaluate(() => document.querySelector('#dashBody').classList.contains('intro'));
-  await p.evaluate(() => { window.__mc.setWs('team'); window.__mc.setWs('dash'); });
-  const replay = await p.evaluate(() => document.querySelector('#dashBody').classList.contains('intro'));
-  console.log(`dashboard moment: playing at 90 ms ${mid}, done after 1.7 s ${!after}, replays on return ${replay}`);
+  ok(mid && !after, `the dashboard's moment plays as it is first drawn (${mid}) and is over 1.7 s later (${!after})`);
+  const playing = () => p.evaluate(() => document.querySelector('#dashBody').classList.contains('intro'));
+  await p.evaluate(() => window.__mc.renderWs()); const redraw = await playing();
+  await p.evaluate(() => { window.__mc.setWs('team'); window.__mc.setWs('dash'); }); const replay = await playing();
+  const words = await p.evaluate(() => [...document.querySelectorAll('#dashBody .dhh .dw')].map(w => getComputedStyle(w).animationName));
+  ok(!redraw && replay && words.length >= 3 && words.every(n => n === 'wordIn'), `a redraw of the Dashboard stays still (${!redraw}); coming back to it plays the moment again (${replay}), the headline's ${words.length} words out of a blur`);
+  await p.waitForTimeout(1700); const rested = await playing();
+  await p.click('#dashBody .dhtab[aria-pressed="false"]'); const month = await playing();
+  ok(!rested && month, `another month in the headline's tabs plays it again (${month})`);
+  await p.waitForTimeout(1700);
   // the Team table: sort, filter and page
   await p.evaluate(() => window.__mc.setWs('team'));
   const t = await p.evaluate(async () => {

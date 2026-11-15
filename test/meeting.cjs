@@ -23,7 +23,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if
   // ---- 1. the demo
   const d = await p.evaluate(() => ({ ws: window.__mc.state.ws, theme: document.documentElement.dataset.theme, dash: document.getElementById('dashBody').innerText,
     pill: (document.querySelector('.demopill') || {}).textContent || '', role: window.__mc.state && document.querySelector('#acctMenu') ? 1 : 0, months: Object.keys(window.__mc.state.history).length }));
-  ok(d.ws === 'dash' && /Thursday 8 October 2026/.test(d.dash) && /Showing Sep 2026/.test(d.dash) && d.months === 6, `the demo opens on the dashboard: the September 2026 close on Thursday 8 October, ${d.months} made-up months`);
+  ok(d.ws === 'dash' && /Thursday 8 October 2026/.test(d.dash) && /September, closing\./i.test(d.dash) && d.months === 6, `the demo opens on the dashboard: the September 2026 close on Thursday 8 October (the headline panel says "September, closing."), ${d.months} made-up months`);
   ok(d.theme === 'light' && /made-up people/.test(d.pill) && /nothing is saved/.test(d.pill), `light for the projector, with the note "${d.pill}"`);
   await p.screenshot({ path: path.join(out, 'meeting-demo.png') });
 

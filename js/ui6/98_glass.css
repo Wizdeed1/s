@@ -23,11 +23,11 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
    pointer is on the panel; glass.js sets them, and takes them away when it leaves). The ground behind it is plain, so a panel
    that stays in its place has nothing to blur; the bars that stay put while the page scrolls under them do (below) */
 .card, .kpi, .qa, .tile, .buildbar, .fbar, .board, .todaymini, .monthbox, .note, .autonote, .kpicard, .ctile, .chks, .atile, .slot, .csatbox, .rcard, .rgroup, .flowbar, .bulkbar,
-.kpistrip .kpi, .shsec, .lockcard, .tablewrap, .wsstatus, .rb .editor, .secnav, .viewbar, .dropallbox, .mlist, .tk, .varow {
+.kpistrip .kpi, .shsec, .lockcard, .tablewrap, .wsstatus, .rb .editor, .secnav, .viewbar, .dropallbox, .mlist, .tk, .varow, .mlane {
   background: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), var(--glass-light), transparent 46%), var(--glass-sheen), var(--surface);
   border-color: var(--card-line); box-shadow: inset 0 1px 0 var(--rim-a), var(--shadow-card); }
 .secnav, .viewbar, .bulkbar, .buildbar, .flowbar, .mailpreview { -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
-.card, .kpi, .qa, .tile, .buildbar, .fbar, .board, .monthbox, .kpicard, .ctile, .chks, .atile, .slot, .csatbox, .rcard, .rgroup, .kpistrip .kpi, .shsec, .tablewrap, .rb .editor { border-radius: var(--r-card); }
+.card, .kpi, .qa, .tile, .buildbar, .fbar, .board, .monthbox, .kpicard, .ctile, .chks, .atile, .slot, .csatbox, .rcard, .rgroup, .kpistrip .kpi, .shsec, .tablewrap, .rb .editor, .mlane { border-radius: var(--r-card); }
 /* a panel inside a panel: a tint only */
 :is(.card, .tile, .board, .flowstep, .drawer, .dlgbox, .rcard, .rgroup, .shsec) :is(.card, .kpi, .tile, .note, .autonote, .kpicard, .ctile, .chks, .atile, .slot, .csatbox, .rcard, .rgroup, .tablewrap, .monthbox, .fbar, .todaymini, .wsstatus, .mlist, .tk, .dropallbox, .rb .editor) {
   box-shadow: inset 0 1px 0 var(--rim-b); background: var(--sunk); }
@@ -170,7 +170,37 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),
   .menu { border-radius: 24px 24px 0 0; }
 }
 
-/* ---------- sign-in: the card floats on the sky ---------- */
+/* ---------- WFM team › Emails › Daily brand emails: the day's emails as a board (To check · Ready to send · Sent); js/rbx.js ---------- */
+.mboard { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.mlane { position: relative; display: grid; gap: 10px; align-content: start; min-height: 150px; padding: 14px; border: 1px solid var(--card-line); transition: border-color .25s ease, box-shadow .25s ease; }
+.mlane > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 2px; }
+.mlane > header h3 { margin: 0; font: 600 12.5px/1.2 var(--text); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.mlane[data-lane="sent"] > header h3 { color: var(--good); }
+.mlane > header .cnt { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: var(--fill); color: var(--ink-2); font: 600 12px/22px var(--text); text-align: center; font-variant-numeric: tabular-nums; }
+.mlane.over { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-card); }
+.mlane.over::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--accent-soft); pointer-events: none; animation: laneLight .9s ease-in-out infinite alternate; }
+@keyframes laneLight { to { opacity: .35; } }
+.mlane:has(.mcard.lifting) { z-index: 20; }
+.mlempty { margin: 0; padding: 20px 10px; border: 1px dashed var(--line-2); border-radius: 14px; text-align: center; font-size: 12.5px; color: var(--faint); }
+.mcard { all: unset; box-sizing: border-box; position: relative; display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--raised); border: 1px solid var(--card-line); color: var(--ink);
+  box-shadow: inset 0 1px 0 var(--rim-b), 0 6px 18px -12px rgba(16, 38, 78, .35); cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; will-change: transform;
+  transition: transform .22s var(--ease-out), box-shadow .22s ease, border-color .2s ease; }
+.mcard:hover { transform: translateY(-2px); border-color: var(--card-line-hover); }
+.mcard[aria-pressed="true"] { border-color: var(--accent-line); box-shadow: inset 0 0 0 1px var(--accent-line), 0 6px 18px -12px rgba(16, 38, 78, .35); }
+.mcard:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mcard .mcb { display: grid; gap: 3px; } .mcard .mcb b { font: 600 14px/1.3 var(--text); } .mcard .mcs { font-style: normal; font-size: 12.5px; color: var(--muted); }
+.mcard.is-warn .mcs { color: var(--warn); } .mcard.is-sent .mcs { color: var(--good); } .mcard.is-none { opacity: .72; cursor: default; } .mcard.is-none .mcs { color: var(--faint); }
+.mcard .mck { display: flex; flex-wrap: wrap; gap: 6px 16px; } .mcard .mck > span { display: grid; font: 600 13px/1.25 var(--text); font-variant-numeric: tabular-nums; color: var(--ink-2); } .mcard .mck small { font-weight: 500; font-size: 11px; color: var(--faint); }
+.mcard.lifting { z-index: 30; cursor: grabbing; transition: none; border-color: var(--accent-line); box-shadow: 0 26px 52px -18px rgba(16, 38, 78, .5), 0 0 0 1px var(--accent-line); }
+:root[data-theme="dark"] .mcard.lifting { box-shadow: 0 26px 52px -18px rgba(0, 0, 0, .75), 0 0 0 1px var(--accent-line); }
+.mcard.spring { transition: transform .4s var(--ease-out); }
+.mcard.arrive { animation: arrive .5s var(--ease-out) both; }
+@keyframes arrive { from { opacity: 0; transform: translateY(-12px) scale(.96); } }
+body.mdragging, body.mdragging .mcard { cursor: grabbing; }
+@media (max-width: 767.98px) { .mboard { grid-template-columns: 1fr; } .mlane { min-height: 0; } }
+@media (prefers-reduced-motion: reduce) { .mcard, .mcard.spring { transition: none; } .mcard:hover { transform: none; } .mcard.arrive, .mlane.over::after { animation: none; } }
+
+/* ---------- sign-in: the card floats on the ground ---------- */
 .lock { background: transparent; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; align-content: center; justify-items: center; gap: 26px; padding: 24px 16px; }
 .lock::before, .lock::after { content: none; }
 .lock .lockbrand { --h: 46px; display: block; grid-column: 1; grid-row: auto; place-self: center; --bo-words: var(--bo-words-black); }

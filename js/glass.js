@@ -7,7 +7,7 @@
 //   mc-glass ('solid' or 'glass'; nothing kept follows the computer). The page carries it as data-glass="solid".
 // - Where the pointer is: a soft light on the panel under it, a ripple where you click.
 // The ground behind the panels is plain and still (no shapes): nothing here draws on it. With reduced motion nothing slides or ripples.
-const GLASS_SEL = '.card, .kpi, .qa, .tile, .tablewrap, .board, .fbar, .buildbar, .kpicard, .ctile, .chks, .atile, .rcard, .rgroup, .slot, .shsec, .lockcard, .dhero, .flowstep';
+const GLASS_SEL = '.card, .kpi, .qa, .tile, .tablewrap, .board, .fbar, .buildbar, .kpicard, .ctile, .chks, .atile, .rcard, .rgroup, .slot, .shsec, .lockcard, .dhero, .flowstep, .mlane';
 const glassFine = () => { try { return matchMedia('(hover: hover) and (pointer: fine)').matches; } catch (e) { return false; } };
 
 // ---------------------------------------------------------------- less transparency

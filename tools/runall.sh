@@ -38,6 +38,7 @@ tenure|$PAGE|$OUT
 depts|$PAGE|$OUT|$EX
 dailyhist|$PAGE|$OUT
 rb158|$PAGE|$OUT
+mailboard|$PAGE|$OUT
 incedits|$PAGE|$EX|$OUT
 incmail|$PAGE|$OUT|$EX
 steps|$PAGE|$OUT

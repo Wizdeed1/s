@@ -816,7 +816,7 @@ function rbPeekShow(box) {
 function rbPeekHide() { clearTimeout(rbPeekT); rbPeekOn = null; if (rbPeekEl) { rbPeekEl.classList.remove('in'); rbPeekEl.hidden = true; } }
 const rbPeekHover = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 for (const host of [$('wfmRb'), $('wfmDm')]) {
-  host.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest('[data-peek], [data-dmtab]'); if (!b || b === rbPeekOn || !rbPeekHover()) return; clearTimeout(rbPeekT); rbPeekT = setTimeout(() => rbPeekShow(b), 250); });
+  host.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest('[data-peek], [data-dmtab]'); if (!b || b === rbPeekOn || !rbPeekHover() || (dmDrag && dmDrag.on)) return; clearTimeout(rbPeekT); rbPeekT = setTimeout(() => rbPeekShow(b), 250); });
   host.addEventListener('mouseout', e => { const b = e.target.closest && e.target.closest('[data-peek], [data-dmtab]'); if (!b || (e.relatedTarget && b.contains(e.relatedTarget))) return; rbPeekHide(); });
   host.addEventListener('focusin', e => { const b = e.target.closest && e.target.closest('[data-peek]'); if (b && e.target === b) rbPeekShow(b); });
   host.addEventListener('focusout', e => { if (e.target.closest && e.target.closest('[data-peek]')) rbPeekHide(); });
@@ -856,7 +856,7 @@ function dmShow() {
   if (!host.dataset.built) {
     host.dataset.built = '1';
     host.innerHTML = `<div class="rbload big" role="status"><span class="spin"></span><span>Opening the daily emails…</span></div>`;
-    rbLoad().then(() => { host.innerHTML = `<div class="card dmhead" data-dmhead></div><div class="card dmhist" data-dmhist></div><div class="seg rbtabs" role="group" aria-label="Brand emails" data-dmtabs></div><div class="rbpanel" data-dmpanel></div>`; dmRender(true); }).catch(e => { host.dataset.built = ''; host.innerHTML = emptyCard('The daily emails could not open', (e && e.message) || String(e)); });
+    rbLoad().then(() => { host.innerHTML = `<div class="card dmhead" data-dmhead></div><div class="card dmhist" data-dmhist></div><div class="mboard" data-dmboard role="group" aria-label="The day's emails"></div><div class="rbpanel" data-dmpanel></div>`; dmRender(true); }).catch(e => { host.dataset.built = ''; host.innerHTML = emptyCard('The daily emails could not open', (e && e.message) || String(e)); });
     return;
   }
   if (host.querySelector('[data-dmhead]')) dmRender(false);
@@ -867,7 +867,7 @@ function dmRender(full) {
   const host = $('wfmDm'), head = host.querySelector('[data-dmhead]'); if (!head || !rbB()) return;
   dmHistRender();   // the brands' history box, with or without emails
   const L = dmDays();
-  if (!L.length) { head.innerHTML = ''; head.hidden = true; host.querySelector('[data-dmtabs]').innerHTML = ''; host.querySelector('[data-dmpanel]').innerHTML = emptyCard('No daily emails yet', 'The WFM analyst drops the day\'s exports in Report builder; Virgin Postpaid, Virgin Mobile, FRiENDi Mobile and FRiENDi Pay then appear here, ready to read and send.'); return; }
+  if (!L.length) { head.innerHTML = ''; head.hidden = true; host.querySelector('[data-dmboard]').innerHTML = ''; host.querySelector('[data-dmpanel]').innerHTML = emptyCard('No daily emails yet', 'The WFM analyst drops the day\'s exports in Report builder; Virgin Postpaid, Virgin Mobile, FRiENDi Mobile and FRiENDi Pay then appear here, ready to read and send.'); return; }
   head.hidden = false;
   if (!L.some(x => x.k === state.dmSel)) { state.dmSel = L[0].k; full = true; }
   const x = state.dmail[state.dmSel], dk = x.k, docs = dmBrandsOf(dk);
@@ -876,9 +876,7 @@ function dmRender(full) {
   head.innerHTML = `<div class="dmday"><label class="wsfield"><span>Report day</span><select class="cell" data-dmday aria-label="Report day">${L.map(y => { const left = RB_BRANDS.filter(k => !rbSentOf(k, y.k)).length; return `<option value="${esc(y.k)}"${y.k === dk ? ' selected' : ''}>${esc(rbDayLabel(y))}${left ? ` · ${left} to send` : ' · all sent'}</option>`; }).join('')}</select></label>
     <p class="cap keep">Made by ${esc(x.by || 'the WFM analyst')} from ${plural(x.files || 0, 'file')} · ${esc(fmtWhen(x.at))}</p></div>
     <div class="dmprog" aria-label="${sentN} of 4 sent"><span class="pbar"><i style="width:${Math.round(sentN / 4 * 100)}%"></i></span><b>${sentN} / 4</b><small>sent</small></div>`;
-  const tabs = host.querySelector('[data-dmtabs]');
-  tabs.innerHTML = RB_BRANDS.map(k => { const b = (x.brands || {})[k] || {}, s = rbSentOf(k, dk); return `<button data-dmtab="${k}" aria-pressed="${state.dmActive === k}">${s ? '<svg width="13" height="13" aria-hidden="true"><use href="#i-check"/></svg>' : ''}${esc(rbName(k))}${!s && b.warn ? `<span class="cnt warn" aria-label="${plural(b.warn, 'check')}">${b.warn}</span>` : ''}</button>`; }).join('');
-  requestAnimationFrame(() => segThumb(tabs));
+  const board = host.querySelector('[data-dmboard]'); board.innerHTML = dmBoardHtml(x, dk, docs); dmBoardSettle(board);
   const panel = host.querySelector('[data-dmpanel]');
   if (!docs) { panel.innerHTML = `<div class="card rbskel" aria-busy="true"><span class="sk w40"></span><span class="sk w90"></span><span class="sk w70"></span><span class="sk tall"></span></div>`; panel.dataset.dk = ''; return; }
   const doc = docs[state.dmActive];
@@ -913,17 +911,84 @@ function dmHistAsa(key, doc, dk) {
   }
   if (changed) rbHistPush(H);
 }
+// ---- the day's emails as a board: To check (the checks found something), Ready to send, Sent. A card is one email: click it to
+// open it below; drag it to Sent once it went out (back out of Sent takes that back); between To check and Ready nothing moves,
+// the checks decide. A moved card settles into its lane; the toast offers Undo.
+let dmArrive = '';   // the email just moved on the board: it settles into its new lane when the board is drawn again
+function dmLaneOf(k, x, docs, dk) { if (rbSentOf(k, dk)) return 'sent'; const b = (x.brands || {})[k] || {}; return b.warn || (docs && !docs[k]) ? 'check' : 'ready'; }
+function dmBoardHtml(x, dk, docs) {
+  const card = k => {
+    const b = (x.brands || {})[k] || {}, s = rbSentOf(k, dk), none = docs && !docs[k], kp = (b.kpis || []).slice(0, 2);
+    const st = s ? `Sent ${fmtWhen(s.at)}${s.by ? ' · ' + s.by : ''}` : none ? 'No exports yet' : b.warn ? `${plural(b.warn, 'check')} to look at` : 'Ready';
+    return `<button type="button" class="mcard${s ? ' is-sent' : none ? ' is-none' : b.warn ? ' is-warn' : ''}" data-dmtab="${k}" aria-pressed="${state.dmActive === k}" aria-label="${esc(rbName(k))}: ${esc(st)}. Opens the email below${none ? '' : s ? '; drag it out of Sent if it did not go out' : '; drag it to Sent once it went out'}">
+      <span class="mcb"><b>${esc(rbName(k))}</b><i class="mcs">${esc(st)}</i></span>${kp.length ? `<span class="mck">${kp.map(([l, v]) => `<span><small>${esc(String(l))}</small>${esc(String(v))}</span>`).join('')}</span>` : ''}</button>`;
+  };
+  return [['check', 'To check', 'Nothing to look at'], ['ready', 'Ready to send', 'Nothing waiting'], ['sent', 'Sent', 'Drop an email here once it went out']].map(([id, name, empty]) => {
+    const K = RB_BRANDS.filter(k => dmLaneOf(k, x, docs, dk) === id);
+    return `<section class="mlane" data-lane="${id}" aria-label="${esc(name)}"><header><h3>${esc(name)}</h3><span class="cnt">${K.length}</span></header>${K.length ? K.map(card).join('') : `<p class="mlempty">${esc(empty)}</p>`}</section>`;
+  }).join('');
+}
+function dmBoardSettle(board) {
+  const k = dmArrive; dmArrive = ''; if (!k || RM()) return;
+  const c = board.querySelector(`.mcard[data-dmtab="${k}"]`); if (c) { c.classList.add('arrive'); c.addEventListener('animationend', () => c.classList.remove('arrive'), { once: true }); }
+}
+/** mark a brand email sent (or not): kept with the day in the shared preferences, said in a toast with Undo; after a send the next email still to send opens */
+function dmSetSent(key, dk, on, o = {}) {
+  const was = rbSentOf(key, dk); if (!!was === !!on) return;
+  rbSet(key, 'sent', on ? { at: new Date().toISOString(), by: whoNow() } : null, dk);
+  dmArrive = key; dmRender(false); renderToday();
+  if (!o.quiet) toast(on ? `${rbName(key)} marked as sent.` : `${rbName(key)} is back to not sent.`, { label: 'Undo', fn: () => { if (on) dmSetSent(key, dk, false, { quiet: true }); else if (!rbSentOf(key, dk)) { rbSet(key, 'sent', was, dk); dmArrive = key; dmRender(false); renderToday(); } } });
+  if (on) { const next = RB_BRANDS.find(k => !rbSentOf(k, dk)); if (next) setTimeout(() => { if (state.dmSel === dk && state.dmActive === key && rbSentOf(key, dk)) { state.dmActive = next; dmRender(true); } }, 900); }
+}
+// the drag: the card lifts under the pointer and tilts a little, the lane it may go to lights up; let go there and it is marked
+// sent (or not sent); anywhere else it springs back. A touch holds a moment first (a swipe scrolls as before). With reduced motion
+// the card follows the pointer without the lift. The arrows move between the cards; Mark as sent sits under the opened email.
+let dmDrag = null;
+(() => {
+  const host = $('wfmDm'); if (!host) return;
+  const laneAt = (x, y, card) => {   // the lane under the pointer; the card itself is under it too, so it is out of the way for the hit test
+    const v = card.style.visibility; card.style.visibility = 'hidden'; const el = document.elementFromPoint(x, y); card.style.visibility = v;
+    return el && el.closest ? el.closest('#wfmDm .mlane') : null; };
+  const allowed = (card, lane) => { if (!lane || card.classList.contains('is-none')) return false; const from = card.closest('.mlane').dataset.lane, to = lane.dataset.lane; return from !== to && (to === 'sent' || from === 'sent'); };
+  const clear = () => { const D = dmDrag; if (!D) return; dmDrag = null; clearTimeout(D.hold); if (D.lane) D.lane.classList.remove('over'); document.body.classList.remove('mdragging'); };
+  const start = D => { D.on = true; rbPeekHide(); document.body.classList.add('mdragging'); D.card.classList.add('lifting'); try { D.card.setPointerCapture(D.id); } catch (e) { /* none */ } };
+  host.addEventListener('pointerdown', e => {
+    const card = e.target.closest && e.target.closest('.mcard'); if (!card || e.button > 0 || !e.isPrimary || dmDrag) return;
+    dmDrag = { card, id: e.pointerId, x0: e.clientX, y0: e.clientY, on: false, touch: e.pointerType === 'touch', hold: 0, lane: null };
+    if (dmDrag.touch) dmDrag.hold = setTimeout(() => { if (dmDrag && dmDrag.card === card && !dmDrag.on) start(dmDrag); }, 260);
+  });
+  host.addEventListener('pointermove', e => {
+    const D = dmDrag; if (!D || e.pointerId !== D.id) return;
+    const dx = e.clientX - D.x0, dy = e.clientY - D.y0;
+    if (!D.on) { if (D.touch) { if (Math.hypot(dx, dy) > 8) clear(); return; } if (Math.hypot(dx, dy) < 6) return; start(D); }
+    D.card.style.transform = RM() ? `translate(${dx}px, ${dy}px)` : `translate(${dx}px, ${dy}px) scale(1.04) rotate(-2deg)`;
+    const lane = laneAt(e.clientX, e.clientY, D.card), to = allowed(D.card, lane) ? lane : null;
+    if (to !== D.lane) { if (D.lane) D.lane.classList.remove('over'); D.lane = to; if (to) to.classList.add('over'); }
+    e.preventDefault();
+  }, { passive: false });
+  const end = e => {
+    const D = dmDrag; if (!D || e.pointerId !== D.id) return;
+    const card = D.card, lane = e.type === 'pointercancel' ? null : D.lane, on = D.on; clear();
+    if (!on) return;   // a click: the card's own click opens the email
+    card.dataset.dragged = '1'; setTimeout(() => { delete card.dataset.dragged; }, 400);   // the click that follows a drag is not a click
+    card.classList.remove('lifting');
+    if (lane) { dmSetSent(card.dataset.dmtab, state.dmSel, lane.dataset.lane === 'sent'); return; }   // the board is drawn again: the card settles in its new lane
+    card.classList.add('spring'); card.style.transform = ''; setTimeout(() => card.classList.remove('spring'), 450);
+  };
+  host.addEventListener('pointerup', end); host.addEventListener('pointercancel', end);
+  host.addEventListener('click', e => { const c = e.target.closest && e.target.closest('.mcard'); if (c && c.dataset.dragged) { delete c.dataset.dragged; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  host.addEventListener('keydown', e => {
+    const c = e.target.closest && e.target.closest('.mcard'); if (!c || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+    const L = [...host.querySelectorAll('.mcard')], i = L.indexOf(c), n = L.length; if (n < 2) return;
+    L[e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (i + n - 1) % n : (i + 1) % n].focus(); e.preventDefault();
+  });
+})();
 $('wfmDm').addEventListener('click', e => {
   const t = e.target;
-  const tb = t.closest('[data-dmtab]'); if (tb) { state.dmActive = tb.dataset.dmtab; dmRender(true); return; }
+  const tb = t.closest('[data-dmtab]'); if (tb) { state.dmActive = tb.dataset.dmtab; dmRender(true); const c = $('wfmDm').querySelector(`.mcard[data-dmtab="${tb.dataset.dmtab}"]`); if (c) c.focus({ preventScroll: true }); return; }
   const a = t.closest('[data-rba]'); if (!a || a.tagName !== 'BUTTON') return;
   const act = a.dataset.rba, dk = state.dmSel, key = state.dmActive;
-  if (act === 'sent' || act === 'unsent') {
-    rbSet(key, 'sent', act === 'sent' ? { at: new Date().toISOString(), by: whoNow() } : null, dk);
-    dmRender(false); renderToday(); toast(act === 'sent' ? `${rbName(key)} marked as sent.` : `${rbName(key)} is back to not sent.`);
-    if (act === 'sent') { const next = RB_BRANDS.find(k => !rbSentOf(k, dk)); if (next) setTimeout(() => { if (state.dmSel === dk && state.dmActive === key) { state.dmActive = next; dmRender(true); } }, 900); }
-    return;
-  }
+  if (act === 'sent' || act === 'unsent') { dmSetSent(key, dk, act === 'sent'); return; }
   rbAction(a.closest('.rbpanel'), act, dmCtx);
 });
 $('wfmDm').addEventListener('change', e => {

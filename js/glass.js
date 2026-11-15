@@ -2,7 +2,7 @@
 // The look is ui6/98_glass.css; this is the little it cannot do alone. Nothing here reads or writes any data.
 // - The bar: the sidebar's pages lie across the top with the toolbar's buttons at their right end. The buttons' width is measured
 //   (--tools-w) so the pages keep clear of them; when the pages do not fit, Search shrinks to its icon (tight), then the pages go
-//   to icons with the name of the page you are on (compact); a blue pill slides to the page you are on.
+//   to icons with the name of the page you are on (compact), then the logo loses its words (mini); a blue pill slides to the page you are on.
 // - Less transparency (the account menu, or the computer's own setting): solid panels and no blur, kept in this browser as
 //   mc-glass ('solid' or 'glass'; nothing kept follows the computer). The page carries it as data-glass="solid".
 // - Where the pointer is: a soft light on the panel under it, a ripple where you click.
@@ -28,9 +28,11 @@ function glassBar() {
   const side = $('sidebar'), seg = $('wsSeg'), tools = document.querySelector('.appbar .tools'); if (!side || !seg) return;
   if (mqPhone.matches) { side.classList.remove('tight', 'compact'); return; }
   if (tools) document.documentElement.style.setProperty('--tools-w', Math.ceil(tools.getBoundingClientRect().width) + 'px');
-  side.classList.remove('tight', 'compact');   // the pages with their names; then Search as an icon; then the pages as icons
-  if (seg.scrollWidth > seg.clientWidth + 1) side.classList.add('tight');
-  if (seg.scrollWidth > seg.clientWidth + 1) { side.classList.remove('tight'); side.classList.add('compact'); }
+  const over = () => seg.scrollWidth > seg.clientWidth + 1;
+  side.classList.remove('tight', 'compact', 'mini');   // the pages with their names; then Search as an icon; then the pages as icons; then the mark without its words
+  if (over()) side.classList.add('tight');
+  if (over()) { side.classList.remove('tight'); side.classList.add('compact'); }
+  if (over()) side.classList.add('mini');
   let ind = seg.querySelector(':scope > .navind');
   if (!ind) { ind = document.createElement('span'); ind.className = 'navind still'; ind.setAttribute('aria-hidden', 'true'); seg.prepend(ind); }
   const cur = seg.querySelector('button[aria-current="page"]:not([hidden])');

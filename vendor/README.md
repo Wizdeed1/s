@@ -25,3 +25,12 @@ the checks, lines snapping square for the build, a relay for the emails, a hub f
 drawn only while the Showcase is open, answer the pointer, and stand still with reduced motion. It makes no network request.
 
 SHA-256 of the reviewed `hairline.js`: `da37558a80f012f9b962f0a85748291b9129f0292721c9fda26e9a9d5cee83f9`
+
+## Fonts (`vendor/fonts`)
+
+Built into the page as `@font-face` data by `js/make_brand.py` (`js/ui6/05_brand.css`); no font is loaded from the web.
+
+| File | Family | Licence |
+|---|---|---|
+| `poppins-latin-300/500/600/700-normal.woff2` | Poppins (the Beyond One template's typeface) | SIL Open Font License 1.1 (`Poppins-OFL.txt`) |
+| `archivo-expanded-latin-800-normal.woff2` | Archivo, a static cut at weight 800 and width 125 (Expanded) made with fontTools' `varLib.instancer` from the variable Latin file in `design/samples/hero-pack/fonts`; the page titles and the Dashboard's headline of the glass look | SIL Open Font License 1.1 (`Archivo-OFL.txt`) |

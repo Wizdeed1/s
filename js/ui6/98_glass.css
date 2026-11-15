@@ -115,6 +115,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),
   .navind.still { transition: none; }
   .wsdot, html.rail .wsdot { position: static; margin: 0 -4px 0 2px; min-width: 18px; height: 18px; font-size: 10.5px; line-height: 18px; padding: 0 5px; }
   /* more pages than fit: Search shrinks to its icon first (tight); then icons, and the name of the page you are on (compact) */
+  .sidebar.mini .brand b { display: none; } .sidebar.mini .brand { gap: 0; }   /* and then the mark alone */
   .sidebar.tight .sbnav button { padding: 0 13px; }
   .sidebar.compact .sbnav { justify-content: flex-start; }
   .sidebar.compact .sbnav button { padding: 0 12px; }

@@ -17,6 +17,30 @@ address (see the security review below).
 **The built file:** [`final/Cadence.html`](final/Cadence.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
 
+## The glass look (November 2026)
+
+Since 15 November 2026 the tool wears the look the WFM team chose from three samples (`design/samples/hero-pack`, made with
+the `cadence-look` skill): **glass**. Only the look and where the navigation sits changed. Every ID, class, data field,
+workflow, calculation, email, workbook, permission and storage format is as it was. `js/ui6/00_tokens.css` names the values,
+`js/ui6/98_glass.css` is the last layer, and `js/glass.js` does the little the CSS cannot.
+
+| Part | How it looks |
+|---|---|
+| The ground | One clean, still wash of colour behind every page, nothing drawn on it: near-white with a little of the brand's blue in **Light**, a deep navy night in **Dark** (System, Light or Dark as before, in the account menu and Settings). |
+| The glass | Every panel is translucent glass: a white tint in Light, smoked in Dark, a rim of light, a soft shadow, round corners and a soft light that follows the pointer. What floats over the page as it scrolls (the bar, menus, drawers, dialogs, sticky bars) blurs what is behind it. |
+| The bar | The sidebar is a floating glass bar across the top: the logo, the role's pages with a blue pill that slides to the page you are on, Search, and the toolbar's buttons at its right end. When a role's pages do not fit, Search shrinks to its icon, then the pages go to icons with the name of the page you are on (pointing at an icon shows its name). |
+| The Dashboard | A headline panel: the greeting, the month and where it stands in the wide headline ("SEPTEMBER, STILL A DRAFT."), what is next and **Continue**, the three latest months as tabs in the panel's notch, the latest data, and the team as a wall of tiles (one per agent, by team, brighter is better adherence, the five lowest in red). The KPI cards, Month close, Needs attention, Trend and Data status follow as before. |
+| Motion | Each time you arrive at a page or a tab its panels float up in turn, the title comes out of a blur, the numbers count up and a chart's lines draw themselves; the Dashboard's headline words come out of a blur and the wall waves in, on arriving and when the month changes. A redraw, a filter or a sort stays still; with reduced motion nothing moves. A ripple where you click. |
+| Emails › Daily brand emails | The day's four emails are a board: **To check** (the checks found something), **Ready to send** and **Sent**. A card opens its email below; drag it to Sent once it went out (it lifts and tilts on the way, the lane lights up, a toast offers **Undo**); drag it out of Sent to take that back; between To check and Ready nothing moves, the checks decide. The arrows move between the cards; **Mark as sent** under the opened email works as before. |
+| Phones | A glass bar on top with the moving mark, and the pages in a glass tab bar at the bottom, where thumbs are. |
+| Less transparency | Account menu › **Less transparency**: solid panels and no blur, for an older computer; kept in this browser and there before the first paint. A computer that asks for reduced transparency gets it by itself. |
+| Type | The page titles and the Dashboard's headline are **Archivo Expanded** 800 (`vendor/fonts/archivo-expanded-latin-800-normal.woff2`, a static cut of Archivo, SIL Open Font License 1.1); Poppins and Geist as before. |
+
+Text keeps 4.5:1 or better on its glass and on the ground (secondary text near 7:1), controls and focus rings 3:1; Windows
+contrast themes, reduced motion and printing are handled. Tests: `test/glass.cjs` (the ground, the glass, the bar and its
+pill, the headline panel, Less transparency, the phone, no network request), `test/mailboard.cjs` (the board) and
+`test/motion.cjs` (the arrivals); `tools/runall.sh` runs every browser suite against one page.
+
 ## Corrections reach the incentive file (November 2026)
 
 The corrections made on **WFM team › Emails › Deduction and absences** (and a supervisor's) were in the deduction email but could
@@ -80,9 +104,9 @@ The approved look is kept; how the pages are worked changed. The brief, with bef
 
 Since 6 November 2026 the tool, and every deck it makes, wears the **Beyond One** brand: the *Beyond One - Template*
 PowerPoint the team's decks are made with, and the company's logos. Only the look changed. Every ID, class, data field,
-workflow, calculation, email, workbook, permission and storage format is as it was. The glass layer is gone
-(`js/ui6/97_glass.css` removed); the look is `js/ui6/00_tokens.css` (colours, type, spacing) and `js/ui6/98_beyond.css`
-(the last layer).
+workflow, calculation, email, workbook, permission and storage format is as it was. The earlier glass layer went
+(`js/ui6/97_glass.css` removed); the look was `js/ui6/00_tokens.css` (colours, type, spacing) and `js/ui6/98_beyond.css` as
+the last layer, until the glass look of 15 November 2026 (above) was laid over it (`js/ui6/98_glass.css`).
 
 **The idea.** People open this tool every working day, so it should feel like the company's own and stay calm, exact and
 quick to read. The template gives it a black and white base, one blue for what can be done, and the logo's pixel squares as
@@ -445,7 +469,10 @@ node test/shots.cjs  "final/Cadence.html" test/shots           # every role, lig
 node test/exports.cjs /tmp/exports                                                # synthetic September 2026 Genesys exports
 node test/buildflow.cjs "final/Cadence.html" /tmp/exports test/shots   # Import → Checks → Link → Build → Email
 node test/overlays.cjs "final/Cadence.html" test/shots          # menus, search, More sheet, blocked page, sign-in
-node test/motion.cjs "final/Cadence.html" test/shots            # the dashboard moment, KPI rows level, Supervisors bars, the More sheet swipe, Team table speed
+node test/motion.cjs "final/Cadence.html" test/shots            # the arrivals (panels rise, the title out of a blur, the Dashboard's moment on arriving and on a month change), KPI rows level, Supervisors bars, the More sheet swipe, Team table speed
+node test/glass.cjs "final/Cadence.html" test/shots             # the glass look: the clean ground, the glass, the bar and its pill (icons when the pages do not fit), the headline panel, Less transparency, the phone, no network request
+node test/mailboard.cjs "final/Cadence.html" test/shots         # Emails › Daily brand emails as a board: drag to Sent (the lift, the lane light, the toast with Undo), out of Sent, not between To check and Ready; the arrows; reduced motion
+bash tools/runall.sh out/mc.html /tmp/run                       # every browser suite against one page, four at a time: a summary line per suite
 node test/quality.cjs "final/Cadence.html" test/shots           # Final EVAL template, DRC-CSAT box, scorecards
 node test/signin.cjs "final/Cadence.html" test/shots            # sign-in, lock and unlock
 node test/agent.cjs "final/Cadence.html" test/shots             # the agent's page and its month box, English and Arabic

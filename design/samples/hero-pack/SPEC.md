@@ -159,3 +159,8 @@ With reduced motion nothing moves, and every screen and the board still work.
 - the drag test reads the ghost's transform while dragging: scale 1.04 at −2°;
 - it checks that the Sent lane lights up, that the card lands there with the toast "Virgin Mobile · marked as sent", and that Undo puts it back;
 - there are no page errors and no requests.
+
+**In the tool (15 November 2026).** Built over the real pages as `js/ui6/98_glass.css` + `js/glass.js` (the bar, the pill, Less
+transparency), `js/dash.js` (the headline panel), `js/motion.js` (the arrivals) and `js/rbx.js` (the Emails board, on the real
+Daily brand emails with Mark as sent and Undo). After seeing it the team asked for a clean background, so the tool's ground is one
+still wash of colour with no spheres; this sample keeps them as the record of the option they chose from.

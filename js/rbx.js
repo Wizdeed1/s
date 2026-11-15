@@ -816,7 +816,7 @@ function rbPeekShow(box) {
 function rbPeekHide() { clearTimeout(rbPeekT); rbPeekOn = null; if (rbPeekEl) { rbPeekEl.classList.remove('in'); rbPeekEl.hidden = true; } }
 const rbPeekHover = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 for (const host of [$('wfmRb'), $('wfmDm')]) {
-  host.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest('[data-peek], [data-dmtab]'); if (!b || b === rbPeekOn || !rbPeekHover() || (dmDrag && dmDrag.on)) return; clearTimeout(rbPeekT); rbPeekT = setTimeout(() => rbPeekShow(b), 250); });
+  host.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest('[data-peek], [data-dmtab]'); if (!b || b === rbPeekOn || !rbPeekHover() || (dmDrag && dmDrag.on) || performance.now() < dmPeekMute) return; clearTimeout(rbPeekT); rbPeekT = setTimeout(() => rbPeekShow(b), 250); });
   host.addEventListener('mouseout', e => { const b = e.target.closest && e.target.closest('[data-peek], [data-dmtab]'); if (!b || (e.relatedTarget && b.contains(e.relatedTarget))) return; rbPeekHide(); });
   host.addEventListener('focusin', e => { const b = e.target.closest && e.target.closest('[data-peek]'); if (b && e.target === b) rbPeekShow(b); });
   host.addEventListener('focusout', e => { if (e.target.closest && e.target.closest('[data-peek]')) rbPeekHide(); });
@@ -943,7 +943,7 @@ function dmSetSent(key, dk, on, o = {}) {
 // the drag: the card lifts under the pointer and tilts a little, the lane it may go to lights up; let go there and it is marked
 // sent (or not sent); anywhere else it springs back. A touch holds a moment first (a swipe scrolls as before). With reduced motion
 // the card follows the pointer without the lift. The arrows move between the cards; Mark as sent sits under the opened email.
-let dmDrag = null;
+let dmDrag = null, dmPeekMute = 0;   // a drag in progress; no hover preview for a moment after one
 (() => {
   const host = $('wfmDm'); if (!host) return;
   const laneAt = (x, y, card) => {   // the lane under the pointer; the card itself is under it too, so it is out of the way for the hit test
@@ -970,7 +970,7 @@ let dmDrag = null;
     const D = dmDrag; if (!D || e.pointerId !== D.id) return;
     const card = D.card, lane = e.type === 'pointercancel' ? null : D.lane, on = D.on; clear();
     if (!on) return;   // a click: the card's own click opens the email
-    card.dataset.dragged = '1'; setTimeout(() => { delete card.dataset.dragged; }, 400);   // the click that follows a drag is not a click
+    card.dataset.dragged = '1'; setTimeout(() => { delete card.dataset.dragged; }, 400); dmPeekMute = performance.now() + 900;   // the click that follows a drag is not a click; no preview under the resting pointer
     card.classList.remove('lifting');
     if (lane) { dmSetSent(card.dataset.dmtab, state.dmSel, lane.dataset.lane === 'sent'); return; }   // the board is drawn again: the card settles in its new lane
     card.classList.add('spring'); card.style.transform = ''; setTimeout(() => card.classList.remove('spring'), 450);

@@ -94,10 +94,10 @@ What changes:
 ## Glass layer (B · Glass, the team's choice of November 2026)
 The WFM team picked B and asked for it glassy, with everything floating over the background and the motion of their reference reel. The sample is `design/samples/hero-pack/B-glass.html`, and section 8 of SPEC.md has the details.
 
-**Background:**
-- six glossy spheres in the brand colours, fixed behind the page;
-- each page has its own places for them, and they glide there in 1.4 s;
-- a slow drift, and a little pointer depth.
+**Background (the sample):** six glossy spheres in the brand colours, fixed behind the page, gliding to each page's places.
+**Background (the tool):** the team then asked for a clean background. The tool's ground is one still wash of colour (near-white
+with a little blue in Light, a deep navy in Dark) with nothing drawn on it; a panel that stays in its place has nothing to blur,
+so only what floats over the page as it scrolls (the bar, menus, drawers, dialogs, sticky bars) blurs what is behind it.
 
 **Material:** one glass (blur 28 px, saturate 1.5, translucent navy, 1 px gradient rim, pointer light) on every panel. The headline panel's notch is a `clip-path: path()` measured in the page.
 
@@ -106,7 +106,7 @@ The WFM team picked B and asked for it glassy, with everything floating over the
 - white for the headline panel's action.
 
 **Motion:** GSAP (already in `vendor/`):
-- page change: the old page blurs out, the spheres glide, the nav pill slides, the new page comes in staggered;
+- page change: the nav pill slides, the new page's panels float up in turn and its title comes out of a blur (the sample also blurs the old page out and glides the spheres);
 - the headline words come out of a blur;
 - count-ups, a chart that draws itself and reshapes between ranges;
 - drag and drop with a lifted, tilted ghost and a toast with Undo;
@@ -114,4 +114,6 @@ The WFM team picked B and asked for it glassy, with everything floating over the
 
 With reduced motion nothing moves.
 
-**Cost:** `backdrop-filter` on many large panels is the heaviest part. On slow PCs, offer a "less transparency" setting: solid panels and still spheres.
+**Cost:** `backdrop-filter` on many large panels is the heaviest part; the tool keeps it for what floats over scrolling content and offers "Less transparency" (account menu): solid panels, no blur, kept in the browser and applied before the first paint (`data-glass="solid"`).
+
+**In the tool (15 November 2026):** `js/ui6/00_tokens.css` (the values, Light and Dark), `js/ui6/98_glass.css` (the last layer: the ground, the material, the floating top bar, the Dashboard's headline panel with its notch, the Emails board, the arrivals), `js/glass.js` (the bar's pill and its tight/compact states, Less transparency, the pointer light, the ripple), `js/dash.js` (the headline panel), `js/motion.js` (every arrival), `js/rbx.js` (the board and its drag). Tests: `test/glass.cjs`, `test/mailboard.cjs`, `test/motion.cjs`.

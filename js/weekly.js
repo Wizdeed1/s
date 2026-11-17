@@ -12,7 +12,7 @@ const WC0 = { presenter: '', title: '', to: '', cc: '', onTimeH: 72 };
 const WC_BRAND = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay' };
 const WC_MAXOUT = 500;
 const PPTX_TYPE = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-const canWeekly = () => hasRole('admin', 'wfm', 'user');
+const canWeekly = () => hasRole('admin', 'wfm', 'user') && !viewing();   // a preview (View as, from the Showcase too) has neither Weekly commercial nor Performance Review
 const wcPad = n => String(n).padStart(2, '0');
 const wcToday = () => { const d = new Date(); return `${d.getFullYear()}-${wcPad(d.getMonth() + 1)}-${wcPad(d.getDate())}`; };
 const wcIsDay = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s + 'T00:00:00Z'));

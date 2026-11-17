@@ -361,8 +361,9 @@ const DEPT = [
 /** for everyone, after the role's own steps */
 const DEPT_ALL = 'The <b>account menu</b> (your initials at the top right): <b>Appearance</b> (System, Light or Dark) and <b>Less transparency</b> (solid panels and no blur, easier on an older computer); both are kept in this browser.';
 let deptSel = '', deptRole = '';
-/** a preview (View as) says nothing of the WFM team's daily report: its steps left out, the steps that name it in passing without it */
-const deptSteps = L => (dailyShown() ? L : L.filter(t => !/Report builder<\/b>|Daily brand emails/.test(t))
+/** a preview (View as) says nothing of the WFM team's daily report, nor of the weekly presentation and the performance review: their steps
+    left out, the steps that name the daily report in passing without it */
+const deptSteps = L => (dailyShown() ? L : L.filter(t => !/Report builder<\/b>|Daily brand emails|Weekly commercial<\/b>|Performance Review<\/b>/.test(t))
   .map(t => t.replace('the four daily brand emails and the month\'s deduction and absences emails', 'the month\'s deduction and absences emails').replace('(Import, Review, Export, Report builder)', '(Import, Review, Export)'))).concat([DEPT_ALL]);
 function renderDeptGuide(force) {
   const tabs = $('deptTabs'), body = $('deptBody'); if (!tabs || !body) return;

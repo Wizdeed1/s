@@ -55,10 +55,12 @@ let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? 'âœ“ ' : 'âœ
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   // System follows the computer, live
   await p.click('#acctBtn'); await p.click('#acctMenu [data-theme-set="system"]'); await p.keyboard.press('Escape');
-  await p.emulateMedia({ colorScheme: 'light' }); await p.waitForTimeout(150);
+  // the page follows the computer's change when the browser tells it (with four browsers at once that can take more than a moment)
+  const turned = t => p.waitForFunction(t => document.documentElement.dataset.theme === t, t, { timeout: 3000 }).then(() => true, () => false);
+  await p.emulateMedia({ colorScheme: 'light' }); await turned('light'); await p.waitForTimeout(100);
   s = await look(p);
   ok(s.theme === 'light' && s.bg === LIGHT && s.stored === 'system', `System: the computer turns light, so does the page (${s.bg})`);
-  await p.emulateMedia({ colorScheme: 'dark' }); await p.waitForTimeout(150);
+  await p.emulateMedia({ colorScheme: 'dark' }); await turned('dark');
   ok((await look(p)).theme === 'dark', 'and dark again with it');
   // Dark and Light stay put when the computer changes
   await p.click('#acctBtn'); await p.click('#acctMenu [data-theme-set="light"]'); await p.keyboard.press('Escape');

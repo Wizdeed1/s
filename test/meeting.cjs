@@ -5,7 +5,7 @@
 // 3. the bell: a line with Mark done and Open keeps both buttons whole, side by side
 // 4. Results › How explains the month on screen (each KPI from the quality numbers), not the month in Build
 // 5. View as an agent: their own page from the made-up months, the National ID hidden
-// 6. the Showcase: ten sections and "6 months of history"; the time back as set (188 hours a month), a number changed live, Reset the hours
+// 6. the Showcase: eleven sections, told around the bonus, and "6 months of history"; the time back as set (188 hours a month), a number changed live, Reset the hours
 // 7. the presenter's keys: S (with + and -), Z, Esc; Esc with the spotlight on does not end the presentation
 // 8. Import: the four made-up Genesys exports, read and checked
 // Usage: node test/meeting.cjs demo.html exportsDir outDir
@@ -62,7 +62,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if
   // ---- 6. the Showcase and its time back, as the team set it
   await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector('#showBody .sh-gives');
   const sh = await p.evaluate(() => ({ n: document.querySelectorAll('#showBody .shsec').length, strip: document.getElementById('showStrip').innerText, give: document.getElementById('showGive').innerText }));
-  ok(sh.n === 10 && /6 months of history/.test(sh.strip) && /188\s*hours back a month/.test(sh.give) && /2,256\s*hours back a year/.test(sh.give) && /282\s*working days back a year/.test(sh.give),
+  ok(sh.n === 11 && /6 months of history/.test(sh.strip) && /188\s*hours back a month/.test(sh.give) && /2,256\s*hours back a year/.test(sh.give) && /282\s*working days back a year/.test(sh.give),
     `the Showcase: ${sh.n} sections, "6 months of history", the time back as set: 188 hours a month, 2,256 a year, 282 working days`);
   await p.evaluate(() => document.querySelector('#showBody .sh-gives').scrollIntoView({ block: 'start' }));
   await p.fill('[data-give="1"]', '4'); await p.fill('[data-give="7"]', '3');

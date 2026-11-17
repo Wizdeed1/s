@@ -138,7 +138,7 @@ const ShowStory = (() => {
   }
   // ---------------------------------------------------------------- the sections, in the order they are told (with the speaker notes)
   const ROLES = [
-    ['user', 'WFM analyst', 'Builds the month every bonus is counted from: the exports, the attendance and the checks.', 'i-up'],
+    ['user', 'WFM analyst', 'Builds the month every bonus is counted from, with every check done before it counts.', 'i-up'],
     ['wfm', 'WFM manager', 'Sends the month\'s numbers for review and sees every trend behind them.', 'i-chart'],
     ['senior', 'Senior manager', 'Reviews every result and finalizes the month\'s bonuses.', 'i-clock'],
     ['spv', 'Supervisor', 'Confirms the team\'s attendance and coaches from each agent\'s own numbers.', 'i-team'],
@@ -184,7 +184,7 @@ const ShowStory = (() => {
           <div class="shcalc shrise"><div class="shcalctab">${giveTableHtml(E)}<button type="button" class="btn sm ghost" data-givereset>Reset the hours</button></div><div class="shgive" id="showGive" aria-live="polite">${giveHtml(E)}</div></div>` },
       { id: 'trust', name: 'Trust', notes: 'A bonus is pay, the most sensitive data Member Care has. It stays on our own computers, encrypted, and only accounts made in the tool can read it. Nothing is sent anywhere. National IDs never leave the tool in an email. Every change to results, rules and roles keeps who and when.',
         html: `${head(E, 'Trust', 'Pay data <b>stays ours.</b>', '')}
-          <div class="shtrust shrise"><div class="shtiles">${[['0', 'web requests', 'Nothing is sent anywhere: the data stays on our own computers.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read the shared data.'], ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['40+', 'browser test suites', 'Every role, on a computer and a phone, light and dark, before each change ships.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.'], ['Offline', 'one file', 'Opens in Edge or Chrome from the common folder; nothing to install.']].map(([b, s, t], i) => `<div class="shtile${i ? '' : ' on'}"><b>${b}</b><span>${s}</span><p>${t}</p></div>`).join('')}</div>
+          <div class="shtrust shrise"><div class="shtiles">${[['0', 'web requests', 'Nothing is sent anywhere: the data stays on our own computers.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read the shared data.'], ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['40+', 'browser test suites', 'Every role, light and dark, before each change ships.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.'], ['Offline', 'nothing to install', 'One tool the whole team opens; it works without the internet.']].map(([b, s, t], i) => `<div class="shtile${i ? '' : ' on'}"><b>${b}</b><span>${s}</span><p>${t}</p></div>`).join('')}</div>
             ${fig('vault', 'A vault door: the shared data, encrypted')}</div>` },
       { id: 'start', name: 'What\'s next', notes: 'Three steps: count the next month\'s bonus in Cadence, with the old spreadsheet beside it for one month to compare every result; measure what it gives back, hours, corrections and questions about pay; then make it how Member Care pays, every month.',
         html: `<div class="shend"><div class="shendtext">${head(E, 'What\'s next', 'Ready for <b>the next bonus.</b>', '')}

@@ -42,11 +42,11 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   ok(/^dash,.*,show$/.test(N), `the admin's pages end with the Showcase: ${N}`);
   await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector('#showBody .shsec', { timeout: 10000 });
   const sh = await p.evaluate(() => ({ n: document.querySelectorAll('#showBody .shsec').length, h: (document.getElementById('h-show') || {}).textContent, roles: document.querySelectorAll('#showBody .shroles [data-vago]').length, notes: document.querySelectorAll('#showBody .shnotes').length, hash: location.hash }));
-  ok(sh.n === 10 && sh.h === 'Showcase' && sh.roles === 6 && sh.notes === 10 && sh.hash === '#/show', `the Showcase: ${sh.n} sections with speaker notes, ${sh.roles} roles to view, at ${sh.hash}`);
+  ok(sh.n === 11 && sh.h === 'Showcase' && sh.roles === 6 && sh.notes === 11 && sh.hash === '#/show', `the Showcase: ${sh.n} sections with speaker notes, ${sh.roles} roles to view, at ${sh.hash}`);
   for (let i = 0; i < 8; i++) { await p.evaluate(i => { const f = document.querySelectorAll('#showBody .shfig')[i]; if (f) f.scrollIntoView({ block: 'center' }); }, i); await p.waitForTimeout(200); }
   await p.waitForTimeout(400);
   const figs = await p.evaluate(() => ({ all: document.querySelectorAll('#showBody .shfig').length, drawn: [...document.querySelectorAll('#showBody .shfig')].filter(f => f.querySelector('svg')).length, lib: typeof Hairline !== 'undefined' && Object.keys(Hairline).length }));
-  ok(figs.lib === 33 && figs.drawn === figs.all && figs.all === 8, `the line figures (hairline, ${figs.lib} built in): ${figs.drawn} of ${figs.all} drawn as they came into view`);
+  ok(figs.lib === 33 && figs.drawn === figs.all && figs.all === 4, `the line figures (hairline, ${figs.lib} built in): ${figs.drawn} of ${figs.all} drawn as they came into view`);
   await p.evaluate(() => scrollTo(0, 0)); await p.click('.shtop [data-showpresent]'); await p.waitForTimeout(250);
   const pres = () => p.evaluate(() => ({ on: document.body.classList.contains('presenting'), cur: [...document.querySelectorAll('#showBody .shsec')].findIndex(s => s.classList.contains('cur')), shown: [...document.querySelectorAll('#showBody .shsec')].filter(s => getComputedStyle(s).display !== 'none').length, ctl: !document.getElementById('showCtl').hidden, notes: document.body.classList.contains('shownotes'), side: getComputedStyle(document.getElementById('sidebar')).display }));
   let P = await pres();
@@ -54,7 +54,7 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowLeft'); await p.keyboard.press('ArrowRight'); await p.keyboard.press('n'); await p.waitForTimeout(150);
   P = await pres(); ok(P.cur === 2 && P.notes, 'the arrow keys go from section to section; N shows the speaker notes');
   await p.screenshot({ path: path.join(out, 'viewas-present.png') });
-  await p.keyboard.press('End'); P = await pres(); ok(P.cur === 9, 'End: the last section (how we start)');
+  await p.keyboard.press('End'); P = await pres(); ok(P.cur === 10, 'End: the last section (what\'s next)');
   await p.keyboard.press('Escape'); await p.waitForTimeout(150); P = await pres();
   ok(!P.on && !P.ctl && P.side !== 'none', 'Esc ends the presentation; the page is as it was');
   // the admin's keys, on any page: S a spotlight that follows the pointer, Z a zoom where it points, Esc takes them off
@@ -164,11 +164,11 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
     await p.evaluate(() => { const M = window.__mc; M.state.wfmTab = 'emails'; M.setWs('wfm'); }); await p.waitForTimeout(300);
     const v = await p.evaluate(() => ({ groups: [...document.querySelectorAll('#wfmTabs .wfmgrp small')].map(x => x.textContent).join(','), sub: document.querySelectorAll('#wfmBar [data-mailsub]').length, lead: document.getElementById('wfmLead').textContent, badge: !!document.querySelector('#wfmTabs [data-wt="emails"] .cnt') }));
     const tabs = await wfmTabs(), chips = await chipsNow();
-    ok(!/\bdaily\b|\bbuilder\b/.test(tabs) && !/every day/i.test(v.groups) && !v.sub && /^The month's deduction and absences emails/.test(v.lead) && !/Daily|Agents' days/.test(chips) && /Quality EVAL/.test(chips) && !v.badge && !acts.some(a => /Report builder|Daily data|Daily brand/.test(a)),
-      `View as ${label}: no Daily or Report builder tab (${tabs}); Emails is the deduction and absences only; Last data without the daily (${chips}); shortcuts: ${acts.map(a => a.split(' ')[0]).join(', ')}`);
+    ok(!/\bdaily\b|\bbuilder\b|\bweekly\b|\bperf\b/.test(tabs) && !/every day|every week/i.test(v.groups) && !v.sub && /^The month's deduction and absences emails/.test(v.lead) && !/Daily|Agents' days/.test(chips) && /Quality EVAL/.test(chips) && !v.badge && !acts.some(a => /Report builder|Daily data|Daily brand/.test(a)),
+      `View as ${label}: no Daily, Report builder, Weekly commercial or Performance Review tab (${tabs}); Emails is the deduction and absences only; Last data without the daily (${chips}); shortcuts: ${acts.map(a => a.split(' ')[0]).join(', ')}`);
     await p.click('#helpBtn'); await p.waitForSelector('#dHelp:not([hidden]) #deptBody li');
     const how = await p.evaluate(() => document.getElementById('deptBody').textContent);
-    ok(!/Report builder|daily brand emails/i.test(how) && /deduction and absences/i.test(how), `  How to use (${label}): no step about the daily report`);
+    ok(!/Report builder|daily brand emails|Weekly commercial|Performance Review/i.test(how) && /deduction and absences/i.test(how), `  How to use (${label}): no step about the daily report, the weekly presentation or the performance review`);
     await p.keyboard.press('Escape'); await p.waitForTimeout(200);
     await p.click('#viewBar [data-vbback]'); await p.waitForTimeout(250);
   }

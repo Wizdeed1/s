@@ -9,7 +9,7 @@
 cd "$(dirname "$0")/.." || exit 2
 case "${1:-out/mc.html}" in /*) PAGE="$1" ;; *) PAGE="$(pwd)/${1:-out/mc.html}" ;; esac; [ -f "$PAGE" ] || { echo "no page at $PAGE (npm run build first)"; exit 2; }
 WORK="${2:-$(mktemp -d)}"; EX="$WORK/exports"; OUT="$WORK/shots"; LOG="$WORK/logs"; mkdir -p "$EX" "$OUT" "$LOG"; rm -f "$LOG"/*.log
-DEMO="final/Meeting kit/05 Cadence - Demo.html"; DROP="final/Meeting kit/06 Live drop pack (made-up, Sep 2026)"
+DEMO="final/Meeting kit/05 Cadence - Demo.html"; DROP="final/Meeting kit/06 Live drop pack (made-up, Sep 2026)"; SHOW="final/Cadence - Showcase.html"
 node test/exports.cjs "$EX" > "$LOG/_exports.txt" 2>&1 || { echo "the made-up exports could not be written (see $LOG/_exports.txt)"; exit 2; }
 cat > "$WORK/suites.txt" <<EOF
 shots|$PAGE|$OUT
@@ -50,6 +50,7 @@ attupd|$PAGE|$OUT
 dedcycle|$PAGE|$OUT
 perfrev|$PAGE|$OUT
 viewas|$PAGE|$OUT
+showcase|$PAGE|$SHOW|$OUT
 ux|$PAGE|$OUT|$EX
 glass|$PAGE|$OUT
 meeting|$DEMO|$DROP|$OUT

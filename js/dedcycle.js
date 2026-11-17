@@ -155,7 +155,7 @@ function renderDedNext() {
     : N.src.att ? (N.src.month ? `From ${NM} in the tool` : 'From the corrections made for those days') : `Not in yet: drop the supervisors' ${NM} attendance sheets below`;
   const dedTxt = D && Object.keys(D.sch || {}).length ? `${plural(Object.keys(D.sch).length, 'person', 'people')} from the Schedule and Agent Status Timeline dropped here`
     : N.src.ded ? `From ${NM} in the tool` : `Not in yet: drop ${NM}'s Schedule and Agent Status Timeline (to the ${ordinal(P.n)}) below`;
-  const li = (ok, b, t) => `<li class="${ok ? 'ok' : 'warn'}"><span class="dnmark" aria-hidden="true"><svg width="12" height="12"><use href="#i-${ok ? 'check' : 'dash'}"/></svg></span><b>${esc(b)}</b><span>${esc(t)}</span></li>`;
+  const li = (ok, b, t) => `<li class="${ok ? 'ok' : 'warn'}"><span class="dnmark" aria-hidden="true"><svg width="12" height="12"><use href="#i-${ok ? 'check' : 'dash'}"/></svg></span><b>${esc(b)}</b> <span>${esc(t)}</span></li>`;   // the space: read as two parts
   const un = D && D.unmatched && D.unmatched.length ? `<p class="hint">Not found in the roster: ${esc(D.unmatched.slice(0, 12).join(', '))}${D.unmatched.length > 12 ? ` and ${D.unmatched.length - 12} more` : ''}.</p>` : '';
   el.innerHTML = `<h2 id="dnH">The days after ${esc(MONTH_LONG[m - 1])}</h2>
     <p class="hint">The workbook runs <b>${esc(P.label)}</b>: its Attendance Report has ${esc(set.dedBrands.join(', ') || 'no brand')}, every team; its Monthly Deduction ${esc(set.dedBrands.join(', ') || '–')} · ${esc(set.dedTeams.join(', ') || '–')}. The email itself keeps ${esc(MONTH_LONG[m - 1])}'s totals.</p>

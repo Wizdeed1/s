@@ -133,9 +133,12 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   ok(mt === 38, `the deduction email's total for Omar: ${mt}`);
   const wb = await p.evaluate(async () => { const b = await Writer2.dedMail(window.__mc.dedData()); let s = ''; const u = new Uint8Array(b); for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); });
   const Core = require('../js/core.js'), wbs = await Core.readXlsx(Buffer.from(wb, 'base64')), md = wbs.find(x => x.name === 'Monthly Deduction'), om = md.rows.find(r => r && r[0] === 'Omar Al Demo');
-  const cell = (d, k) => om[3 + (d - 1) * 3 + k], ar = wbs.find(x => x.name === 'Attendance Report').rows.find(r => r && r[0] === 'Omar Al Demo');
-  ok(om && cell(11, 1) === 472 && cell(11, 2) === 8 && cell(22, 2) === 30 && cell(29, 2) === 0 && cell(24, 2) === 0 && om[3 + 31 * 3] === 38 && /^Exceptions: 5 Oct Excuse/.test(om[3 + 31 * 3 + 1]) && !/24 Oct/.test(om[3 + 31 * 3 + 1]), `the email's workbook: Monthly Deduction with the Actual and Diff excused (the SL day none), total ${om && om[3 + 31 * 3]}, the Review Notes`);
-  ok(ar && /SL/.test(String(ar[3 + 23])) && /Attend/.test(String(ar[3 + 4])), `its Attendance Report: the 24th SL (${ar && ar[3 + 23]}), the 5th Attend`);
+  // the workbook runs 13 Oct – 12 Nov: October's 13th is its first day (the 5th and the 11th are September's file's, 13 Sep – 12 Oct)
+  const cell = (d, k) => om[3 + (d - 13) * 3 + k], ar = wbs.find(x => x.name === 'Attendance Report').rows.find(r => r && r[0] === 'Omar Al Demo'), TOT = 3 + 31 * 3;
+  ok(om && cell(19, 1) === 480 && cell(19, 2) === 0 && cell(22, 1) === 450 && cell(22, 2) === 30 && cell(29, 2) === 0 && cell(24, 2) === 0 && om[TOT] === 30
+    && /^Exceptions: 19 Oct PC loading \(1 min\); 22 Oct 4:00 PM - 4:30 PM \(30 min\); 29 Oct Excuse \(the day\)$/.test(om[TOT + 1]),
+    `the email's workbook (13 Oct – 12 Nov): Monthly Deduction with the Actual and Diff excused (the SL day none), total ${om && om[TOT]} (the 22nd's 30; the 11th's 8 is in September's file), the Review Notes of its days: ${om && om[TOT + 1]}`);
+  ok(ar && /SL/.test(String(ar[3 + 24 - 13])) && /Attend/.test(String(ar[3 + 22 - 13])), `its Attendance Report: the 24th SL (${ar && ar[3 + 24 - 13]}), the 22nd Attend`);
   const xd = await p.evaluate(() => [...document.querySelectorAll('#wfmUpd .upddone li')].map(li => li.textContent.replace(/\s+/g, ' ')).find(t => /Omar/.test(t)) || '');
   ok(/5, 29 Oct: exception \(Excuse\)/.test(xd) && /11, 19 Oct: exception \(PC loading, 2 min\)|11 Oct: exception \(PC loading, 2 min\)/.test(xd), `the list of corrections made from here names them: ${xd.slice(0, 160)}`);
   await p.click('#toastAct'); await p.waitForTimeout(300);

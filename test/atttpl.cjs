@@ -92,6 +92,29 @@ ok('the deduction email\'s workbook: only Attendance Report and Monthly Deductio
   const tot = M[3].findIndex(v => v === 'Total (min)'); assert.equal(M[5][tot], 24 * 10, '24 days at 470 of 480; the absent and sick days count 0'); assert.equal(M[6][tot], 35, 'a month saved before the daily minutes: its total');
   assert.match(M[1][0], /1 person has only a total/);
 });
+ok('the deduction email\'s workbook over the file\'s period: the 13th of the month to the 12th of the next, its days and counts, the notes', async () => {
+  // October's file: 13 Oct – 12 Nov (31 days: 19 of October, 12 of November)
+  const D = []; for (let d = 13; d <= 31; d++) D.push({ y: 2026, m: 10, d }); for (let d = 1; d <= 12; d++) D.push({ y: 2026, m: 11, d });
+  const days = D.map((x, k) => (k === 0 ? 'SL' : k === 19 ? 'AL' : k === 20 ? 12 : x.m === 11 && x.d === 12 ? 'Absent' : [5, 6].includes(k) ? 'OFF' : 'Attend'));
+  const att = [{ id: '1000000001', name: 'Lina A.', brand: 'Virgin', team: 'CC', days, tardy: 12, sched: 29, actual: 26, note: 'a note' }];
+  const ded = [{ id: '1000000001', name: 'Lina A.', brand: 'Virgin', team: 'CC', sched: days.map(v => (v === 'OFF' ? null : 480)), act: days.map(v => (v === 'OFF' ? null : v === 'Absent' || v === 'SL' || v === 'AL' ? 0 : 470)), total: null, note: 'Exceptions: 5 Nov Excuse (30 min)' },
+    { id: '1000000003', name: 'Sara C.', brand: 'Virgin', team: 'CC', sched: null, act: null, total: null, note: 'No minutes by day for Oct' }];
+  const T = await Core.readXlsx(await Writer2.dedMail({ y: 2026, m: 10, days: D, label: '13 Oct – 12 Nov', att, ded }));
+  const A = T[0].rows, M = T[1].rows, H = A[1], dates = H.filter(v => v instanceof Date);
+  assert.equal(A[0][0], 'MC Monthly Attendance - Oct - 2026 (13 Oct – 12 Nov)');
+  assert.equal(dates.length, 31, '31 day columns');
+  assert.deepEqual([dates[0], dates[18], dates[19], dates[30]].map(d => d.toISOString().slice(0, 10)), ['2026-10-13', '2026-10-31', '2026-11-01', '2026-11-12'], 'from 13 Oct to 12 Nov, in order');
+  assert.deepEqual(H.slice(34, 47), ['Tardy', 'AL leave', 'SL leaves', 'Paternity leave', 'Compassionate Leave', 'EID / National Day', 'ML', 'Unpaid', 'Absent', 'Attend', 'Scheduled days', 'Actual days', 'Review Notes']);
+  assert.deepEqual([A[2][3], A[2][22], A[2][23], A[2][33]], ['SL leaves', 'AL leave', 'Attend', 'Absent'], '13 Oct SL, 1 Nov AL, 2 Nov late (Attend), 12 Nov Absent');
+  assert.deepEqual(A[2].slice(34, 47), [12, 1, 1, 0, 0, 0, 0, 0, 1, 26, 29, 26, 'a note']);
+  assert.equal(M[0][0], 'MC Monthly Deduction - Oct - 2026 (13 Oct – 12 Nov)');
+  assert.match(M[1][0], /^The days run 13 Oct – 12 Nov\. /);
+  assert.equal(M[3].filter(v => v instanceof Date).length, 31, 'the Monthly Deduction has the same 31 days');
+  assert.equal(M[3][3].toISOString().slice(0, 10), '2026-10-13'); assert.equal(M[3][3 + 30 * 3].toISOString().slice(0, 10), '2026-11-12');
+  const tot = M[3].findIndex(v => v === 'Total (min)');
+  assert.equal(M[5][tot], 26 * 10, 'the 26 working days at 470 of 480; the leave and absent days count 0');
+  assert.equal(M[5][tot + 1], 'Exceptions: 5 Nov Excuse (30 min)'); assert.equal(M[6][tot], null, 'no minutes by day: no total'); assert.equal(M[6][tot + 1], 'No minutes by day for Oct');
+});
 ok('the incentive email\'s workbook has no ID column (Build\'s keeps it); a dropped workbook has its ID columns emptied', async () => {
   const days = Array.from({ length: 30 }, (_, k) => ([3, 4].includes(k) ? 'OFF' : 'Attend'));
   const md = { y: 2026, m: 9, nd: 30, count: null,

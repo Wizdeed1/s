@@ -47,6 +47,7 @@ smartlink|$PAGE|$EX|$OUT
 absgrid|$PAGE|$OUT
 weekly|$PAGE|$OUT
 attupd|$PAGE|$OUT
+dedcycle|$PAGE|$OUT
 perfrev|$PAGE|$OUT
 viewas|$PAGE|$OUT
 ux|$PAGE|$OUT|$EX

@@ -369,6 +369,34 @@ The file is downloaded and kept in Saved workbooks (*Smart-Link attendance*); th
 
 In the card look, the Absenteeism table (ID, Name, Total Absent and a column for each day someone was absent) no longer squeezes into the 600pt email: Outlook broke "Absent" over two lines and names over three or four. Every column now has a fixed width (the ID and Name as wide as the longest one, each day 36pt), no cell wraps (names keep their spaces as non-breaking ones), the cells are compact and carry their colour as `bgcolor` too, so Outlook shades the whole cell. When the table is wider than the email, the email widens with it (a month with 30 days of absences scrolls sideways). The classic look and the plain text are as they were.
 
+## November 2026, the deduction file from the 13th to the 12th
+
+The deduction email's workbook (*MC Monthly Deduction - Oct 2026.xlsx*, on **WFM team › Emails › Deduction and absences**)
+now runs from the **13th of the month to the 12th of the next**, as payroll counts it: October's file is 13 Oct – 12 Nov
+(31 days: as many as the month has). Asked for by the WFM team; the email's own tables (the deduction totals and the
+absences in its body) stay the calendar month's, as before.
+
+| Sheet | Who | Days |
+|---|---|---|
+| Attendance Report | the deduction brands' people (Settings › deduction scope: **Virgin**), every team; FRiENDi and FRiENDi Pay are left out | 13th to 12th, with the counts (Tardy, leaves, Absent, Scheduled and Actual days) over those days |
+| Monthly Deduction | the deduction scope (**Virgin · CC**), as before | 13th to 12th: each day's Sched., Actual and Diff, the total over them |
+
+**The next month's first twelve days.** The month's own days (13th to the end) come from the month as before. Days 1–12 of
+the next month come from, in this order: the corrections made for them (Corrections after the review: a line like
+*Sara K. SL 5 Nov* goes to November's corrections, and Now shows the day as the file has it), then the files dropped in the
+new box beside the email, **The days after October**, then the next month in the tool once it is built. The box takes:
+
+- the supervisors' **attendance sheets** (Excel or CSV, any of the layouts Import reads, the tool's own templates too): only
+  1–12 of the next month is read, matched to the roster as Import matches them; rows nobody in the roster has are listed;
+- the next month's **Schedule** and **Agent Status Timeline** for the deduction minutes (both: Actual is what was signed on
+  inside the schedule).
+
+What is dropped is kept with the shared data (`dednext/<month>`), so the final email and another computer have it too;
+**Clear what was dropped here** takes it away (with Undo). Until those days are in, the box shows what is missing and the
+page warns above the preview. Code: `js/dedcycle.js` (the period, the next month's days, the box), `Writer2.dedMail` (any
+list of days). Tests: `test/atttpl.cjs` (the workbook over a period), `test/dedcycle.cjs` (the whole flow with made-up
+people and files), `test/attupd.cjs` (the corrections, on the new days).
+
 ## November 2026, the Weekly Commercial Presentation
 
 Every week the WFM team sends the VP the *Weekly Commercial Presentation* (Member Care Performance Review), a 7-slide PowerPoint. **WFM team › Weekly commercial** (in *Every week*, for the WFM manager and the analysts) now makes it in four steps, and the email with it:
@@ -494,6 +522,7 @@ node test/trust.cjs "final/Cadence.html" test/shots             # accounts plant
 node test/tenure.cjs "final/Cadence.html" test/shots           # months in the job (joined 18 Jan: from Jul), roster import and Edit of the joining date, the absence penalty of 4 days per Absent day
 node test/depts.cjs "final/Cadence.html" test/shots exportsDir  # every department: the SPVs' card (Team Performance, month figures, typed by hand, its own base), a role's card from the person's page, NA ranks 5, Review › KPI results boxes, the card's base
 node test/dailyhist.cjs "final/Cadence.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
+node test/dedcycle.cjs "final/Cadence.html" test/shots          # the deduction email's workbook from the 13th to the 12th (Virgin only), The days after the month (attendance sheets, the Schedule and Timeline), a correction for a next-month day, Clear and Undo
 node test/rb158.cjs "final/Cadence.html" test/shots             # Report builder as 15.8: built-in history under this browser's, IVR exports (no IVR box in the emails), tickets to exclude, IVR scorecard (drawer, Download PNG, the IVR Summary Daily Report .eml with the card as text and tables)
 node test/incedits.cjs "final/Cadence.html" /tmp/exports test/shots   # corrections from anywhere reach the month being built and the incentive file (also with the incentive email's file open); Export and the incentive email say when the kept file is older; Refresh data on every page
 node test/incmail.cjs "final/Cadence.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see); the final result form with only those who earned it

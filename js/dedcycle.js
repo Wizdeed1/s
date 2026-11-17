@@ -182,14 +182,14 @@ async function dnRead(files) {
     }
     const prev = state.dedNext[P.k] || {}, out = { k: P.k, at: new Date().toISOString(), by: whoNow(), files: [...(prev.files || []).filter(f => !took.some(x => x.name === f.name)), ...took],
       att: { ...(prev.att || {}) }, sch: { ...(prev.sch || {}) }, act: { ...(prev.act || {}) }, unmatched: [...(prev.unmatched || [])] };
-    const said = [];
+    const said = [], done = [];   // what went wrong stays on the box; what was read is said once
     if (att.length) {
       const R = Att.merge(att, rosterRows(), { y: P.ny, m: P.nm, links: state.attLinks });
       let people = 0;
       for (const [pid, a] of R.byPerson) { const v = dnFit(a.days, n); if (!v.some(x => x != null)) continue; const old = out.att[pid] || Array(n).fill(null); out.att[pid] = v.map((x, i) => (x != null ? x : old[i])); people++; }
       out.unmatched = [...new Set([...out.unmatched, ...R.unmatched.map(u => normSpace(u.name || u.idRaw)).filter(Boolean)])].slice(0, 200);
       const used = R.files.filter(f => f.used);
-      said.push(used.length ? `${plural(people, 'person', 'people')} with days in 1–${n} ${MON[P.nm - 1]}${R.unmatched.length ? `, ${plural(R.unmatched.length, 'row')} not found in the roster` : ''}` : `no days of ${NM} in the sheets (${R.files.map(f => f.reason).filter(Boolean)[0] || 'no dates'})`);
+      if (used.length) done.push(`1–${n} ${MON[P.nm - 1]} for ${plural(people, 'person', 'people')}`); else said.push(`No days of ${NM} in the sheets (${R.files.map(f => f.reason).filter(Boolean)[0] || 'no dates'})`);
     }
     if (gen.sch.length && gen.tl.length) {
       const D = Core.computeDaily(gen.sch, gen.tl, P.ny, P.nm); let people = 0;
@@ -198,14 +198,15 @@ async function dnRead(files) {
         const sv = dnFit(s.days, n); if (!sv.some(x => x != null)) continue;
         out.sch[p._id] = sv; out.act[p._id] = dnFit(t ? t.days : null, n) || Array(n).fill(null); people++;
       }
-      said.push(`the minutes of ${plural(people, 'person', 'people')} from the Schedule and the Agent Status Timeline`);
-    } else if (gen.sch.length || gen.tl.length) said.push(`the ${gen.sch.length ? 'Schedule' : 'Agent Status Timeline'} is in: drop the ${gen.sch.length ? 'Agent Status Timeline' : 'Schedule'} too for the minutes`);
-    if (bad.length) said.push(`${bad.join(', ')}: not an attendance sheet, a Schedule or an Agent Status Timeline`);
+      done.push(`the minutes of ${plural(people, 'person', 'people')}`);
+    } else if (gen.sch.length || gen.tl.length) said.push(`The ${gen.sch.length ? 'Schedule' : 'Agent Status Timeline'} is in: drop the ${gen.sch.length ? 'Agent Status Timeline' : 'Schedule'} too for the minutes`);
+    if (bad.length) said.push(`${bad.join(', ')}: not an attendance sheet, a Schedule or an Agent Status Timeline, so not read`);
     if (took.length) {
       state.dedNext = { ...state.dedNext, [P.k]: out };
-      await queueWrite('dednext/' + P.k, () => state.db.doc('dednext/' + P.k).set(out)).catch(e => { said.push(`not saved (${(e && e.code) || 'error'})`); });
+      await queueWrite('dednext/' + P.k, () => state.db.doc('dednext/' + P.k).set(out)).catch(e => { said.push(`Not saved (${(e && e.code) || 'error'})`); });
     }
-    state.dnMsg = said.length ? said.join('. ').replace(/^./, c => c.toUpperCase()) + '.' : '';
+    state.dnMsg = said.length ? said.join('. ') + '.' : '';
+    if (done.length) toast(`Read ${plural(took.length, 'file')}: ${done.join(', ')}.`);
   } finally { state.dnBusy = false; renderEmail(); }
 }
 function dnClear() {

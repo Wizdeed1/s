@@ -408,11 +408,11 @@ team, with the Weekly Commercial and Performance Review tabs taken out of what t
 | The challenge | A bonus used to be counted by hand: the scorecards (15 by default), 7 KPIs on a champion's card each with its bands and weight, 10+ sources. |
 | How a bonus is counted | The five steps, with the champion's own numbers: the month's numbers (matched by National ID, then name); each KPI ranked 1 to 5 against its bands; weighted into the final; the days that count; the gates (final 80% or more, no attitude critical error, 5 days, 6 months in the job). Then *1,000 SR × 91% × 84% = 764 SR*. |
 | Try it | A slider for every KPI of the card, the days attended, absent days, months in the job and an attitude error: every rank, the final, the gates and the bonus follow at once, counted by the tool's own engine. Back to her month. |
-| Checked before it counts | Every person matched, nothing missing in silence, attendance settled, reviewed then final; 10,000 made-up people counted by the old engine and by Cadence with the same results. |
+| Checked before it counts | Every person matched, nothing missing in silence, attendance settled, reviewed then final; **100 people using Cadence at the same time**, tested (see *How many people at the same time* below). |
 | Every bonus explained | The receipt the agent sees (each KPI's value, rank and weight, the final, the days, the base, the gates, the bonus), in English or **Arabic** (right to left). |
 | Every role | Each role's part in the bonus, with **View** (a live preview) in the tool. |
 | This month | In the tool only: the shared month's bonus, totals only (people scored, those who earn a bonus, the average final, the riyals in bonuses). |
-| What it gives back, Trust, What's next | The time back as the team set it (188 hours a month, changed live), pay data that stays ours, and the next bonus counted in Cadence beside the old spreadsheet. |
+| Trust, What's next | Pay data that stays ours (0 web requests, encrypted shared data, no IDs in email attachments, every change logged, nothing to install), and the next bonus counted in Cadence beside the old spreadsheet. |
 
 Every number of the made-up champion is counted by the tool's own engine (`Kpi.score`) with the month's rules in the tool (the
 default rules in the file), so the page pays what the tool would. The story is one module, `js/showstory.js`, told in two places:
@@ -425,6 +425,33 @@ default rules in the file), so the page pays what the tool would. The story is o
 **Previews.** A preview (View as, from the Showcase or the account menu) has no Weekly commercial and no Performance Review: no tab,
 no page and no How-to step, as it already had no daily report. Tests: `test/showcase.cjs` (the tool and the file, every number
 against the engine), `test/viewas.cjs`, `test/ux.cjs` and `test/meeting.cjs`.
+
+## November 2026, how many people at the same time
+
+The Showcase's *Checked before it counts* now says how many people can use Cadence at the same time without a problem: **100**,
+from a load test, in place of the 10,000 made-up people (that check still runs in `npm test`, see `test/rules.cjs`). On request,
+the time back (*What it gives back*, 188 hours a month) and the *browser test suites* tile in Trust were taken out of the Showcase,
+in the tool and in the stand-alone file.
+
+`node tools/loadtest/run.cjs [people=50] [seconds=120] [save every, s: min=15] [max=45] [old markers=3000]` opens that many people
+in one browser, each a page with the tool's own shared-folder code (`js/store.js`): the team's data key, two collections watched as
+the staff pages watch them, and a save of their own record every 15 to 45 seconds (as a team leader marks attendance), on a folder
+that starts with a busy day's change markers in `_changes`. At the end it checks each person's last save as every other person sees
+it, and counts failed saves, lost changes, the store's problems and page errors.
+
+| People | Saves every | Old markers | Saves | Failed | Lost | Errors | A save reached each other person in (median / 95% / slowest) |
+|---|---|---|---|---|---|---|---|
+| 10 | 5–10 s | 500 | 45 | 0 | 0 | 0 | 3.0 / 5.0 / 5.0 s |
+| 50 | 15–45 s | 0 | 167 | 0 | 0 | 0 | 2.8 / 5.0 / 5.5 s |
+| 50 | 15–45 s | 3,000 | 166 | 0 | 0 | 0 | 10.3 / 16.8 / 19.2 s |
+| 100 | 15–45 s | 3,000 | 262 | 0 | 0 | 0 | 23.1 / 40.3 / 63.0 s |
+
+200 people could not be run here: 200 pages in one browser ran this computer out of memory (15 GB), which is the test's limit,
+not the tool's (each person's own computer holds only their page). So the Showcase says 100, the most that was measured.
+
+What it does not show: all the people ran on one 4-core computer, so they shared its processor and its storage (each person's
+own computer would only do their own share), and the folder was that computer's disk, not the team's network share, whose speed
+is not measured here. As before, two people saving the very same record within a few seconds of each other: the last save wins.
 
 ## November 2026, the Weekly Commercial Presentation
 
@@ -552,7 +579,8 @@ node test/tenure.cjs "final/Cadence.html" test/shots           # months in the j
 node test/depts.cjs "final/Cadence.html" test/shots exportsDir  # every department: the SPVs' card (Team Performance, month figures, typed by hand, its own base), a role's card from the person's page, NA ranks 5, Review › KPI results boxes, the card's base
 node test/dailyhist.cjs "final/Cadence.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
 node test/dedcycle.cjs "final/Cadence.html" test/shots          # the deduction email's workbook from the 13th to the 12th (Virgin only), The days after the month (attendance sheets, the Schedule and Timeline), a correction for a next-month day, Clear and Undo
-node test/showcase.cjs "final/Cadence.html" "final/Cadence - Showcase.html" test/shots   # the Showcase told around the bonus, in the tool and the stand-alone file: every number against the engine, Try it, the Arabic receipt, Present, offline
+node test/showcase.cjs "final/Cadence.html" "final/Cadence - Showcase.html" test/shots   # the Showcase told around the bonus, in the tool and the stand-alone file: every number against the engine, Try it, the Arabic receipt, Present, offline, 100 people at once (no time back, no test-suite tile)
+node tools/loadtest/run.cjs 100 120 15 45 3000                 # not a suite: how many people at the same time on one shared folder (saves lost, errors, how soon a save reaches the others)
 node test/rb158.cjs "final/Cadence.html" test/shots             # Report builder as 15.8: built-in history under this browser's, IVR exports (no IVR box in the emails), tickets to exclude, IVR scorecard (drawer, Download PNG, the IVR Summary Daily Report .eml with the card as text and tables)
 node test/incedits.cjs "final/Cadence.html" /tmp/exports test/shots   # corrections from anywhere reach the month being built and the incentive file (also with the incentive email's file open); Export and the incentive email say when the kept file is older; Refresh data on every page
 node test/incmail.cjs "final/Cadence.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see); the final result form with only those who earned it

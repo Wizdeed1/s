@@ -5,7 +5,7 @@
 // 3. the bell: a line with Mark done and Open keeps both buttons whole, side by side
 // 4. Results › How explains the month on screen (each KPI from the quality numbers), not the month in Build
 // 5. View as an agent: their own page from the made-up months, the National ID hidden
-// 6. the Showcase: eleven sections, told around the bonus, and "6 months of history"; the time back as set (188 hours a month), a number changed live, Reset the hours
+// 6. the Showcase: ten sections, told around the bonus, "6 months of history" and the made-up champion's bonus; no time back
 // 7. the presenter's keys: S (with + and -), Z, Esc; Esc with the spotlight on does not end the presentation
 // 8. Import: the four made-up Genesys exports, read and checked
 // Usage: node test/meeting.cjs demo.html exportsDir outDir
@@ -59,19 +59,12 @@ let fails = 0; const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if
   await p.screenshot({ path: path.join(out, 'meeting-person-how.png') });
   await p.keyboard.press('Escape'); await p.waitForTimeout(250);
 
-  // ---- 6. the Showcase and its time back, as the team set it
-  await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector('#showBody .sh-gives');
-  const sh = await p.evaluate(() => ({ n: document.querySelectorAll('#showBody .shsec').length, strip: document.getElementById('showStrip').innerText, give: document.getElementById('showGive').innerText }));
-  ok(sh.n === 11 && /6 months of history/.test(sh.strip) && /188\s*hours back a month/.test(sh.give) && /2,256\s*hours back a year/.test(sh.give) && /282\s*working days back a year/.test(sh.give),
-    `the Showcase: ${sh.n} sections, "6 months of history", the time back as set: 188 hours a month, 2,256 a year, 282 working days`);
-  await p.evaluate(() => document.querySelector('#showBody .sh-gives').scrollIntoView({ block: 'start' }));
-  await p.fill('[data-give="1"]', '4'); await p.fill('[data-give="7"]', '3');
-  const give = await p.evaluate(() => document.getElementById('showGive').innerText);
-  ok(/211\s*hours back a month/.test(give) && /2,532\s*hours back a year/.test(give) && /317\s*working days back a year/.test(give), 'a number changed live (the WFM manager 4 h a day, the TS manager 3 h a month): 211 hours a month, 2,532 a year');
-  await p.screenshot({ path: path.join(out, 'meeting-gives.png') });
-  await p.click('[data-givereset]'); await p.waitForTimeout(100);
-  const back = await p.evaluate(() => ({ t: document.getElementById('showGive').innerText, v: [...document.querySelectorAll('[data-give]')].map(x => x.value).join(',') }));
-  ok(back.v === '5,3,2,2,2,2,2,2' && /188\s*hours back a month/.test(back.t), '  Reset the hours puts the set hours back');
+  // ---- 6. the Showcase, told around the bonus (no time back since 17 Nov 2026)
+  await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector('#showBody .sh-try');
+  const sh = await p.evaluate(() => ({ n: document.querySelectorAll('#showBody .shsec').length, strip: document.getElementById('showStrip').innerText, give: !!document.getElementById('showGive'), earned: (document.querySelector('#showBody [data-tryearned]') || {}).textContent }));
+  ok(sh.n === 10 && /6 months of history/.test(sh.strip) && !sh.give && sh.earned === '764', `the Showcase: ${sh.n} sections, "6 months of history", the made-up champion's 764 SR, no time back`);
+  await p.evaluate(() => document.querySelector('#showBody .sh-try').scrollIntoView({ block: 'start' }));
+  await p.screenshot({ path: path.join(out, 'meeting-try.png') });
 
   // ---- 7. the presenter's keys
   await p.evaluate(() => { if (document.activeElement) document.activeElement.blur(); scrollTo(0, 0); }); await p.mouse.move(700, 420);

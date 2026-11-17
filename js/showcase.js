@@ -2,8 +2,7 @@
 // One page the admin opens in front of the management team, told around the core idea: Cadence counts every bonus. The story is
 // js/showstory.js (also the stand-alone Showcase file): a made-up champion counted by the tool's own engine, the five steps, Try it,
 // the checks, the bonus explained (English or Arabic), every role's part (each with View, which opens that role's interface live
-// through viewas.js), this month's bonus from the shared data (totals only, never a name), the time back, trust and what comes
-// next. Never the WFM team's own daily or weekly reports, never how files go in or out. Present turns it into slides: full screen,
+// through viewas.js), this month's bonus from the shared data (totals only, never a name), trust and what comes next. Never the WFM team's own daily or weekly reports, never how files go in or out. Present turns it into slides: full screen,
 // one section at a time, the arrow keys, speaker notes on N. The line figures are hairline's (vendor/hairline.js), drawn only while
 // the page is open. For the admin, anywhere in the tool: S a spotlight that follows the pointer, Z a zoom where it points, Esc off.
 const showFig = () => (typeof Hairline !== 'undefined' ? Hairline : null);
@@ -67,7 +66,7 @@ function renderShow() {
   }
   stopShowFigs();
   el.innerHTML = showHtml();
-  ShowStory.bind(el, showEnvNow); ShowStory.paint(el, showEnvNow);   // Try it, the receipt's language, the time back
+  ShowStory.bind(el, showEnvNow); ShowStory.paint(el, showEnvNow);   // Try it and the receipt's language
   const io = 'IntersectionObserver' in window ? new IntersectionObserver(L => L.forEach(x => {
     if (!x.isIntersecting) return;
     if (x.target.classList.contains('shsec')) { x.target.classList.add('in'); ShowStory.arrive(x.target); } else mountFig(x.target);

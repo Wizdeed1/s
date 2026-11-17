@@ -42,7 +42,7 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   ok(/^dash,.*,show$/.test(N), `the admin's pages end with the Showcase: ${N}`);
   await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector('#showBody .shsec', { timeout: 10000 });
   const sh = await p.evaluate(() => ({ n: document.querySelectorAll('#showBody .shsec').length, h: (document.getElementById('h-show') || {}).textContent, roles: document.querySelectorAll('#showBody .shroles [data-vago]').length, notes: document.querySelectorAll('#showBody .shnotes').length, hash: location.hash }));
-  ok(sh.n === 11 && sh.h === 'Showcase' && sh.roles === 6 && sh.notes === 11 && sh.hash === '#/show', `the Showcase: ${sh.n} sections with speaker notes, ${sh.roles} roles to view, at ${sh.hash}`);
+  ok(sh.n === 10 && sh.h === 'Showcase' && sh.roles === 6 && sh.notes === 10 && sh.hash === '#/show', `the Showcase: ${sh.n} sections with speaker notes, ${sh.roles} roles to view, at ${sh.hash}`);
   for (let i = 0; i < 8; i++) { await p.evaluate(i => { const f = document.querySelectorAll('#showBody .shfig')[i]; if (f) f.scrollIntoView({ block: 'center' }); }, i); await p.waitForTimeout(200); }
   await p.waitForTimeout(400);
   const figs = await p.evaluate(() => ({ all: document.querySelectorAll('#showBody .shfig').length, drawn: [...document.querySelectorAll('#showBody .shfig')].filter(f => f.querySelector('svg')).length, lib: typeof Hairline !== 'undefined' && Object.keys(Hairline).length }));
@@ -54,7 +54,7 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowLeft'); await p.keyboard.press('ArrowRight'); await p.keyboard.press('n'); await p.waitForTimeout(150);
   P = await pres(); ok(P.cur === 2 && P.notes, 'the arrow keys go from section to section; N shows the speaker notes');
   await p.screenshot({ path: path.join(out, 'viewas-present.png') });
-  await p.keyboard.press('End'); P = await pres(); ok(P.cur === 10, 'End: the last section (what\'s next)');
+  await p.keyboard.press('End'); P = await pres(); ok(P.cur === 9, 'End: the last section (what\'s next)');
   await p.keyboard.press('Escape'); await p.waitForTimeout(150); P = await pres();
   ok(!P.on && !P.ctl && P.side !== 'none', 'Esc ends the presentation; the page is as it was');
   // the admin's keys, on any page: S a spotlight that follows the pointer, Z a zoom where it points, Esc takes them off

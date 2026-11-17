@@ -9,8 +9,8 @@
 //  - Quality: team tabs, Enter goes down and the cursor survives the redraw, a column pasted is one logged change;
 //  - Import: a ready export is one slim line with its Ready chip, the drop zone a slim bar; People opens as the table;
 //  - the drawers: Settings' field notes and the scorecards' explanation behind ⓘ, back with Show guidance; a person's status stays;
-//  - the Showcase: the idea and the benefits, no word on how files go in or out nor on the WFM team's daily reports; the time back as
-//    the team set it (188 hours a month), a number changed live, Reset the hours.
+//  - the Showcase, told around the bonus: no word on how files go in or out nor on the WFM team's daily or weekly reports; no time
+//    back and no test-suite tile.
 // Usage: node test/ux.cjs [page.html] [outDir] [exportsDir]
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -221,30 +221,19 @@ const USERS = { admin: { id: 'u0', name: 'Amal R.', username: 'amal.r', role: 'a
   ok(await p.evaluate(() => { const h = [...document.querySelectorAll('#dPerson p.hint')].find(x => /Days \d+ of \d+/.test(x.textContent)); return !!h && getComputedStyle(h).display !== 'none'; }), 'a person\'s panel keeps its status line on view');
   await p.keyboard.press('Escape'); await p.waitForTimeout(400);
 
-  // ---- 8. the Showcase, told around the bonus: never how files go in or out, nor the WFM team's daily or weekly reports; the time
-  // back as the team set it (5 h a day, 3 h a day, six people at 2 h a month), a change and the reset
+  // ---- 8. the Showcase, told around the bonus: never how files go in or out, nor the WFM team's daily or weekly reports; no time
+  // back and no test-suite tile (taken out on request)
   await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector('#showBody .shsec');
   const sh = await p.evaluate(() => ({ secs: [...document.querySelectorAll('#showBody .shsec')].map(s => s.getAttribute('aria-label')), text: document.getElementById('showBody').innerText }));
-  ok(sh.secs.join(' | ') === 'Cadence | The challenge | How a bonus is counted | Try it | Checked before it counts | Every bonus explained | Every role | This month | What it gives back | Trust | What\'s next', `the Showcase, told around the bonus: ${sh.secs.join(' · ')}`);
+  ok(sh.secs.join(' | ') === 'Cadence | The challenge | How a bonus is counted | Try it | Checked before it counts | Every bonus explained | Every role | This month | Trust | What\'s next', `the Showcase, told around the bonus: ${sh.secs.join(' · ')}`);
   const mech = sh.text.match(/\b(import\w*|export\w*|drop|upload\w*|html|common folder|edge|chrome|phones?)\b/gi) || [];
   ok(!mech.length, `the Showcase never explains how files go in or out${mech.length ? ` (${mech.slice(0, 5).join(', ')})` : ''}`);
   const daily = sh.text.match(/\b(daily|report builder|brand emails?|daily review)\b/gi) || [];
   ok(!daily.length, `and never the WFM team's daily reports${daily.length ? ` (${daily.slice(0, 3).join(', ')})` : ''}`);
   const weekly = sh.text.match(/\b(weekly|commercial|performance review)\b/gi) || [];
   ok(!weekly.length, `nor the weekly presentation and the performance review${weekly.length ? ` (${weekly.slice(0, 3).join(', ')})` : ''}`);
-  const tb = () => p.evaluate(() => ({ give: document.getElementById('showGive').innerText.replace(/\s+/g, ' '), mo: [...document.querySelectorAll('[data-givemo]')].map(x => x.textContent).join(', '),
-    roles: [...document.querySelectorAll('#showBody .shctab tbody th')].map(x => x.textContent).join(', ') }));
-  const t0 = await tb();
-  ok(t0.roles === 'WFM analyst, WFM manager, QA supervisor, QA manager, CT supervisor, CT manager, TS supervisor, TS manager' && t0.mo === '110 h, 66 h, 2 h, 2 h, 2 h, 2 h, 2 h, 2 h'
-    && /\b188 hours back a month/.test(t0.give) && /2,256 hours back a year/.test(t0.give) && /282 working days back a year/.test(t0.give) && /1\.1 full-time people/.test(t0.give),
-    `Time back as set: 5 h a day, 3 h a day, six people at 2 h a month = 188 h a month, 2,256 a year, 282 working days (${t0.mo})`);
-  ok(/188 hours every month/.test(await p.evaluate(() => document.querySelector('#showBody .sh-gives .shnotes').textContent)), 'the speaker notes of the time back say the 188 hours');
-  await p.fill('[data-give="0"]', '0'); await p.waitForTimeout(200);
-  const t1 = await tb();
-  ok(/\b78 hours back a month/.test(t1.give) && /44% of a full-time person/.test(t1.give) && t1.mo.startsWith('0 h, 66 h'), `a number changed live: the totals follow (${(/(\d[\d,]*) hours back a month/.exec(t1.give) || [])[1]} h a month)`);
-  await p.click('[data-givereset]'); await p.waitForTimeout(200);
-  const t2 = await tb();
-  ok(/\b188 hours back a month/.test(t2.give) && await p.$eval('[data-give="0"]', x => x.value) === '5', 'Reset the hours puts the set hours back');
+  const gone = await p.evaluate(() => ({ give: !!document.getElementById('showGive') || !!document.querySelector('[data-give]'), tiles: [...document.querySelectorAll('#showBody .sh-trust .shtile span')].map(x => x.textContent) }));
+  ok(!gone.give && !/hours back|time back/i.test(sh.text) && !gone.tiles.some(t => /test suites/i.test(t)) && gone.tiles.length === 5, `no time back and no test-suite tile (Trust: ${gone.tiles.join(', ')})`);
   await ctx.close();
   ok(!errs.length, `no errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
   await b.close();

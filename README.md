@@ -397,6 +397,35 @@ page warns above the preview. Code: `js/dedcycle.js` (the period, the next month
 list of days). Tests: `test/atttpl.cjs` (the workbook over a period), `test/dedcycle.cjs` (the whole flow with made-up
 people and files), `test/attupd.cjs` (the corrections, on the new days).
 
+## November 2026, the Showcase told around the bonus
+
+The admin's **Showcase** now tells one idea, the core of the tool: **Cadence counts every bonus right**. Asked for by the WFM
+team, with the Weekly Commercial and Performance Review tabs taken out of what the Showcase opens.
+
+| Section | What it shows |
+|---|---|
+| Cadence | *Every bonus, counted right.* A made-up champion's ticket (Lina A., Member Care Champion): final 84% (4.2 of 5 on 7 KPIs), 20 of 22 days, base 1,000 SR, **764 SR**, its gates ticked; the numbers count up as it comes into view. |
+| The challenge | A bonus used to be counted by hand: the scorecards (15 by default), 7 KPIs on a champion's card each with its bands and weight, 10+ sources. |
+| How a bonus is counted | The five steps, with the champion's own numbers: the month's numbers (matched by National ID, then name); each KPI ranked 1 to 5 against its bands; weighted into the final; the days that count; the gates (final 80% or more, no attitude critical error, 5 days, 6 months in the job). Then *1,000 SR × 91% × 84% = 764 SR*. |
+| Try it | A slider for every KPI of the card, the days attended, absent days, months in the job and an attitude error: every rank, the final, the gates and the bonus follow at once, counted by the tool's own engine. Back to her month. |
+| Checked before it counts | Every person matched, nothing missing in silence, attendance settled, reviewed then final; 10,000 made-up people counted by the old engine and by Cadence with the same results. |
+| Every bonus explained | The receipt the agent sees (each KPI's value, rank and weight, the final, the days, the base, the gates, the bonus), in English or **Arabic** (right to left). |
+| Every role | Each role's part in the bonus, with **View** (a live preview) in the tool. |
+| This month | In the tool only: the shared month's bonus, totals only (people scored, those who earn a bonus, the average final, the riyals in bonuses). |
+| What it gives back, Trust, What's next | The time back as the team set it (188 hours a month, changed live), pay data that stays ours, and the next bonus counted in Cadence beside the old spreadsheet. |
+
+Every number of the made-up champion is counted by the tool's own engine (`Kpi.score`) with the month's rules in the tool (the
+default rules in the file), so the page pays what the tool would. The story is one module, `js/showstory.js`, told in two places:
+
+- the tool's **Showcase** page (`js/showcase.js`: Present, the speaker notes on N, S spotlight, Z zoom, View for every role, this month);
+- **`final/Cadence - Showcase.html`**, the same story on its own (about 1 MB): opens anywhere as a file, offline (the browser refuses
+  any web address), made-up only, with Present, the speaker notes, S and Z, Light or Dark. Made by `node tools/showcase/make_showcase.cjs`
+  from the tool's own look, engine, motion and line figures.
+
+**Previews.** A preview (View as, from the Showcase or the account menu) has no Weekly commercial and no Performance Review: no tab,
+no page and no How-to step, as it already had no daily report. Tests: `test/showcase.cjs` (the tool and the file, every number
+against the engine), `test/viewas.cjs`, `test/ux.cjs` and `test/meeting.cjs`.
+
 ## November 2026, the Weekly Commercial Presentation
 
 Every week the WFM team sends the VP the *Weekly Commercial Presentation* (Member Care Performance Review), a 7-slide PowerPoint. **WFM team › Weekly commercial** (in *Every week*, for the WFM manager and the analysts) now makes it in four steps, and the email with it:
@@ -523,6 +552,7 @@ node test/tenure.cjs "final/Cadence.html" test/shots           # months in the j
 node test/depts.cjs "final/Cadence.html" test/shots exportsDir  # every department: the SPVs' card (Team Performance, month figures, typed by hand, its own base), a role's card from the person's page, NA ranks 5, Review › KPI results boxes, the card's base
 node test/dailyhist.cjs "final/Cadence.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
 node test/dedcycle.cjs "final/Cadence.html" test/shots          # the deduction email's workbook from the 13th to the 12th (Virgin only), The days after the month (attendance sheets, the Schedule and Timeline), a correction for a next-month day, Clear and Undo
+node test/showcase.cjs "final/Cadence.html" "final/Cadence - Showcase.html" test/shots   # the Showcase told around the bonus, in the tool and the stand-alone file: every number against the engine, Try it, the Arabic receipt, Present, offline
 node test/rb158.cjs "final/Cadence.html" test/shots             # Report builder as 15.8: built-in history under this browser's, IVR exports (no IVR box in the emails), tickets to exclude, IVR scorecard (drawer, Download PNG, the IVR Summary Daily Report .eml with the card as text and tables)
 node test/incedits.cjs "final/Cadence.html" /tmp/exports test/shots   # corrections from anywhere reach the month being built and the incentive file (also with the incentive email's file open); Export and the incentive email say when the kept file is older; Refresh data on every page
 node test/incmail.cjs "final/Cadence.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see); the final result form with only those who earned it

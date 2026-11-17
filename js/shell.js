@@ -356,6 +356,7 @@ const DEPT = [
     '<b>Settings</b>: targets, the deduction scope, the logo, the sign-in lock time, and the scorecards.',
     'Admins can do everything the analysts do on the WFM team page and see every page, <b>WFM team › Data</b> too (export and import all the data).',
     '<b>Refresh data</b> (the round arrows at the top of every page) reads the shared data again at once and draws the page again.',
+    '<b>Showcase</b>: how Cadence counts every bonus, for a meeting. <b>Present</b> shows it full screen; <b>Try it</b> lets the room move a made-up champion\'s numbers and watch the bonus follow; <b>View</b> opens a role\'s page live (a preview: nothing is saved, and it has no daily or weekly reports). The same story is also a file of its own, <b>Cadence - Showcase.html</b>, made-up only.',
     'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome. Opening the shared data shows what it waits for: if it is slow on a computer, MC Data is often in OneDrive or SharePoint with its files not downloaded yet. Right-click it in File Explorer and choose <b>Always keep on this device</b>.']],
 ];
 /** for everyone, after the role's own steps */

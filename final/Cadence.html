@@ -3723,7 +3723,7 @@ body.presenting .shlogo { --h: 64px; }
 
 /* the line figures (hairline): the card's own ground behind them */
 .shfig { --hairline-plate: var(--surface); width: 100%; max-width: 440px; justify-self: center; aspect-ratio: 5 / 4; }   /* its size before it is drawn, so it is seen coming into view */
-.shstep .shfig, .shroles .shfig { max-width: 220px; }
+.shroles .shfig { max-width: 220px; }
 
 /* the problem: three numbers */
 .shnums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
@@ -3735,7 +3735,7 @@ body.presenting .shlogo { --h: 64px; }
 /* cards */
 .shcards { display: grid; gap: 14px; }
 .shcards.three { grid-template-columns: repeat(3, 1fr); }
-.shcards.five { grid-template-columns: repeat(5, 1fr); }
+.shcards.two { grid-template-columns: repeat(2, 1fr); }
 .shcard { position: relative; background: var(--sunk); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 8px; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
 .shcard:hover { transform: translateY(-2px); border-color: var(--line-3); box-shadow: 0 8px 22px rgba(8, 8, 8, .06); }
 .shcard b { font: 600 16px/1.3 var(--display); color: var(--ink); }
@@ -3745,13 +3745,6 @@ body.presenting .shlogo { --h: 64px; }
 .shcard.stat em { font: 700 24px/1.1 var(--display); font-style: normal; color: var(--on-accent); }
 .shcard.stat b, .shcard.stat p { color: var(--on-accent); }
 
-/* the four steps */
-.shsteps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; counter-reset: none; }
-.shstep { position: relative; background: var(--sunk); border: 1px solid var(--line); border-radius: 10px; padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 6px; }
-.shstep b { font: 600 18px/1.25 var(--display); }
-.shstep p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
-.shn { display: inline-grid; place-items: center; width: 30px; height: 30px; background: var(--accent-fill); color: var(--on-accent); font: 700 14px/1 var(--display); border-radius: 4px; flex: none; }
-.shstep .shn { position: absolute; top: 14px; left: 14px; z-index: 1; }
 
 /* every role */
 .shroles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: stretch; }
@@ -3786,16 +3779,6 @@ body.presenting .shlogo { --h: 64px; }
 .shtile.on { background: var(--accent-fill); }
 .shtile.on p { color: rgba(255, 255, 255, .86); }
 
-/* what changes */
-.shtable { overflow-x: auto; }
-.shtable table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
-.shtable th, .shtable td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
-.shtable thead th { background: var(--nav); color: var(--nav-ink); font: 600 12px/1.2 var(--display); letter-spacing: .1em; text-transform: uppercase; border-bottom: 0; }
-.shtable thead th.hot { background: var(--accent-fill); }
-.shtable tbody th { font: 600 14.5px/1.4 var(--display); color: var(--ink); white-space: nowrap; }
-.shtable td { color: var(--muted); }
-.shtable td:last-child { color: var(--ink); font-weight: 600; }
-.shtable tbody tr:hover td, .shtable tbody tr:hover th { background: var(--fill); }
 
 /* how we start */
 .shend { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: var(--sh-gap); align-items: center; }
@@ -3824,9 +3807,7 @@ body.presenting #v-show { position: fixed; inset: 0; z-index: 60; background: va
 body.presenting .shsec { display: none; position: absolute; inset: clamp(12px, 2vw, 28px) clamp(12px, 2vw, 28px) 76px; margin: 0; padding: clamp(28px, 4.5vw, 64px); overflow: auto;
   flex-direction: column; justify-content: center; justify-content: safe center; }   /* a section taller than the screen scrolls from its top */
 body.presenting .shcta [data-showpresent], body.presenting #toast { display: none !important; }
-body.presenting .shkpis .kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 body.presenting .shhead { margin-bottom: clamp(16px, 2.4vw, 28px); }
-@media (max-width: 1200px) { body.presenting .shkpis .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 body.presenting .shsec.cur { display: flex; }
 body.presenting .shsec::after { width: 12px; height: 12px; top: 26px; right: 26px; }
 body.presenting .shsec::before { content: ""; position: absolute; left: 0; bottom: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--px4) 0 30%, var(--px1) 30% 46%, var(--px3) 46% 58%, var(--px5) 58% 76%, var(--px7) 76% 100%); opacity: .9; }
@@ -3877,24 +3858,142 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
 @media (prefers-reduced-motion: reduce) { html.mczoom body { transition: none; } }
 
 /* ---- narrower screens */
-@media (max-width: 1180px) { .shcards.five { grid-template-columns: repeat(3, 1fr); } .shroles { grid-template-columns: repeat(3, 1fr); } .shtiles { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 1180px) { .shroles { grid-template-columns: repeat(3, 1fr); } .shtiles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 1000px) { .shroles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 900px) {
   .shhero, .shtrust, .shend, .shcalc { grid-template-columns: 1fr; }
   .shfig { max-width: 320px; }
-  .shsteps { grid-template-columns: repeat(2, 1fr); }
   .shcards.three, .shnums { grid-template-columns: 1fr; }
   .shcounts { grid-template-columns: repeat(2, 1fr); }
 }
-@media (max-width: 600px) { .shcards.five, .shroles, .shsteps, .shtiles { grid-template-columns: 1fr; } .shtop { flex-direction: column; align-items: flex-start; } .shtable tbody th { white-space: normal; } }
+@media (max-width: 600px) { .shroles, .shtiles, .shcards.two { grid-template-columns: 1fr; } .shtop { flex-direction: column; align-items: flex-start; } }
 @media print { .shctl, .viewbar, .mcspot { display: none !important; } html.mczoom body { transform: none !important; } .shsec .shrise { opacity: 1; transform: none; } }
 @media (forced-colors: active) { .shnums > div, .shtile, .shcard.stat, .viewbar, .shctl, .shgtiles > div { border: 1px solid CanvasText; } .mcspot { display: none; } }
-/* the idea's four parts (no numbers: they are not steps) and what Member Care gets (six, three a row) */
-.shsteps.pillars .shstep { padding-top: 18px; }
-.shcards.six { grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 1180px) { .shcards.six { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .shcards.six { grid-template-columns: 1fr; } }
 .shgnote b { color: var(--ink); font-weight: 600; }
+
+/* ==========================================================================================================================
+   the bonus story (js/showstory.js): the ticket, the five steps, Try it, the checks, the receipt, this month's bonus
+   ========================================================================================================================== */
+/* a step's number: the brand blue's square */
+.shn { display: inline-grid; place-items: center; width: 30px; height: 30px; background: var(--accent-fill); color: var(--on-accent); font: 700 14px/1 var(--display); border-radius: 8px; flex: none; }
+/* a rank, 1 to 5, in one colour each: white on every one of them reads at 4.5:1 or better */
+.shrk { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 7px; font: 700 12.5px/1 var(--display); color: #fff; background: #5d6880; font-variant-numeric: tabular-nums; }
+.shrk.r5, .shweights i.r5 { background: #0b7a55; } .shrk.r4, .shweights i.r4 { background: #1273d4; } .shrk.r3, .shweights i.r3 { background: #8a6500; }
+.shrk.r2, .shweights i.r2 { background: #b4471a; } .shrk.r1, .shweights i.r1 { background: #c4161c; }
+
+/* the hero's ticket: one made-up champion's month, its bonus counting up */
+.shticket { justify-self: center; width: 100%; max-width: 440px; display: grid; gap: 14px; padding: 20px; border-radius: 24px; background: var(--raised); border: 1px solid var(--card-line);
+  box-shadow: inset 0 1px 0 var(--rim-a), 0 30px 60px -28px rgba(16, 38, 78, .45); }
+:root[data-theme="dark"] .shticket { box-shadow: inset 0 1px 0 var(--rim-a), 0 30px 60px -24px rgba(0, 0, 0, .8); }
+.shtk-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.shtk-av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-fill); color: var(--on-accent); font: 700 14px/1 var(--display); }
+.shtk-top b { display: block; font: 600 16px/1.2 var(--display); color: var(--ink); } .shtk-top div > span { font-size: 12.5px; color: var(--muted); }
+.shtk-mo { font: 600 12px/1 var(--display); padding: 7px 10px; border-radius: 999px; background: var(--fill); color: var(--ink-2); white-space: nowrap; }
+.shtk-lines { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.shtk-lines li { display: grid; gap: 3px; padding: 10px 12px; border-radius: 14px; background: var(--sunk); border: 1px solid var(--line); }
+.shtk-lines span { font: 600 10.5px/1.3 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+.shtk-lines b { font: 700 19px/1.15 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.shtk-lines small { font-size: 11.5px; line-height: 1.35; color: var(--muted); }
+.shtk-total { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 18px; border-radius: 16px; background: var(--accent-fill); color: var(--on-accent); box-shadow: var(--accent-glow); }
+.shtk-total > span { font: 600 13px/1.2 var(--display); }
+.shtk-total b { font: 800 clamp(30px, 3.2vw, 44px)/1 var(--display-x); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.shtk-gates { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.shtk-gates span, .shgatelist span, .shrc-sum .gates span { font-size: 11.5px; line-height: 1.3; padding: 4px 9px; border-radius: 999px; background: var(--good-bg); color: var(--good); }
+.shtk-gates span.no, .shgatelist span.no, .shrc-sum .gates span.no { background: var(--bad-bg); color: var(--bad); }
+
+/* how a bonus is counted: five steps in a row, an arrow between them, each with the champion's own numbers; the result under them */
+.shflow { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.shfstep { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px 14px 14px; border-radius: 16px; background: var(--sunk); border: 1px solid var(--line); }
+.shfstep:not(:last-child)::after { content: ""; position: absolute; top: 26px; right: -12px; width: 9px; height: 9px; border-top: 2px solid var(--accent); border-right: 2px solid var(--accent); transform: rotate(45deg); }
+.shfstep .shn { margin-bottom: 4px; }
+.shfstep > b { font: 600 15.5px/1.25 var(--display); color: var(--ink); }
+.shfstep > p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.shfx { margin-top: auto; padding-top: 10px; }
+.shchips { display: flex; flex-wrap: wrap; gap: 5px; }
+.shchip { font-size: 11.5px; line-height: 1.3; padding: 4px 8px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
+.shchip b { color: var(--ink); } .shchip i { font-style: normal; color: var(--faint); margin-left: 4px; } .shchip.more { color: var(--muted); }
+.shladder { display: grid; gap: 3px; }
+.shladder span { display: flex; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 9px; font-size: 12px; color: var(--muted); }
+.shladder span.on { background: var(--accent-soft); color: var(--ink); font-weight: 600; box-shadow: inset 0 0 0 1px var(--accent-line); }
+.shweights { display: flex; gap: 2px; height: 34px; border-radius: 9px; overflow: hidden; }
+.shweights i { display: grid; place-items: center; min-width: 16px; font-style: normal; background: #5d6880; }
+.shweights b { font: 700 11.5px/1 var(--display); color: #fff; }
+.shdays { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }
+.shdays i { aspect-ratio: 1; border-radius: 3px; background: var(--accent); }
+.shdays i.x { background: #c4161c; } .shdays i.l { background: var(--line-2); }
+.shgatelist { display: grid; gap: 4px; justify-items: start; }
+.shresult { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 16px 20px; border-radius: 16px; background: var(--accent-fill); color: var(--on-accent); box-shadow: var(--accent-glow); }
+.shresult > span { font: 600 12px/1.3 var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.shresult b { font: 700 clamp(18px, 2vw, 26px)/1.2 var(--display); font-variant-numeric: tabular-nums; }
+.shresult small { font-size: 12.5px; opacity: .9; }
+
+/* Try it: the scorecard with a slider for each number, the days and the gates; the result beside it */
+.shtry { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(260px, 1fr); gap: var(--sh-gap); align-items: start; }
+.shtry-in { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; min-width: 0; }
+.shtry-tab { width: 100%; border-collapse: collapse; font-size: 14px; }
+.shtry-tab th, .shtry-tab td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.shtry-tab thead th { font: 600 11px/1.2 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); border-bottom-color: var(--line-2); }
+.shtry-tab tbody th { font: 600 14px/1.25 var(--display); color: var(--ink); }
+.shtry-tab tbody th small { display: block; font: 500 11.5px/1.3 var(--text); color: var(--faint); }
+.shtry-tab td.w { width: 64px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.shtry-tab td.v { min-width: 200px; white-space: nowrap; }
+.shtry-tab td.v input { width: calc(100% - 82px); vertical-align: middle; accent-color: var(--accent); }
+.shtry-tab td.v output { display: inline-block; width: 74px; text-align: right; font: 600 14px/1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.shtry-tab td.rkc { width: 52px; text-align: center; }
+.shtry-days { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 18px; }
+.shtry-days label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; font-size: 13px; }
+.shtry-days label > span { font: 600 12.5px/1.2 var(--display); color: var(--ink-2); }
+.shtry-days input[type="range"] { grid-column: 1 / -1; grid-row: 2; width: 100%; accent-color: var(--accent); }
+.shtry-days output { font: 600 13.5px/1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.shtry-days label.check { grid-column: 1 / -1; display: flex; gap: 8px; color: var(--ink-2); }
+.shtry-out { position: sticky; top: calc(var(--head-h) + 16px); display: grid; gap: 10px; }
+.shtry-final { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 12px 16px; border-radius: 14px; background: var(--sunk); border: 1px solid var(--line); }
+.shtry-final span { font: 600 11.5px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+.shtry-final b { font: 700 28px/1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.shtry-final small { font-size: 12.5px; color: var(--muted); }
+.shtry-gates { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.shtry-gates li { display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 8px; font-size: 13px; color: var(--ink-2); }
+.shtry-gates li > span { font-weight: 700; color: var(--good); } .shtry-gates li.no, .shtry-gates li.no > span { color: var(--bad); }
+.shtry-gates li small { grid-column: 2; font-size: 12px; color: var(--faint); }
+.shtry-earned { display: grid; gap: 4px; padding: 16px 18px; border-radius: 18px; background: var(--accent-fill); color: var(--on-accent); box-shadow: var(--accent-glow); }
+.shtry-earned > span { font: 600 12.5px/1.2 var(--display); }
+.shtry-earned b { font: 800 clamp(34px, 4vw, 52px)/1 var(--display-x); font-variant-numeric: tabular-nums; }
+.shtry-earned small { font-size: 12.5px; line-height: 1.4; opacity: .92; }
+.shtry-earned.no { background: var(--bad-bg); color: var(--bad); box-shadow: none; } .shtry-earned.no small { opacity: 1; }
+
+/* checked before it counts: four checks, and the proof beside them */
+.shchecks { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(220px, 1fr); gap: var(--sh-gap); align-items: center; }
+.shproof { display: grid; gap: 6px; justify-items: center; text-align: center; }
+.shproof > b { font: 800 clamp(36px, 4vw, 56px)/1 var(--display-x); color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.shproof > span { font-size: 13.5px; line-height: 1.5; color: var(--muted); max-width: 30ch; }
+.shproof .shfig { max-width: 260px; }
+
+/* every bonus explained: the receipt, in English or Arabic */
+.shexplain { display: grid; gap: 14px; justify-items: start; }
+.shrcpt { width: 100%; max-width: 780px; padding: 18px 20px; border-radius: 18px; background: var(--raised); border: 1px solid var(--card-line); box-shadow: inset 0 1px 0 var(--rim-b), var(--shadow-card); }
+.shrc-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 14px; margin-bottom: 10px; }
+.shrc-head b { font: 600 17px/1.3 var(--display); color: var(--ink); } .shrc-head span { font-size: 13px; color: var(--muted); }
+.shrc-tab { width: 100%; border-collapse: collapse; font-size: 14px; }
+.shrc-tab th, .shrc-tab td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: start; }
+.shrc-tab thead th { font: 600 11px/1.2 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.shrc-tab tbody th { font-weight: 600; color: var(--ink); } .shrc-tab td { color: var(--ink-2); font-variant-numeric: tabular-nums; } .shrc-tab td small { color: var(--faint); }
+.shrc-sum { margin: 12px 0 0; display: grid; gap: 7px; }
+.shrc-sum > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.shrc-sum dt { font: 600 13px/1.3 var(--display); color: var(--ink-2); } .shrc-sum dd { margin: 0; color: var(--ink); } .shrc-sum dd small { color: var(--muted); }
+.shrc-sum .gates dd { display: flex; flex-wrap: wrap; gap: 6px; }
+.shrc-sum .total { padding-top: 8px; border-top: 1px solid var(--line-2); } .shrc-sum .total dd b { font: 700 22px/1 var(--display); color: var(--accent-text); }
+.shrcpt[dir="rtl"] .shrc-tab thead th { letter-spacing: 0; text-transform: none; font-size: 12.5px; }
+.shrcpt[dir="rtl"] .shrc-sum dt, .shrcpt[dir="rtl"] .shrc-head b { font-family: var(--text); }
+
+/* this month's bonus (the tool only): the riyals in the brand blue */
+.shbonus > div.hot { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); } .shbonus > div.hot span { color: var(--on-accent); opacity: .9; }
+
+body.presenting .shtry-out { position: static; }
+@media (max-width: 1180px) { .shflow { grid-template-columns: repeat(3, minmax(0, 1fr)); } .shfstep:not(:last-child)::after { display: none; } }
+@media (max-width: 900px) { .shtry, .shchecks { grid-template-columns: 1fr; } .shflow { grid-template-columns: repeat(2, minmax(0, 1fr)); } .shtry-out { position: static; } }
+@media (max-width: 600px) { .shflow, .shtry-days { grid-template-columns: 1fr; } .shtk-lines { grid-template-columns: repeat(3, minmax(0, 1fr)); } .shrc-sum > div { grid-template-columns: 1fr; gap: 2px; } .shtry-tab td.v { min-width: 150px; } }
+@media (prefers-reduced-motion: reduce) { .shfstep, .shticket { transition: none; } }
+@media (forced-colors: active) { .shrk, .shweights i, .shtk-total, .shresult, .shtry-earned { border: 1px solid CanvasText; } }
 </style>
 </head>
 <body>
@@ -33214,7 +33313,7 @@ const WC0 = { presenter: '', title: '', to: '', cc: '', onTimeH: 72 };
 const WC_BRAND = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay' };
 const WC_MAXOUT = 500;
 const PPTX_TYPE = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-const canWeekly = () => hasRole('admin', 'wfm', 'user');
+const canWeekly = () => hasRole('admin', 'wfm', 'user') && !viewing();   // a preview (View as, from the Showcase too) has neither Weekly commercial nor Performance Review
 const wcPad = n => String(n).padStart(2, '0');
 const wcToday = () => { const d = new Date(); return `${d.getFullYear()}-${wcPad(d.getMonth() + 1)}-${wcPad(d.getDate())}`; };
 const wcIsDay = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s + 'T00:00:00Z'));
@@ -37675,13 +37774,15 @@ const DEPT = [
     '<b>Settings</b>: targets, the deduction scope, the logo, the sign-in lock time, and the scorecards.',
     'Admins can do everything the analysts do on the WFM team page and see every page, <b>WFM team › Data</b> too (export and import all the data).',
     '<b>Refresh data</b> (the round arrows at the top of every page) reads the shared data again at once and draws the page again.',
+    '<b>Showcase</b>: how Cadence counts every bonus, for a meeting. <b>Present</b> shows it full screen; <b>Try it</b> lets the room move a made-up champion\'s numbers and watch the bonus follow; <b>View</b> opens a role\'s page live (a preview: nothing is saved, and it has no daily or weekly reports). The same story is also a file of its own, <b>Cadence - Showcase.html</b>, made-up only.',
     'Keep the HTML in the common folder next to the <b>MC Data</b> folder; everyone opens it from there in Edge or Chrome. Opening the shared data shows what it waits for: if it is slow on a computer, MC Data is often in OneDrive or SharePoint with its files not downloaded yet. Right-click it in File Explorer and choose <b>Always keep on this device</b>.']],
 ];
 /** for everyone, after the role's own steps */
 const DEPT_ALL = 'The <b>account menu</b> (your initials at the top right): <b>Appearance</b> (System, Light or Dark) and <b>Less transparency</b> (solid panels and no blur, easier on an older computer); both are kept in this browser.';
 let deptSel = '', deptRole = '';
-/** a preview (View as) says nothing of the WFM team's daily report: its steps left out, the steps that name it in passing without it */
-const deptSteps = L => (dailyShown() ? L : L.filter(t => !/Report builder<\/b>|Daily brand emails/.test(t))
+/** a preview (View as) says nothing of the WFM team's daily report, nor of the weekly presentation and the performance review: their steps
+    left out, the steps that name the daily report in passing without it */
+const deptSteps = L => (dailyShown() ? L : L.filter(t => !/Report builder<\/b>|Daily brand emails|Weekly commercial<\/b>|Performance Review<\/b>/.test(t))
   .map(t => t.replace('the four daily brand emails and the month\'s deduction and absences emails', 'the month\'s deduction and absences emails').replace('(Import, Review, Export, Report builder)', '(Import, Review, Export)'))).concat([DEPT_ALL]);
 function renderDeptGuide(force) {
   const tabs = $('deptTabs'), body = $('deptBody'); if (!tabs || !body) return;
@@ -39160,122 +39261,294 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('change', e => { const s = e.target.closest('[data-vapick]'); if (s) { state.viewPick[s.dataset.vapick] = s.value; document.querySelectorAll(`[data-vapick="${s.dataset.vapick}"]`).forEach(x => { if (x !== s) x.value = s.value; }); } });
 
+// ================================================================ SHOW STORY: the Showcase's story, told around the core idea: the bonus
+// One story for two places: the admin's Showcase in the tool (showcase.js: today's figures, View for every role) and the stand-alone
+// Showcase file (tools/showcase/: made-up only, no data). It tells how Cadence counts every bonus. One made-up Member Care Champion,
+// Lina A., is counted by the tool's own engine (Kpi.score) with the champion's scorecard and the month's rules, so every number on the
+// page is the one the tool would pay her; Try it lets the room move her numbers and watch the ranks, the gates and the bonus follow.
+// Nothing here reads or writes any data. env gives what differs between the two places:
+//   { esc, card, cfg, elig, base, cards (how many scorecards), people (the roster's size, or null), strip: [text], month: label,
+//     live: () => html (the tool only), roleAct: role => html (View; the tool only), fig: (name, label) => html }
+const ShowStory = (() => {
+  // ---------------------------------------------------------------- the made-up champion and her month
+  const EX = { name: 'Lina A.', init: 'LA', brand: 'Virgin', team: 'CC', sched: 22, att: 20, abs: 1, mon: 14, crit: false,
+    v: { csat: 88, qobs: 92, aht: 158, emp: 87, fcr: 96, adh: 93, tardy: 8 } };
+  const FROM = { adh: 'Genesys', aht: 'Genesys', adhUnder: 'Genesys', tardy: 'Attendance', team: 'Their team', file: 'Quality' };
+  // a KPI's slider: its range and step in the units the room reads (percent, seconds, minutes)
+  const RANGE = { pct: [50, 100, 0.5], sec: [120, 240, 1], min: [0, 40, 1], days: [0, 10, 1], num: [50, 130, 1] };
+  const GUESS = { pct: 90, sec: 160, min: 10, days: 3, num: 90 };
+  const nf = n => Number(n).toLocaleString('en-US');
+  const pctT = (p, dp = 0) => (p == null ? '–' : `${(Math.round(p * 100 * 10 ** dp) / 10 ** dp).toLocaleString('en-US')}%`);
+  const shown = (k, v) => (v == null ? '–' : k.unit === 'pct' ? `${(Math.round(v * 10) / 10).toLocaleString('en-US')}%` : k.unit === 'sec' ? `${nf(v)} s` : k.unit === 'min' ? `${nf(v)} min` : nf(v));
+  const head = (E, eyebrow, title, lead) => `<div class="shhead shrise"><div class="eyebrow">${E(eyebrow)}</div><h2>${title}</h2>${lead ? `<p class="shlead">${lead}</p>` : ''}</div>`;
+  // ---------------------------------------------------------------- the count, by the tool's engine
+  /** the room's numbers for a scorecard: the champion's own, or a likely value for a KPI her card does not have */
+  const startVals = card => Object.fromEntries(card.kpis.map(k => [k.id, EX.v[k.id] != null ? EX.v[k.id] : GUESS[k.unit] ?? 90]));
+  /** x: { v: {kpi id: value in the room's units}, att, abs, mon, crit } -> the engine's result, the gates and the bonus */
+  function count(env, x) {
+    const vals = { file: {} };
+    for (const k of env.card.kpis) { const raw = x.v[k.id], v = raw == null ? null : k.unit === 'pct' ? raw / 100 : raw; if (k.src === 'file') vals.file[k.id] = v; else vals[k.src] = v; }
+    const abs = Math.min(x.abs, Math.max(0, EX.sched - x.att)), res = Kpi.score(env.card, vals, { sched: EX.sched, attended: x.att, absent: abs, runs: abs > 0 ? 1 : 0 }, env.base, env.cfg);
+    const E = env.elig, byCount = env.cfg.eligDays === 'counted', days = byCount ? res.actual : res.attended;
+    const gates = [
+      { ok: res.finalPct != null && res.finalPct >= E.minFinal - 1e-9, t: `A final of ${pctT(E.minFinal)} or more`, now: `final ${pctT(res.finalPct)}` },
+      { ok: !x.crit, t: 'No attitude critical error', now: x.crit ? 'an attitude critical error' : 'none' },
+      { ok: days != null && days >= E.minDays, t: `At least ${E.minDays} days ${byCount ? 'counted' : 'attended'}`, now: `${days ?? 0} days` },
+      ...(E.minMonths > 0 ? [{ ok: x.mon >= E.minMonths, t: `${E.minMonths} months in the job`, now: `${x.mon} months` }] : []),
+    ];
+    const ok = gates.every(g => g.ok);
+    return { res, gates, ok, earned: ok ? res.earned || 0 : 0, abs };
+  }
+  const money = env => (env.cfg.money === 'floor' ? 'rounded down' : env.cfg.money === 'ceil' ? 'rounded up' : 'rounded');
+  const formula = (env, c) => `${nf(env.base)} SR × ${pctT(c.res.daysPct)} × ${pctT(c.res.finalPct)}`;
+  // ---------------------------------------------------------------- the time back (as the team set it; changed live, never kept)
+  const GIVE_DAYS = 22, GIVE_FTE = GIVE_DAYS * 8;
+  const GIVE_ROLES = [['WFM analyst', 5, 'day'], ['WFM manager', 3, 'day'], ['QA supervisor', 2, 'month'], ['QA manager', 2, 'month'], ['CT supervisor', 2, 'month'], ['CT manager', 2, 'month'], ['TS supervisor', 2, 'month'], ['TS manager', 2, 'month']];
+  const giveVals = GIVE_ROLES.map(([, h]) => String(h));
+  const giveNum = x => (Math.round(x * 10) / 10).toLocaleString('en-US');
+  const giveMonthOf = i => { const v = giveVals[i]; return v === '' ? null : (+v) * (GIVE_ROLES[i][2] === 'day' ? GIVE_DAYS : 1); };
+  const giveMoText = i => { const m = giveMonthOf(i); return m == null ? '–' : `${giveNum(m)} h`; };
+  const giveSetMonth = () => GIVE_ROLES.reduce((a, [, h, per]) => a + h * (per === 'day' ? GIVE_DAYS : 1), 0);
+  function giveSum() { let month = 0, any = false; GIVE_ROLES.forEach((r, i) => { const m = giveMonthOf(i); if (m == null) return; any = true; month += m; }); return any ? month : null; }
+  function giveHtml(E) {
+    const m = giveSum(), f = x => Math.round(x).toLocaleString('en-US');
+    const tiles = [[m == null ? '–' : f(m), 'hours back a month'], [m == null ? '–' : f(m * 12), 'hours back a year'], [m == null ? '–' : f(m * 12 / 8), 'working days back a year']];
+    return `<div class="shgtiles">${tiles.map(([n, l], i) => `<div${i === 2 ? ' class="hot"' : ''}><b>${E(n)}</b><span>${E(l)}</span></div>`).join('')}</div>
+      <p class="shgnote">${m == null ? 'Type the hours each role gets back.' : `A month of ${GIVE_DAYS} working days; a working day of 8 hours. <b>${m >= GIVE_FTE ? `As many hours as ${(m / GIVE_FTE).toFixed(1)} full-time people` : `${Math.round(m / GIVE_FTE * 100)}% of a full-time person`}, every month, back to coaching and service.</b>`}</p>`;
+  }
+  const giveTableHtml = E => `<table class="shctab"><thead><tr><th scope="col">Role</th><th scope="col">Hours back</th><th scope="col">Per</th><th scope="col">A month</th></tr></thead>
+    <tbody>${GIVE_ROLES.map(([r, , per], i) => `<tr><th scope="row">${E(r)}</th><td><input type="number" inputmode="decimal" min="0" max="9999" step="any" data-give="${i}" value="${E(giveVals[i])}" aria-label="${E(r)}: hours back a ${per}"></td><td class="per">${per}</td><td class="mo" data-givemo="${i}">${giveMoText(i)}</td></tr>`).join('')}</tbody></table>`;
+  // ---------------------------------------------------------------- the parts drawn from the count
+  /** the ticket in the hero: the champion's month, its bonus counting up as it comes into view */
+  function ticketHtml(env, c) {
+    const E = env.esc, r = c.res;
+    return `<div class="shticket shrise" role="group" aria-label="A made-up bonus, counted by Cadence">
+      <div class="shtk-top"><span class="shtk-av" aria-hidden="true">${EX.init}</span><div><b>${E(EX.name)}</b><span>${E(env.card.title || 'Member Care Champion')} · ${EX.brand} · made-up</span></div><span class="shtk-mo">${E(env.month)}</span></div>
+      <ul class="shtk-lines">
+        <li><span>Final</span><b data-count="${Math.round((r.finalPct || 0) * 100)}" data-suffix="%">${pctT(r.finalPct)}</b><small>${E(String(r.finalRank))} of 5 on ${env.card.kpis.length} KPIs</small></li>
+        <li><span>Days</span><b>${EX.att} of ${EX.sched}</b><small>${pctT(r.daysPct)} of the month</small></li>
+        <li><span>Base</span><b>${nf(env.base)} SR</b><small>the brand's bonus base</small></li>
+      </ul>
+      <div class="shtk-total"><span>Bonus earned</span><b><span data-count="${c.earned}">${nf(c.earned)}</span> SR</b></div>
+      <p class="shtk-gates">${c.gates.map(g => `<span class="${g.ok ? 'ok' : 'no'}">${g.ok ? '✓' : '✗'} ${E(g.t.replace(/^A final/, 'Final'))}</span>`).join('')}</p></div>`;
+  }
+  /** the five steps, each with the champion's own numbers */
+  function stepsHtml(env, c) {
+    const E = env.esc, K = env.card.kpis, rows = c.res.rows, adh = rows.find(x => x.k.id === 'adh') || rows[0], ak = adh.k;
+    const ladder = [5, 4, 3, 2].map((rk, i) => ({ rk, b: ak.bands[i] })).filter(x => x.b != null && x.b !== '');
+    const tone = r => (r == null ? 'r0' : `r${r}`);
+    const chips = rows.slice(0, 5).map(x => `<span class="shchip"><b>${E(shown(x.k, x.k.unit === 'pct' && x.v != null ? x.v * 100 : x.v))}</b> ${E(x.k.name)}<i>${E(x.k.src === 'file' ? FROM.file : FROM[x.k.src] || '')}</i></span>`).join('');
+    const days = Array.from({ length: EX.sched }, (_, i) => `<i class="${i < EX.att ? 'a' : i < EX.att + c.abs ? 'x' : 'l'}"></i>`).join('');
+    return `<ol class="shflow shrise">
+      <li class="shfstep"><span class="shn">1</span><b>The month's numbers</b><p>From Genesys, the attendance and the quality scores, matched to each person by National ID, then by name.</p><div class="shfx shchips">${chips}<span class="shchip more">+${Math.max(0, rows.length - 5)} more</span></div></li>
+      <li class="shfstep"><span class="shn">2</span><b>Each KPI ranked 1 to 5</b><p>Against its bands: ${E(ak.name)} ${E(shown(ak, adh.v * 100))} ranks ${adh.r}.</p><div class="shfx shladder">${ladder.map(x => `<span class="${x.rk === adh.r ? 'on' : ''}"><b class="shrk ${tone(x.rk)}">${x.rk}</b>${E(Kpi.bandOf(ak, x.rk, env.cfg.edge))}</span>`).join('')}</div></li>
+      <li class="shfstep"><span class="shn">3</span><b>Weighted into the final</b><p>Each rank times its weight: ${E(String(c.res.finalRank))} of 5 makes a final of ${pctT(c.res.finalPct)}.</p><div class="shfx shweights" role="img" aria-label="The weights of the ${K.length} KPIs, each in the colour of its rank">${rows.map(x => `<i class="${tone(x.r)}" style="flex-grow:${x.w}" title="${E(x.k.name)}: rank ${x.r ?? '–'}, weight ${pctT(x.w)}"><b>${x.r ?? '–'}</b></i>`).join('')}</div></li>
+      <li class="shfstep"><span class="shn">4</span><b>The days that count</b><p>Days attended against days scheduled: ${EX.att} of ${EX.sched} is ${pctT(c.res.daysPct)}.</p><div class="shfx shdays" role="img" aria-label="${EX.att} days attended, ${c.abs} absent, of ${EX.sched} scheduled">${days}</div></li>
+      <li class="shfstep"><span class="shn">5</span><b>The gates</b><p>Who earns it, as the month's rules say.</p><div class="shfx shgatelist">${c.gates.map(g => `<span class="${g.ok ? 'ok' : 'no'}">${g.ok ? '✓' : '✗'} ${E(g.t)}</span>`).join('')}</div></li>
+    </ol>
+    <div class="shresult shrise"><span>Bonus earned</span><b>${E(formula(env, c))} = ${nf(c.earned)} SR</b><small>base × days × final, ${money(env)} to the riyal</small></div>`;
+  }
+  // ---------------------------------------------------------------- Try it
+  let tryX = null;
+  const tryReset = env => { tryX = { v: startVals(env.card), att: EX.att, abs: EX.abs, mon: EX.mon, crit: EX.crit }; };
+  function tryInHtml(env) {
+    const E = env.esc, x = tryX;
+    const row = k => { const [lo, hi, st] = RANGE[k.unit] || RANGE.num; return `<tr><th scope="row">${E(k.name)}<small>${E(k.src === 'file' ? FROM.file : FROM[k.src] || '')}</small></th><td class="w">${pctT(k.weight)}</td>
+      <td class="v"><input type="range" min="${lo}" max="${hi}" step="${st}" value="${x.v[k.id]}" data-tk="${E(k.id)}" aria-label="${E(k.name)}"><output data-tv="${E(k.id)}">${E(shown(k, x.v[k.id]))}</output></td><td class="rkc"><b class="shrk" data-tr="${E(k.id)}">–</b></td></tr>`; };
+    return `<table class="shtry-tab"><thead><tr><th scope="col">KPI</th><th scope="col">Weight</th><th scope="col">${E(EX.name)}'s number</th><th scope="col">Rank</th></tr></thead><tbody>${env.card.kpis.map(row).join('')}</tbody></table>
+      <div class="shtry-days">
+        <label><span>Days attended</span><input type="range" min="0" max="${EX.sched}" step="1" value="${x.att}" data-td="att"><output data-tdv="att">${x.att} of ${EX.sched}</output></label>
+        <label><span>Absent days</span><input type="range" min="0" max="${EX.sched - x.att}" step="1" value="${x.abs}" data-td="abs"><output data-tdv="abs">${x.abs}</output></label>
+        <label><span>Months in the job</span><input type="range" min="0" max="36" step="1" value="${x.mon}" data-td="mon"><output data-tdv="mon">${x.mon}</output></label>
+        <label class="check"><input type="checkbox" data-td="crit"${x.crit ? ' checked' : ''}> An attitude critical error this month</label>
+      </div>
+      <button type="button" class="btn sm ghost" data-tryreset>Back to ${E(EX.name)}'s month</button>`;
+  }
+  function tryOutHtml(env, c) {
+    const E = env.esc, r = c.res;
+    return `<div class="shtry-final"><span>Final</span><b>${pctT(r.finalPct)}</b><small>${r.finalRank == null ? 'no rank yet' : `${E(String(r.finalRank))} of 5`}</small></div>
+      <div class="shtry-final"><span>Days</span><b>${pctT(r.daysPct)}</b><small>${r.actual ?? 0} of ${EX.sched} counted</small></div>
+      <ul class="shtry-gates">${c.gates.map(g => `<li class="${g.ok ? 'ok' : 'no'}"><span aria-hidden="true">${g.ok ? '✓' : '✗'}</span>${E(g.t)}<small>${E(g.now)}</small></li>`).join('')}</ul>
+      <div class="shtry-earned${c.ok ? '' : ' no'}"><span>${c.ok ? 'Bonus earned' : 'No bonus this month'}</span><b><span data-tryearned>${nf(c.earned)}</span> SR</b>
+        <small>${c.ok ? `${E(formula(env, c))}, ${money(env)}` : E(`Stopped by: ${c.gates.filter(g => !g.ok).map(g => g.t.charAt(0).toLowerCase() + g.t.slice(1)).join(', ')}`)}</small></div>`;
+  }
+  /** after a change: the ranks, the outputs and the bonus follow; the bonus counts from where it was to where it is */
+  function tryUpdate(root, env, from) {
+    const c = count(env, tryX), out = root.querySelector('[data-tryout]'); if (!out) return;
+    c.res.rows.forEach(x => { const b = root.querySelector(`[data-tr="${CSS.escape(x.k.id)}"]`); if (b) { b.textContent = x.r ?? '–'; b.className = `shrk r${x.r ?? 0}`; b.title = x.r == null ? '' : Kpi.bandOf(x.k, x.r, env.cfg.edge); } });
+    out.innerHTML = tryOutHtml(env, c);
+    const e = out.querySelector('[data-tryearned]'); if (e && from != null && from !== c.earned) countUp(e, from, c.earned, 450);
+    return c;
+  }
+  // ---------------------------------------------------------------- the receipt, in English or Arabic
+  const AR = { title: 'كيف احتُسب الحافز', kpi: 'المؤشر', value: 'القيمة', rank: 'التصنيف', weight: 'الوزن', of5: 'من 5', final: 'النسبة النهائية', days: 'أيام الحضور', ofDays: (a, s) => `${a} من ${s} يومًا`,
+    base: 'أساس الحافز', gates: 'الاستحقاق', earned: 'الحافز المستحق', sr: 'ريال', made: 'مثال افتراضي', months: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+    g: ['النسبة النهائية {p} أو أكثر', 'لا توجد مخالفة سلوكية جسيمة', '{d} أيام حضور على الأقل', '{m} أشهر في الوظيفة'] };
+  function receiptHtml(env, c, lang) {
+    const E = env.esc, ar = lang === 'ar', r = c.res, E2 = env.elig;
+    const mo = ar ? env.month.replace(/^([A-Za-z]+)/, m => AR.months[['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].indexOf(m)] || m) : env.month;
+    const g = ar ? [AR.g[0].replace('{p}', pctT(E2.minFinal)), AR.g[1], AR.g[2].replace('{d}', E2.minDays), ...(E2.minMonths > 0 ? [AR.g[3].replace('{m}', E2.minMonths)] : [])] : c.gates.map(x => x.t);
+    return `<div class="shrc-head"><b>${ar ? AR.title : 'How the bonus was counted'}</b><span><bdi>${E(EX.name)}</bdi> · ${E(mo)} · ${ar ? AR.made : 'made-up'}</span></div>
+      <table class="shrc-tab"><thead><tr><th scope="col">${ar ? AR.kpi : 'KPI'}</th><th scope="col">${ar ? AR.value : 'Value'}</th><th scope="col">${ar ? AR.rank : 'Rank'}</th><th scope="col">${ar ? AR.weight : 'Weight'}</th></tr></thead>
+      <tbody>${r.rows.map(x => `<tr><th scope="row"><bdi>${E(x.k.name)}</bdi></th><td><bdi>${E(shown(x.k, x.k.unit === 'pct' && x.v != null ? x.v * 100 : x.v))}</bdi></td><td><b class="shrk r${x.r ?? 0}">${x.r ?? '–'}</b> <small>${ar ? AR.of5 : 'of 5'}</small></td><td><bdi>${pctT(x.w)}</bdi></td></tr>`).join('')}</tbody></table>
+      <dl class="shrc-sum">
+        <div><dt>${ar ? AR.final : 'Final'}</dt><dd><bdi>${pctT(r.finalPct)}</bdi> <small>(<bdi>${E(String(r.finalRank))}</bdi> ${ar ? AR.of5 : 'of 5'})</small></dd></div>
+        <div><dt>${ar ? AR.days : 'Days attended'}</dt><dd>${ar ? AR.ofDays(EX.att, EX.sched) : `${EX.att} of ${EX.sched}`} <small>(<bdi>${pctT(r.daysPct)}</bdi>)</small></dd></div>
+        <div><dt>${ar ? AR.base : 'Base'}</dt><dd><bdi>${nf(env.base)}</bdi> ${ar ? AR.sr : 'SR'}</dd></div>
+        <div class="gates"><dt>${ar ? AR.gates : 'Eligible'}</dt><dd>${g.map((t, i) => `<span class="${c.gates[i] && c.gates[i].ok ? 'ok' : 'no'}">${c.gates[i] && c.gates[i].ok ? '✓' : '✗'} ${E(t)}</span>`).join('')}</dd></div>
+        <div class="total"><dt>${ar ? AR.earned : 'Bonus earned'}</dt><dd><b><bdi>${nf(c.earned)}</bdi> ${ar ? AR.sr : 'SR'}</b> <small dir="ltr">${E(formula(env, c))}</small></dd></div>
+      </dl>`;
+  }
+  // ---------------------------------------------------------------- the sections, in the order they are told (with the speaker notes)
+  const ROLES = [
+    ['user', 'WFM analyst', 'Builds the month every bonus is counted from, with every check done before it counts.', 'i-up'],
+    ['wfm', 'WFM manager', 'Sends the month\'s numbers for review and sees every trend behind them.', 'i-chart'],
+    ['senior', 'Senior manager', 'Reviews every result and finalizes the month\'s bonuses.', 'i-clock'],
+    ['spv', 'Supervisor', 'Confirms the team\'s attendance and coaches from each agent\'s own numbers.', 'i-team'],
+    ['quality', 'Quality team', 'Enters the quality scores once; they count the same in every bonus.', 'i-star'],
+    ['agent', 'Agent', 'Sees their bonus and exactly how it was counted, and can question it, in English or Arabic.', 'i-user'],
+  ];
+  function sections(env) {
+    const E = env.esc, c = count(env, { v: startVals(env.card), att: EX.att, abs: EX.abs, mon: EX.mon, crit: EX.crit }), fig = env.fig || (() => '');
+    if (!tryX) tryReset(env);
+    const S = [
+      { id: 'hero', name: 'Cadence', notes: `Cadence is one idea: every Member Care bonus, counted right. It counts each person's bonus from the month's own numbers, with one set of rules for everyone, checks every number before it counts, and explains the result to the person it pays. Here is ${EX.name}, a made-up champion: ${pctT(c.res.finalPct)} final, ${EX.att} of ${EX.sched} days, ${nf(c.earned)} riyals, counted by the tool itself.`,
+        html: `<div class="shhero"><div class="shherotext shrise"><span class="bologo on-light shlogo" aria-hidden="true"></span><div class="eyebrow">Cadence · Member Care's bonus</div>
+          <h2 class="shbig">Every bonus, <b>counted right.</b></h2>
+          <p class="shlead">Cadence counts every Member Care bonus from the month's own numbers: one set of rules for everyone, checked before it counts, and explained to the person it pays.</p>
+          <div class="shcta"><button type="button" class="btn primary" data-showpresent>Present</button><button type="button" class="btn" data-showgo="try">Try a bonus</button></div>
+          <ul class="shstrip" id="showStrip">${(env.strip || []).map(x => `<li>${E(x)}</li>`).join('')}</ul></div>${ticketHtml(env, c)}</div>` },
+      { id: 'before', name: 'The challenge', notes: `A bonus touches pay, so it has to be right. Before, it was counted by hand: ${env.cards} scorecards, up to ${env.card.kpis.length} KPIs each with its own bands and weight, numbers from more than ten places joined person by person. A slip showed up on a payslip, and every question meant opening the spreadsheets again.`,
+        html: `${head(E, 'The challenge', 'A bonus used to be counted <b>by hand.</b>', '')}
+          <div class="shnums shrise"><div><b>${E(String(env.cards))}</b><span>scorecards: one for each department and role</span></div><div><b>${env.card.kpis.length}</b><span>KPIs on a champion's scorecard, each with its own bands and weight</span></div><div class="hot"><b>10+</b><span>sources behind every bonus: Genesys, attendance, quality, the KPI file</span></div></div>
+          <div class="shcards three shrise">${[['Joined by hand', 'Adherence, AHT, attendance and quality came from different files and were matched person by person.'], ['Found on the payslip', 'A slip in a formula or a name showed up after the bonus was paid, not before.'], ['Hard to explain', 'A question about a bonus meant opening the spreadsheets again to work it out.']].map(([b, t]) => `<div class="shcard"><b>${b}</b><p>${t}</p></div>`).join('')}</div>` },
+      { id: 'count', name: 'How a bonus is counted', notes: `Every bonus is counted the same way, in five steps. The month's numbers come in and are matched to each person. Each KPI is ranked from 1 to 5 against its bands. The ranks are weighted into the final. The days attended count against the days scheduled. Then the gates. ${EX.name}: ${E(String(c.res.finalRank))} of 5 is ${pctT(c.res.finalPct)}; ${EX.att} of ${EX.sched} days; ${nf(env.base)} riyals times ${pctT(c.res.daysPct)} times ${pctT(c.res.finalPct)} is ${nf(c.earned)}. The senior manager sets the rules once a month, and a change never touches a month that is closed.`,
+        html: `${head(E, 'How a bonus is counted', 'Five steps, <b>the same for everyone.</b>', `One formula for every person, with the rules the senior manager sets for the month; a change never touches a month that is closed. Here is ${E(EX.name)}, a made-up champion, counted by the tool itself.`)}${stepsHtml(env, c)}` },
+      { id: 'try', name: 'Try it', notes: `This is ${EX.name}'s scorecard, counted live by the same engine. Ask the room for a number: lower the adherence, add late minutes, an absence or an attitude error, and every rank, the final, the gates and the bonus follow at once. Back to her month puts it back.`,
+        html: `${head(E, 'Try it', 'Move a number, <b>watch the bonus follow.</b>', `${E(EX.name)}'s scorecard, ranked by the same engine that counts the month. Change any number: every rank, the final, the gates and the bonus follow at once.`)}
+          <div class="shtry shrise" data-try><div class="shtry-in" data-tryin>${tryInHtml(env)}</div><div class="shtry-out" aria-live="polite" data-tryout></div></div>` },
+      { id: 'checks', name: 'Checked before it counts', notes: 'No bonus is paid on a guess. Every row finds its person by National ID, then by name, and anyone it cannot place is listed. A missing KPI is flagged and counted by the month\'s written rule. Two attendance files that disagree are shown side by side to choose, and every correction keeps who and when. The senior manager reviews every result and finalizes the month. And the counting itself was checked against the previous engine on ten thousand made-up people, with the same results.',
+        html: `${head(E, 'Checked before it counts', 'No bonus is paid <b>on a guess.</b>', 'Before a result counts, the tool settles every question it can, and names the ones only a person can answer.')}
+          <div class="shchecks shrise"><div class="shcards two">${[['Every person matched', 'Each row finds its person by National ID, then by name; anyone it cannot place is listed, never guessed.'], ['Nothing missing in silence', 'A KPI with no value is flagged, and the final follows the month\'s written rule for it.'], ['Attendance settled', 'Two files that disagree on a day are shown side by side to choose; every correction keeps who and when.'], ['Reviewed, then final', 'The senior manager reviews every result and finalizes the month; after that only they can change it.']].map(([b, t], i) => `<div class="shcard"><span class="shno">0${i + 1}</span><b>${b}</b><p>${t}</p></div>`).join('')}</div>
+            <div class="shproof"><b>10,000</b><span>made-up people counted by the old engine and by Cadence: the same results</span>${fig('sieve', 'Sieves over a pan: every number settled before it counts')}</div></div>` },
+      { id: 'explain', name: 'Every bonus explained', notes: `Every result carries how it was counted. This is what the agent sees on their own page: each KPI with its value, rank and weight, the final, the days, the base, the gates and the bonus. Press Arabic: the same lines in Arabic. A question about pay is answered in a click, and the supervisor and the senior manager see the same lines.`,
+        html: `${head(E, 'Every bonus explained', 'A question about a bonus, <b>answered in a click.</b>', 'Every result carries how it was counted. The agent sees it on their own page, in English or Arabic; their supervisor and the senior manager see the same lines.')}
+          <div class="shexplain shrise"><div class="seg shlang" role="group" aria-label="Language"><button type="button" data-shlang="en" aria-pressed="true">English</button><button type="button" data-shlang="ar" aria-pressed="false" lang="ar">العربية</button></div>
+            <div class="shrcpt" data-rcpt dir="ltr" lang="en">${receiptHtml(env, c, 'en')}</div></div>` },
+      { id: 'roles', name: 'Every role', notes: env.roleAct ? 'Every role plays its part in the bonus, on its own page, seeing only what is theirs. Press View on a role to open its page live, on today\'s data. It is a preview: nothing is saved while you view, and Back to Admin returns here.' : 'Every role plays its part in the bonus, on its own page, seeing only what is theirs: the analysts build the month, quality enters the scores once, the supervisors confirm attendance, the senior manager finalizes, and every agent sees how their own bonus was counted.',
+        html: `${head(E, 'Every role', 'Every role <b>plays its part.</b>', env.roleAct ? 'Press View to open that page live, on today\'s data, exactly as its role sees it. Nothing is saved and National IDs are hidden while you view; Back to Admin returns here.' : 'Each role has its own page in Cadence and sees only what is theirs.')}
+          <div class="shroles shrise">${ROLES.map(([r, name, part, ico]) => `<div class="shrole"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#${ico}"/></svg></span><b>${E(name)}</b></div><p class="now"><span>Their part</span>${E(part)}</p>${env.roleAct ? env.roleAct(r) : ''}</div>`).join('')}
+            ${env.roleAct ? '<div class="shrole admin"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><b>Admin</b></div><p class="now"><span>Their part</span>Accounts and roles, vacation cover, and this Showcase.</p><div class="shract"><span class="pill info">You are here</span></div></div>' : ''}
+            ${fig('hub', 'A hub and its tiles: one set of data, a page for every role')}</div>` },
+      ...(env.live ? [{ id: 'live', name: 'This month', notes: 'This is this month\'s bonus, straight from the shared data: how many people were scored, how many earn a bonus, the average final and the bonuses in riyals. Totals only, never a name.',
+        html: `${head(E, 'This month', 'This month\'s bonus, <b>at a glance.</b>', 'Straight from the shared data: totals only, never a name.')}<div id="showLive">${env.live()}</div>` }] : []),
+      { id: 'gives', name: 'What it gives back', notes: 'The bonus no longer takes the month. Time back for Member Care, role by role: the WFM analyst gets five hours back every working day and the WFM manager three; each QA, CT and TS supervisor and manager gets two hours a month. That is 188 hours every month, more than one full-time person. Change any number with the room: the totals follow.',
+        html: `${head(E, 'What it gives back', 'Time back for <b>Member Care.</b>', 'The bonus no longer takes the month. Hours back, role by role: every working day for the WFM team, every month for the QA, CT and TS supervisors and managers.')}
+          <div class="shcalc shrise"><div class="shcalctab">${giveTableHtml(E)}<button type="button" class="btn sm ghost" data-givereset>Reset the hours</button></div><div class="shgive" id="showGive" aria-live="polite">${giveHtml(E)}</div></div>` },
+      { id: 'trust', name: 'Trust', notes: 'A bonus is pay, the most sensitive data Member Care has. It stays on our own computers, encrypted, and only accounts made in the tool can read it. Nothing is sent anywhere. National IDs never leave the tool in an email. Every change to results, rules and roles keeps who and when.',
+        html: `${head(E, 'Trust', 'Pay data <b>stays ours.</b>', '')}
+          <div class="shtrust shrise"><div class="shtiles">${[['0', 'web requests', 'Nothing is sent anywhere: the data stays on our own computers.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read the shared data.'], ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['40+', 'browser test suites', 'Every role, light and dark, before each change ships.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.'], ['Offline', 'nothing to install', 'One tool the whole team opens; it works without the internet.']].map(([b, s, t], i) => `<div class="shtile${i ? '' : ' on'}"><b>${b}</b><span>${s}</span><p>${t}</p></div>`).join('')}</div>
+            ${fig('vault', 'A vault door: the shared data, encrypted')}</div>` },
+      { id: 'start', name: 'What\'s next', notes: 'Three steps: count the next month\'s bonus in Cadence, with the old spreadsheet beside it for one month to compare every result; measure what it gives back, hours, corrections and questions about pay; then make it how Member Care pays, every month.',
+        html: `<div class="shend"><div class="shendtext">${head(E, 'What\'s next', 'Ready for <b>the next bonus.</b>', '')}
+          <ol class="shgo shrise">${[['Count the next month\'s bonus in Cadence', 'With the old spreadsheet beside it for one month, to compare every result.'], ['Measure what it gives back', 'Hours, corrections and questions about pay, against the month before.'], ['Make it how we pay', 'Every month, every role, one set of rules.']].map(([h, t], i) => `<li><span class="shn">${i + 1}</span><div><b>${h}</b><p>${t}</p></div></li>`).join('')}</ol>
+          <p class="shthanks shrise">Thank <b>you.</b></p></div>${fig('laptop', 'A laptop, its lid opening: the next bonus')}</div>` },
+    ];
+    return S;
+  }
+  // ---------------------------------------------------------------- what moves, and what the room changes
+  const RM = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
+  /** a number counting from a to b (the bonus, the final), once; at once with reduced motion */
+  function countUp(el, a, b, ms = 900) {
+    if (RM() || !(ms > 0)) { el.textContent = nf(b); return; }
+    const t0 = performance.now(), step = t => { const p = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - p, 3); el.textContent = nf(Math.round(a + (b - a) * e)); if (p < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+  /** a section that came into view: its numbers count up, once */
+  function arrive(sec) {
+    if (!sec || sec.dataset.counted) return; sec.dataset.counted = '1';
+    sec.querySelectorAll('[data-count]').forEach(el => { const b = +el.dataset.count, suf = el.dataset.suffix || ''; if (!Number.isFinite(b)) return; if (suf) { if (RM()) return; const t0 = performance.now(), step = t => { const p = Math.min(1, (t - t0) / 900); el.textContent = `${Math.round(b * (1 - Math.pow(1 - p, 3)))}${suf}`; if (p < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); } else countUp(el, 0, b); });
+  }
+  /** the room's changes, on the page that holds the story (once): Try it, the receipt's language, the time back */
+  function bind(root, env) {
+    if (!root || root.dataset.storyBound) return; root.dataset.storyBound = '1';
+    const E = env.esc;
+    root.addEventListener('input', e => {
+      const t = e.target;
+      if (t.matches('[data-tk]')) { tryX.v[t.dataset.tk] = +t.value; const k = env.card.kpis.find(q => q.id === t.dataset.tk), o = root.querySelector(`[data-tv="${CSS.escape(t.dataset.tk)}"]`); if (o && k) o.textContent = shown(k, +t.value); tryUpdate(root, env, lastEarned(root)); return; }
+      if (t.matches('[data-td]')) {
+        const f = t.dataset.td;
+        if (f === 'crit') tryX.crit = t.checked; else tryX[f] = +t.value;
+        if (f === 'att') { const a = root.querySelector('[data-td="abs"]'); tryX.abs = Math.min(tryX.abs, EX.sched - tryX.att); if (a) { a.max = String(EX.sched - tryX.att); a.value = String(tryX.abs); } }
+        const set = (k, v) => { const o = root.querySelector(`[data-tdv="${k}"]`); if (o) o.textContent = v; };
+        set('att', `${tryX.att} of ${EX.sched}`); set('abs', String(tryX.abs)); set('mon', String(tryX.mon));
+        tryUpdate(root, env, lastEarned(root)); return;
+      }
+      const g = t.closest && t.closest('[data-give]');
+      if (g) { const i = +g.dataset.give, v = g.value.trim(); giveVals[i] = v !== '' && Number.isFinite(+v) && +v >= 0 ? v : ''; const mo = root.querySelector(`[data-givemo="${i}"]`); if (mo) mo.textContent = giveMoText(i); const G = root.querySelector('#showGive'); if (G) G.innerHTML = giveHtml(E); }
+    });
+    root.addEventListener('change', e => { if (e.target.matches('[data-td="crit"]')) { tryX.crit = e.target.checked; tryUpdate(root, env, lastEarned(root)); } });
+    root.addEventListener('click', e => {
+      if (e.target.closest('[data-tryreset]')) { const from = lastEarned(root); tryReset(env); const box = root.querySelector('[data-tryin]'); if (box) box.innerHTML = tryInHtml(env); tryUpdate(root, env, from); return; }
+      const l = e.target.closest('[data-shlang]');
+      if (l) { const lang = l.dataset.shlang, box = root.querySelector('[data-rcpt]'); if (!box) return; root.querySelectorAll('[data-shlang]').forEach(b => b.setAttribute('aria-pressed', String(b === l))); box.dir = lang === 'ar' ? 'rtl' : 'ltr'; box.lang = lang; box.innerHTML = receiptHtml(env, count(env, { v: startVals(env.card), att: EX.att, abs: EX.abs, mon: EX.mon, crit: EX.crit }), lang); return; }
+      if (e.target.closest('[data-givereset]')) { GIVE_ROLES.forEach(([, h], i) => { giveVals[i] = String(h); }); root.querySelectorAll('[data-give]').forEach(x => { x.value = giveVals[+x.dataset.give]; }); root.querySelectorAll('[data-givemo]').forEach(x => { x.textContent = giveMoText(+x.dataset.givemo); }); const G = root.querySelector('#showGive'); if (G) G.innerHTML = giveHtml(E); }
+    });
+  }
+  const lastEarned = root => { const e = root.querySelector('[data-tryearned]'); const n = e ? +String(e.textContent).replace(/[^\d.-]/g, '') : NaN; return Number.isFinite(n) ? n : null; };
+  /** draw (or draw again) the parts that follow the room: Try it's ranks and outputs */
+  function paint(root, env) { if (root.querySelector('[data-tryout]')) tryUpdate(root, env, null); }
+  return { sections, bind, paint, arrive, count, EX, giveSetMonth, ROLES };
+})();
+if (typeof module !== 'undefined') module.exports = ShowStory;
+
 // ================================================================ SHOWCASE: the tool tells its own story, for a meeting (admin only)
-// One page the admin opens in front of the management team. It follows a messaging framework: the main message, the problem,
-// the answer as a value proposition, the key messages with their proof, a message for every role (each with View, which opens
-// that role's interface live through viewas.js), today's figures from the shared data (totals only, never a name), trust,
-// what changes, the time back for Member Care (the hours each role gets back, as the team set them), and what comes next. It tells
-// the idea and its benefits (never the WFM team's own daily reports),
-// never how files go in or out. Present turns it into slides: full screen,
+// One page the admin opens in front of the management team, told around the core idea: Cadence counts every bonus. The story is
+// js/showstory.js (also the stand-alone Showcase file): a made-up champion counted by the tool's own engine, the five steps, Try it,
+// the checks, the bonus explained (English or Arabic), every role's part (each with View, which opens that role's interface live
+// through viewas.js), this month's bonus from the shared data (totals only, never a name), the time back, trust and what comes
+// next. Never the WFM team's own daily or weekly reports, never how files go in or out. Present turns it into slides: full screen,
 // one section at a time, the arrow keys, speaker notes on N. The line figures are hairline's (vendor/hairline.js), drawn only while
 // the page is open. For the admin, anywhere in the tool: S a spotlight that follows the pointer, Z a zoom where it points, Esc off.
 const showFig = () => (typeof Hairline !== 'undefined' ? Hairline : null);
 Object.assign(state, { showAt: 0, showNotes: false });
-let showOn = false, showIo = null;
+let showOn = false, showIo = null, SHOW_SECTIONS = [], showEnvNow = null;
 const showFigs = new Map();
 const shFig = (name, label) => `<div class="shfig" data-fig="${name}" data-label="${esc(label)}" aria-hidden="false"></div>`;
-const shHead = (eyebrow, title, lead) => `<div class="shhead shrise"><div class="eyebrow">${esc(eyebrow)}</div><h2>${title}</h2>${lead ? `<p class="shlead">${lead}</p>` : ''}</div>`;
-/** the sections, in the order they are told; each with what to say (the speaker notes, on N while presenting) */
-const SHOW_SECTIONS = [
-  { id: 'hero', name: 'Cadence', notes: 'Cadence is one idea: one shared place for Member Care\'s month. Every role works from the same numbers, every number is settled before it counts, and every result is explained to the person it touches. In the next minutes: the problem, the idea, what Member Care gets, every role, trust, and what comes next.' },
-  { id: 'before', name: 'The challenge', notes: 'Month end used to run on people and spreadsheets: numbers from more than ten places, joined by hand, for seven roles waiting on one deadline. Skilled people spent their month assembling instead of improving service, a question about a bonus meant reopening the spreadsheets, and when one person was away the month waited.' },
-  { id: 'idea', name: 'The idea', notes: 'The idea has four parts. One source of truth: everyone works from the same numbers, the same day. Right before it counts: questions are settled before a number reaches a payslip or an email. Every number explained: anyone can see how a result was reached. And a rhythm everyone sees: the close moves step by step, and everyone knows whose turn it is.' },
-  { id: 'gets', name: 'What Member Care gets', notes: 'What Member Care gets: time back for people, fewer errors and fewer disputes, fairness everyone can see, the month at a glance for every manager, no single point of failure, and privacy by design. Each of these is something the team can feel in the first month.' },
-  { id: 'roles', name: 'Every role', notes: 'Every role gets a better month, on its own page, seeing only what is theirs. Press View on a role to open its page live, on today\'s data. It is a preview: nothing is saved while you view, and Back to Admin returns here.' },
-  { id: 'live', name: 'Today\'s data', notes: 'These are today\'s numbers from the shared data, the same cards the dashboard shows: totals only, never a name.' },
-  { id: 'trust', name: 'Trust', notes: 'The data is the most sensitive Member Care has. It stays on our own computers, encrypted, and only accounts made in the tool can read it. Nothing is sent anywhere. A security review was done, its findings fixed and tested, and every change is tested before it ships.' },
-  { id: 'change', name: 'What changes', notes: 'In one view, what changes: time moves from assembling to coaching, mistakes are settled before anything goes out, questions about pay are answered in a click, the whole month is visible to every role, and the month no longer rests on one person.' },
-  { id: 'gives', name: 'What it gives back', notes: 'Time back for Member Care, role by role: the WFM analyst gets five hours back every working day and the WFM manager three; each QA, CT and TS supervisor and manager gets two hours a month. That is 188 hours a month: 2,256 hours, or 282 working days, a year, more than one full-time person, every month. If the room sees a number differently, change it here: the totals follow.' },
-  { id: 'start', name: 'What\'s next', notes: 'Three steps: run the next month end in Cadence with the old way beside it for one month; measure what it gives back, hours, corrections and questions about pay, against the month before; then make it how Member Care closes every month. Thank you, and questions.' },
-];
-const SHOW_ROLES = [
-  ['user', 'WFM analyst', 'Spent the month assembling numbers.', 'Spends it on analysis: the numbers come together and are checked for them.', 'i-up'],
-  ['wfm', 'WFM manager', 'Waited on spreadsheets before sending anything.', 'Sends checked numbers on time and sees every trend in one place.', 'i-chart'],
-  ['senior', 'Senior manager', 'Chased each step of the close by email.', 'Sees the whole close at a glance and decides with every number explained.', 'i-clock'],
-  ['spv', 'Supervisor', 'Filled sheets instead of coaching.', 'Notes only what is different, and coaches from the month\'s own numbers.', 'i-team'],
-  ['quality', 'Quality team', 'Sent scores separately, team by team.', 'Enters quality once; it counts the same everywhere.', 'i-star'],
-  ['agent', 'Agent', 'Heard about results second-hand.', 'Sees their own results, understands them and can question them, in English or Arabic.', 'i-user'],
-];
+/** this month's bonus from the shared data: who was scored, who earns it, the average final and the bonuses. Totals only, never a name */
 function showLiveHtml() {
   const months = wsMonths(), k = wsMonthNow();
-  const counts = [[rosterRows().length, 'people on the roster'], [months.length, months.length === 1 ? 'month in the history' : 'months in the history'], [spvList().length, 'supervisors'], [state.forms.length, 'forms and one-to-ones kept']];
-  const tiles = `<div class="shcounts shrise">${counts.filter(([n]) => +n > 0).map(([n, l]) => `<div><b>${esc(Number(n || 0).toLocaleString('en-US'))}</b><span>${esc(l)}</span></div>`).join('')}</div>`;
-  if (!k || !months.length) return `${tiles}<div class="card empty shrise"><b>No months yet</b>Build a month on WFM team › Import and its figures appear here.</div>`;
-  let kp = ''; try { kp = dashKpisHtml(k, months.slice(-12)); } catch (e) { kp = ''; }
-  return `${tiles}<div class="shkpis shrise"><div class="shmonth">${esc(ymLabel(k))}<span class="pill ${monthLocked(k) ? '' : 'info'}">${monthLocked(k) ? 'Final' : 'Draft'}</span></div><div class="kpis" role="list" aria-label="${esc(ymLabel(k))} at a glance">${kp}</div></div>`;
+  if (!k || !months.length) return '<div class="card empty shrise"><b>No months yet</b>Build a month on WFM team › Import and its bonus appears here.</div>';
+  let rows = []; try { rows = liveRows(k).filter(r => r && r.kc); } catch (e) { rows = []; }
+  const earn = rows.filter(r => +r.earned > 0), fins = rows.map(r => r.fin).filter(v => typeof v === 'number' && Number.isFinite(v));
+  const sum = earn.reduce((a, r) => a + (+r.earned || 0), 0), avg = fins.length ? fins.reduce((a, v) => a + v, 0) / fins.length : null;
+  const tiles = [[rows.length, 'people scored'], [earn.length, 'earn a bonus'], [avg == null ? '–' : `${Math.round(avg * 1000) / 10}%`, 'average final'], [sum, 'riyals in bonuses']];
+  return `<div class="shmonth shrise">${esc(ymLabel(k))}<span class="pill ${monthLocked(k) ? '' : 'info'}">${monthLocked(k) ? 'Final' : 'Draft'}</span></div>
+    <div class="shcounts shbonus shrise">${tiles.map(([n, l], i) => `<div${i === 3 ? ' class="hot"' : ''}><b>${esc(typeof n === 'number' ? n.toLocaleString('en-US') : n)}</b><span>${esc(l)}</span></div>`).join('')}</div>`;
 }
 /** the hero's strip: the month shown, the people, the months kept */
-function showStripHtml() {
+function showStripItems() {
   const k = wsMonthNow();
-  return [k ? ymLabel(k) : '', `${rosterRows().length} people`, `${plural(wsMonths().length, 'month')} of history`, 'works offline'].filter(Boolean).map(x => `<li>${esc(x)}</li>`).join('');
+  return [k ? ymLabel(k) : '', `${rosterRows().length} people`, `${plural(wsMonths().length, 'month')} of history`, 'works offline'].filter(Boolean);
 }
-/** Time back for Member Care: the hours Cadence gives back, role by role, as the team set them. A presenter can change a number while
-    presenting; it is kept only while the page is open, never saved. A month has 22 working days of 8 hours. */
-const GIVE_DAYS = 22, GIVE_FTE = GIVE_DAYS * 8;
-const GIVE_ROLES = [['WFM analyst', 5, 'day'], ['WFM manager', 3, 'day'], ['QA supervisor', 2, 'month'], ['QA manager', 2, 'month'], ['CT supervisor', 2, 'month'], ['CT manager', 2, 'month'], ['TS supervisor', 2, 'month'], ['TS manager', 2, 'month']];
-const giveVals = GIVE_ROLES.map(([, h]) => String(h));
-const giveNum = x => (Math.round(x * 10) / 10).toLocaleString('en-US');
-/** one role's hours back in a month, or null when its box is empty */
-function giveMonthOf(i) { const v = giveVals[i]; return v === '' ? null : (+v) * (GIVE_ROLES[i][2] === 'day' ? GIVE_DAYS : 1); }
-const giveMoText = i => { const m = giveMonthOf(i); return m == null ? '–' : `${giveNum(m)} h`; };
-/** the hours back in a month with the hours as set (the benefits card says it before the section is reached) */
-const giveSetMonth = () => GIVE_ROLES.reduce((a, [, h, per]) => a + h * (per === 'day' ? GIVE_DAYS : 1), 0);
-function giveSum() {
-  let month = 0, any = false;
-  GIVE_ROLES.forEach((r, i) => { const m = giveMonthOf(i); if (m == null) return; any = true; month += m; });
-  return any ? month : null;
-}
-function giveHtml() {
-  const m = giveSum(), f = x => Math.round(x).toLocaleString('en-US');
-  const tiles = [[m == null ? '–' : f(m), 'hours back a month'], [m == null ? '–' : f(m * 12), 'hours back a year'], [m == null ? '–' : f(m * 12 / 8), 'working days back a year']];
-  return `<div class="shgtiles">${tiles.map(([n, l], i) => `<div${i === 2 ? ' class="hot"' : ''}><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('')}</div>
-    <p class="shgnote">${m == null ? 'Type the hours each role gets back.' : `A month of ${GIVE_DAYS} working days; a working day of 8 hours. <b>${m >= GIVE_FTE ? `As many hours as ${(m / GIVE_FTE).toFixed(1)} full-time people` : `${Math.round(m / GIVE_FTE * 100)}% of a full-time person`}, every month, back to coaching and service.</b>`}</p>`;
-}
-function giveTableHtml() {
-  return `<table class="shctab"><thead><tr><th scope="col">Role</th><th scope="col">Hours back</th><th scope="col">Per</th><th scope="col">A month</th></tr></thead>
-    <tbody>${GIVE_ROLES.map(([r, , per], i) => `<tr><th scope="row">${esc(r)}</th><td><input type="number" inputmode="decimal" min="0" max="9999" step="any" data-give="${i}" value="${esc(giveVals[i])}" aria-label="${esc(r)}: hours back a ${per}"></td><td class="per">${per}</td><td class="mo" data-givemo="${i}">${giveMoText(i)}</td></tr>`).join('')}</tbody></table>`;
+const showStripHtml = () => showStripItems().map(x => `<li>${esc(x)}</li>`).join('');
+/** View for a role: that role's page, live (a supervisor or an agent chosen first) */
+function showRoleAct(r) { const R = VIEW_ROLES.find(x => x[0] === r), kind = R && R[3]; return `<div class="shract">${kind ? `<span class="shpick" data-kind="${kind}">${viewPickHtml(kind)}</span>` : ''}<button class="btn sm primary" data-vago="${r}">View</button></div>`; }
+/** what the story needs from the tool: the month's rules (the champion's scorecard, how it is counted, who earns it, the brand's base),
+    today's figures and View for every role (js/showstory.js) */
+function showEnv() {
+  const k = wsMonthNow() || monthKey(), R = rulesFor(k), C = R.cards && R.cards.teams ? R.cards : Kpi.DEFAULTS(), card = (C.teams && C.teams.CC) || Kpi.DEFAULTS().teams.CC;
+  let base = 1000; try { const B = basesNow(k); base = B.Virgin != null ? +B.Virgin : +(C.base || 1000); } catch (e) { base = +(C.base || 1000); }
+  const y = +k.slice(0, 4), m = +k.slice(5);
+  return { esc, card, cfg: R.count, elig: R.elig, base, cards: Object.keys(C.teams || {}).length, people: rosterRows().length, strip: showStripItems(),
+    month: m ? `${MONTH_LONG[m - 1]} ${y}` : 'This month', live: showLiveHtml, roleAct: showRoleAct, fig: shFig };
 }
 function showHtml() {
-  const S = {
-    hero: `<div class="shhero">
-        <div class="shherotext shrise"><span class="bologo on-light shlogo" aria-hidden="true"></span><div class="eyebrow">Cadence · Member Care performance</div>
-          <h2 class="shbig">Member Care's month, <b>in one place.</b></h2>
-          <p class="shlead">One shared truth for the whole month: the numbers every role works from, settled before they count, and explained to the person they touch. Less time assembling, more time for people.</p>
-          <div class="shcta"><button class="btn primary" data-showpresent>Present</button><button class="btn" data-showgo="roles">See every role</button></div>
-          <ul class="shstrip" id="showStrip">${showStripHtml()}</ul></div>
-        ${shFig('exploded', 'An app window taken apart into its layers: one place for the month')}</div>`,
-    before: `${shHead('The challenge', 'Month end ran on <b>people and spreadsheets.</b>', '')}
-        <div class="shnums shrise">${[['10+', 'sources of numbers, joined by hand'], ['7', 'roles waiting on the same numbers'], ['1', 'deadline for all of it']].map(([n, l], i) => `<div class="${i === 2 ? 'hot' : ''}"><b>${n}</b><span>${l}</span></div>`).join('')}</div>
-        <div class="shcards three shrise">${[['Hours spent assembling', 'Skilled people spent their month joining and checking numbers instead of improving service.'], ['Hard to explain, easy to dispute', 'A question about a bonus or a deduction meant reopening the spreadsheets to find the answer.'], ['The month lived with one person', 'When they were away, the month waited, and what they knew was nowhere else.']].map(([h, t]) => `<div class="shcard"><b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
-    idea: `${shHead('The idea', 'One shared truth, <b>a page for every role.</b>', 'Cadence brings the whole month to one place every role opens: the same numbers for everyone, settled before they count, explained to everyone, at a pace everyone can see.')}
-        <ol class="shsteps pillars shrise">${[['One source of truth', 'Every role works from the same numbers, the same day. No versions to reconcile.', 'stack', 'Layers settling into one stack: one source of truth'], ['Right before it counts', 'Questions are settled before a number reaches a payslip or an email.', 'sieve', 'Sieves over a pan: settled before it counts'], ['Every number explained', 'Anyone can see how a result was reached, down to the rounding.', 'loupe', 'A magnifying glass: every number explained'], ['A rhythm everyone sees', 'The month close moves step by step, and everyone knows whose turn it is.', 'plot', 'A chart drawing itself: the month, seen by everyone']].map(([h, t, f, l]) => `<li class="shstep">${shFig(f, l)}<b>${h}</b><p>${t}</p></li>`).join('')}</ol>`,
-    gets: `${shHead('What Member Care gets', 'What Member Care <b>gets.</b>', '')}
-        <div class="shcards six shrise">${[['Time back for Member Care', 'Hours back every month, role by role, for coaching, quality and service.', `${giveSetMonth()} hours a month`], ['Fewer errors and disputes', 'Problems are settled before anything goes out, so fewer corrections follow the emails.', ''], ['Fairness people can see', 'Every bonus explains itself, the same rules apply to everyone, and agents see their own.', '94.96% → 95%'], ['The month at a glance', 'Managers see where the close stands, what is late and who is next, without chasing anyone.', ''], ['No single point of failure', 'The month is shared, saved and covered during holidays: it never rests on one person.', ''], ['Private by design', 'The data stays on our own computers, encrypted, and each role sees only what is theirs.', '0 web requests']].map(([h, t, big], i) => `<div class="shcard${big ? ' stat' : ''}">${big ? `<em>${esc(big)}</em>` : `<span class="shno">0${i + 1}</span>`}<b>${h}</b><p>${t}</p></div>`).join('')}</div>`,
-    roles: `${shHead('Every role', 'A better month for <b>every role.</b>', 'Press View to open that page live, on today\'s data, exactly as its role sees it. Nothing is saved and National IDs are hidden while you view; Back to Admin returns here.')}
-        <div class="shroles shrise">${SHOW_ROLES.map(([r, name, before, now, ico]) => { const R = VIEW_ROLES.find(x => x[0] === r), kind = R && R[3]; return `<div class="shrole"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#${ico}"/></svg></span><b>${esc(name)}</b></div>
-            <p class="was"><span>Before</span>${esc(before)}</p><p class="now"><span>Now</span>${esc(now)}</p>
-            <div class="shract">${kind ? `<span class="shpick" data-kind="${kind}">${viewPickHtml(kind)}</span>` : ''}<button class="btn sm primary" data-vago="${r}">View</button></div></div>`; }).join('')}
-          <div class="shrole admin"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><b>Admin</b></div><p class="now"><span>Now</span>Accounts and roles, vacation cover, and this Showcase.</p><div class="shract"><span class="pill info">You are here</span></div></div>
-          ${shFig('hub', 'A hub and its tiles: one set of data, a page for every role')}</div>`,
-    live: `${shHead('Today\'s data', 'This is <b>today\'s data.</b>', 'The same cards the dashboard shows, straight from the shared data: totals only, never a name.')}<div id="showLive">${showLiveHtml()}</div>`,
-    trust: `${shHead('Trust', 'Your data <b>stays yours.</b>', '')}
-        <div class="shtrust shrise"><div class="shtiles">${[['0', 'web requests', 'Nothing is sent anywhere: the data stays on our own computers.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read the shared data.'], ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['37', 'browser test suites', 'Every role, on a computer, light and dark, before each change ships.'], ['10,000', 'synthetic people', 'The counting rules checked against the previous engine, with the same results.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.']].map(([b, s, t], i) => `<div class="shtile${i ? '' : ' on'}"><b>${b}</b><span>${s}</span><p>${t}</p></div>`).join('')}</div>
-          ${shFig('vault', 'A vault door: the shared data, encrypted')}</div>`,
-    change: `${shHead('What it means', 'What changes for <b>Member Care.</b>', '')}
-        <div class="shtable shrise"><table><thead><tr><th></th><th>Before</th><th class="hot">With Cadence</th></tr></thead><tbody>${[['Time', 'Spent assembling and re-checking numbers', 'Spent on coaching and service'], ['Accuracy', 'Mistakes found after the emails went out', 'Settled before anything goes out'], ['Questions about pay', 'Worked out again on request', 'Answered in a click, the same for everyone'], ['Visibility', 'Status gathered by email and calls', 'The whole month at a glance, for every role'], ['Continuity', 'The month lived in one person\'s files', 'Shared, saved and covered during holidays']].map(([a, b, c]) => `<tr><th scope="row">${a}</th><td>${b}</td><td>${c}</td></tr>`).join('')}</tbody></table></div>`,
-    gives: `${shHead('What it gives back', 'Time back for <b>Member Care.</b>', 'Hours back, role by role: every working day for the WFM team, every month for the QA, CT and TS supervisors and managers. What comes back is time for people.')}
-        <div class="shcalc shrise"><div class="shcalctab">${giveTableHtml()}<button class="btn sm ghost" data-givereset>Reset the hours</button></div>
-          <div class="shgive" id="showGive" aria-live="polite">${giveHtml()}</div></div>`,
-    start: `<div class="shend">
-        <div class="shendtext">${shHead('What\'s next', 'Ready for <b>the next close.</b>', '')}
-          <ol class="shgo shrise">${[['Run the next month end in Cadence', 'Every role in one place, with the old way beside it for one month.'], ['Measure what it gives back', 'Hours, corrections and questions about pay, against the month before.'], ['Make it how we close', 'Every month, every role, one shared truth.']].map(([h, t], i) => `<li><span class="shn">${i + 1}</span><div><b>${h}</b><p>${t}</p></div></li>`).join('')}</ol>
-          <p class="shthanks shrise">Thank <b>you.</b></p></div>
-        ${shFig('laptop', 'A laptop, its lid opening: the next close')}</div>`,
-  };
-  const sec = (s, i) => `<section class="shsec sh-${s.id}" data-shsec="${i}" aria-label="${esc(s.name)}">${S[s.id]}<aside class="shnotes" aria-label="Speaker notes"><b>Speaker notes</b><p>${esc(s.notes)}</p></aside></section>`;
-  return `<div class="shtop"><div><div class="eyebrow">Admin</div><h1 id="h-show">Showcase</h1><p>The tool's own story for a meeting: present it full screen, and open any role's interface live from it. Anywhere in the tool: <kbd>S</kbd> spotlight, <kbd>Z</kbd> zoom, <kbd>Esc</kbd> off.</p></div>
+  const env = showEnvNow = showEnv(), S = ShowStory.sections(env); SHOW_SECTIONS = S;
+  const sec = (s, i) => `<section class="shsec sh-${s.id}" data-shsec="${i}" aria-label="${esc(s.name)}">${s.html}<aside class="shnotes" aria-label="Speaker notes"><b>Speaker notes</b><p>${esc(s.notes)}</p></aside></section>`;
+  return `<div class="shtop"><div><div class="eyebrow">Admin</div><h1 id="h-show">Showcase</h1><p>How Cadence counts every bonus, told for a meeting: present it full screen, try a bonus with the room, and open any role's page live from it. Anywhere in the tool: <kbd>S</kbd> spotlight, <kbd>Z</kbd> zoom, <kbd>Esc</kbd> off.</p></div>
       <div class="wsacts"><button class="btn primary" data-showpresent><svg aria-hidden="true"><use href="#i-present"/></svg>Present</button></div></div>
-    ${SHOW_SECTIONS.map(sec).join('')}
+    ${S.map(sec).join('')}
     <div class="shctl" id="showCtl" hidden></div>`;
 }
 /** the figures: drawn as they come into view, all taken down when the page closes */
@@ -39298,16 +39571,17 @@ function renderShow() {
   }
   stopShowFigs();
   el.innerHTML = showHtml();
+  ShowStory.bind(el, showEnvNow); ShowStory.paint(el, showEnvNow);   // Try it, the receipt's language, the time back
   const io = 'IntersectionObserver' in window ? new IntersectionObserver(L => L.forEach(x => {
     if (!x.isIntersecting) return;
-    if (x.target.classList.contains('shsec')) x.target.classList.add('in'); else mountFig(x.target);
+    if (x.target.classList.contains('shsec')) { x.target.classList.add('in'); ShowStory.arrive(x.target); } else mountFig(x.target);
   }), { rootMargin: '0px 0px -10% 0px', threshold: 0.12 }) : null;
   showIo = io;
-  el.querySelectorAll('.shsec, .shfig').forEach(n => { if (io) io.observe(n); else { n.classList.add('in'); if (n.classList.contains('shfig')) mountFig(n); } });
+  el.querySelectorAll('.shsec, .shfig').forEach(n => { if (io) io.observe(n); else { n.classList.add('in'); if (n.classList.contains('shfig')) mountFig(n); else ShowStory.arrive(n); } });
   if (showOn) showGo(state.showAt, true);
 }
 /** leaving the page: the figures are taken down and the presentation ends */
-function leaveShow() { if (showOn) showPresent(false); stopShowFigs(); const el = $('showBody'); if (el && el.firstChild) el.innerHTML = ''; }   // told afresh on the next visit
+function leaveShow() { if (showOn) showPresent(false); stopShowFigs(); const el = $('showBody'); if (el && el.firstChild) { el.innerHTML = ''; delete el.dataset.storyBound; } }   // told afresh on the next visit
 function showPresent(on) {
   showOn = !!on; document.body.classList.toggle('presenting', showOn);
   const root = document.documentElement;
@@ -39326,7 +39600,7 @@ function showGo(i, instant) {
   state.showAt = Math.max(0, Math.min(S.length - 1, i));
   const cur = S[state.showAt];
   if (!showOn) { cur.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); return; }
-  S.forEach(s => s.classList.toggle('cur', s === cur)); cur.classList.add('in');
+  S.forEach(s => s.classList.toggle('cur', s === cur)); cur.classList.add('in'); ShowStory.arrive(cur);
   cur.querySelectorAll('.shfig').forEach(mountFig);
   renderShowCtl();
   if (!instant && !RM() && typeof gsap !== 'undefined') { try { gsap.fromTo(cur.querySelectorAll('.shrise'), { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.07, ease: 'power2.out', clearProps: 'transform,opacity' }); } catch (e) { /* still there */ } }
@@ -39351,20 +39625,6 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-shnotes]')) { state.showNotes = !state.showNotes; renderShowCtl(); return; }
   if (e.target.closest('[data-shexit]')) { showPresent(false); return; }
   if (showOn && e.target.closest('[data-vago]')) showPresent(false);   // a role's interface opens out of the presentation
-});
-document.addEventListener('input', e => {
-  const t = e.target.closest && e.target.closest('[data-give]'); if (!t) return;
-  const i = +t.dataset.give, v = t.value.trim();
-  giveVals[i] = v !== '' && Number.isFinite(+v) && +v >= 0 ? v : '';
-  const mo = document.querySelector(`[data-givemo="${i}"]`); if (mo) mo.textContent = giveMoText(i);
-  const g = $('showGive'); if (g) g.innerHTML = giveHtml();
-});
-document.addEventListener('click', e => {
-  if (!e.target.closest('[data-givereset]')) return;
-  GIVE_ROLES.forEach(([, h], i) => { giveVals[i] = String(h); });
-  document.querySelectorAll('[data-give]').forEach(x => { x.value = giveVals[+x.dataset.give]; });
-  document.querySelectorAll('[data-givemo]').forEach(x => { x.textContent = giveMoText(+x.dataset.givemo); });
-  const g = $('showGive'); if (g) g.innerHTML = giveHtml();
 });
 document.addEventListener('keydown', e => {
   if (!showOn || state.ws !== 'show' || e.altKey || e.ctrlKey || e.metaKey || (openId && !$(openId).hidden)) return;

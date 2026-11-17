@@ -39387,7 +39387,9 @@ const ShowStory = (() => {
   function receiptHtml(env, c, lang) {
     const E = env.esc, ar = lang === 'ar', r = c.res, E2 = env.elig;
     const mo = ar ? env.month.replace(/^([A-Za-z]+)/, m => AR.months[['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].indexOf(m)] || m) : env.month;
-    const g = ar ? [AR.g[0].replace('{p}', pctT(E2.minFinal)), AR.g[1], AR.g[2].replace('{d}', E2.minDays), ...(E2.minMonths > 0 ? [AR.g[3].replace('{m}', E2.minMonths)] : [])] : c.gates.map(x => x.t);
+    // the gates as HTML: in Arabic each number keeps its own direction (80% stays 80%, not %80)
+    const n = x => `<bdi>${E(String(x))}</bdi>`;
+    const g = ar ? [AR.g[0].replace('{p}', n(pctT(E2.minFinal))), AR.g[1], AR.g[2].replace('{d}', n(E2.minDays)), ...(E2.minMonths > 0 ? [AR.g[3].replace('{m}', n(E2.minMonths))] : [])] : c.gates.map(x => E(x.t));
     return `<div class="shrc-head"><b>${ar ? AR.title : 'How the bonus was counted'}</b><span><bdi>${E(EX.name)}</bdi> · ${E(mo)} · ${ar ? AR.made : 'made-up'}</span></div>
       <table class="shrc-tab"><thead><tr><th scope="col">${ar ? AR.kpi : 'KPI'}</th><th scope="col">${ar ? AR.value : 'Value'}</th><th scope="col">${ar ? AR.rank : 'Rank'}</th><th scope="col">${ar ? AR.weight : 'Weight'}</th></tr></thead>
       <tbody>${r.rows.map(x => `<tr><th scope="row"><bdi>${E(x.k.name)}</bdi></th><td><bdi>${E(shown(x.k, x.k.unit === 'pct' && x.v != null ? x.v * 100 : x.v))}</bdi></td><td><b class="shrk r${x.r ?? 0}">${x.r ?? '–'}</b> <small>${ar ? AR.of5 : 'of 5'}</small></td><td><bdi>${pctT(x.w)}</bdi></td></tr>`).join('')}</tbody></table>
@@ -39395,7 +39397,7 @@ const ShowStory = (() => {
         <div><dt>${ar ? AR.final : 'Final'}</dt><dd><bdi>${pctT(r.finalPct)}</bdi> <small>(<bdi>${E(String(r.finalRank))}</bdi> ${ar ? AR.of5 : 'of 5'})</small></dd></div>
         <div><dt>${ar ? AR.days : 'Days attended'}</dt><dd>${ar ? AR.ofDays(EX.att, EX.sched) : `${EX.att} of ${EX.sched}`} <small>(<bdi>${pctT(r.daysPct)}</bdi>)</small></dd></div>
         <div><dt>${ar ? AR.base : 'Base'}</dt><dd><bdi>${nf(env.base)}</bdi> ${ar ? AR.sr : 'SR'}</dd></div>
-        <div class="gates"><dt>${ar ? AR.gates : 'Eligible'}</dt><dd>${g.map((t, i) => `<span class="${c.gates[i] && c.gates[i].ok ? 'ok' : 'no'}">${c.gates[i] && c.gates[i].ok ? '✓' : '✗'} ${E(t)}</span>`).join('')}</dd></div>
+        <div class="gates"><dt>${ar ? AR.gates : 'Eligible'}</dt><dd>${g.map((t, i) => `<span class="${c.gates[i] && c.gates[i].ok ? 'ok' : 'no'}">${c.gates[i] && c.gates[i].ok ? '✓' : '✗'} ${t}</span>`).join('')}</dd></div>
         <div class="total"><dt>${ar ? AR.earned : 'Bonus earned'}</dt><dd><b><bdi>${nf(c.earned)}</bdi> ${ar ? AR.sr : 'SR'}</b> <small dir="ltr">${E(formula(env, c))}</small></dd></div>
       </dl>`;
   }

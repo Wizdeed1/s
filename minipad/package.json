@@ -1,0 +1,16 @@
+{
+  "name": "minipad",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MiniPad: a home dashboard, games, music and everyday tools for an iPad mini 2 on iOS 12, plus small Vercel functions for Ask Claude, weather and sync.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "stamp": "node test/stamp.cjs",
+    "test": "node test/compat.cjs && node test/chess.test.cjs && node test/api.test.cjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.3.0",
+    "@vercel/blob": "2.8.2"
+  },
+  "license": "UNLICENSED"
+}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MiniPad">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#0b6e63">
+<meta name="description" content="Home dashboard, games, music and everyday tools for an older iPad.">
+<title>MiniPad</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+<script>
+/* Pick light or dark before the first paint. */
+(function () {
+  try {
+    var s = JSON.parse(localStorage.getItem('mp.settings') || '{}');
+    var t = s.theme || 'auto', h = new Date().getHours();
+    var dark = t === 'dark' || (t === 'auto' && (h >= 19 || h < 7));
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+})();
+</script>
+</head>
+<body class="at-home">
+<div id="app">
+  <header id="bar" class="bar">
+    <button type="button" id="bar-back" class="bar-back" hidden>‹ Home</button>
+    <h1 id="bar-title" class="bar-title">MiniPad</h1>
+    <div id="bar-actions" class="bar-actions"></div>
+    <div id="bar-clock" class="bar-clock"></div>
+  </header>
+  <main id="view" class="view"></main>
+</div>
+<div id="now-playing" class="now-playing" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="modal"></div>
+<noscript><p style="padding:24px">MiniPad needs JavaScript. Turn it on in Settings › Safari › Advanced.</p></noscript>
+<script src="vendor/NoSleep.min.js"></script>
+<script src="js/core.js"></script>
+</body>
+</html>

@@ -20,6 +20,7 @@ function updPeople(k) {
 const updCtx = () => { const M = updMonth(); return { y: M.y, m: M.m, people: updPeople(M.k) }; };
 /** a day as the month has it now, with the corrections already made (undefined: the tool has no days for the person that month) */
 function updNow(pid, k, day) {
+  const dn = dnNow(pid, k, day); if (dn !== undefined) return dn;   // a day of the deduction file's next month, dropped on the email page
   const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5)), r = monthData(k) ? rowOf(pid, k) : null;
   if (r) return daysOfRow(r, ND)[day - 1] ?? null;
   if (state.ctx && monthKey() === k && state.ctx.attendance) { const a = state.ctx.attendance.get(pid); if (a) return a.days[day - 1] ?? null; }

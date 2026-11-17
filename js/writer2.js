@@ -683,14 +683,16 @@ function dedCounts(a) {
     a.days.filter(v => v === 'Attend' || typeof v === 'number').length, a.sched ?? '', a.actual ?? ''];
 }
 /**
- * d: { y, m, att: [{ id, name, brand, team, days: [ND] (Attend, tardy minutes, OFF, AL, SL, Absent, other codes, null), tardy, sched, actual }],
- *      ded: [{ id, name, brand, team, sched: [ND] | null, act: [ND] | null, total }] } -> xlsx bytes
+ * d: { y, m, days?: [{ y, m, d }] (the file's days: the 13th of the month to the 12th of the next; the calendar month without), label?,
+ *      att: [{ id, name, brand, team, days: [ND] (Attend, tardy minutes, OFF, AL, SL, Absent, other codes, null), tardy, sched, actual, note }],
+ *      ded: [{ id, name, brand, team, sched: [ND] | null, act: [ND] | null, total, note }] } -> xlsx bytes (ND: the number of days)
  */
 /** a day's Actual with an exception's minutes counted as worked (no more than the Sched.; the whole Sched. for 'day') */
 function excAct(sv, av, exc) { return sv == null || av == null || av === 0 || exc == null || av >= sv ? av : exc === 'day' ? sv : Math.min(sv, av + Math.max(0, +exc || 0)); }
 async function dedMail(d, opts = {}) {
   const S = new Styles(), NAVY = 'FF1F3864', WHITE = 'FFFFFFFF', GRID = 'FFD9D9D9', TAB = 'FF375623';
-  const Y = d.y, M = d.m, ND = C.daysIn(Y, M), L = `${C.MON[M - 1]} - ${Y}`;
+  const Y = d.y, M = d.m, DAYS = Array.isArray(d.days) && d.days.length ? d.days : Array.from({ length: C.daysIn(Y, M) }, (_, i) => ({ y: Y, m: M, d: i + 1 }));
+  const ND = DAYS.length, L = `${C.MON[M - 1]} - ${Y}${d.label ? ` (${d.label})` : ''}`;
   const title = S.get({ font: { sz: 16, b: true, color: NAVY } }), sub = S.get({ font: { sz: 9, i: true, color: 'FF7F7F7F' } });
   const H = (fill, fmt) => S.get({ font: { b: true, color: WHITE }, fill, border: WHITE, align: { h: 'center', wrap: true }, ...(fmt ? { numFmt: fmt } : {}) });
   const hdr = H(NAVY), hDate = H(NAVY, 'dd-mmm'), hDay = H(NAVY, 'ddd dd-mmm'), hSA = H('FF2F5597'), hDf = H('FFC65911'), hTot = H(TAB), hNote = H('FF595959'), hCnt = H('FF305496');
@@ -708,14 +710,14 @@ async function dedMail(d, opts = {}) {
   const D0 = 4, CN = D0 + ND, NOTE = CN + DED_COUNTS.length, R0 = 3, RL = Math.max(R0, R0 + d.att.length - 1);
   leg.forEach(([t, s], i) => { const c = D0 + 6 + i * 2; A.set(1, c, t, s); A.set(1, c + 1, null, s); A.merge(1, c, 1, c + 1); });   // the colours' legend, right of the title
   [['Name', 32], ['Team', 11], ['Dep', 7]].forEach(([h, w], j) => { A.set(2, j + 1, h, hdr); A.width(j + 1, w); });
-  for (let i = 1; i <= ND; i++) { A.set(2, D0 + i - 1, ymd(Y, M, i), hDate); A.width(D0 + i - 1, 9.5); }
+  DAYS.forEach((x, i) => { A.set(2, D0 + i, ymd(x.y, x.m, x.d), hDate); A.width(D0 + i, 9.5); });
   DED_COUNTS.forEach(([h, w], j) => { A.set(2, CN + j, h, j >= 10 ? hTot : hCnt); A.width(CN + j, w); });
   A.set(2, NOTE, 'Review Notes', hNote); A.width(NOTE, 30);
   d.att.forEach((a, i) => {
     const r = R0 + i;
     A.set(r, 1, a.name, cName); A.set(r, 2, a.brand || '', cC); A.set(r, 3, a.team || '', cC);
     for (let k = 0; k < ND; k++) A.set(r, D0 + k, dedShowDay(a.days[k]), cC);
-    dedCounts(a).forEach((v, j) => A.set(r, CN + j, v, cCnt)); A.set(r, NOTE, null, cName);
+    dedCounts(a).forEach((v, j) => A.set(r, CN + j, v, cCnt)); A.set(r, NOTE, a.note || null, cName);
   });
   const ag = `${ref(R0, D0)}:${ref(RL, CN - 1)}`, tl = ref(R0, D0);
   leg.forEach(([t, , dx]) => A.addCF(ag, t === 'National Day' ? `LEFT(TRIM(${tl}),8)="National"` : `TRIM(${tl})="${t}"`, dx));
@@ -726,13 +728,13 @@ async function dedMail(d, opts = {}) {
   const DE = new Sheet('Monthly Deduction'); DE.tab = TAB;
   DE.set(1, 1, `MC Monthly Deduction - ${L}`, title);
   const noDaily = d.ded.filter(x => !x.sched || !x.act).length;
-  DE.set(2, 1, `Sched. = scheduled work minutes. Actual = minutes signed on inside them. Diff = Sched. - Actual (0 if Actual is 0).${noDaily ? ` ${noDaily === 1 ? '1 person has' : `${noDaily} people have`} only a total: the month was saved before each day's minutes were kept.` : ''}`, sub);
+  DE.set(2, 1, `${d.label ? `The days run ${d.label}. ` : ''}Sched. = scheduled work minutes. Actual = minutes signed on inside them. Diff = Sched. - Actual (0 if Actual is 0).${noDaily ? ` ${noDaily === 1 ? '1 person has' : `${noDaily} people have`} only a total: the month was saved before each day's minutes were kept.` : ''}`, sub);
   Object.assign(DE.heights, { 1: 30, 2: 18, 3: 6, 4: 22, 5: 30 });
   [['Name', 34], ['Team', 11], ['Dep', 8]].forEach(([h, w], j) => { DE.set(4, j + 1, h, hdr); DE.set(5, j + 1, null, hdr); DE.merge(4, j + 1, 5, j + 1); DE.width(j + 1, w); });
   const E0 = 4, TOT = E0 + ND * 3, DN = TOT + 1, Q0 = 6, QL = Math.max(Q0, Q0 + d.ded.length - 1);
   for (let i = 1; i <= ND; i++) {
     const c = E0 + (i - 1) * 3;
-    DE.set(4, c, ymd(Y, M, i), hDay); DE.set(4, c + 1, null, hDay); DE.set(4, c + 2, null, hDay); DE.merge(4, c, 4, c + 2);
+    const x = DAYS[i - 1]; DE.set(4, c, ymd(x.y, x.m, x.d), hDay); DE.set(4, c + 1, null, hDay); DE.set(4, c + 2, null, hDay); DE.merge(4, c, 4, c + 2);
     DE.set(5, c, 'Sched.', hSA); DE.set(5, c + 1, 'Actual', hSA); DE.set(5, c + 2, 'Diff (min)', hDf);
     DE.width(c, 9); DE.width(c + 1, 9); DE.width(c + 2, 10.5);
   }

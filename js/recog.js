@@ -175,7 +175,7 @@ $('recogBody').addEventListener('change', e => {
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-recogpick]')) { e.preventDefault(); recogPick(); } });
 
 // ---------------------------------------------------------------- dropping anywhere: one quiet layer says what will happen
-const DROP_ZONES = '#drop, #wbDrop, [data-hdrop], [data-cmpdrop], [data-rbdrop], [data-interdrop], [data-qdropzone], [data-pdrop]';
+const DROP_ZONES = '#drop, #wbDrop, [data-ddrop], [data-hdrop], [data-cmpdrop], [data-rbdrop], [data-interdrop], [data-qdropzone], [data-pdrop]';
 let dropDepth = 0;
 const dropShow = on => { const el = $('dropAll'); if (!el) return; if (on) { $('dropAllText').textContent = state.ws === 'build' && state.step === 'import' ? 'Drop all the month\'s files: each one is recognised and goes to its place' : 'Drop to recognise · nothing leaves this computer'; } el.hidden = !on; };
 const dropOk = e => !!(e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files') && $('lock').hidden && Auth.user());

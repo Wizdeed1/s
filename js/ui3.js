@@ -2768,6 +2768,7 @@ function mailModel(stage = state.mailStage) {
     else warns.push('No review version saved for this month, so the changes since the review cannot be listed. Copy or download the review email first, or drop the workbook that was sent for review.');
   }
   const attach = mailShared() || r || state.ctx ? { name: `MC Monthly Deduction - ${MON[m - 1]} ${y}.xlsx`, size: null } : null;   // Attendance Report and Monthly Deduction (dedMailData)
+  if (attach) warns.push(...dedPeriodWarns(y, m));   // the workbook runs to the 12th of the next month
   return { kind: 'ded', stage, y, m, ded: dedRows, dedFull: ded, dedAll: ded.length, abs, warns, changes, snap, attach, deadline: dl[1] ? `${MON[dl[1] - 1]} ${ordinal(dl[2])}` : '', subject: subjectFor('ded', stage) };
 }
 const F = 'font-family:Calibri,sans-serif';
@@ -2965,35 +2966,9 @@ async function incMailBytes() {
   state.ctx.logo = await xlLogo();
   return WriterInc.build(state.ctx, { model: incModel(), noIds: true });
 }
-/** the deduction email's workbook (Writer2.dedMail): everyone's days for the Attendance Report and, for the people in the deduction,
-    each day's Sched. and Actual, from the shared month, a dropped monthly report, or this page */
-function dedMailData() {
-  const { y, m } = mailMonth(), k = ymKey(y, m), ND = Core.daysIn(y, m), cfg = countFor(k), set = state.settings, r = state.wb && state.wb.report;
-  const inDed = x => set.dedBrands.includes(normSpace(x.brand)) && set.dedTeams.includes(normSpace(x.team));
-  const minutes = s => (s == null || s === '' ? null : String(s).split(',').map(v => (v === '' ? null : +v)));
-  let att = [], ded = [];
-  if (mailShared()) {
-    for (const x of liveRows(k)) {
-      const days = daysOfRow(x, ND), who = { id: idText(x.id), name: x.n, brand: normSpace(x.brand), team: normSpace(x.team) };
-      if (days.some(v => v != null)) att.push({ ...who, days, tardy: x.tardy });   // the month's late minutes, also when they came as one total
-      if (inDed(x) && x.ded != null) ded.push({ ...who, sched: minutes(x.ds), act: minutes(x.da), total: Math.round(x.ded || 0), note: x.dxn || '' });
-    }
-  } else if (r) {
-    att = r.att.filter(a => a.shown && a.vals && a.vals.some(v => v != null)).map(a => ({ id: a.id, name: a.name, brand: a.brand, team: a.team, days: a.vals }));
-    ded = r.ded.map(x => ({ id: x.id, name: x.name, brand: x.brand, team: x.team, sched: x.sched, act: x.act, total: x.total }));
-  } else if (state.model) {
-    const A = state.ctx && state.ctx.attendance;
-    for (const x of state.model) {
-      if (!x.shown) continue;
-      const who = { id: idText(x.p.nid), name: x.exp, brand: normSpace(x.p.brand), team: normSpace(x.p.team) }, a = A ? A.get(x.p._id) : null;
-      if (a && a.days.some(v => v != null)) att.push({ ...who, days: a.days, tardyFile: a.tardyFile });
-      if (x.inDed) ded.push({ ...who, sched: x.sch, act: x.actX || x.act, total: x.ded || 0, note: x.exc ? x.exc.note : '' });
-    }
-  } else return null;
-  const order = x => (DEP_ORDER.indexOf(x.team) + 1 || 99), byDep = (a, b) => order(a) - order(b) || a.name.localeCompare(b.name);
-  att = att.map(a => { const c = Kpi.countDays(a.days, cfg); return { ...a, tardy: typeof a.tardy === 'number' && Number.isFinite(a.tardy) ? a.tardy : c.tardy || a.tardyFile || 0, sched: c.sched, actual: c.counted }; }).sort(byDep);
-  return { y, m, att, ded: ded.sort(byDep) };
-}
+/** the deduction email's workbook (Writer2.dedMail): the 13th of the month to the 12th of the next, the deduction brands' people in
+    the Attendance Report and the deduction scope in the Monthly Deduction (js/dedcycle.js) */
+function dedMailData() { return dedPeriodData(); }
 function snapNow(kind) {
   if (kind === 'ded') { const md = mailModel('review'); saveSnap('ded', { ded: md.dedFull, abs: md.abs ? md.abs.rows.map(a => ({ id: a.id, name: a.name, days: a.days })) : null }); }
   else { const d = incData(); if (d) saveSnap('inc', { att: d.att, adh: d.adh, aht: d.aht, y: d.y, m: d.m }); }
@@ -3045,6 +3020,7 @@ function renderEmail() {
   $('mAttachWrap').hidden = !md.attach; $('mAttachLbl').textContent = md.attach ? `Attach ${md.attach.name} to the .eml` : '';
   $('attBtn').hidden = !md.attach; $('attBtn').title = md.attach ? `Save ${md.attach.name}` : '';
   $('mailWarns').innerHTML = md.warns.map(x => `<li>${esc(x)}</li>`).join('');
+  renderDedNext();   // The days after the month (the workbook's 13th to 12th)
   const to = cm.to, cc = cm.cc;
   const rowsInfo = inc ? (md.d ? `${plural(md.d.att.length, 'person', 'people')} in the attachment${fin && md.changes ? ` · ${plural(md.changes.length, 'person', 'people')} changed since the review${md.changes.length ? ' (see Compared with the review; not listed in the email)' : ''}` : ''}` : 'No data yet')
     : `${plural(md.ded.length, 'person', 'people')} in Conformance Deduction${md.abs ? ` · ${plural(md.abs.rows.length, 'person', 'people')} absent` : ''}${fin && md.changes ? ` · ${plural(md.changes.ded.length + md.changes.abs.length, 'change')} since the review` : ''}`;

@@ -43,6 +43,7 @@ const imported = { virgin: { voice: { monthly: months.map(date => ({ date })), d
   await ctx.route(URL, r => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: html }));
   await ctx.addInitScript(() => { window.showDirectoryPicker = async () => (await navigator.storage.getDirectory()).getDirectoryHandle('MC Data', { create: true }); });
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
+  await p.clock.setFixedTime(new Date('2026-10-22T10:00:00'));   // the day after the made-up report day (report days older than 40 days are taken out)
   await p.goto(URL); await p.waitForSelector('[data-conn="pick"]', { timeout: 20000 });
   await p.click('[data-conn="pick"]'); await p.waitForSelector('[data-conn="create"]', { timeout: 10000 });
   await p.click('[data-conn="create"]'); await p.waitForSelector('#acName:not([hidden])', { timeout: 20000 });

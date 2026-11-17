@@ -89,7 +89,7 @@ async function frSheet() {
   const dp = path.join(out, dl.suggestedFilename()); await dl.saveAs(dp);
   const AR = (await Core.readXlsx(fs.readFileSync(dp))).find(t => t.name === 'Attendance Report'), hd = AR.rows[1], ti = hd.indexOf('Tardy');
   const dv = T4.map(x => (AR.rows.find(r => r && r[0] === x.name) || [])[ti]);
-  ok(ti > 0 && dv.join(',') === '25,40,7', `the deduction email's workbook has them too (${dv.join(', ')})`);
+  ok(ti > 0 && dv.every(v => v === undefined), `the deduction email's workbook leaves them out: FRiENDi is in Smart-Link's file, the workbook's Attendance Report is Virgin only (${T4.map(x => x.name).join(', ')} not in it)`);
 
   // ---- 5. Smart-Link's own list (set from one of its files): exactly its agents, whatever their brand in the roster, labelled as the
   // list labels them, in its order; one with no attendance this month keeps an empty row and the card names them

@@ -39,6 +39,7 @@ const files = {
     // this browser's own copy of the history: one month the built-in history has too, with this browser's numbers
     try { localStorage.setItem('mc.history.v1', JSON.stringify({ virgin: { voice: { monthly: [{ date: '2024-01-01', presented: 1234, handled: 1200, sl: 0.5 }], daily: [] } } })); } catch (e) { /* none */ }
   }, [fixture]);
+  await p.clock.setFixedTime(new Date('2026-10-08T10:00:00'));   // the day after the made-up report day (report days older than 40 days are taken out)
   await p.goto('file://' + path.resolve(page0)); await p.waitForFunction(() => window.__mc && window.__mc.state.rosterReady);
   await p.evaluate(() => {   // a shared store in memory, with its collections, so the brand emails reach Emails › Daily brand emails (its listeners
     // are called later, never inside the call that adds them, as a real store does)

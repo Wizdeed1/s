@@ -11,6 +11,7 @@ const USER = { id: 'u2', name: 'Noura B.', username: 'noura.b', role: 'wfm' }, D
 async function open(b, o = {}) {
   const ctx = await b.newContext({ viewport: o.vp || { width: 1440, height: 1000 }, reducedMotion: o.rm || 'no-preference', colorScheme: o.theme || 'light' }), p = await ctx.newPage(); p.errs = [];
   p.on('pageerror', e => p.errs.push(e.message));
+  await p.clock.setFixedTime(new Date('2026-10-22T10:00:00'));   // the day after the made-up report day (report days older than 40 days are taken out)
   await p.addInitScript(([fx, u]) => { eval(fx); window.__NOLOCK__ = true; window.__ROSTER__ = window.__FIX__.roster; window.__mcUser = u; }, [fixture, USER]);
   await p.goto('file://' + path.resolve(page0)); await p.waitForFunction(() => window.__mc && window.__mc.state.rosterReady);
   await p.evaluate(async d => {   // a shared store in memory (as test/rb158.cjs has it) and a report day with its four emails: two with checks, two ready

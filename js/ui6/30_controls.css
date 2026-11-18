@@ -186,3 +186,8 @@ select.cell { width: auto; min-width: 0; }
   .lockin:hover { border-color: var(--line-3); }
   .field input:hover:not(:focus), .field select:hover:not(:focus), .toolbar input[type=search]:hover:not(:focus), .toolbar select:hover:not(:focus), .wsfield select:hover:not(:focus), select.cell:hover:not(:focus) { border-color: var(--ink-2); }
 }
+
+/* Settings › Deduction period: two days in a line, wrapping on a phone */
+.dedper { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.dedper label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.dedper input { width: 64px; }

@@ -860,6 +860,11 @@ select.cell { width: auto; min-width: 0; }
   .field input:hover:not(:focus), .field select:hover:not(:focus), .toolbar input[type=search]:hover:not(:focus), .toolbar select:hover:not(:focus), .wsfield select:hover:not(:focus), select.cell:hover:not(:focus) { border-color: var(--ink-2); }
 }
 
+/* Settings › Deduction period: two days in a line, wrapping on a phone */
+.dedper { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.dedper label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.dedper input { width: 64px; }
+
 /* ------------------------------------------------------------------------------------------------------------- page head */
 .viewhead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 32px; }
 .viewhead > div:first-child { flex: 1 1 440px; min-width: 0; display: grid; gap: 4px; }
@@ -1442,7 +1447,7 @@ b.bad, .astats b.bad { color: var(--bad); }
 #mailFrame { width: 100%; border: 0; background: #fff; min-height: 420px; display: block; }
 .revstate { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; display: grid; gap: 6px; justify-items: start; }
 .revstate h3 { font-size: 13px; }
-/* The days after the month (js/dedcycle.js): where each part of the workbook's 13th to 12th comes from, and the drop box */
+/* The period box (js/dedcycle.js): where each part of the period (the 12th of the month before to the 13th) comes from, and the drop box */
 .dnext { display: grid; gap: 10px; }
 .dnext h2 { margin: 0; }
 .dnext .hint { margin: 0; }
@@ -4577,6 +4582,7 @@ body.presenting .shtry-out { position: static; }
     <div class="field"><label class="check"><input type="checkbox" id="hideNoSched"> Leave out people with no schedule</label><small>Someone the month's Schedule export has no day for, and with no attendance, is left out of every sheet and every Excel export (the roster keeps them). On by default.</small></div>
     <div class="field"><span class="lbl" id="l-db">Deduction scope: brands</span><div class="chips" id="dedBrands" role="group" aria-labelledby="l-db"></div><small>Only these brands are listed in the Deduction sheet. Default Virgin.</small></div>
     <div class="field"><span class="lbl" id="l-dt">Deduction scope: teams</span><div class="chips" id="dedTeams" role="group" aria-labelledby="l-dt"></div><small>Default CC (Customer Care).</small></div>
+    <div class="field"><span class="lbl" id="l-dp">Deduction period</span><div class="dedper" role="group" aria-labelledby="l-dp"><label>From day <input type="number" id="dedFrom" min="1" max="31" step="1" inputmode="numeric"> of the month before</label><label>to day <input type="number" id="dedTo" min="1" max="31" step="1" inputmode="numeric"> of the month</label></div><small id="dedPerHelp">The deduction email, its tables and its workbook run over these days.</small></div>
     <div class="field"><span class="lbl" id="l-inc">Incentive: 100% adherence for</span><div class="chips" id="incFull" role="group" aria-labelledby="l-inc"></div><small>Teams with no Genesys adherence that still go in the incentive Adherence tab, at 100%. Default CT.</small></div>
     <div class="field"><span class="lbl" id="l-atpl">Attendance template for</span><div class="chips" id="attTplTeams" role="group" aria-labelledby="l-atpl"></div><small>The departments whose supervisors send the attendance template (Import › Attendance templates). Everyone else, CC and SM included, comes from Genesys. Default TS, MG, CT, QA, DE, WF.</small></div>
     <div class="field"><span class="lbl">Logo on the app bar, forms and Excel files</span><div class="logostate" id="logoState"></div>
@@ -10754,6 +10760,20 @@ function cleanId(v) {
   s = s.replace(/\D/g, '');
   return s.length >= 6 ? s : '';
 }
+/** a name cell that is a day code, a legend line or a column heading, never a person ("Absent", "AL", "compassion leave", "OFF",
+    "Attend", "After", "Name", "Sun"): a sheet's legend written under its names was once read as people, and added to the roster */
+const NOT_A_PERSON = new RegExp(`^(${[
+  'attend(ed|ance)?', 'present', 'work(ing)?', 'off', 'day ?off', 'off ?day', 'rest( day)?', 'weekend', 'w/?o',
+  'al', 'a/l', 'al leaves?', 'annual( leaves?)?', 'vacation', 'half( day)?( al| sl| leave)?', 'sl', 's/l', 'sl leaves?', 'sick( leaves?)?',
+  'absent', 'absence', 'abs', 'no ?show', 'unpaid( leaves?)?', 'upl', 'lwp', 'exams?( leaves?)?', 'eid( leaves?| holidays?| off)?',
+  'national day( leaves?| off| holiday)?', 'founding day( leaves?| off)?', 'compassion(ate)?( leaves?)?', 'bereavement',
+  'paternity( leaves?)?', 'maternity( leaves?)?', 'ml', 'marriage( leaves?)?', 'leaves?', '(public )?holidays?', 'wfh', 'training',
+  'late', 'tard(y|iness)', 'exceptions?', 'totals?', 'grand total', 'sum', 'count', 'legend', 'key', 'codes?', 'notes?', 'remarks?',
+  'comments?', 'after', 'before', 'id', 'national id', 'names?', 'team', 'dep', 'dept', 'department', 'brand', 'dates?', 'days?', 'month',
+  'sun(day)?', 'mon(day)?', 'tue(s|sday)?', 'wed(nesday)?', 'thu(rs|rsday)?', 'fri(day)?', 'sat(urday)?'].join('|')})$`, 'i');
+function notAPerson(v) { const t = normSpace(v).toLowerCase().replace(/[.:]+$/, '').trim(); return !t || NOT_A_PERSON.test(t); }
+/** a column heading in a day cell: the header of another table further down the sheet */
+const HEADING_CELL = /^(id|national id|name|team|dep|dept|department|brand)$/i;
 const daysIn = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 const EPOCH = Date.UTC(1899, 11, 30);
 const serialToDate = n => new Date(EPOCH + Math.round(n * 86400000));
@@ -11166,7 +11186,7 @@ function parseRoster(rows) {
   const h = headerRow(rows, r => r.some(x => /^(name|member care champions|agent name)$/i.test(x)) && r.some(x => /national\s*id|^id$/i.test(x)));
   if (h < 0) return null;
   const hdr = rows[h].map(cellStr); const ic = infoCols(hdr, hdr.length);
-  const body = rows.slice(h + 1).filter(r => r && !isBlank(r[ic.name]) && !/^total/i.test(cellStr(r[ic.name])));
+  const body = rows.slice(h + 1).filter(r => r && !isBlank(r[ic.name]) && !/^total/i.test(cellStr(r[ic.name])) && !notAPerson(r[ic.name]));
   const g = groupCols(hdr, body, ic.groups);
   const col = re => hdr.findIndex(x => re.test(normSpace(x)));
   const em = col(/^(e-?mail|email address|work email)$/i), sp = col(/^(supervisor|team lead(er)?|leader|spv|direct (manager|leader))$/i), bs = col(/^(incentive base|base|incentive base \(sr\))$/i);
@@ -11193,7 +11213,10 @@ function parseGrid(rows) {
   if ((rows[h + 1] || []).some(v => /sched|actual|conformance|diff\s*\(min/i.test(cellStr(v)))) return { kind: 'deductionSheet' };
   const ic = infoCols(hdr, first);
   if (ic.name < 0 && ic.id < 0) return null;
-  const body = rows.slice(h + 1).filter(r => r && (!isBlank(r[ic.name]) || cleanId(r[ic.id])) && !/^(total|grand total|sum)/i.test(cellStr(r[ic.name])));
+  const idOk = r => ic.id >= 0 && cleanId(r[ic.id]).length >= 8;
+  const body = rows.slice(h + 1).filter(r => r && (!isBlank(r[ic.name]) || cleanId(r[ic.id])) && !/^(total|grand total|sum)/i.test(cellStr(r[ic.name]))
+    && !(ic.name >= 0 && !isBlank(r[ic.name]) && notAPerson(r[ic.name]) && !idOk(r))   // a legend under the names (OFF, Attend, AL, compassion leave)
+    && !r.some((v, c) => c >= first && dates[c] && HEADING_CELL.test(cellStr(v))));   // the heading row of another table below
   const g = groupCols(hdr, body, ic.groups);
   let words = 0, pct = 0;
   for (const r of body.slice(0, 80)) for (let c = first; c < dates.length; c++) {
@@ -11245,7 +11268,7 @@ function parseDayBlocks(rows) {
   const people = [];
   for (let i = h + 1; i < rows.length; i++) {
     const r = rows[i] || []; if (!r.some(v => !isBlank(v))) break;
-    const nm = normSpace(r[nameCol]); if (!/\p{L}/u.test(nm) || /^(total|grand total|sum|average)/i.test(nm)) continue;
+    const nm = normSpace(r[nameCol]); if (!/\p{L}/u.test(nm) || /^(total|grand total|sum|average)/i.test(nm) || notAPerson(nm)) continue;
     const cells = blocks.map(b => [b.d, r[b.att] ?? null]);
     if (!cells.some(([, v]) => !isBlank(v))) continue;
     const pv = blocks.map(b => (b.pct >= 0 ? r[b.pct] : null)).filter(v => typeof v === 'number' && Number.isFinite(v));
@@ -11825,7 +11848,7 @@ function buildModel(dets, settings, overrides = {}) {
   };
 }
 
-return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, cleanDate, daysIn, ymdSerial, weekday, colName, ref, round6,
+return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, notAPerson, cleanDate, daysIn, ymdSerial, weekday, colName, ref, round6,
   readZip, writeZip, crc32, readXlsx, readXlsb, parseCSV, parseHeaderDate, adhVal, ahtSeconds, normAtt, attCat, normDep, normTeam, normStatus, parseAttTemplate, ATT_TPL_MARK,
   analyzeFile, readTables, analyzeTables, parseDayBlocks, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
 })();
@@ -12976,7 +12999,7 @@ function dedCounts(a) {
     a.days.filter(v => v === 'Attend' || typeof v === 'number').length, a.sched ?? '', a.actual ?? ''];
 }
 /**
- * d: { y, m, days?: [{ y, m, d }] (the file's days: the 13th of the month to the 12th of the next; the calendar month without), label?,
+ * d: { y, m, days?: [{ y, m, d }] (the file's days: the period, the 12th of the month before to the 13th of the month; the calendar month without), label?,
  *      att: [{ id, name, brand, team, days: [ND] (Attend, tardy minutes, OFF, AL, SL, Absent, other codes, null), tardy, sched, actual, note }],
  *      ded: [{ id, name, brand, team, sched: [ND] | null, act: [ND] | null, total, note }] } -> xlsx bytes (ND: the number of days)
  */
@@ -15985,7 +16008,7 @@ function daysOf(line, ctx) {
   take(new RegExp(`\\b(\\d{1,2})${ORD}[\\s-]*(?:of\\s+)?([a-z]{3,9})\\.?(?:[\\s,-]+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[2]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[1]); return d && { days: [d] }; });
   take(new RegExp(`\\b([a-z]{3,9})\\.?[\\s-]+(\\d{1,2})${ORD}(?:[,\\s-]+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[1]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[2]); return d && { days: [d] }; });   // Oct 27, Oct-27
   // no month: "from 27 to 29", "on 27, 28 and 31", "on the 10th", "10th"
-  const here = n => dayOk(ctx.y, ctx.m, +n);
+  const here = n => { const t = ctx.dayMonth ? ctx.dayMonth(+n) : ctx; return dayOk(t.y, t.m, +n); };   // a day with no month: the month that holds it (ctx.dayMonth: the deduction period's)
   take(new RegExp(`\\bfrom\\s+(?:the\\s+)?(\\d{1,2})${ORD}\\s*(?:-|to|till|until|through)\\s*(?:the\\s+)?(\\d{1,2})${ORD}\\b`, 'g'), a => { const d1 = here(a[1]), d2 = here(a[2]); return d1 && d2 && d1 <= d2 && { days: span(d1, d2), wide: true }; });
   take(new RegExp(`\\bon\\s+(?:the\\s+)?(\\d{1,2})${ORD}((?:\\s*(?:,|&|and)\\s*(?:the\\s+)?\\d{1,2}${ORD})*)\\b`, 'g'), a => { const L = [a[1], ...((a[2] || '').match(/\d{1,2}/g) || [])].map(here); return L.every(Boolean) && { days: L }; });
   take(/\b(\d{1,2})(?:st|nd|rd|th)\b/g, a => { const d = here(a[1]); return d && { days: [d] }; });
@@ -22639,7 +22662,7 @@ const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
 const REVIEW_TABS = ['checks', 'issues', 'people', 'kpi', 'preview', 'history'];   // what to decide first, then the names, the people, the KPI results, the workbook, the past months
-const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
+const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], dedFrom: 12, dedTo: 13, incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
   step: 'import', tab: 'checks',
@@ -22894,6 +22917,8 @@ function applySettings(d) {
   if (num(d.inactiveMin, 0, 31) != null) s.inactiveMin = Math.round(d.inactiveMin);
   if (Array.isArray(d.dedBrands)) s.dedBrands = d.dedBrands.filter(x => typeof x === 'string');
   if (Array.isArray(d.dedTeams)) s.dedTeams = d.dedTeams.filter(x => typeof x === 'string');
+  if (num(d.dedFrom, 1, 31) != null) s.dedFrom = Math.round(d.dedFrom);
+  if (num(d.dedTo, 1, 31) != null) s.dedTo = Math.round(d.dedTo);
   if (Array.isArray(d.incFullAdhTeams)) s.incFullAdhTeams = d.incFullAdhTeams.filter(x => typeof x === 'string');
   if (Array.isArray(d.attTplTeams)) s.attTplTeams = d.attTplTeams.filter(x => typeof x === 'string');
   if (typeof d.manager === 'string' && d.manager.trim()) s.manager = d.manager;
@@ -25026,6 +25051,10 @@ function fixLabel(id) { return state.fixText.get(id) || id.replace(/^[a-z]+:/, '
 function computeNotes() {
   const out = [], R = state.attRes, c = state.ctx, set = state.settings, Ml = MON[state.m - 1];
   const add = n => out.push(n);
+  // day codes or headings added as people (an attendance sheet's legend under its names, once read as people): one Remove for all
+  const np = rosterRows().filter(p => Core.notAPerson(p.name));
+  if (np.length) add({ id: 'notpeople', sev: 'warn', group: 'Roster', title: `${plural(np.length, 'entry', 'entries')} in the roster ${np.length === 1 ? 'is' : 'are'} not a person: ${np.slice(0, 8).map(p => `"${normSpace(p.name)}"`).join(', ')}${np.length > 8 ? ' and more' : ''}`,
+    body: 'Day codes or headings from an attendance sheet (its legend under the names), added as people. They are left out of the deduction email and its workbook. Remove them from the roster.', rmNp: true });
   if (R) {
     for (const f of R.fixes) state.fixText.set(f.id, f.text);
     for (const cl of R.clashes) {
@@ -25127,6 +25156,7 @@ function noteItemHtml(n, opts = {}) {
       const u = R.unmatched[n.unm];
       acts = `<div class="acts"><button class="btn sm" data-attadd="${n.unm}">Add to the roster</button><select class="cell" data-attlink="${n.unm}" aria-label="Link ${esc(u.name)} to a person"><option value="">Same person as…</option>${free.map(p => `<option value="${esc(p._id)}">${esc(p.name)}</option>`).join('')}</select></div>`;
     }
+    if (n.rmNp) acts = '<button class="btn sm" data-rmnp="1">Remove them</button>';
     if (n.go) acts = `<button class="btn sm" data-gonote="${esc(n.go)}">${n.go === 'history' ? 'Open the history' : n.go === 'kpi' ? 'Open the KPI results' : n.go === 'dups' ? 'Review duplicates' : 'Review'}</button>`;
     if (n.unlink) acts = `<button class="btn sm ghost" data-unlink="${esc(n.unlink)}">Undo</button>`;
     if (n.idsUndo) acts = `<button class="btn sm ghost" data-idsundo="${esc(n.idsUndo)}">Undo</button>`;
@@ -25915,7 +25945,7 @@ function dedDiff(a, b) {   // deduction snapshot vs now -> changed totals and ch
 }
 
 // ---------------------------------------------------------------- review snapshots (for the final emails)
-const snapId = kind => `${kind}-${kind === 'inc' ? (({ y, m }) => ymKey(y, m))(incMonth()) : state.mailSrc === 'shared' ? (wsMonthNow() || monthKey()) : monthKey()}`;
+const snapId = kind => `${kind}-${kind === 'inc' ? (({ y, m }) => ymKey(y, m))(incMonth()) : state.mailSrc === 'shared' ? (dedMonthNow() || monthKey()) : monthKey()}`;
 async function loadSnaps() {
   if (!state.db) return;
   try { const s = await state.db.collection('snaps').get(); state.snaps = Object.fromEntries(s.docs.map(d => [d.id, d.data()])); if (state.step === 'email') renderEmail(); } catch (e) { /* none */ }
@@ -26371,10 +26401,11 @@ state.incMail = clone(INC_DEFAULTS);
 const ordinal = d => d + (d % 100 >= 11 && d % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][d % 10] || 'th');
 const idText = v => { if (v == null || v === '') return 'NA'; if (typeof v === 'number') return String(Math.round(v)); const id = Core.cleanId(v); return id && String(v).replace(/\D/g, '') === id ? id : (normSpace(v) || 'NA'); };
 const mailShared = () => state.mailSrc === 'shared';
-function mailMonth() { if (mailShared()) { const k = wsMonthNow() || monthKey(); return { y: +k.slice(0, 4), m: +k.slice(5) }; } const r = state.wb && state.wb.report; return r ? { y: r.y, m: r.m } : { y: state.y, m: state.m }; }
+function mailMonth() { if (mailShared()) { const k = dedMonthNow() || monthKey(); return { y: +k.slice(0, 4), m: +k.slice(5) }; } const r = state.wb && state.wb.report; return r ? { y: r.y, m: r.m } : { y: state.y, m: state.m }; }
 function mailDeadlineIso() {
   if (state.mailDeadline) return state.mailDeadline;
-  const { y, m } = state.mailKind === 'inc' ? incMonth() : mailMonth(); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
+  if (state.mailKind !== 'inc') { const { y, m } = mailMonth(); return calDue(dedPeriod(y, m).closeK, 'deduction'); }   // the deduction email's day on the month-close calendar
+  const { y, m } = incMonth(); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
   return `${ny}-${String(nm).padStart(2, '0')}-10`;
 }
 const mailCfg = () => (state.mailKind === 'inc' ? state.incMail : state.mail);
@@ -26470,29 +26501,16 @@ function pageAbsences() {
 }
 function mailModel(stage = state.mailStage) {
   const r = state.wb && state.wb.report, { y, m } = mailMonth(), warns = [];
-  let ded, abs = null;
-  if (mailShared()) {   // the month in the shared history, with the supervisors' attendance corrections
-    const k = ymKey(y, m), rows = liveRows(k), set = state.settings;
-    const inDed = x => set.dedBrands.includes(normSpace(x.brand)) && set.dedTeams.includes(normSpace(x.team));
-    ded = rows.filter(x => inDed(x) && x.ded != null).map(x => ({ id: idText(x.id), name: x.n, total: Math.round(x.ded || 0) }));
-    const ar = rows.map(x => ({ id: idText(x.id), name: x.n, brand: normSpace(x.brand), team: normSpace(x.team), onRoster: true, shown: true, filled: !!x.d, days: [...String(x.d || '')].map((c, i) => (c === 'X' ? i + 1 : 0)).filter(Boolean) })).filter(a => a.days.length && absScopeOk(a));
-    abs = { rows: ar, dates: [...new Set(ar.flatMap(a => a.days))].sort((a, b) => a - b) };
-    if (!rows.length) warns.push(`Nothing is saved for ${MONTH_LONG[m - 1]} ${y} yet.`);
-    else { if (!rows.some(x => x.ded != null)) warns.push('No deduction minutes in this month yet: the WFM team adds them when they build the month from the Schedule and the Agent Status Timeline.'); if (!rows.some(x => x.d)) warns.push('No attendance in this month yet.'); }
-  } else if (r) {
-    ded = r.ded.map(x => ({ id: x.id, name: x.name, total: x.total }));
-    const rows = r.att.filter(a => a.shown && a.days.length && absScopeOk(a));
-    abs = { rows, dates: [...new Set(rows.flatMap(a => a.days))].sort((a, b) => a - b) };
-    if (!r.filled) warns.push('The Attendance sheet in this workbook is empty. Fill it in Excel, save, and drop it again.');
-    const off = rows.filter(a => !a.onRoster); if (off.length) warns.push(`Not on the roster but absent: ${off.map(a => a.name).join(', ')}.`);
-    if (r.y !== state.y || r.m !== state.m) warns.push(`The workbook is for ${MONTH_LONG[r.m - 1]} ${r.y}; the email uses that month.`);
-  } else {
-    ded = (state.model || []).filter(x => x.inDed).map(x => ({ id: idText(x.p.nid), name: x.exp, total: x.ded || 0 }));
-    const pa = pageAbsences();
-    if (pa) { const rows = pa.filter(a => a.days.length && absScopeOk(a)); abs = { rows, dates: [...new Set(rows.flatMap(a => a.days))].sort((a, b) => a - b) }; }
-    else warns.push('Absences come from the supervisors\' attendance files. Drop them on Import, or drop the filled workbook here.');
-    if (!state.model) warns.push('No exports yet, so there are no deduction totals. Drop them on Import first.');
+  // the period's own tables (js/dedcycle.js): the 12th of the month before to the 13th, from the months in the tool, this page or a
+  // dropped monthly report, the box's sheets and the corrections
+  const PM = dedPeriodMail(), P = PM.P, ded = PM.ded, abs = mailShared() || PM.filled ? PM.abs : null;
+  if (!mailShared()) {
+    if (r && !r.filled) warns.push('The Attendance sheet in this workbook is empty. Fill it in Excel, save, and drop it again.');
+    if (r && (r.y !== state.y || r.m !== state.m)) warns.push(`The workbook is for ${MONTH_LONG[r.m - 1]} ${r.y}; the email uses that month.`);
+    if (!abs) warns.push('Absences come from the supervisors\' attendance files. Drop them on Import, or drop the filled workbook here.');
+    if (!r && !state.model) warns.push('No exports yet, so there are no deduction totals. Drop them on Import first.');
   }
+  const off = abs ? abs.rows.filter(a => !a.onRoster) : []; if (off.length) warns.push(`Not on the roster but absent: ${off.map(a => a.name).join(', ')}.`);
   const dedRows = ded.filter(x => state.mail.zeros || x.total > 0);
   const noId = [...dedRows, ...(abs ? abs.rows : [])].filter(x => !/^\d{10}$/.test(x.id)).map(x => x.name);
   if (noId.length) warns.push(`No 10-digit National ID for: ${[...new Set(noId)].join(', ')}. Add it in People${r ? ' (or in the workbook) and build again' : ''}.`);
@@ -26504,8 +26522,8 @@ function mailModel(stage = state.mailStage) {
     else warns.push('No review version saved for this month, so the changes since the review cannot be listed. Copy or download the review email first, or drop the workbook that was sent for review.');
   }
   const attach = mailShared() || r || state.ctx ? { name: `MC Monthly Deduction - ${MON[m - 1]} ${y}.xlsx`, size: null } : null;   // Attendance Report and Monthly Deduction (dedMailData)
-  if (attach) warns.push(...dedPeriodWarns(y, m));   // the workbook runs to the 12th of the next month
-  return { kind: 'ded', stage, y, m, ded: dedRows, dedFull: ded, dedAll: ded.length, abs, warns, changes, snap, attach, deadline: dl[1] ? `${MON[dl[1] - 1]} ${ordinal(dl[2])}` : '', subject: subjectFor('ded', stage) };
+  warns.push(...dedPeriodWarns(y, m, PM));   // what is not in yet for the period, and what was left out
+  return { kind: 'ded', stage, y, m, period: P.label, periodY: P.labelY, ded: dedRows, dedFull: ded, dedAll: ded.length, abs, warns, changes, snap, attach, deadline: dl[1] ? `${MON[dl[1] - 1]} ${ordinal(dl[2])}` : '', subject: subjectFor('ded', stage) };
 }
 const F = 'font-family:Calibri,sans-serif';
 function mailHtmlClassic(md, logoSrc, preview) {
@@ -26520,6 +26538,7 @@ function mailHtmlClassic(md, logoSrc, preview) {
   let b = P(`<b><span lang="EN-GB">${lines(state.mail.greeting).join('<br>')}</span></b>`) + gap;
   b += lines(fin ? state.mail.introFinal : state.mail.intro).map(l => P(`<span lang="EN-GB">${l}</span>`)).join('') + gap;
   if (!fin && md.deadline) b += P(`<span lang="EN-GB">Deadline: ${esc(md.deadline)}.</span>`) + gap;
+  if (md.periodY) b += P(`<span lang="EN-GB">Period: ${esc(md.periodY)}.</span>`) + gap;
   if (fin && md.changes && state.mailChanges) {
     b += red('Changes after the review :') + gap;
     const c = md.changes;
@@ -26528,11 +26547,11 @@ function mailHtmlClassic(md, logoSrc, preview) {
     if (c.abs.length) b += table(['ID', 'Name', 'Absent days (review)', 'Absent days (final)'], c.abs.map(x => td(esc(x.id)) + td(esc(x.name), { left: true }) + td(String(x.before)) + td(String(x.after), { b: true }))) + gap;
   }
   b += red('Conformance Deduction :') + gap;
-  b += md.ded.length ? table(['ID', 'Name', 'Total Deduction (min)'], md.ded.map(x => td(esc(x.id)) + td(esc(x.name), { left: true }) + td(String(x.total)))) : P('No deduction minutes this month.');
+  b += md.ded.length ? table(['ID', 'Name', 'Total Deduction (min)'], md.ded.map(x => td(esc(x.id)) + td(esc(x.name), { left: true }) + td(String(x.total)))) : P('No deduction minutes in this period.');
   if (md.abs) {
     b += gap + red('Absenteeism :') + gap;
-    b += md.abs.rows.length ? table(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(d => `${d}-${M}`)], md.abs.rows.map(a =>
-      td(esc(a.id)) + td(esc(a.name), { left: true }) + td(String(a.days.length), { b: true }) + md.abs.dates.map(d => (a.days.includes(d) ? td('Absent', { b: true, bg: '#FF8B8B' }) : td('&nbsp;'))).join(''))) : P('No absences this month.');
+    b += md.abs.rows.length ? table(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(dedDayLabel)], md.abs.rows.map(a =>
+      td(esc(a.id)) + td(esc(a.name), { left: true }) + td(String(a.days.length), { b: true }) + md.abs.dates.map(d => (a.days.includes(d) ? td('Absent', { b: true, bg: '#FF8B8B' }) : td('&nbsp;'))).join(''))) : P('No absences in this period.');
   }
   b += gap + lines(state.mail.sign).map(l => P(`<span lang="EN-GB" style="font-size:10.0pt;font-family:Arial,sans-serif;color:black">${l}</span>`)).join('');
   if (logoSrc && state.mailLogo) b += gap + logoTag(logoSrc);
@@ -26541,6 +26560,7 @@ function mailHtmlClassic(md, logoSrc, preview) {
 function mailText(md) {
   const M = MON[md.m - 1], fin = md.stage === 'final', out = [state.mail.greeting, '', fin ? state.mail.introFinal : state.mail.intro, ''];
   if (!fin && md.deadline) out.push(`Deadline: ${md.deadline}.`, '');
+  if (md.periodY) out.push(`Period: ${md.periodY}.`, '');
   if (fin && md.changes && state.mailChanges) {
     out.push('Changes after the review :', '');
     if (!md.changes.ded.length && !md.changes.abs.length) out.push('No changes after the review.', '');
@@ -26548,11 +26568,11 @@ function mailText(md) {
     if (md.changes.abs.length) { out.push(['ID', 'Name', 'Absent days (review)', 'Absent days (final)'].join('\t')); md.changes.abs.forEach(x => out.push([x.id, x.name, x.before, x.after].join('\t'))); out.push(''); }
   }
   out.push('Conformance Deduction :', '');
-  if (md.ded.length) { out.push(['ID', 'Name', 'Total Deduction (min)'].join('\t')); md.ded.forEach(x => out.push([x.id, x.name, x.total].join('\t'))); } else out.push('No deduction minutes this month.');
+  if (md.ded.length) { out.push(['ID', 'Name', 'Total Deduction (min)'].join('\t')); md.ded.forEach(x => out.push([x.id, x.name, x.total].join('\t'))); } else out.push('No deduction minutes in this period.');
   if (md.abs) {
     out.push('', 'Absenteeism :', '');
-    if (md.abs.rows.length) { out.push(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(d => `${d}-${M}`)].join('\t')); md.abs.rows.forEach(a => out.push([a.id, a.name, a.days.length, ...md.abs.dates.map(d => (a.days.includes(d) ? 'Absent' : ''))].join('\t'))); }
-    else out.push('No absences this month.');
+    if (md.abs.rows.length) { out.push(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(dedDayLabel)].join('\t')); md.abs.rows.forEach(a => out.push([a.id, a.name, a.days.length, ...md.abs.dates.map(d => (a.days.includes(d) ? 'Absent' : ''))].join('\t'))); }
+    else out.push('No absences in this period.');
   }
   out.push('', state.mail.sign);
   return out.join('\r\n');
@@ -26620,20 +26640,20 @@ function mailHtml(md, logoSrc, preview) {
     if (c.ded.length) b += cardTable(['ID', 'Name', 'Review (min)', 'Final (min)'], c.ded.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.before) }, { t: String(x.after), b: true }]));
     if (c.abs.length) b += (c.ded.length ? '<p class="MsoNormal" style="margin:0">&nbsp;</p>' : '') + cardTable(['ID', 'Name', 'Absent days (review)', 'Absent days (final)'], c.abs.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.before) }, { t: String(x.after), b: true }]));
   }
-  b += cardH('Conformance Deduction', md.ded.length ? plural(md.ded.length, 'person', 'people') : '');
-  b += md.ded.length ? cardTable(['ID', 'Name', 'Total Deduction (min)'], md.ded.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.total), b: true }])) : cardP('No deduction minutes this month.');
+  b += cardH('Conformance Deduction', [md.period, md.ded.length ? plural(md.ded.length, 'person', 'people') : ''].filter(Boolean).join(' · '));
+  b += md.ded.length ? cardTable(['ID', 'Name', 'Total Deduction (min)'], md.ded.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.total), b: true }])) : cardP('No deduction minutes in this period.');
   let width = 600;
   if (md.abs) {
-    b += cardH('Absenteeism', md.abs.rows.length ? plural(md.abs.rows.length, 'person', 'people') : '');
+    b += cardH('Absenteeism', [md.period, md.abs.rows.length ? plural(md.abs.rows.length, 'person', 'people') : ''].filter(Boolean).join(' · '));
     if (md.abs.rows.length) {   // one line a cell: each column as wide as its longest text, a day 36pt ("Absent", "30-Oct"); the card grows to fit
       const L = md.abs.rows, longest = f => Math.max(...L.map(a => String(f(a) || '').length));
       const cols = [{ w: Math.max(56, Math.ceil(longest(a => a.id) * 5.4) + 12), pad: 6 }, { w: Math.max(110, Math.ceil(longest(a => a.name) * 5.2) + 14), pad: 7, left: true }, { w: 64, pad: 5 }, ...md.abs.dates.map(() => ({ w: 36, pad: 3 }))];
-      const G = cardGrid(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(d => `${d}-${M}`)], L.map(a => [{ t: esc(a.id) }, { t: esc(a.name) }, { t: String(a.days.length), b: true }, ...md.abs.dates.map(d => (a.days.includes(d) ? { t: 'Absent', absent: true } : { t: '&nbsp;' }))]), cols);
+      const G = cardGrid(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(dedDayLabel)], L.map(a => [{ t: esc(a.id) }, { t: esc(a.name) }, { t: String(a.days.length), b: true }, ...md.abs.dates.map(d => (a.days.includes(d) ? { t: 'Absent', absent: true } : { t: '&nbsp;' }))]), cols);
       b += G.html; width = Math.max(600, G.width + 84 + 2);
-    } else b += cardP('No absences this month.');
+    } else b += cardP('No absences in this period.');
   }
   b += cardSign(state.mail.sign);
-  return cardMail({ eyebrow: `MC Workforce · ${fin ? 'Final' : 'For review'}`, title: `Monthly Deduction · ${MONTH_LONG[md.m - 1]} ${md.y}`, body: b, foot1: 'Member Care · Workforce Management', foot2: `Conformance deduction and absenteeism · ${M} ${md.y}`, logo: cardLogo(logoSrc), preview, width });
+  return cardMail({ eyebrow: `MC Workforce · ${fin ? 'Final' : 'For review'}`, title: `Monthly Deduction · ${MONTH_LONG[md.m - 1]} ${md.y}`, body: b, foot1: 'Member Care · Workforce Management', foot2: `Conformance deduction and absenteeism · ${md.periodY || `${M} ${md.y}`}`, logo: cardLogo(logoSrc), preview, width });
 }
 /** the incentive email (the classic one stays one tick away) */
 function incMailHtml(md, logoSrc, preview) {
@@ -26702,8 +26722,8 @@ async function incMailBytes() {
   state.ctx.logo = await xlLogo();
   return WriterInc.build(state.ctx, { model: incModel(), noIds: true });
 }
-/** the deduction email's workbook (Writer2.dedMail): the 13th of the month to the 12th of the next, the deduction brands' people in
-    the Attendance Report and the deduction scope in the Monthly Deduction (js/dedcycle.js) */
+/** the deduction email's workbook (Writer2.dedMail): the period (the 12th of the month before to the 13th of the month), the deduction
+    brands' people in the Attendance Report and the deduction scope in the Monthly Deduction (js/dedcycle.js) */
 function dedMailData() { return dedPeriodData(); }
 function snapNow(kind) {
   if (kind === 'ded') { const md = mailModel('review'); saveSnap('ded', { ded: md.dedFull, abs: md.abs ? md.abs.rows.map(a => ({ id: a.id, name: a.name, days: a.days })) : null }); }
@@ -26714,11 +26734,11 @@ function markSent(how) {
   if (state.mailStage === 'review') snapNow(state.mailKind);
   if (state.mailStage === 'final' && state.mailKind === 'inc' && !state.incWb && state.ctx) saveMonthToHistory('final incentive email').then(k => { if (k) setTimeout(() => toast(`${ymLabel(k)} added to the history`), 3600); });
   if (state.mailKind === 'inc' && state.incK) { const im = incMonth(); incMailSent(ymKey(im.y, im.m), state.mailStage, how); }   // Supervisors › Emails says it was prepared
-  if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(ymKey(mm.y, mm.m), 'deduction'); }   // the month-close step
+  if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(dedPeriod(mm.y, mm.m).closeK, 'deduction'); }   // the month-close step: the month being closed (October's, for November's 12 Oct – 13 Nov)
 }
 function renderEmail() {
   if (mailShared() && state.mailKind !== 'ded') state.mailKind = 'ded';
-  const eSig = `${state.mailKind}|${state.mailStage}|${state.mailSrc || ''}|${state.mailKind === 'inc' ? state.incK || monthKey() : state.mailSrc ? wsMonthNow() : monthKey()}`;   // another email: editing the old preview stops
+  const eSig = `${state.mailKind}|${state.mailStage}|${state.mailSrc || ''}|${state.mailKind === 'inc' ? state.incK || monthKey() : state.mailSrc ? dedMonthNow() : monthKey()}`;   // another email: editing the old preview stops
   if (state.mailEditOn && state.mailEditSig !== eSig) { state.mailEditOn = false; state.mailEditDirty = false; $('mEdit').checked = false; $('mEditNote').hidden = true; }
   state.mailEditSig = eSig;
   const cm = curMail(), md = cm.md, inc = cm.inc, fin = cm.stage === 'final', cfg = mailCfg();
@@ -26756,7 +26776,7 @@ function renderEmail() {
   $('mAttachWrap').hidden = !md.attach; $('mAttachLbl').textContent = md.attach ? `Attach ${md.attach.name} to the .eml` : '';
   $('attBtn').hidden = !md.attach; $('attBtn').title = md.attach ? `Save ${md.attach.name}` : '';
   $('mailWarns').innerHTML = md.warns.map(x => `<li>${esc(x)}</li>`).join('');
-  renderDedNext();   // The days after the month (the workbook's 13th to 12th)
+  renderDedNext();   // the period (the 12th of the month before to the 13th) and the box for the month's first days
   const to = cm.to, cc = cm.cc;
   const rowsInfo = inc ? (md.d ? `${plural(md.d.att.length, 'person', 'people')} in the attachment${fin && md.changes ? ` · ${plural(md.changes.length, 'person', 'people')} changed since the review${md.changes.length ? ' (see Compared with the review; not listed in the email)' : ''}` : ''}` : 'No data yet')
     : `${plural(md.ded.length, 'person', 'people')} in Conformance Deduction${md.abs ? ` · ${plural(md.abs.rows.length, 'person', 'people')} absent` : ''}${fin && md.changes ? ` · ${plural(md.changes.ded.length + md.changes.abs.length, 'change')} since the review` : ''}`;
@@ -27484,7 +27504,7 @@ function fillSettings() {
   $('month').value = `${state.y}-${String(state.m).padStart(2, '0')}`;
   $('monthHelp').textContent = state.monthManual ? 'Set by you. Files dropped later will not change it.' : 'Detected from the exports. Change it if a file covers more than one month.';
   $('target').value = +(s.target * 100).toFixed(2); $('floor').value = +(s.floor * 100).toFixed(2); $('inactiveMin').value = s.inactiveMin; $('hideNoSched').checked = s.hideNoSched !== false;
-  chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES); chips($('attTplTeams'), DEP_ORDER, 'attTplTeams', DEP_NAMES);
+  chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); dedPerFill(); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES); chips($('attTplTeams'), DEP_ORDER, 'attTplTeams', DEP_NAMES);
   $('mgrName').value = s.manager; $('mgrTitle').value = s.managerTitle; renderLogo();
   syncTheme();
   const u = Auth.user(); $('setSaved').textContent = state.db ? savedWhere() : 'Not saved in this view';
@@ -27675,6 +27695,16 @@ $('hideNoSched').addEventListener('change', e => { state.settings.hideNoSched = 
 for (const [id, key, div, lo, hi] of [['target', 'target', 100, 0, 100], ['floor', 'floor', 100, 0, 100], ['inactiveMin', 'inactiveMin', 1, 0, 31]]) {
   $(id).addEventListener('change', e => { const v = parseFloat(e.target.value); if (!Number.isFinite(v) || v < lo || v > hi) { fillSettings(); toast(`Use a number from ${lo} to ${hi}.`); return; } state.settings[key] = key === 'inactiveMin' ? Math.round(v) : v / div; refresh(); persistSettings(); });
 }
+/** Settings › Deduction period: the two days, and in words what a month's file runs (November's: 12 Oct – 13 Nov) */
+function dedPerFill() {
+  const s = state.settings, D = dedDaysSet(), t = new Date(), P = dedPeriod(t.getFullYear(), t.getMonth() + 1);
+  if (document.activeElement !== $('dedFrom')) $('dedFrom').value = D.F; if (document.activeElement !== $('dedTo')) $('dedTo').value = D.T;
+  $('dedPerHelp').textContent = `${MONTH_LONG[P.m - 1]} ${P.y}'s deduction email and workbook: ${P.label} (${plural(P.n, 'day')}). ${dedJoinText()} Default 12 to 13.${s.dedFrom === 1 ? ' 1 as the first day is the month\'s own 1st.' : ''}`;
+}
+for (const id of ['dedFrom', 'dedTo']) $(id).addEventListener('change', e => {
+  const v = Math.round(+e.target.value); if (!Number.isFinite(v) || v < 1 || v > 31) { dedPerFill(); toast('Use a day from 1 to 31.'); return; }
+  state.settings[id] = v; dedPerFill(); refresh(); persistSettings(); if (state.ws === 'wfm') renderWs();
+});
 for (const [id, key] of [['dedBrands', 'dedBrands'], ['dedTeams', 'dedTeams']]) $(id).addEventListener('change', () => { state.settings[key] = [...$(id).querySelectorAll('input:checked')].map(i => i.value); refresh(); persistSettings(); });
 $('theme').addEventListener('click', e => { const f = e.target.closest('button[data-f]'); if (f) setTheme(f.dataset.f); });
 $('resetSet').addEventListener('click', () => { state.settings = clone(DEFAULTS); if (state.monthManual) { state.monthManual = false; const g = Core.guessMonth(allDets()); state.y = g.y; state.m = g.m; } fillSettings(); refresh(); persistSettings(); toast('Settings reset to the defaults'); });
@@ -27754,8 +27784,13 @@ noteOn('click', e => {
   if (b.dataset.unpick) { state.attPicks.delete(b.dataset.unpick); persistAtt(); refresh(); renderNotes(); return; }
   if (b.dataset.undo) { state.attUndo.add(b.dataset.undo); persistAtt(); refresh(); renderNotes(); toast('Undone. The file\'s own value is used.', { label: 'Redo', fn: () => { state.attUndo.delete(b.dataset.undo); persistAtt(); refresh(); renderNotes(); } }); return; }
   if (b.dataset.redo) { state.attUndo.delete(b.dataset.redo); persistAtt(); refresh(); renderNotes(); return; }
+  if (b.dataset.rmnp) {
+    const gone = removePeople(rosterRows().filter(p => Core.notAPerson(p.name)).map(p => p._id)); renderNotes();
+    toast(`Removed ${plural(gone.length, 'entry', 'entries')} that ${gone.length === 1 ? 'was' : 'were'} not a person.`, { label: 'Undo', fn: () => { restorePeople(gone); refresh(); renderNotes(); } }); return;
+  }
   if (b.dataset.attadd != null && state.attRes) {
     const u = state.attRes.unmatched[+b.dataset.attadd]; if (!u) return;
+    if (Core.notAPerson(u.name)) { toast(`"${normSpace(u.name)}" is a day code or a heading from the sheet, not a person: it is not added.`); return; }
     const brand = BRANDS.find(x => normName(x) === normName(u.team)) || 'Virgin', team = DEP_ORDER.find(x => normName(x) === normName(u.dep)) || 'CC';
     const id = addPerson({ name: normSpace(u.name), nid: Core.cleanId(u.idRaw) || '', brand, team });
     renderNotes(); toast(`Added ${u.name} (${brand} · ${team}). Check them in People.`, { label: 'Undo', fn: () => { removePeople([id]); renderNotes(); } }); return;
@@ -28884,11 +28919,12 @@ function rowsByPid(k) {
   }
   matchMemo.set(k, { sig, map: out }); return out;
 }
-/** every row of a draft month as it would be frozen today (rows nobody in the roster matches stay as saved) */
+/** every row of a draft month as it would be frozen today (rows nobody in the roster matches stay as saved); never a row named
+    after a day code or a heading ("Absent", "OFF": an attendance sheet's legend once read as people) */
 function liveRows(k) {
   const D = monthData(k); if (!D) return [];
   const map = rowsByPid(k), byRow = new Map(); for (const [pid, r] of map) byRow.set(rowKey(r), r);
-  return D.rows.map(r => byRow.get(rowKey(r)) || r);
+  return D.rows.filter(r => !(normSpace(r.n) && Core.notAPerson(r.n))).map(r => byRow.get(rowKey(r)) || r);
 }
 function wsPeople() {
   const r = roleNow(), all = rosterRows();
@@ -29421,6 +29457,7 @@ window.addEventListener('resize', () => { const n = innerWidth < 640; if (n !== 
 for (const id of ['teamBar', 'resultsBar', 'wfmBar', 'cycleBar']) $(id).addEventListener('change', e => {
   const t = e.target;
   if (t.matches('[data-wsmonth]')) { state.wsMonth = t.value; renderWs(); }
+  if (t.matches('[data-dedmonth]')) { state.dedMonth = t.value; state.updRes = null; renderWs(); }   // the deduction email's own month
   if (t.matches('[data-wsspv]')) { state.wsSpv = t.value; renderWs(); }
   if (t.matches('[data-wfmm]')) { state.wfmMetric = t.value; renderWs(); }
   if (t.matches('[data-wfmg]')) { state.wfmGroup = t.value; renderWs(); }
@@ -34353,14 +34390,14 @@ function mountMail(where) {
 function mailSrcSync() {
   state.mailKind = 'ded'; state.incK = '';
   if (!isBuilder()) { state.mailSrc = 'shared'; return; }
-  const pick = state.mailPick || (state.ctx || state.wb || !wsMonthNow() ? 'build' : 'shared');
+  const pick = state.mailPick || (state.ctx || state.wb || !dedMonthNow() ? 'build' : 'shared');
   state.mailSrc = pick === 'shared' ? 'shared' : '';
 }
 function renderMailWs() {
-  const k = wsMonthNow();
+  const k = dedMonthNow();   // the deduction email's own month: the newest whose period has ended
   const unsent = canDailyMail() ? (dmUnsent()[0] || { left: [] }).left.length : 0;
   mailSrcSync();
-  $('wfmBar').innerHTML = `${mailSubHtml(unsent)}${mailShared() ? monthSelHtml(k, 'data-wsmonth') : ''}<div class="wsacts"></div>`;
+  $('wfmBar').innerHTML = `${mailSubHtml(unsent)}${mailShared() ? dedMonthSelHtml(k) : ''}<div class="wsacts"></div>`;
   if (mailShared() && !k) { mountMail(false); $('wfmBody').hidden = false; $('wfmBody').innerHTML = emptyCard('No months yet', 'The emails use the month saved in the shared history.'); return; }
   mountMail('wfm'); lastMailHtml = ''; renderEmail();
 }
@@ -34501,17 +34538,28 @@ const canUpd = () => canWfmMail();
 const updShown = () => state.ws === 'wfm' && state.wfmTab === 'emails' && state.mailSub !== 'daily' && canUpd();
 /** the month the corrections are for: the deduction email's */
 function updMonth() { const { y, m } = mailMonth(); return { y, m, k: ymKey(y, m) }; }
-/** everyone in the roster, marked when they are in the month (a row in the shared month, or days in the month being built) */
+/** everyone in the roster, marked when they are in the email's period (a row in one of its months, days in the month being built,
+    or days dropped in the period box) */
 function updPeople(k) {
-  const inM = new Set(monthData(k) ? rowsByPid(k).keys() : []);
-  if (state.ctx && monthKey() === k && state.ctx.attendance) for (const pid of state.ctx.attendance.keys()) inM.add(pid);
+  const P = dedPeriod(+k.slice(0, 4), +k.slice(5)), inM = new Set(), D = dnDoc(P.head.k);
+  for (const sg of P.segs) if (monthData(sg.k)) for (const pid of rowsByPid(sg.k).keys()) inM.add(pid);
+  if (state.ctx && P.segs.some(sg => sg.k === monthKey()) && state.ctx.attendance) for (const pid of state.ctx.attendance.keys()) inM.add(pid);
+  if (D) for (const pid of Object.keys(D.att || {})) inM.add(pid);
   return rosterRows().map(p => { const e = effP(p._id) || p; return { pid: p._id, name: p.name, sys: normSpace(p.sys), team: normSpace(p.team), brand: normSpace(p.brand), nid: Core.cleanId(e.nid) || '', inMonth: inM.has(p._id) }; });
 }
-const updCtx = () => { const M = updMonth(); return { y: M.y, m: M.m, people: updPeople(M.k) }; };
+const updCtx = () => {
+  const M = updMonth(), P = dedPeriod(M.y, M.m);
+  // a day with no month ("on the 20th") is the period's: the month's own first days, else the month before's days in it
+  const dayMonth = n => (n <= P.head.to || !P.tail || n < P.tail.from ? { y: P.head.y, m: P.head.m } : { y: P.tail.y, m: P.tail.m });
+  return { y: M.y, m: M.m, people: updPeople(M.k), dayMonth };
+};
+/** a day of the deduction email's period (12 Oct – 13 Nov for November's): a final month's days in it take the deduction's own corrections */
+function inDedPeriod(k, day) { const { y, m } = mailMonth(), P = dedPeriod(y, m); return P.segs.some(s => s.k === k && day >= s.from && day <= s.to); }
 /** a day as the month has it now, with the corrections already made (undefined: the tool has no days for the person that month) */
 function updNow(pid, k, day) {
   const dn = dnNow(pid, k, day); if (dn !== undefined) return dn;   // a day of the deduction file's next month, dropped on the email page
   const ND = Core.daysIn(+k.slice(0, 4), +k.slice(5)), r = monthData(k) ? rowOf(pid, k) : null;
+  if (r && monthLocked(k)) { const v = daysOfRow(r, ND)[day - 1] ?? null, F = dedFixOf(k), e = F && F.get(pid) && F.get(pid).days ? F.get(pid).days[day] : null; return e ? editedDay(v, e) : v; }   // final: as frozen, with the deduction's own corrections
   if (r) return daysOfRow(r, ND)[day - 1] ?? null;
   if (state.ctx && monthKey() === k && state.ctx.attendance) { const a = state.ctx.attendance.get(pid); if (a) return a.days[day - 1] ?? null; }
   return undefined;
@@ -34521,19 +34569,19 @@ function updRowsOf(R) {
   return R.groups.map((g, gi) => {
     const pid = state.updPick[gi] || g.pid || '';
     return { g, gi, pid, rows: g.changes.map((c, ci) => {
-      const k = c.date.slice(0, 7), day = +c.date.slice(8), lock = monthLocked(k), now = pid ? updNow(pid, k, day) : undefined;
-      const E = pid ? attEditsOf(k) : null, had = E && E.get(pid) && E.get(pid).days ? E.get(pid).days[day] : null, isX = c.exc != null;
+      const k = c.date.slice(0, 7), day = +c.date.slice(8), fin = monthLocked(k), fix = fin && inDedPeriod(k, day), lock = fin && !fix, now = pid ? updNow(pid, k, day) : undefined;
+      const E = pid ? (fix ? dedFixOf(k) : attEditsOf(k)) : null, had = E && E.get(pid) && E.get(pid).days ? E.get(pid).days[day] : null, isX = c.exc != null;
       const same = isX ? !!(had && had.x && had.exc === c.exc) : !c.clear && now !== undefined && now === c.v, offDay = isX ? now === 'OFF' : c.wide && (now === 'OFF' || now === null);
       const key = `${gi}:${ci}`, can = !!pid && !lock, def = can && !same && !offDay;
-      return { c, key, k, day, now, lock, same, offDay, can, on: can && (key in state.updOn ? state.updOn[key] : def) };
+      return { c, key, k, day, now, lock, fix, same, offDay, can, on: can && (key in state.updOn ? state.updOn[key] : def) };
     }) };
   });
 }
 function updLabelNow(v) { return v === undefined ? 'not in the month' : UpdParse.label(v); }
 function renderUpd() {
   const host = $('wfmUpd'); if (!host) return;
-  const show = updShown() && !(mailShared() && !wsMonthNow()); host.hidden = !show; if (!show) return;
-  const M = updMonth(), R = state.updRes, lock = monthLocked(M.k);
+  const show = updShown() && !(mailShared() && !dedMonthNow()); host.hidden = !show; if (!show) return;
+  const M = updMonth(), R = state.updRes, lock = monthLocked(M.k), P = dedPeriod(M.y, M.m), finals = P.segs.filter(x => monthLocked(x.k));
   const focus = document.activeElement && host.contains(document.activeElement) ? document.activeElement : null;
   const fsel = focus ? ['data-updon', 'data-updwho', 'data-updtext'].map(a => (focus.hasAttribute(a) ? `[${a}="${focus.getAttribute(a)}"]` : '')).find(Boolean) : '';
   let prev = '';
@@ -34545,7 +34593,7 @@ function renderUpd() {
         : g.cands && g.cands.length ? `<label class="updpick"><span class="sr">Who is “${esc(g.who.name)}”?</span><select class="cell" data-updwho="${gi}"><option value="">Choose who “${esc(g.who.name)}” is</option>${g.cands.map(c => { const q = state.roster.find(x => x._id === c); return q ? `<option value="${esc(c)}">${esc(supName(c) || q.name)} · ${esc([q.brand, q.team].filter(Boolean).join(' '))}</option>` : ''; }).join('')}</select></label>`
         : `<b dir="auto">${esc(g.who.name || g.who.id || '?')}</b><span class="sg bad">${esc(g.why || 'not found in the roster')}</span>`;
       const tr = rows.map(r => {
-        const note = r.lock ? `${ymLabel(r.k)} is final` : !pid ? '' : r.same ? 'already so' : r.offDay ? 'OFF that day: tick it to change' : r.now === undefined ? (r.c.exc != null ? 'no attendance that day: only the deduction' : 'no days for them that month') : '';
+        const note = r.lock ? `${ymLabel(r.k)} is final` : !pid ? '' : r.same ? 'already so' : r.fix ? `for the deduction only (${ymLabel(r.k)} is final)` : r.offDay ? 'OFF that day: tick it to change' : r.now === undefined ? (r.c.exc != null ? 'no attendance that day: only the deduction' : 'no days for them that month') : '';
         const nw = r.c.clear ? 'as before the corrections' : r.c.exc != null ? `${UpdParse.excLabel(r.c)}${typeof r.now === 'number' ? ' · late excused (Attend)' : ''}` : UpdParse.label(r.c.v);
         return `<tr class="${r.on ? '' : 'off'}"><td class="chk"><input type="checkbox" data-updon="${r.key}"${r.on ? ' checked' : ''}${r.can ? '' : ' disabled'} aria-label="${esc(`${r.day} ${MON[+r.k.slice(5) - 1]}`)}"></td><td>${r.day} ${MON[+r.k.slice(5) - 1]}</td><td>${esc(updLabelNow(r.now))}</td><td class="updarrow" aria-hidden="true">→</td><td><b>${esc(nw)}</b></td><td class="subtle">${esc(note)}</td></tr>`;
       }).join('');
@@ -34554,27 +34602,32 @@ function renderUpd() {
     const bad = R.bad.length ? `<details class="updbad" open><summary>${plural(R.bad.length, 'line')} not read</summary><ul>${R.bad.slice(0, 30).map(b => `<li><span dir="auto">${esc(b.text)}</span> <span class="subtle">${esc(b.why)}</span></li>`).join('')}</ul></details>` : '';
     const none = !R.groups.length && !R.bad.length ? '<p class="hint">Nothing to change was found. Paste the table (Name and the days, like 27-Oct; or a day, a name and the reason on each line), or type a line like: set Nawaf as absent on 10 Oct.</p>' : '';
     prev = `<div class="updprev" aria-live="polite"><p class="hint">Read from ${esc(state.updFrom || 'the box')}: ${plural(R.groups.length, 'person', 'people')}${R.table ? ' from a table' : ''}. Untick a day to leave it as it is.</p>${grp}${bad}${none}
-      <div class="acts updgo"><button class="btn primary" data-updapply${n && !lock ? '' : ' disabled'}>${n ? `Apply ${plural(n, 'change')}${people > 1 ? ` for ${people} people` : ''}` : 'Nothing to apply'}</button><button class="btn ghost" data-updclear>Clear</button></div></div>`;
+      <div class="acts updgo"><button class="btn primary" data-updapply${n ? '' : ' disabled'}>${n ? `Apply ${plural(n, 'change')}${people > 1 ? ` for ${people} people` : ''}` : 'Nothing to apply'}</button><button class="btn ghost" data-updclear>Clear</button></div></div>`;
   }
-  // what was applied this month from here
-  const E = attEditsOf(M.k), done = [];
-  if (E) for (const [pid, body] of E) {
-    const ds = Object.entries((body && body.days) || {}).filter(([, e]) => e && e.src === 'update').map(([d, e]) => ({ d: +d, ...e })).sort((a, b) => a.d - b.d);
-    if (!ds.length) continue;
-    const byV = new Map(); ds.forEach(x => { const l = x.x ? `exception${x.why ? ` (${x.why}${typeof x.exc === 'number' ? `, ${x.exc} min` : ''})` : ''}` : UpdParse.label(x.v); byV.set(l, (byV.get(l) || []).concat(x.d)); });
-    const last = ds.reduce((a, x) => (x.at > a.at ? x : a), ds[0]);
-    done.push(`<li><span class="nm" dir="auto">${esc(supName(pid) || body.n || pid)}</span><span class="sg">${[...byV].map(([l, D]) => `${esc(D.join(', '))} ${MON[M.m - 1]}: ${esc(l)}`).join(' · ')} · ${esc(last.by || '')}${last.at ? `, ${esc(fmtWhen(last.at))}` : ''}</span>${lock ? '' : `<button class="btn sm ghost" data-updrm="${esc(pid)}">Remove</button>`}</li>`);
+  // what was applied from here over the period: each month's days in it (a final month's: the deduction's own corrections)
+  const byP = new Map();
+  for (const sg of P.segs) {
+    const E = dedEditsOf(sg.k); if (!E) continue;
+    for (const [pid, body] of E) {
+      const ds = Object.entries((body && body.days) || {}).filter(([d, e]) => e && e.src === 'update' && +d >= sg.from && +d <= sg.to).map(([d, e]) => ({ d: +d, ...e })).sort((a, b) => a.d - b.d);
+      if (!ds.length) continue;
+      const o = byP.get(pid) || { n: body.n, parts: [], last: null }; byP.set(pid, o);
+      const byV = new Map(); ds.forEach(x => { const l = x.x ? `exception${x.why ? ` (${x.why}${typeof x.exc === 'number' ? `, ${x.exc} min` : ''})` : ''}` : UpdParse.label(x.v); byV.set(l, (byV.get(l) || []).concat(x.d)); });
+      o.parts.push(...[...byV].map(([l, D]) => `${D.join(', ')} ${MON[sg.m - 1]}: ${l}${monthLocked(sg.k) ? ' (deduction only)' : ''}`));
+      for (const x of ds) if (!o.last || x.at > o.last.at) o.last = x;
+    }
   }
+  const done = [...byP].map(([pid, o]) => `<li><span class="nm" dir="auto">${esc(supName(pid) || o.n || pid)}</span><span class="sg">${esc(o.parts.join(' · '))} · ${esc(o.last.by || '')}${o.last.at ? `, ${esc(fmtWhen(o.last.at))}` : ''}</span><button class="btn sm ghost" data-updrm="${esc(pid)}">Remove</button></li>`);
   const src = !mailShared() && state.wb ? `<p class="hint warnline">The email takes its numbers from ${esc(state.wb.name)}: the corrections go to the month, not into that file. Choose <b>Shared month</b> above the email to see them in it.</p>` : '';
   host.innerHTML = `<section class="card updcard" aria-labelledby="updH">
-    <div class="updhd"><h2 id="updH">Corrections after the review</h2><span class="pill info">${esc(ymLabel(M.k))}</span></div>
+    <div class="updhd"><h2 id="updH">Corrections after the review</h2><span class="pill info">${esc(P.label)}</span></div>
     <p class="cap">When corrections come back after the deduction email, put them here: paste the table from the email, drop the email (.msg or .eml) or a sheet, or type them, one a line, like <i>set Nawaf as absent on 10 Oct</i> or <i>Sara K. SL 27-29 Oct</i>. Exceptions too (a day, the name and the reason, like <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i> or <i>4:00 PM - 4:30 PM</i>): the day's lateness is excused and its minutes, or the whole day, come off the deduction (the Diff); a leave changes the attendance and that day's deduction goes. You see each day first; <b>Apply</b> makes them the month's corrections, so every sheet, the workbooks and the final email have them.</p>
-    ${lock ? `<p class="hint warnline">${esc(ymLabel(M.k))} is final: its attendance can no longer change.</p>` : ''}${src}
+    ${finals.length ? `<p class="hint warnline">${esc(finals.map(x => ymLabel(x.k)).join(' and '))} ${finals.length > 1 ? 'are' : 'is'} final: corrections for ${esc(finals.map(segLabel).join(' and '))} count for the deduction only, and ${finals.length > 1 ? 'their' : 'its'} results stay as they were.</p>` : ''}${src}
     <div class="upddrop" data-upddrop><textarea class="cell" data-updtext rows="4" spellcheck="false" placeholder="Paste the table from the email here, or type: set Nawaf as absent on 10 Oct · Nawaf PC loading 5 min on 11 Oct">${esc(state.updText)}</textarea>
       <div class="acts updacts"><button class="btn" data-updread${state.updBusy ? ' disabled' : ''}>${state.updBusy ? '<span class="spin" aria-hidden="true"></span>Reading…' : 'Read'}</button><button class="btn ghost" data-updfile>Choose a file</button><span class="hint">or drop the email or the sheet here</span>
       <input type="file" hidden multiple data-updpick accept=".msg,.eml,.xlsx,.xlsm,.xls,.csv,.txt,.png,.jpg,.jpeg"></div></div>
     ${state.updNote ? `<p class="hint warnline">${esc(state.updNote)}</p>` : ''}${prev}
-    ${done.length ? `<div class="upddone"><h3>Applied from here this month</h3><ul class="ilist">${done.join('')}</ul></div>` : ''}</section>`;
+    ${done.length ? `<div class="upddone"><h3>Applied from here for ${esc(P.label)}</h3><ul class="ilist">${done.join('')}</ul></div>` : ''}</section>`;
   if (fsel) { const f = host.querySelector(fsel); if (f) f.focus(); }
 }
 /** read what is in the box */
@@ -34623,9 +34676,8 @@ function updApply() {
   const by = new Map(); for (const c of sel) { const key = `${c.pid}|${c.k}`; if (!by.has(key)) by.set(key, []); by.get(key).push(c); }
   const undo = [], at = new Date().toISOString(), who = whoNow(), ks = new Set(), names = new Set(); let n = 0;
   for (const [key, L] of by) {
-    const [pid, k] = key.split('|'); if (monthLocked(k)) continue;
-    watchAttEdits(k); if (!state.attEditsBy[k]) state.attEditsBy[k] = new Map();
-    const E = state.attEditsBy[k], cur = E.get(pid), prev = cur ? JSON.parse(JSON.stringify(cur)) : null, days = { ...((cur && cur.days) || {}) };
+    const [pid, k] = key.split('|'), fix = monthLocked(k); if (fix && !L.every(c => inDedPeriod(k, c.day))) continue;   // a final month: only its days in the period, for the deduction
+    const E = updStore(k, fix), cur = E.get(pid), prev = cur ? JSON.parse(JSON.stringify(cur)) : null, days = { ...((cur && cur.days) || {}) };
     for (const c of L) {
       if (c.clear) delete days[c.day];
       else if (c.exc != null) days[c.day] = { x: 1, exc: c.exc, why: String(c.why || '').slice(0, 80), note: c.note, by: who, at, src: 'update' };   // the day as it is, excused
@@ -34633,12 +34685,13 @@ function updApply() {
       n++;
     }
     const p = state.roster.find(x => x._id === pid), body = { days, n: supName(pid) || (p && p.name) || '' };
-    E.set(pid, body); undo.push({ pid, k, prev }); ks.add(k); names.add(body.n);
-    if (state.db) queueWrite(`att/${k}/edits/${pid}`, () => state.db.doc(`att/${k}/edits/${pid}`).set(body)).catch(e => toast(`Not saved (${(e && e.code) || 'error'}).`));
-    if (agentHasAccount(pid)) setTimeout(() => publishAgent(pid, k, { quiet: true }), 900);   // the agent's own page follows
+    E.set(pid, body); undo.push({ pid, k, prev, fix }); ks.add(k); names.add(body.n);
+    const at2 = `${fix ? 'dedfix' : 'att'}/${k}/edits/${pid}`;
+    if (state.db) queueWrite(at2, () => state.db.doc(at2).set(body)).catch(e => toast(`Not saved (${(e && e.code) || 'error'}).`));
+    if (!fix && agentHasAccount(pid)) setTimeout(() => publishAgent(pid, k, { quiet: true }), 900);   // the agent's own page follows (a final month's stays)
   }
   if (!undo.length) return;
-  state.attEditsVer++;
+  state.attEditsVer++; state.dedFixVer++;
   markFresh('attendance', `${[...names].slice(0, 2).join(', ')}${names.size > 2 ? ` and ${names.size - 2} more` : ''}: ${plural(n, 'day')}`);
   state.updRes = null; state.updText = ''; state.updPick = {}; state.updOn = {}; state.updNote = '';
   updAfter(ks);
@@ -34648,22 +34701,32 @@ function updApply() {
 /** the corrections as they were before (Undo), or without the ones made from here (Remove) */
 function updRestore(L, msg) {
   const ks = new Set();
-  for (const { pid, k, prev } of L) {
-    if (monthLocked(k)) continue;
-    if (!state.attEditsBy[k]) state.attEditsBy[k] = new Map();
-    const E = state.attEditsBy[k], gone = !prev || !Object.keys(prev.days || {}).length;
+  for (const { pid, k, prev, fix } of L) {
+    if (monthLocked(k) && !fix) continue;
+    const E = updStore(k, fix), gone = !prev || !Object.keys(prev.days || {}).length, at2 = `${fix ? 'dedfix' : 'att'}/${k}/edits/${pid}`;
     if (gone) E.delete(pid); else E.set(pid, prev);
-    if (state.db) queueWrite(`att/${k}/edits/${pid}`, () => (gone ? state.db.doc(`att/${k}/edits/${pid}`).delete() : state.db.doc(`att/${k}/edits/${pid}`).set(prev))).catch(e => toast(`Not saved (${(e && e.code) || 'error'}).`));
-    if (agentHasAccount(pid)) setTimeout(() => publishAgent(pid, k, { quiet: true }), 900);
+    if (state.db) queueWrite(at2, () => (gone ? state.db.doc(at2).delete() : state.db.doc(at2).set(prev))).catch(e => toast(`Not saved (${(e && e.code) || 'error'}).`));
+    if (!fix && agentHasAccount(pid)) setTimeout(() => publishAgent(pid, k, { quiet: true }), 900);
     ks.add(k);
   }
-  state.attEditsVer++; updAfter(ks); if (msg) toast(msg);
+  state.attEditsVer++; state.dedFixVer++; updAfter(ks); if (msg) toast(msg);
 }
 function updRemove(pid) {
-  const { k } = updMonth(), E = attEditsOf(k), cur = E && E.get(pid); if (!cur || monthLocked(k)) return;
-  const keep = Object.fromEntries(Object.entries(cur.days || {}).filter(([, e]) => !(e && e.src === 'update'))), before = JSON.parse(JSON.stringify(cur));
-  updRestore([{ pid, k, prev: { ...cur, days: keep } }]);
-  toast(`Removed the corrections made from here for ${supName(pid) || cur.n || 'them'}.`, { label: 'Undo', fn: () => updRestore([{ pid, k, prev: before }], 'Back.') });
+  const M = updMonth(), P = dedPeriod(M.y, M.m), L = [], before = []; let n = '';
+  for (const sg of P.segs) {   // the period's months: each one's days in it made from here
+    const fix = monthLocked(sg.k), E = fix ? dedFixOf(sg.k) : attEditsOf(sg.k), cur = E && E.get(pid); if (!cur) continue;
+    const keep = Object.fromEntries(Object.entries(cur.days || {}).filter(([d, e]) => !(e && e.src === 'update' && +d >= sg.from && +d <= sg.to)));
+    if (Object.keys(keep).length === Object.keys(cur.days || {}).length) continue;
+    L.push({ pid, k: sg.k, prev: { ...cur, days: keep }, fix }); before.push({ pid, k: sg.k, prev: JSON.parse(JSON.stringify(cur)), fix }); n = n || cur.n;
+  }
+  if (!L.length) return;
+  updRestore(L);
+  toast(`Removed the corrections made from here for ${supName(pid) || n || 'them'}.`, { label: 'Undo', fn: () => updRestore(before, 'Back.') });
+}
+/** where a month's corrections are kept here: the month's attendance corrections, or the deduction's own once the month is final */
+function updStore(k, fix) {
+  if (fix) { watchDedFix(k); if (!state.dedFixBy[k]) state.dedFixBy[k] = new Map(); return state.dedFixBy[k]; }
+  watchAttEdits(k); if (!state.attEditsBy[k]) state.attEditsBy[k] = new Map(); return state.attEditsBy[k];
 }
 /** the month being built is counted again; everything else is drawn again (the email, its workbook and the list follow) */
 function updAfter(ks) { if (state.ctx && ks.has(monthKey())) refresh(); renderWs(); }
@@ -34694,141 +34757,234 @@ $('wfmUpd').addEventListener('paste', e => {
 ['dragenter', 'dragover'].forEach(ev => $('wfmUpd').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-upddrop]'); if (z && e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); z.classList.add('over'); } }));
 ['dragleave', 'drop'].forEach(ev => $('wfmUpd').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-upddrop]'); if (!z) return; z.classList.remove('over'); if (ev === 'drop' && e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); e.stopPropagation(); updFiles(e.dataTransfer.files); } }));   // read once: the page's own drop handler does not see it
 
-// ================================================================ THE DEDUCTION FILE'S PERIOD: the 13th of the month to the 12th of the next
-// WFM team › Emails › Deduction and absences. The email's workbook (MC Monthly Deduction - <Mon> <Y>.xlsx) runs from the 13th of the
-// month to the 12th of the next (October's: 13 Oct – 12 Nov), as payroll counts it. Its Attendance Report has the deduction brands'
-// people (Settings: Virgin), every team; its Monthly Deduction the deduction scope (Virgin · CC), each day's Sched., Actual and Diff
-// over the same days. The email's own tables (the deduction totals, the absences) stay the month's, as before.
-// The month's days come from the month as before (the shared month, a dropped monthly report or this page). The next month's first
-// twelve days come from, in this order: the corrections made for those days (Corrections after the review: a day like 5-Nov goes to
-// November's corrections), the files dropped in the email page's "The days after <month>" box (the supervisors' attendance sheets;
-// the Genesys Schedule and Agent Status Timeline for the minutes), the next month in the tool. What is dropped is kept with the shared
-// data (dednext/<month>), so the final email, and another computer, have it too.
-const DED_CUT = 13;   // a deduction file's first day; it ends on the day before, a month later
-Object.assign(state, { dedNext: {}, dnBusy: false, dnMsg: '', dnGen: { k: '', sch: [], tl: [] } });
-/** the file's days, in order: { y, m, d } from the 13th of the month to the 12th of the next, and the two months' keys */
+// ================================================================ THE DEDUCTION PERIOD: the 12th of the month before to the 13th of the month
+// WFM team › Emails › Deduction and absences. Payroll counts a month's deduction from the 12th of the month before to the 13th of the
+// month (Settings › Deduction period: day 12 to day 13 by default; 1 to 31 is the calendar month). Everything the email sends follows
+// it: November 2026's review and final emails, their own tables (the conformance deduction, the absenteeism) and their workbook (MC
+// Monthly Deduction - Nov 2026.xlsx: the Attendance Report with the deduction brands' people, Virgin by default, every team; the
+// Monthly Deduction with the deduction scope, Virgin · CC, each day's Sched., Actual and Diff) all run 12 Oct – 13 Nov.
+// The month before's days come from that month in the tool, with its corrections; once that month is final, the corrections made
+// after the deduction review are the deduction's own (dedfix/<month>): they count here, and the month's results stay as frozen. The
+// month's own days come from, in this order: the corrections made for those days, the files dropped in the email page's box (the
+// supervisors' attendance sheets; the Genesys Schedule and Agent Status Timeline for the minutes), the month in the tool. What is
+// dropped is kept with the shared data (dednext/<month>), so the final email, and another computer, have it too.
+// A row named after a day code or a heading ("Absent", "OFF": a sheet's legend once read as people) is never in it.
+Object.assign(state, { dedNext: {}, dedFixBy: {}, dedFixVer: 0, dnBusy: false, dnMsg: '', dnGen: { k: '', sch: [], tl: [] } });
+const dedPrevKey = k => { const y = +k.slice(0, 4), m = +k.slice(5); return m === 1 ? ymKey(y - 1, 12) : ymKey(y, m - 1); };
+/** Settings › Deduction period: its first day (in the month before; 1 is the month's own 1st) and its last day (in the month) */
+function dedDaysSet() {
+  const s = state.settings || {}, f = Math.round(+s.dedFrom), t = Math.round(+s.dedTo);
+  return { F: f >= 1 && f <= 31 ? f : 12, T: t >= 1 && t <= 31 ? t : 13 };   // by default the 12th of the month before to the 13th
+}
+/** the period of the month the email is named after: { y, m, k, days: [{ y, m, d }], segs: [{ y, m, k, from, to, n, i0, head }], tail
+    (the month before's part, or null), head (the month's part), label "12 Oct – 13 Nov", closeK (the month being closed: the first
+    day's), last } */
 function dedPeriod(y, m) {
-  const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1, ND = Core.daysIn(y, m), days = [];
-  for (let d = DED_CUT; d <= ND; d++) days.push({ y, m, d });
-  for (let d = 1; d < DED_CUT; d++) days.push({ y: ny, m: nm, d });
-  return { y, m, ny, nm, ND, k: ymKey(y, m), k2: ymKey(ny, nm), days, n: DED_CUT - 1, label: `${DED_CUT} ${MON[m - 1]} – ${DED_CUT - 1} ${MON[nm - 1]}` };
+  const { F, T } = dedDaysSet(), py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1, NDp = Core.daysIn(py, pm), t = Math.min(T, Core.daysIn(y, m)), segs = [];
+  if (F > 1 && F <= NDp) segs.push({ y: py, m: pm, k: ymKey(py, pm), from: F, to: NDp });
+  segs.push({ y, m, k: ymKey(y, m), from: 1, to: t, head: true });
+  let i0 = 0; for (const s of segs) { s.n = s.to - s.from + 1; s.i0 = i0; i0 += s.n; }
+  const days = segs.flatMap(s => Array.from({ length: s.n }, (_, i) => ({ y: s.y, m: s.m, d: s.from + i }))), a = days[0], z = days[days.length - 1];
+  const label = a.y === z.y ? `${a.d} ${MON[a.m - 1]} – ${z.d} ${MON[z.m - 1]}` : `${a.d} ${MON[a.m - 1]} ${a.y} – ${z.d} ${MON[z.m - 1]} ${z.y}`;
+  return { y, m, k: ymKey(y, m), days, segs, head: segs[segs.length - 1], tail: segs.length > 1 ? segs[0] : null, n: days.length, label,
+    labelY: a.y === z.y ? `${label} ${z.y}` : label, closeK: segs[0].k, last: z };
+}
+const segLabel = s => `${s.from}–${s.to} ${MON[s.m - 1]}`;   // "12–31 Oct", "1–13 Nov"
+const dedNextKey = k => { const y = +k.slice(0, 4), m = +k.slice(5); return m === 12 ? ymKey(y + 1, 1) : ymKey(y, m + 1); };
+/** the deduction email's months: every month in the shared history, and the one after the newest (its first days come in the box),
+    up to this calendar month */
+function dedMonths() {
+  const L = wsMonths(), t = new Date(), now = ymKey(t.getFullYear(), t.getMonth() + 1), out = new Set(L);
+  if (L.length) { const nx = dedNextKey(L[L.length - 1]); if (nx <= now) out.add(nx); }
+  return [...out].sort();
+}
+/** the deduction email's month: the one chosen on its page, else the newest whose period has ended (November's from the 14th of
+    November); the other pages keep theirs (the month being closed) */
+function dedMonthNow() {
+  const L = dedMonths(); if (!L.length) return '';
+  if (state.dedMonth && L.includes(state.dedMonth)) return state.dedMonth;
+  const today = todayIso(), ended = L.filter(k => dedDayKey(dedPeriod(+k.slice(0, 4), +k.slice(5)).last) < today);
+  return ended.length ? ended[ended.length - 1] : L[L.length - 1];
+}
+/** the deduction email's month picker: each month with its period ("Nov 2026 · 12 Oct – 13 Nov") */
+const dedMonthSelHtml = k => { const L = dedMonths(); return L.length ? `<label class="wsfield"><span>Month</span><select class="cell" data-dedmonth aria-label="Month">${L.slice().reverse().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(`${ymLabel(x)} · ${dedPeriod(+x.slice(0, 4), +x.slice(5)).label}`)}</option>`).join('')}</select></label>` : ''; };
+/** a day of the period as the email keeps it (2026-10-12) and shows it (12-Oct) */
+const dedDayKey = x => `${x.y}-${String(x.m).padStart(2, '0')}-${String(x.d).padStart(2, '0')}`;
+const dedDayLabel = key => { const [, mm, dd] = String(key).split('-').map(Number); return mm ? `${dd}-${MON[mm - 1]}` : String(key); };
+/** how a month's period meets the next one's, in words for Settings: each day in one file, two files, or none */
+function dedJoinText() {
+  const { F, T } = dedDaysSet(), o = ordinal;
+  if (F === 1) return T >= 28 ? 'The calendar month: each day is in one month\'s file.' : `Days after the ${o(T)} are in no month's file.`;
+  if (T >= F) return `The ${T > F ? `${o(F)} to the ${o(T)}` : o(F)} of each month ${T > F ? 'are' : 'is'} in two months' files (this one and the next), so ${T > F ? 'they are' : 'it is'} counted twice. A first day of ${T + 1} counts each day once.`;
+  if (F > T + 1) return `The ${F - 1 > T + 1 ? `${o(T + 1)} to the ${o(F - 1)}` : o(T + 1)} of each month ${F - 1 > T + 1 ? 'are' : 'is'} in no month's file. A first day of ${T + 1} counts each day once.`;
+  return 'Each day is in one month\'s file.';
 }
 const dnMinutes = s => (s == null || s === '' ? null : String(s).split(',').map(v => (v === '' ? null : +v)));
 const dnFit = (a, n) => (Array.isArray(a) ? Array.from({ length: n }, (_, i) => (a[i] === undefined ? null : a[i])) : null);
-/** the exceptions' note of a person's corrections, for the days in the file only ("Exceptions: 22 Oct Excuse (30 min); …") */
-function dnExcNote(k, pid, m, keep) {
-  const E = attEditsOf(k), ed = E && pid ? E.get(pid) : null; if (!ed || !ed.days) return '';
+const isLegend = n => !!normSpace(n) && Core.notAPerson(n);
+/** the exceptions' note of a person's corrections, for some days only ("Exceptions: 22 Oct Excuse (30 min); …") */
+function dnExcNote(E, pid, m, keep) {
+  const ed = E && pid ? E.get(pid) : null; if (!ed || !ed.days) return '';
   const days = Object.fromEntries(Object.entries(ed.days).filter(([d]) => keep(+d)));
   const X = excOfEdits({ days }, m); return X && X.note ? X.note : '';
 }
-// ---------------------------------------------------------------- the next month's first days, by person
-/** { att, sch, act: Map pid -> [n] (day 1 to 12), notes: Map pid -> text, src: { att, ded, month, drop } } as the file shows them */
-function dedNextData(P) {
-  const n = P.n, ND2 = Core.daysIn(P.ny, P.nm), att = new Map(), sch = new Map(), act = new Map(), notes = new Map(), src = { att: false, ded: false, month: false, drop: false };
-  // 3 · the next month in the tool (its rows already carry their corrections)
-  if (monthData(P.k2)) for (const [pid, r] of rowsByPid(P.k2)) {
-    const d = dnFit(daysOfRow(r, ND2), n); if (d.some(v => v != null)) { att.set(pid, d); src.month = src.att = true; }
-    const s = dnFit(dnMinutes(r.ds), n), a = dnFit(dnMinutes(r.da), n);
-    if (s && s.some(v => v != null)) { sch.set(pid, s); act.set(pid, a || Array(n).fill(null)); src.month = src.ded = true; }
-  }
-  // 2 · what was dropped here: a day it has wins over the month's
-  const D = state.dedNext[P.k], E = (watchAttEdits(P.k2), attEditsOf(P.k2));
-  if (D) {
-    for (const [pid, v] of Object.entries(D.att || {})) { const cur = att.get(pid) || Array(n).fill(null), w = dnFit(v, n); att.set(pid, cur.map((x, i) => (w[i] != null ? w[i] : x))); src.att = src.drop = true; }
-    for (const [pid, v] of Object.entries(D.sch || {})) {
-      const s0 = sch.get(pid) || Array(n).fill(null), a0 = act.get(pid) || Array(n).fill(null), s = dnFit(v, n), a = dnFit((D.act || {})[pid], n) || Array(n).fill(null);
-      const X = E ? excOfEdits(E.get(pid), P.nm) : null;   // an exception's minutes count as worked, as on the month's own days
-      sch.set(pid, s0.map((x, i) => (s[i] != null ? s[i] : x))); act.set(pid, a0.map((x, i) => (s[i] != null ? (X ? excAct(s[i], a[i], X.exc[i]) : a[i]) : x)));
-      src.ded = src.drop = true;
-    }
-  }
-  // 1 · the corrections made for those days (after the review, a day like 5-Nov is November's)
-  if (E) for (const [pid, ed] of E) {
-    if (!ed || !ed.days) continue;
-    const cur = att.get(pid) || Array(n).fill(null); let any = false;
-    for (const [d, e] of Object.entries(ed.days)) { const i = +d - 1; if (i >= 0 && i < n && e) { cur[i] = editedDay(cur[i], e); any = true; } }
-    if (any) { att.set(pid, cur); src.att = true; }
-    const note = dnExcNote(P.k2, pid, P.nm, d => d < DED_CUT); if (note) notes.set(pid, note);
-  }
-  return { att, sch, act, notes, src };
+// ---------------------------------------------------------------- the deduction's own corrections, for a month that is final
+/** dedfix/<month>/edits/<person>: corrections after the deduction review for the days of a month already final. They count in the
+    deduction email and its workbook only; the month's results stay as they were frozen. */
+function watchDedFix(k) {
+  if (!k || !state.db || state.dedFixBy[k] !== undefined) return;
+  state.dedFixBy[k] = new Map();
+  const take = sn => { const M = new Map(); sn.docs.forEach(d => M.set(d.id, d.data())); state.dedFixBy[k] = M; state.dedFixVer++; if (state.mailKind === 'ded' && !$('v-email').hidden) renderEmail(); };
+  try {
+    const c = state.db.collection(`dedfix/${k}/edits`);
+    if (typeof c.onSnapshot === 'function') c.onSnapshot(take, () => {}); else c.get().then(take, () => {});
+  } catch (e) { /* none */ }
 }
-/** a day of the file's next month for the Corrections box (Now): the dropped day with its correction; undefined when nothing was dropped for it */
-function dnNow(pid, k, day) {
-  if (!pid || day >= DED_CUT) return undefined;
-  const { y, m } = mailMonth(), P = dedPeriod(y, m); if (k !== P.k2) return undefined;
-  const D = state.dedNext[P.k], v = D && D.att && D.att[pid] ? D.att[pid][day - 1] : null; if (v == null) return undefined;
-  const E = attEditsOf(k), e = E && E.get(pid) && E.get(pid).days ? E.get(pid).days[day] : null;
-  return e ? editedDay(v, e) : v;
-}
-// ---------------------------------------------------------------- the workbook's data (Writer2.dedMail)
-/** the people of the month by person: the shared month, a dropped monthly report, or this page. Map key -> { pid, who, days, tardy,
-    sch, act, inDed, note }, key 'p:<pid>' (someone in the roster) or 'r:<id or name>' (a row nobody in the roster matches) */
-function dedMonthPeople(y, m) {
-  const k = ymKey(y, m), ND = Core.daysIn(y, m), set = state.settings, r = state.wb && state.wb.report, out = new Map();
+const dedFixOf = k => { watchDedFix(k); const M = state.dedFixBy[k]; return M && M.size ? M : null; };
+/** a month's corrections as the deduction counts them: the deduction's own once the month is final, the month's before */
+const dedEditsOf = k => (monthLocked(k) ? dedFixOf(k) : attEditsOf(k));
+// ---------------------------------------------------------------- one month's part of the period, by person
+/** Map key -> { pid, who, days: [n], byDay, tardyTot, sch: [n] | null, act: [n] | null, inDed } over the month's days in the period,
+    from that month in the tool (the shared history, with its corrections; a final month with the deduction's own), or the month on
+    this page or a dropped monthly report when the email reads them. null when nothing has the month. Key 'p:<pid>' (someone in the
+    roster) or 'r:<id or name>' (a row nobody in the roster matches). */
+function dedSegPeople(seg) {
+  const k = seg.k, ND = Core.daysIn(seg.y, seg.m), set = state.settings, r = state.wb && state.wb.report, out = new Map(), a = seg.from - 1, n = seg.n;
+  const cut = v => (Array.isArray(v) ? dnFit(v.slice(a, a + n), n) : null);
   const inDed = x => set.dedBrands.includes(normSpace(x.brand)) && set.dedTeams.includes(normSpace(x.team));
   const keyOf = (pid, id, name) => (pid ? 'p:' + pid : 'r:' + (Core.cleanId(id) || 'N:' + normName(name)));
   const pidFor = (id, name) => { const c = Core.cleanId(id), nm = normName(name); const p = rosterRows().find(q => (c && Core.cleanId((effP(q._id) || q).nid) === c) || normName(q.name) === nm || (normSpace(q.sys) && normName(q.sys) === nm)); return p ? p._id : ''; };
-  if (mailShared()) {
-    const pidOf = new Map([...rowsByPid(k)].map(([pid, x]) => [x, pid]));
-    for (const x of liveRows(k)) {
-      const pid = pidOf.get(x) || '', who = { id: idText(x.id), name: x.n, brand: normSpace(x.brand), team: normSpace(x.team) };
-      out.set(keyOf(pid, x.id, x.n), { pid, who, days: daysOfRow(x, ND), tardy: x.tardy, sch: dnMinutes(x.ds), act: dnMinutes(x.da), inDed: inDed(x) && x.ded != null });
-    }
-  } else if (r) {
-    for (const a of r.att.filter(a => a.shown && a.vals)) { const pid = pidFor(a.id, a.name); out.set(keyOf(pid, a.id, a.name), { pid, who: { id: a.id, name: a.name, brand: normSpace(a.brand), team: normSpace(a.team) }, days: dnFit(a.vals, ND), inDed: false }); }
+  const put = (key, o) => { if (!isLegend(o.who.name)) out.set(key, o); };
+  const byDay = d => (d || []).some(v => typeof v === 'number');
+  if (!mailShared() && r && r.y === seg.y && r.m === seg.m) {   // a monthly report dropped on the page
+    for (const x of r.att.filter(x => x.shown && x.vals)) { const pid = pidFor(x.id, x.name), d = dnFit(x.vals, ND); put(keyOf(pid, x.id, x.name), { pid, who: { id: x.id, name: x.name, brand: normSpace(x.brand), team: normSpace(x.team) }, days: cut(d), byDay: byDay(d), inDed: false }); }
     for (const x of r.ded) {
-      const pid = pidFor(x.id, x.name), key = keyOf(pid, x.id, x.name), cur = out.get(key) || { pid, who: { id: x.id, name: x.name, brand: normSpace(x.brand), team: normSpace(x.team) }, days: null };
-      out.set(key, { ...cur, sch: x.sched || null, act: x.act || null, inDed: true });
+      const pid = pidFor(x.id, x.name), key = keyOf(pid, x.id, x.name), cur = out.get(key) || { pid, who: { id: x.id, name: x.name, brand: normSpace(x.brand), team: normSpace(x.team) }, days: null, byDay: false };
+      put(key, { ...cur, sch: cut(x.sched), act: cut(x.act), inDed: true });
     }
-  } else if (state.model) {
+  } else if (!mailShared() && state.model && state.y === seg.y && state.m === seg.m) {   // the month built on this page
     const A = state.ctx && state.ctx.attendance;
     for (const x of state.model) {
       if (!x.shown) continue;
-      const pid = x.p._id, a = A ? A.get(pid) : null;
-      out.set(keyOf(pid), { pid, who: { id: idText(x.p.nid), name: x.exp, brand: normSpace(x.p.brand), team: normSpace(x.p.team) }, days: a ? a.days : null, tardy: a ? a.tardyFile : null, sch: x.sch, act: x.actX || x.act, inDed: !!x.inDed });
+      const pid = x.p._id, at = A ? A.get(pid) : null;
+      put(keyOf(pid), { pid, who: { id: idText(x.p.nid), name: x.exp, brand: normSpace(x.p.brand), team: normSpace(x.p.team) }, days: at ? cut(at.days) : null, byDay: at ? byDay(at.days) : false, tardyTot: at ? at.tardyFile : null, sch: cut(x.sch), act: cut(x.actX || x.act), inDed: !!x.inDed });
+    }
+  } else if (monthData(k)) {   // the shared history
+    const pidOf = new Map([...rowsByPid(k)].map(([pid, x]) => [x, pid])), F = monthLocked(k) ? dedFixOf(k) : null;
+    for (const x0 of liveRows(k)) {
+      const pid = pidOf.get(x0) || '', fx = F && pid ? F.get(pid) : null, x = fx ? withEdits(x0, fx, ND, k) : x0, d = daysOfRow(x, ND);
+      put(keyOf(pid, x.id, x.n), { pid, who: { id: idText(x.id), name: x.n, brand: normSpace(x.brand), team: normSpace(x.team) }, days: cut(d), byDay: byDay(d), tardyTot: x.tardy, sch: cut(dnMinutes(x.ds)), act: cut(dnMinutes(x.da)), inDed: inDed(x) && x.ded != null });
     }
   } else return null;
   return out;
 }
-/** the deduction email's workbook: { y, m, days, label, att, ded } for Writer2.dedMail, over the file's period */
-function dedPeriodData() {
-  const { y, m } = mailMonth(), k = ymKey(y, m), cfg = countFor(k), set = state.settings, P = dedPeriod(y, m), c0 = DED_CUT - 1;
-  const M = dedMonthPeople(y, m); if (!M) return null;
-  const N = dedNextData(P), brandOk = w => set.dedBrands.includes(normSpace(w.brand)), scopeOk = w => brandOk(w) && set.dedTeams.includes(normSpace(w.team));
-  // someone with days only in the next month (a joiner): from the roster
-  for (const pid of new Set([...N.att.keys(), ...N.sch.keys()])) {
-    if (M.has('p:' + pid)) continue;
-    const p = effP(pid); if (!p) continue;
-    M.set('p:' + pid, { pid, who: { id: idText(p.nid), name: p.name, brand: normSpace(p.brand), team: normSpace(p.team) }, days: null, sch: null, act: null, inDed: false });
-  }
-  const pad = (a, from, to) => (a ? dnFit(a.slice(from, to), to - from) : Array(to - from).fill(null));
-  const att = [], ded = [];
-  for (const x of M.values()) {
-    const days = [...pad(x.days, c0, P.ND), ...(x.pid && N.att.get(x.pid) ? N.att.get(x.pid) : Array(P.n).fill(null))];
-    if (brandOk(x.who) && days.some(v => v != null)) {
-      const c = Kpi.countDays(days, cfg), byDay = (x.days || []).some(v => typeof v === 'number'), tot = +x.tardy || 0;
-      att.push({ ...x.who, days, tardy: c.tardy || 0, sched: c.sched, actual: c.counted,
-        note: !byDay && tot > 0 ? `${MON[m - 1]} late minutes came as one total (${tot} min), not by day, so they are not in Tardy` : '' });
+// ---------------------------------------------------------------- the month's own days: the box, then the corrections
+/** the box's record for a month's first days: dednext/<month>, or the one the 13th-to-12th version kept under the month before */
+function dnDoc(k) { const a = state.dedNext[k]; if (a && a.dm === k) return a; const b = state.dedNext[dedPrevKey(k)]; return b && !b.dm ? b : null; }
+/** { att, sch, act: Map pid -> [n] (days 1 to n of the month, what wins over the month in the tool), notes, src } */
+function dedHeadData(P) {
+  const H = P.head, n = H.n, att = new Map(), sch = new Map(), act = new Map(), notes = new Map(), src = { att: false, ded: false, drop: false, corr: false };
+  const D = dnDoc(H.k), E = monthLocked(H.k) ? dedFixOf(H.k) : (watchAttEdits(H.k), attEditsOf(H.k));
+  if (D) {
+    for (const [pid, v] of Object.entries(D.att || {})) { const w = dnFit(v, n); if (w.some(x => x != null)) { att.set(pid, w); src.att = src.drop = true; } }
+    for (const [pid, v] of Object.entries(D.sch || {})) {
+      const s = dnFit(v, n), a = dnFit((D.act || {})[pid], n) || Array(n).fill(null), X = E ? excOfEdits(E.get(pid), H.m) : null;   // an exception's minutes count as worked
+      sch.set(pid, s); act.set(pid, s.map((x, i) => (x != null ? (X ? excAct(x, a[i], X.exc[i]) : a[i]) : null))); src.ded = src.drop = true;
     }
-    const nS = x.pid ? N.sch.get(x.pid) : null;
-    if (scopeOk(x.who) && (x.inDed || nS)) {
-      const sched = [...pad(x.sch, c0, P.ND), ...(nS || Array(P.n).fill(null))], act = [...pad(x.act, c0, P.ND), ...(x.pid && N.act.get(x.pid) ? N.act.get(x.pid) : Array(P.n).fill(null))];
-      const any = sched.some((s, i) => s != null && act[i] != null), notes = [x.pid ? dnExcNote(k, x.pid, m, d => d >= DED_CUT) : '', x.pid ? N.notes.get(x.pid) || '' : ''].filter(Boolean);
-      if (!any && x.inDed) notes.push(`No minutes by day for ${MON[m - 1]}: the month was saved before each day's minutes were kept`);
-      ded.push({ ...x.who, sched: any ? sched : null, act: any ? act : null, total: null, note: notes.join(' · ').replace(/ · Exceptions: /g, '; ') });
+  }
+  if (E) for (const [pid, ed] of E) {
+    if (!ed || !ed.days) continue;
+    const cur = att.get(pid) || Array(n).fill(null); let any = false;
+    for (const [d, e] of Object.entries(ed.days)) { const i = +d - 1; if (i >= 0 && i < n && e) { cur[i] = editedDay(cur[i], e); any = true; } }
+    if (any) { att.set(pid, cur); src.att = src.corr = true; }
+    const note = dnExcNote(E, pid, H.m, d => d <= n); if (note) notes.set(pid, note);
+  }
+  return { att, sch, act, notes, src };
+}
+// ---------------------------------------------------------------- everyone over the period
+/** [{ key, pid, who, days: [P.n], sch, act, inDed, notes: { att: [], ded: [] }, noMin: [month] }], with the period's sources */
+function dedPeriodPeople(P) {
+  const parts = P.segs.map(s => ({ s, M: dedSegPeople(s) })), H = dedHeadData(P), keys = new Map();
+  for (const { M } of parts) if (M) for (const [key, x] of M) keys.set(key, { pid: x.pid, who: x.who });   // the latest month's brand and team
+  for (const pid of new Set([...H.att.keys(), ...H.sch.keys()])) {   // someone with days only in the box (a joiner): from the roster
+    const key = 'p:' + pid; if (keys.has(key)) continue;
+    const p = effP(pid); if (!p || isLegend(p.name)) continue;
+    keys.set(key, { pid, who: { id: idText(p.nid), name: p.name, brand: normSpace(p.brand), team: normSpace(p.team) } });
+  }
+  const out = [];
+  for (const [key, base] of keys) {
+    const days = [], sch = [], act = [], notes = { att: [], ded: [] }, noMin = []; let inDed = false;
+    for (const { s, M } of parts) {
+      const x = M ? M.get(key) : null, pid = base.pid, nul = () => Array(s.n).fill(null);
+      let d = x && x.days ? x.days.slice() : nul(), sc = x && x.sch ? x.sch.slice() : nul(), ac = x && x.act ? x.act.slice() : nul();
+      if (s.head && pid) {
+        const o = H.att.get(pid), os = H.sch.get(pid), oa = H.act.get(pid);
+        if (o) d = d.map((v, i) => (o[i] != null ? o[i] : v));
+        if (os) { sc = sc.map((v, i) => (os[i] != null ? os[i] : v)); ac = ac.map((v, i) => (os[i] != null ? oa[i] : v)); inDed = true; }   // the scope is checked after
+        if (H.notes.get(pid)) notes.ded.push(H.notes.get(pid));
+      } else if (x && pid) { const nt = dnExcNote(dedEditsOf(s.k), pid, s.m, dd => dd >= s.from && dd <= s.to); if (nt) notes.ded.push(nt); }
+      if (x && x.inDed) inDed = true;
+      if (x && !x.byDay && +x.tardyTot > 0) notes.att.push(`${MON[s.m - 1]} late minutes came as one total (${x.tardyTot} min), not by day, so they are not in Tardy`);
+      if (x && x.inDed && !(x.sch && x.sch.some(v => v != null))) noMin.push(MON[s.m - 1]);
+      days.push(...d); sch.push(...sc); act.push(...ac);
+    }
+    out.push({ key, pid: base.pid, who: base.who, days, sch, act, inDed, notes, noMin });
+  }
+  return out;
+}
+/** a person's deduction over the period, as the workbook's Total (min): each day's Sched. - Actual (0 when Actual is 0); null with no minutes */
+function dedTotal(x) {
+  let tot = 0, any = false;
+  (x.sch || []).forEach((sv, i) => { const av = (x.act || [])[i]; if (sv == null || av == null) return; any = true; if (av !== 0) tot += Math.max(0, sv - av); });
+  return any ? Math.round(tot) : null;
+}
+// ---------------------------------------------------------------- the workbook's data (Writer2.dedMail) and the email's tables
+/** the deduction email's workbook: { y, m, days, label, att, ded, P, people } over the period */
+function dedPeriodData(P0) {
+  const { y, m } = mailMonth(), P = P0 || dedPeriod(y, m), cfg = countFor(P.k), set = state.settings, L = dedPeriodPeople(P);
+  const brandOk = w => set.dedBrands.includes(normSpace(w.brand)), scopeOk = w => brandOk(w) && set.dedTeams.includes(normSpace(w.team));
+  const att = [], ded = [];
+  for (const x of L) {
+    if (brandOk(x.who) && x.days.some(v => v != null)) {
+      const c = Kpi.countDays(x.days, cfg);
+      att.push({ ...x.who, days: x.days, tardy: c.tardy || 0, sched: c.sched, actual: c.counted, note: x.notes.att.join(' · ') });
+    }
+    if (scopeOk(x.who) && x.inDed) {
+      const any = x.sch.some((s, i) => s != null && x.act[i] != null), notes = [...x.notes.ded];
+      if (x.noMin.length) notes.push(`No minutes by day for ${x.noMin.join(' and ')}: the month was saved before each day's minutes were kept`);
+      ded.push({ ...x.who, sched: any ? x.sch : null, act: any ? x.act : null, total: null, note: notes.join(' · ').replace(/ · Exceptions: /g, '; ') });
     }
   }
   const order = w => (DEP_ORDER.indexOf(w.team) + 1 || 99), byDep = (a, b) => order(a) - order(b) || a.name.localeCompare(b.name);
-  return { y, m, days: P.days, label: P.label, att: att.sort(byDep), ded: ded.sort(byDep), next: N.src };
+  return { y: P.y, m: P.m, days: P.days, label: P.label, att: att.sort(byDep), ded: ded.sort(byDep), P, people: L };
 }
-/** what the email page says about the file's period: warnings when the next month's days are not in yet */
-function dedPeriodWarns(y, m) {
-  const P = dedPeriod(y, m), N = dedNextData(P), nm = MON[P.nm - 1], w = [];
-  if (!N.src.att) w.push(`The workbook runs ${P.label}: no attendance for 1–${P.n} ${nm} yet, so those days are empty in its Attendance Report. Drop the supervisors' ${MONTH_LONG[P.nm - 1]} sheets in The days after ${MONTH_LONG[m - 1]}.`);
-  if (!N.src.ded) w.push(`No deduction minutes for 1–${P.n} ${nm} yet: the workbook's Monthly Deduction counts ${DED_CUT}–${P.ND} ${MON[m - 1]} only. Drop ${MONTH_LONG[P.nm - 1]}'s Schedule and Agent Status Timeline in The days after ${MONTH_LONG[m - 1]}.`);
+/** the email's own tables over the period: { P, ded: [{ id, name, total }], abs: { rows, dates: [day keys] }, noMin: [names], legend: [names] } */
+function dedPeriodMail() {
+  const { y, m } = mailMonth(), P = dedPeriod(y, m), D = dedPeriodData(P), keys = P.days.map(dedDayKey);
+  const ded = D.ded.map(x => ({ id: idText(x.id), name: x.name, total: dedTotal({ sch: x.sched, act: x.act }) ?? 0 })).sort((a, b) => a.name.localeCompare(b.name));
+  const rows = D.people.map(x => ({ id: idText(x.who.id), name: x.who.name, brand: x.who.brand, team: x.who.team, onRoster: !!x.pid, shown: true, filled: x.days.some(v => v != null),
+    days: x.days.map((v, i) => (v === 'Absent' ? keys[i] : null)).filter(Boolean) })).filter(a => a.days.length && absScopeOk(a)).sort((a, b) => a.name.localeCompare(b.name));
+  const legend = [...new Set(P.segs.flatMap(s => { const M = monthData(s.k); return M ? M.rows.filter(r => isLegend(r.n)).map(r => normSpace(r.n)) : []; }))];
+  return { P, ded, abs: { rows, dates: [...new Set(rows.flatMap(a => a.days))].sort() }, noMin: D.ded.filter(x => /No minutes by day/.test(x.note || '')).map(x => x.name), legend, filled: D.people.some(x => x.days.some(v => v != null)) };
+}
+/** what the email page says about the period: what is not in yet, and what was left out (M: the email's tables, dedPeriodMail) */
+function dedPeriodWarns(y, m, M = dedPeriodMail()) {
+  const P = dedPeriod(y, m), H = dedHeadData(P), w = [], hm = MONTH_LONG[P.head.m - 1], today = todayIso(), last = dedDayKey(P.last);
+  if (P.tail) {
+    const T = dedSegPeople(P.tail), tm = MONTH_LONG[P.tail.m - 1];
+    if (!T) w.push(`The period runs ${P.label}: ${tm} ${P.tail.y} is not in the shared history, so ${segLabel(P.tail)} are empty in the email and its workbook.`);
+    else if (![...T.values()].some(x => x.days && x.days.some(v => v != null))) w.push(`No attendance in ${tm} ${P.tail.y} yet, so ${segLabel(P.tail)} are empty.`);
+  }
+  const hp = dedSegPeople(P.head), hAtt = H.src.att || (hp && [...hp.values()].some(x => x.days && x.days.some(v => v != null)));
+  const hMin = H.src.ded || (hp && [...hp.values()].some(x => x.sch && x.sch.some(v => v != null)));
+  if (!hAtt) w.push(`The period runs ${P.label}: no attendance for ${segLabel(P.head)} yet, so those days are empty. Drop the supervisors' ${hm} sheets in the box below.`);
+  if (!hMin) w.push(`No deduction minutes for ${segLabel(P.head)} yet: drop ${hm}'s Schedule and Agent Status Timeline in the box below.`);
+  if (today <= last) w.push(`The period ends on ${P.last.d} ${MON[P.last.m - 1]}: what is not in yet shows empty until then.`);
+  if (M.noMin.length) w.push(`No minutes by day for ${plural(M.noMin.length, 'person', 'people')} in a month of the period (saved before each day's minutes were kept): their deduction counts only the days with minutes (${M.noMin.slice(0, 6).join(', ')}${M.noMin.length > 6 ? ' and more' : ''}).`);
+  if (M.legend.length) w.push(`Left out, not people: ${M.legend.slice(0, 10).map(n => `"${n}"`).join(', ')} (day codes or headings from an attendance sheet). Remove them from the roster in People.`);
   return w;
 }
-// ---------------------------------------------------------------- the box on the email page: The days after <month>
+// ---------------------------------------------------------------- the box on the email page: the period and the month's first days
 let dnWatching = false;
 function watchDedNext() {
   if (dnWatching || !state.db) return; dnWatching = true;
@@ -34845,30 +35001,44 @@ function renderDedNext() {
   const el = $('dnCard'); if (!el) return;
   const show = state.mailKind === 'ded'; el.hidden = !show; if (!show) return;
   watchDedNext();
-  const { y, m } = mailMonth(), P = dedPeriod(y, m), N = dedNextData(P), D = state.dedNext[P.k], nm = MON[P.nm - 1], NM = MONTH_LONG[P.nm - 1], set = state.settings;
+  const { y, m } = mailMonth(), P = dedPeriod(y, m), H = dedHeadData(P), D = dnDoc(P.head.k), NM = MONTH_LONG[P.head.m - 1], set = state.settings;
+  const hp = dedSegPeople(P.head), hpAtt = !!hp && [...hp.values()].some(x => x.days && x.days.some(v => v != null)), hpMin = !!hp && [...hp.values()].some(x => x.sch && x.sch.some(v => v != null));
   const files = D && D.files ? D.files : [], kinds = t => files.filter(f => f.kind === t).length;
-  const attTxt = N.src.drop && D && Object.keys(D.att || {}).length ? `${plural(Object.keys(D.att).length, 'person', 'people')} from ${plural(kinds('attendance'), 'sheet')} dropped here${N.src.month ? `; ${NM} in the tool for the rest` : ''}`
-    : N.src.att ? (N.src.month ? `From ${NM} in the tool` : 'From the corrections made for those days') : `Not in yet: drop the supervisors' ${NM} attendance sheets below`;
-  const dedTxt = D && Object.keys(D.sch || {}).length ? `${plural(Object.keys(D.sch).length, 'person', 'people')} from the Schedule and Agent Status Timeline dropped here`
-    : N.src.ded ? `From ${NM} in the tool` : `Not in yet: drop ${NM}'s Schedule and Agent Status Timeline (to the ${ordinal(P.n)}) below`;
   const li = (ok, b, t) => `<li class="${ok ? 'ok' : 'warn'}"><span class="dnmark" aria-hidden="true"><svg width="12" height="12"><use href="#i-${ok ? 'check' : 'dash'}"/></svg></span><b>${esc(b)}</b> <span>${esc(t)}</span></li>`;   // the space: read as two parts
+  let tailLi = '';
+  if (P.tail) {
+    const T = dedSegPeople(P.tail), TM = MONTH_LONG[P.tail.m - 1], src = mailShared() || !(state.wb && state.wb.report && state.wb.report.m === P.tail.m) ? ' in the tool' : ` (${state.wb.name})`;
+    tailLi = li(!!T, segLabel(P.tail), T ? `From ${TM}${src}${monthLocked(P.tail.k) ? `; ${TM} is final, so corrections for these days count for the deduction only` : ''}` : `${TM} ${P.tail.y} is not in the shared history`);
+  }
+  const attTxt = H.src.drop && D && Object.keys(D.att || {}).length ? `${plural(Object.keys(D.att).length, 'person', 'people')} from ${plural(kinds('attendance'), 'sheet')} dropped here${hpAtt ? `; ${NM} in the tool for the rest` : ''}`
+    : hpAtt ? `From ${NM} in the tool` : H.src.corr ? 'From the corrections made for those days' : `Not in yet: drop the supervisors' ${NM} attendance sheets below`;
+  const dedTxt = D && Object.keys(D.sch || {}).length ? `${plural(Object.keys(D.sch).length, 'person', 'people')} from the Schedule and Agent Status Timeline dropped here`
+    : hpMin ? `From ${NM} in the tool` : `Not in yet: drop ${NM}'s Schedule and Agent Status Timeline (to the ${ordinal(P.head.n)}) below`;
   const un = D && D.unmatched && D.unmatched.length ? `<p class="hint">Not found in the roster: ${esc(D.unmatched.slice(0, 12).join(', '))}${D.unmatched.length > 12 ? ` and ${D.unmatched.length - 12} more` : ''}.</p>` : '';
-  el.innerHTML = `<h2 id="dnH">The days after ${esc(MONTH_LONG[m - 1])}</h2>
-    <p class="hint">The workbook runs <b>${esc(P.label)}</b>: its Attendance Report has ${esc(set.dedBrands.join(', ') || 'no brand')}, every team; its Monthly Deduction ${esc(set.dedBrands.join(', ') || '–')} · ${esc(set.dedTeams.join(', ') || '–')}. The email itself keeps ${esc(MONTH_LONG[m - 1])}'s totals.</p>
-    <ul class="dnlist">${li(true, `${DED_CUT}–${P.ND} ${MON[m - 1]}`, `From ${MONTH_LONG[m - 1]}${mailShared() ? ' in the tool' : state.wb && state.wb.report ? ` (${state.wb.name})` : ' (this page)'}`)}${li(N.src.att, `1–${P.n} ${nm} · attendance`, attTxt)}${li(N.src.ded, `1–${P.n} ${nm} · deduction minutes`, dedTxt)}</ul>
+  el.innerHTML = `<h2 id="dnH">The period: ${esc(P.label)}</h2>
+    <p class="hint">${esc(MONTH_LONG[m - 1])}'s email and its workbook run <b>${esc(P.label)}</b> (Settings › Deduction period: from the ${esc(ordinal(dedDaysSet().F))} of the month before to the ${esc(ordinal(dedDaysSet().T))}). The workbook's Attendance Report has ${esc(set.dedBrands.join(', ') || 'no brand')}, every team; its Monthly Deduction ${esc(set.dedBrands.join(', ') || '–')} · ${esc(set.dedTeams.join(', ') || '–')}.</p>
+    <ul class="dnlist">${tailLi}${li(hpAtt || H.src.att, `${segLabel(P.head)} · attendance`, attTxt)}${li(hpMin || H.src.ded, `${segLabel(P.head)} · deduction minutes`, dedTxt)}</ul>
     ${dnCan() ? `<div class="drop small" data-ddrop role="button" tabindex="0" aria-describedby="dnHelp"${state.dnBusy ? ' aria-busy="true"' : ''}>
-      <strong>${state.dnBusy ? 'Reading…' : `Drop ${esc(NM)}'s sheets`}</strong><span id="dnHelp">The supervisors' attendance sheets (Excel), and for the minutes the Schedule and the Agent Status Timeline. Only 1–${P.n} ${esc(nm)} is read.</span></div>` : ''}
+      <strong>${state.dnBusy ? 'Reading…' : `Drop ${esc(NM)}'s sheets`}</strong><span id="dnHelp">The supervisors' attendance sheets (Excel), and for the minutes the Schedule and the Agent Status Timeline. Only ${esc(segLabel(P.head))} is read.</span></div>` : ''}
     ${D && files.length ? `<p class="hint dnfiles">${esc(files.map(f => f.name).join(', '))} · ${esc(D.by || '')}${D.at ? `, ${esc(fmtWhen(D.at))}` : ''}</p>${un}${dnCan() ? '<button type="button" class="linkbtn" data-dnclear>Clear what was dropped here</button>' : ''}` : ''}
     ${state.dnMsg ? `<p class="hint dnmsg" role="status">${esc(state.dnMsg)}</p>` : ''}`;
 }
-/** the dropped files: the supervisors' sheets give the next month's first days (merged as Import merges a month's sheets), the Schedule
+/** a day of the month's first days for the Corrections box (Now): the dropped day with its correction; undefined when nothing was dropped */
+function dnNow(pid, k, day) {
+  if (!pid) return undefined;
+  const { y, m } = mailMonth(), P = dedPeriod(y, m); if (k !== P.head.k || day > P.head.n) return undefined;
+  const D = dnDoc(k), v = D && D.att && D.att[pid] ? D.att[pid][day - 1] : null; if (v == null) return undefined;
+  const E = attEditsOf(k), e = E && E.get(pid) && E.get(pid).days ? E.get(pid).days[day] : null;
+  return e ? editedDay(v, e) : v;
+}
+/** the dropped files: the supervisors' sheets give the month's first days (merged as Import merges a month's sheets), the Schedule
     and the Agent Status Timeline their minutes (both are needed: Actual is what was signed on inside the schedule) */
 async function dnRead(files) {
   if (!files.length || state.dnBusy || !dnCan()) return;
-  const { y, m } = mailMonth(), P = dedPeriod(y, m), n = P.n, NM = MONTH_LONG[P.nm - 1];
+  const { y, m } = mailMonth(), P = dedPeriod(y, m), Hd = P.head, n = Hd.n, NM = MONTH_LONG[Hd.m - 1];
   state.dnBusy = true; state.dnMsg = ''; renderDedNext();
   try {
-    const gen = state.dnGen.k === P.k ? state.dnGen : (state.dnGen = { k: P.k, sch: [], tl: [] }), att = [], took = [], bad = [];
+    const gen = state.dnGen.k === Hd.k ? state.dnGen : (state.dnGen = { k: Hd.k, sch: [], tl: [] }), att = [], took = [], bad = [];
     for (const f of files) {
       let dets = null; try { dets = await parse(f.name, await f.arrayBuffer()); } catch (e) { dets = null; }
       const of = kind => (dets || []).filter(d => d.kind === kind && d.data), a = of('attendance'), s = of('schedule'), t = of('timeline');
@@ -34876,19 +35046,19 @@ async function dnRead(files) {
       a.forEach(d => att.push({ ...d, file: f.name })); if (s.length) gen.sch = s; if (t.length) gen.tl = t;
       took.push({ name: f.name, kind: a.length ? 'attendance' : s.length ? 'schedule' : 'timeline' });
     }
-    const prev = state.dedNext[P.k] || {}, out = { k: P.k, at: new Date().toISOString(), by: whoNow(), files: [...(prev.files || []).filter(f => !took.some(x => x.name === f.name)), ...took],
+    const prev = dnDoc(Hd.k) || {}, out = { k: Hd.k, dm: Hd.k, at: new Date().toISOString(), by: whoNow(), files: [...(prev.files || []).filter(f => !took.some(x => x.name === f.name)), ...took],
       att: { ...(prev.att || {}) }, sch: { ...(prev.sch || {}) }, act: { ...(prev.act || {}) }, unmatched: [...(prev.unmatched || [])] };
     const said = [], done = [];   // what went wrong stays on the box; what was read is said once
     if (att.length) {
-      const R = Att.merge(att, rosterRows(), { y: P.ny, m: P.nm, links: state.attLinks });
+      const R = Att.merge(att, rosterRows(), { y: Hd.y, m: Hd.m, links: state.attLinks });
       let people = 0;
-      for (const [pid, a] of R.byPerson) { const v = dnFit(a.days, n); if (!v.some(x => x != null)) continue; const old = out.att[pid] || Array(n).fill(null); out.att[pid] = v.map((x, i) => (x != null ? x : old[i])); people++; }
-      out.unmatched = [...new Set([...out.unmatched, ...R.unmatched.map(u => normSpace(u.name || u.idRaw)).filter(Boolean)])].slice(0, 200);
+      for (const [pid, a] of R.byPerson) { const v = dnFit(a.days, n); if (!v.some(x => x != null)) continue; const old = dnFit(out.att[pid], n) || Array(n).fill(null); out.att[pid] = v.map((x, i) => (x != null ? x : old[i])); people++; }
+      out.unmatched = [...new Set([...out.unmatched, ...R.unmatched.map(u => normSpace(u.name || u.idRaw)).filter(x => x && !isLegend(x))])].slice(0, 200);
       const used = R.files.filter(f => f.used);
-      if (used.length) done.push(`1–${n} ${MON[P.nm - 1]} for ${plural(people, 'person', 'people')}`); else said.push(`No days of ${NM} in the sheets (${R.files.map(f => f.reason).filter(Boolean)[0] || 'no dates'})`);
+      if (used.length) done.push(`1–${n} ${MON[Hd.m - 1]} for ${plural(people, 'person', 'people')}`); else said.push(`No days of ${NM} in the sheets (${R.files.map(f => f.reason).filter(Boolean)[0] || 'no dates'})`);
     }
     if (gen.sch.length && gen.tl.length) {
-      const D = Core.computeDaily(gen.sch, gen.tl, P.ny, P.nm); let people = 0;
+      const D = Core.computeDaily(gen.sch, gen.tl, Hd.y, Hd.m); let people = 0;
       for (const p of rosterRows()) {
         const ek = normName(normSpace(p.sys) ? p.sys : p.name), s = D.sched.get(ek), t = D.actual.get(ek); if (!s) continue;
         const sv = dnFit(s.days, n); if (!sv.some(x => x != null)) continue;
@@ -34898,8 +35068,8 @@ async function dnRead(files) {
     } else if (gen.sch.length || gen.tl.length) said.push(`The ${gen.sch.length ? 'Schedule' : 'Agent Status Timeline'} is in: drop the ${gen.sch.length ? 'Agent Status Timeline' : 'Schedule'} too for the minutes`);
     if (bad.length) said.push(`${bad.join(', ')}: not an attendance sheet, a Schedule or an Agent Status Timeline, so not read`);
     if (took.length) {
-      state.dedNext = { ...state.dedNext, [P.k]: out };
-      await queueWrite('dednext/' + P.k, () => state.db.doc('dednext/' + P.k).set(out)).catch(e => { said.push(`Not saved (${(e && e.code) || 'error'})`); });
+      state.dedNext = { ...state.dedNext, [Hd.k]: out };
+      await queueWrite('dednext/' + Hd.k, () => state.db.doc('dednext/' + Hd.k).set(out)).catch(e => { said.push(`Not saved (${(e && e.code) || 'error'})`); });
     }
     state.dnMsg = said.length ? said.join('. ') + '.' : '';
     if (done.length) toast(`Read ${plural(took.length, 'file')}: ${done.join(', ')}.`);
@@ -34907,11 +35077,11 @@ async function dnRead(files) {
 }
 function dnClear() {
   if (!dnCan()) return;
-  const { y, m } = mailMonth(), k = ymKey(y, m), prev = state.dedNext[k]; if (!prev) return;
-  const o = { ...state.dedNext }; delete o[k]; state.dedNext = o; state.dnMsg = ''; state.dnGen = { k: '', sch: [], tl: [] };
-  queueWrite('dednext/' + k, () => state.db.doc('dednext/' + k).delete()).catch(() => {});
+  const { y, m } = mailMonth(), P = dedPeriod(y, m), prev = dnDoc(P.head.k); if (!prev) return;
+  const id = prev.k, o = { ...state.dedNext }; delete o[id]; state.dedNext = o; state.dnMsg = ''; state.dnGen = { k: '', sch: [], tl: [] };
+  queueWrite('dednext/' + id, () => state.db.doc('dednext/' + id).delete()).catch(() => {});
   renderEmail();
-  toast(`What was dropped for ${MONTH_LONG[m - 1]}'s workbook is cleared.`, { label: 'Undo', fn: () => { state.dedNext = { ...state.dedNext, [k]: prev }; queueWrite('dednext/' + k, () => state.db.doc('dednext/' + k).set(prev)).catch(() => {}); renderEmail(); } });
+  toast(`What was dropped for ${MONTH_LONG[P.head.m - 1]}'s first days is cleared.`, { label: 'Undo', fn: () => { state.dedNext = { ...state.dedNext, [id]: prev }; queueWrite('dednext/' + id, () => state.db.doc('dednext/' + id).set(prev)).catch(() => {}); renderEmail(); } });
 }
 (() => {
   const card = $('dnCard'), pick = $('dnPicker'); if (!card || !pick) return;
@@ -36317,7 +36487,13 @@ const CAL_STEPS = [
 ];
 /** the month being closed now: the one before this calendar month */
 function closeMonthNow() { const t = new Date(); return t.getMonth() === 0 ? ymKey(t.getFullYear() - 1, 12) : ymKey(t.getFullYear(), t.getMonth()); }
-const calDays = () => ({ ...Object.fromEntries(CAL_STEPS.map(s => [s.id, s.day])), ...((state.calCfg && state.calCfg.days) || {}) });
+/** the deduction email's own day: three days after its period ends (the 16th, for the 12th-to-13th period); the 10th for a calendar month */
+const dedCalDay = () => { const { F, T } = dedDaysSet(); return F === 1 ? 10 : Math.min(28, T + 3); };
+const calDays = () => {
+  const o = { ...Object.fromEntries(CAL_STEPS.map(s => [s.id, s.day])), deduction: dedCalDay(), ...((state.calCfg && state.calCfg.days) || {}) }, { F, T } = dedDaysSet();
+  if (F > 1 && +o.deduction <= T) o.deduction = dedCalDay();   // a day saved before the period ended on the 13th: the email cannot go before its period ends
+  return o;
+};
 function calDue(k, id) {
   if (id === 'done') { const C = state.cycles[k]; if (C && C.deadline) return C.deadline; }
   const [y, m] = k.split('-').map(Number), ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
@@ -37541,8 +37717,9 @@ function syncHead() {
   renderPeriod();
 }
 // ---- the reporting period (D13): every page except Build, where the month comes from the exports
-/** WFM team › Interactions and WFM team › Daily keep their own months (the months that have those files) */
-const wfmOwnTab = () => (state.ws === 'wfm' && (state.wfmTab === 'inter' || state.wfmTab === 'daily') ? state.wfmTab : '');
+/** WFM team › Interactions and WFM team › Daily keep their own months (the months that have those files); so does the deduction
+    email (its month is the one its period ends in: November's runs 12 Oct – 13 Nov) */
+const wfmOwnTab = () => (state.ws !== 'wfm' ? '' : state.wfmTab === 'inter' || state.wfmTab === 'daily' ? state.wfmTab : state.wfmTab === 'emails' && state.mailSub !== 'daily' && mailShared() ? 'ded' : '');
 function dailyKs() { try { const H = state.dhist || {}, hk = new Set(); for (const secs of Object.values(H)) for (const r of ((secs.voice || {}).daily || [])) hk.add(r.date.slice(0, 7)); return [...new Set([...dailyMonths(), ...hk])].sort(); } catch (e) { return []; } }
 function periodList() {
   const r = roleNow(), own = wfmOwnTab();
@@ -37550,6 +37727,7 @@ function periodList() {
   if (state.ws === 'quality') return typeof qMonths === 'function' ? qMonths() : [];
   if (own === 'inter') return Object.keys(state.inter || {}).sort();
   if (own === 'daily') return dailyKs();
+  if (own === 'ded') return dedMonths();
   return wsMonths();
 }
 function periodNow() {
@@ -37558,6 +37736,7 @@ function periodNow() {
   if (state.ws === 'quality') return typeof qMonthNow === 'function' ? qMonthNow() : '';
   if (own === 'inter') return state.interK || '';
   if (own === 'daily') return state.dailyK || '';
+  if (own === 'ded') return dedMonthNow();
   return wsMonthNow();
 }
 function periodFinal(k) { if (roleNow() === 'agent') { const M = state.me, x = M && M.months && M.months[k]; return !!(x && x.status === 'final'); } return monthLocked(k); }
@@ -37582,6 +37761,7 @@ function setPeriod(k) {
   const r = roleNow();
   if (r === 'agent') state.meMonth = k;
   else {
+    if (wfmOwnTab() === 'ded') { state.dedMonth = k; state.updRes = null; renderWs(); return; }   // the deduction email's own month
     if (wsMonths().includes(k)) state.wsMonth = k; if (typeof qMonths === 'function' && qMonths().includes(k)) state.qMonth = k;
     if (Object.keys(state.inter || {}).includes(k)) state.interK = k;   // the same month on every page that has it
     if (dailyKs().includes(k)) { state.dailyK = k; state.dailyKPicked = true; }
@@ -37776,7 +37956,7 @@ const DEPT = [
     '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one. The card says so when the month\'s corrections changed after the file was built.',
     '<b>Refresh data</b> (the round arrows at the top of every page) reads the shared data again at once and counts the month again: use it when a change made on another computer has not shown yet.',
     '<b>Export › Smart-Link attendance</b>: first, <b>Set Smart-Link\'s list from its file</b> once (any of Smart-Link\'s attendance files: its ID and Name columns), so the file holds exactly Smart-Link\'s agents, the SM agents and those on Virgin too. Then the month\'s attendance of those agents in Smart-Link\'s own file (Smart-Link Attendance -Sep 2026.xlsx): each day\'s code, the late minutes and the counts with Smart-Link\'s formulas, and the National IDs, as Smart-Link\'s file has them. It is made from the shared month, with the supervisors\' corrections, and kept in Saved workbooks; send it to Smart-Link yourself.',
-    '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs. The workbook runs from the 13th of the month to the 12th of the next, the Attendance Report Virgin only: for the next month\'s first days, drop the supervisors\' attendance sheets (and that month\'s Schedule and Agent Status Timeline for the minutes) in <b>The days after</b> the month, beside the email.',
+    '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs. The email, its tables and its workbook run from the 12th of the month before to the 13th of the month (November\'s: 12 Oct – 13 Nov; Settings › Deduction period), the Attendance Report Virgin only: for the month\'s first days, drop the supervisors\' attendance sheets (and the month\'s Schedule and Agent Status Timeline for the minutes) in <b>The period</b> box, beside the email.',
     '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction (the Diff); a leave changes the Attendance Report and that day\'s deduction goes. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
     '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
@@ -37787,7 +37967,7 @@ const DEPT = [
     '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Drop your old deck (.pptx) once too: its OTP and final termination numbers are kept as they are, and the exports only add the days after them. For the brands\' slides drop the month\'s Call history export (Top Call Reasons) and the complaints email, the answer to Weekly commercial meeting (complaints logged, resolved on time, still open, Top Complaint Drivers), in step 2; the Tickets export still works without the email; without them those boxes show –. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
-    '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it. The attached workbook runs from the 13th of the month to the 12th of the next (Virgin only in its Attendance Report): <b>The days after</b> the month, beside the email, takes the supervisors\' sheets for the next month\'s first days.',
+    '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it. The email and its workbook run from the 12th of the month before to the 13th of the month (November\'s: 12 Oct – 13 Nov; Virgin only in the Attendance Report): <b>The period</b> box, beside the email, takes the supervisors\' sheets for the month\'s first days.',
     '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction (the Diff); a leave changes the Attendance Report and that day\'s deduction goes. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
     'When a WFM analyst is on vacation, tick their name under <b>Vacation cover</b> on the WFM team page: you then have their tabs (Import, Review, Export, Report builder) until you untick it.',
     '<b>WFM team › Data</b>: export all the data to one file locked with a password, or import such a file. Accounts and passwords are never in it.',

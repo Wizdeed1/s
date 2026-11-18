@@ -102,14 +102,14 @@ function mountMail(where) {
 function mailSrcSync() {
   state.mailKind = 'ded'; state.incK = '';
   if (!isBuilder()) { state.mailSrc = 'shared'; return; }
-  const pick = state.mailPick || (state.ctx || state.wb || !wsMonthNow() ? 'build' : 'shared');
+  const pick = state.mailPick || (state.ctx || state.wb || !dedMonthNow() ? 'build' : 'shared');
   state.mailSrc = pick === 'shared' ? 'shared' : '';
 }
 function renderMailWs() {
-  const k = wsMonthNow();
+  const k = dedMonthNow();   // the deduction email's own month: the newest whose period has ended
   const unsent = canDailyMail() ? (dmUnsent()[0] || { left: [] }).left.length : 0;
   mailSrcSync();
-  $('wfmBar').innerHTML = `${mailSubHtml(unsent)}${mailShared() ? monthSelHtml(k, 'data-wsmonth') : ''}<div class="wsacts"></div>`;
+  $('wfmBar').innerHTML = `${mailSubHtml(unsent)}${mailShared() ? dedMonthSelHtml(k) : ''}<div class="wsacts"></div>`;
   if (mailShared() && !k) { mountMail(false); $('wfmBody').hidden = false; $('wfmBody').innerHTML = emptyCard('No months yet', 'The emails use the month saved in the shared history.'); return; }
   mountMail('wfm'); lastMailHtml = ''; renderEmail();
 }

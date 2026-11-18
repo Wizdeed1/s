@@ -42,7 +42,7 @@ const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
 const REVIEW_TABS = ['checks', 'issues', 'people', 'kpi', 'preview', 'history'];   // what to decide first, then the names, the people, the KPI results, the workbook, the past months
-const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
+const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], dedFrom: 12, dedTo: 13, incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
   step: 'import', tab: 'checks',
@@ -297,6 +297,8 @@ function applySettings(d) {
   if (num(d.inactiveMin, 0, 31) != null) s.inactiveMin = Math.round(d.inactiveMin);
   if (Array.isArray(d.dedBrands)) s.dedBrands = d.dedBrands.filter(x => typeof x === 'string');
   if (Array.isArray(d.dedTeams)) s.dedTeams = d.dedTeams.filter(x => typeof x === 'string');
+  if (num(d.dedFrom, 1, 31) != null) s.dedFrom = Math.round(d.dedFrom);
+  if (num(d.dedTo, 1, 31) != null) s.dedTo = Math.round(d.dedTo);
   if (Array.isArray(d.incFullAdhTeams)) s.incFullAdhTeams = d.incFullAdhTeams.filter(x => typeof x === 'string');
   if (Array.isArray(d.attTplTeams)) s.attTplTeams = d.attTplTeams.filter(x => typeof x === 'string');
   if (typeof d.manager === 'string' && d.manager.trim()) s.manager = d.manager;
@@ -1290,6 +1292,10 @@ function fixLabel(id) { return state.fixText.get(id) || id.replace(/^[a-z]+:/, '
 function computeNotes() {
   const out = [], R = state.attRes, c = state.ctx, set = state.settings, Ml = MON[state.m - 1];
   const add = n => out.push(n);
+  // day codes or headings added as people (an attendance sheet's legend under its names, once read as people): one Remove for all
+  const np = rosterRows().filter(p => Core.notAPerson(p.name));
+  if (np.length) add({ id: 'notpeople', sev: 'warn', group: 'Roster', title: `${plural(np.length, 'entry', 'entries')} in the roster ${np.length === 1 ? 'is' : 'are'} not a person: ${np.slice(0, 8).map(p => `"${normSpace(p.name)}"`).join(', ')}${np.length > 8 ? ' and more' : ''}`,
+    body: 'Day codes or headings from an attendance sheet (its legend under the names), added as people. They are left out of the deduction email and its workbook. Remove them from the roster.', rmNp: true });
   if (R) {
     for (const f of R.fixes) state.fixText.set(f.id, f.text);
     for (const cl of R.clashes) {
@@ -1391,6 +1397,7 @@ function noteItemHtml(n, opts = {}) {
       const u = R.unmatched[n.unm];
       acts = `<div class="acts"><button class="btn sm" data-attadd="${n.unm}">Add to the roster</button><select class="cell" data-attlink="${n.unm}" aria-label="Link ${esc(u.name)} to a person"><option value="">Same person as…</option>${free.map(p => `<option value="${esc(p._id)}">${esc(p.name)}</option>`).join('')}</select></div>`;
     }
+    if (n.rmNp) acts = '<button class="btn sm" data-rmnp="1">Remove them</button>';
     if (n.go) acts = `<button class="btn sm" data-gonote="${esc(n.go)}">${n.go === 'history' ? 'Open the history' : n.go === 'kpi' ? 'Open the KPI results' : n.go === 'dups' ? 'Review duplicates' : 'Review'}</button>`;
     if (n.unlink) acts = `<button class="btn sm ghost" data-unlink="${esc(n.unlink)}">Undo</button>`;
     if (n.idsUndo) acts = `<button class="btn sm ghost" data-idsundo="${esc(n.idsUndo)}">Undo</button>`;
@@ -2179,7 +2186,7 @@ function dedDiff(a, b) {   // deduction snapshot vs now -> changed totals and ch
 }
 
 // ---------------------------------------------------------------- review snapshots (for the final emails)
-const snapId = kind => `${kind}-${kind === 'inc' ? (({ y, m }) => ymKey(y, m))(incMonth()) : state.mailSrc === 'shared' ? (wsMonthNow() || monthKey()) : monthKey()}`;
+const snapId = kind => `${kind}-${kind === 'inc' ? (({ y, m }) => ymKey(y, m))(incMonth()) : state.mailSrc === 'shared' ? (dedMonthNow() || monthKey()) : monthKey()}`;
 async function loadSnaps() {
   if (!state.db) return;
   try { const s = await state.db.collection('snaps').get(); state.snaps = Object.fromEntries(s.docs.map(d => [d.id, d.data()])); if (state.step === 'email') renderEmail(); } catch (e) { /* none */ }
@@ -2635,10 +2642,11 @@ state.incMail = clone(INC_DEFAULTS);
 const ordinal = d => d + (d % 100 >= 11 && d % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][d % 10] || 'th');
 const idText = v => { if (v == null || v === '') return 'NA'; if (typeof v === 'number') return String(Math.round(v)); const id = Core.cleanId(v); return id && String(v).replace(/\D/g, '') === id ? id : (normSpace(v) || 'NA'); };
 const mailShared = () => state.mailSrc === 'shared';
-function mailMonth() { if (mailShared()) { const k = wsMonthNow() || monthKey(); return { y: +k.slice(0, 4), m: +k.slice(5) }; } const r = state.wb && state.wb.report; return r ? { y: r.y, m: r.m } : { y: state.y, m: state.m }; }
+function mailMonth() { if (mailShared()) { const k = dedMonthNow() || monthKey(); return { y: +k.slice(0, 4), m: +k.slice(5) }; } const r = state.wb && state.wb.report; return r ? { y: r.y, m: r.m } : { y: state.y, m: state.m }; }
 function mailDeadlineIso() {
   if (state.mailDeadline) return state.mailDeadline;
-  const { y, m } = state.mailKind === 'inc' ? incMonth() : mailMonth(); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
+  if (state.mailKind !== 'inc') { const { y, m } = mailMonth(); return calDue(dedPeriod(y, m).closeK, 'deduction'); }   // the deduction email's day on the month-close calendar
+  const { y, m } = incMonth(); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
   return `${ny}-${String(nm).padStart(2, '0')}-10`;
 }
 const mailCfg = () => (state.mailKind === 'inc' ? state.incMail : state.mail);
@@ -2734,29 +2742,16 @@ function pageAbsences() {
 }
 function mailModel(stage = state.mailStage) {
   const r = state.wb && state.wb.report, { y, m } = mailMonth(), warns = [];
-  let ded, abs = null;
-  if (mailShared()) {   // the month in the shared history, with the supervisors' attendance corrections
-    const k = ymKey(y, m), rows = liveRows(k), set = state.settings;
-    const inDed = x => set.dedBrands.includes(normSpace(x.brand)) && set.dedTeams.includes(normSpace(x.team));
-    ded = rows.filter(x => inDed(x) && x.ded != null).map(x => ({ id: idText(x.id), name: x.n, total: Math.round(x.ded || 0) }));
-    const ar = rows.map(x => ({ id: idText(x.id), name: x.n, brand: normSpace(x.brand), team: normSpace(x.team), onRoster: true, shown: true, filled: !!x.d, days: [...String(x.d || '')].map((c, i) => (c === 'X' ? i + 1 : 0)).filter(Boolean) })).filter(a => a.days.length && absScopeOk(a));
-    abs = { rows: ar, dates: [...new Set(ar.flatMap(a => a.days))].sort((a, b) => a - b) };
-    if (!rows.length) warns.push(`Nothing is saved for ${MONTH_LONG[m - 1]} ${y} yet.`);
-    else { if (!rows.some(x => x.ded != null)) warns.push('No deduction minutes in this month yet: the WFM team adds them when they build the month from the Schedule and the Agent Status Timeline.'); if (!rows.some(x => x.d)) warns.push('No attendance in this month yet.'); }
-  } else if (r) {
-    ded = r.ded.map(x => ({ id: x.id, name: x.name, total: x.total }));
-    const rows = r.att.filter(a => a.shown && a.days.length && absScopeOk(a));
-    abs = { rows, dates: [...new Set(rows.flatMap(a => a.days))].sort((a, b) => a - b) };
-    if (!r.filled) warns.push('The Attendance sheet in this workbook is empty. Fill it in Excel, save, and drop it again.');
-    const off = rows.filter(a => !a.onRoster); if (off.length) warns.push(`Not on the roster but absent: ${off.map(a => a.name).join(', ')}.`);
-    if (r.y !== state.y || r.m !== state.m) warns.push(`The workbook is for ${MONTH_LONG[r.m - 1]} ${r.y}; the email uses that month.`);
-  } else {
-    ded = (state.model || []).filter(x => x.inDed).map(x => ({ id: idText(x.p.nid), name: x.exp, total: x.ded || 0 }));
-    const pa = pageAbsences();
-    if (pa) { const rows = pa.filter(a => a.days.length && absScopeOk(a)); abs = { rows, dates: [...new Set(rows.flatMap(a => a.days))].sort((a, b) => a - b) }; }
-    else warns.push('Absences come from the supervisors\' attendance files. Drop them on Import, or drop the filled workbook here.');
-    if (!state.model) warns.push('No exports yet, so there are no deduction totals. Drop them on Import first.');
+  // the period's own tables (js/dedcycle.js): the 12th of the month before to the 13th, from the months in the tool, this page or a
+  // dropped monthly report, the box's sheets and the corrections
+  const PM = dedPeriodMail(), P = PM.P, ded = PM.ded, abs = mailShared() || PM.filled ? PM.abs : null;
+  if (!mailShared()) {
+    if (r && !r.filled) warns.push('The Attendance sheet in this workbook is empty. Fill it in Excel, save, and drop it again.');
+    if (r && (r.y !== state.y || r.m !== state.m)) warns.push(`The workbook is for ${MONTH_LONG[r.m - 1]} ${r.y}; the email uses that month.`);
+    if (!abs) warns.push('Absences come from the supervisors\' attendance files. Drop them on Import, or drop the filled workbook here.');
+    if (!r && !state.model) warns.push('No exports yet, so there are no deduction totals. Drop them on Import first.');
   }
+  const off = abs ? abs.rows.filter(a => !a.onRoster) : []; if (off.length) warns.push(`Not on the roster but absent: ${off.map(a => a.name).join(', ')}.`);
   const dedRows = ded.filter(x => state.mail.zeros || x.total > 0);
   const noId = [...dedRows, ...(abs ? abs.rows : [])].filter(x => !/^\d{10}$/.test(x.id)).map(x => x.name);
   if (noId.length) warns.push(`No 10-digit National ID for: ${[...new Set(noId)].join(', ')}. Add it in People${r ? ' (or in the workbook) and build again' : ''}.`);
@@ -2768,8 +2763,8 @@ function mailModel(stage = state.mailStage) {
     else warns.push('No review version saved for this month, so the changes since the review cannot be listed. Copy or download the review email first, or drop the workbook that was sent for review.');
   }
   const attach = mailShared() || r || state.ctx ? { name: `MC Monthly Deduction - ${MON[m - 1]} ${y}.xlsx`, size: null } : null;   // Attendance Report and Monthly Deduction (dedMailData)
-  if (attach) warns.push(...dedPeriodWarns(y, m));   // the workbook runs to the 12th of the next month
-  return { kind: 'ded', stage, y, m, ded: dedRows, dedFull: ded, dedAll: ded.length, abs, warns, changes, snap, attach, deadline: dl[1] ? `${MON[dl[1] - 1]} ${ordinal(dl[2])}` : '', subject: subjectFor('ded', stage) };
+  warns.push(...dedPeriodWarns(y, m, PM));   // what is not in yet for the period, and what was left out
+  return { kind: 'ded', stage, y, m, period: P.label, periodY: P.labelY, ded: dedRows, dedFull: ded, dedAll: ded.length, abs, warns, changes, snap, attach, deadline: dl[1] ? `${MON[dl[1] - 1]} ${ordinal(dl[2])}` : '', subject: subjectFor('ded', stage) };
 }
 const F = 'font-family:Calibri,sans-serif';
 function mailHtmlClassic(md, logoSrc, preview) {
@@ -2784,6 +2779,7 @@ function mailHtmlClassic(md, logoSrc, preview) {
   let b = P(`<b><span lang="EN-GB">${lines(state.mail.greeting).join('<br>')}</span></b>`) + gap;
   b += lines(fin ? state.mail.introFinal : state.mail.intro).map(l => P(`<span lang="EN-GB">${l}</span>`)).join('') + gap;
   if (!fin && md.deadline) b += P(`<span lang="EN-GB">Deadline: ${esc(md.deadline)}.</span>`) + gap;
+  if (md.periodY) b += P(`<span lang="EN-GB">Period: ${esc(md.periodY)}.</span>`) + gap;
   if (fin && md.changes && state.mailChanges) {
     b += red('Changes after the review :') + gap;
     const c = md.changes;
@@ -2792,11 +2788,11 @@ function mailHtmlClassic(md, logoSrc, preview) {
     if (c.abs.length) b += table(['ID', 'Name', 'Absent days (review)', 'Absent days (final)'], c.abs.map(x => td(esc(x.id)) + td(esc(x.name), { left: true }) + td(String(x.before)) + td(String(x.after), { b: true }))) + gap;
   }
   b += red('Conformance Deduction :') + gap;
-  b += md.ded.length ? table(['ID', 'Name', 'Total Deduction (min)'], md.ded.map(x => td(esc(x.id)) + td(esc(x.name), { left: true }) + td(String(x.total)))) : P('No deduction minutes this month.');
+  b += md.ded.length ? table(['ID', 'Name', 'Total Deduction (min)'], md.ded.map(x => td(esc(x.id)) + td(esc(x.name), { left: true }) + td(String(x.total)))) : P('No deduction minutes in this period.');
   if (md.abs) {
     b += gap + red('Absenteeism :') + gap;
-    b += md.abs.rows.length ? table(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(d => `${d}-${M}`)], md.abs.rows.map(a =>
-      td(esc(a.id)) + td(esc(a.name), { left: true }) + td(String(a.days.length), { b: true }) + md.abs.dates.map(d => (a.days.includes(d) ? td('Absent', { b: true, bg: '#FF8B8B' }) : td('&nbsp;'))).join(''))) : P('No absences this month.');
+    b += md.abs.rows.length ? table(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(dedDayLabel)], md.abs.rows.map(a =>
+      td(esc(a.id)) + td(esc(a.name), { left: true }) + td(String(a.days.length), { b: true }) + md.abs.dates.map(d => (a.days.includes(d) ? td('Absent', { b: true, bg: '#FF8B8B' }) : td('&nbsp;'))).join(''))) : P('No absences in this period.');
   }
   b += gap + lines(state.mail.sign).map(l => P(`<span lang="EN-GB" style="font-size:10.0pt;font-family:Arial,sans-serif;color:black">${l}</span>`)).join('');
   if (logoSrc && state.mailLogo) b += gap + logoTag(logoSrc);
@@ -2805,6 +2801,7 @@ function mailHtmlClassic(md, logoSrc, preview) {
 function mailText(md) {
   const M = MON[md.m - 1], fin = md.stage === 'final', out = [state.mail.greeting, '', fin ? state.mail.introFinal : state.mail.intro, ''];
   if (!fin && md.deadline) out.push(`Deadline: ${md.deadline}.`, '');
+  if (md.periodY) out.push(`Period: ${md.periodY}.`, '');
   if (fin && md.changes && state.mailChanges) {
     out.push('Changes after the review :', '');
     if (!md.changes.ded.length && !md.changes.abs.length) out.push('No changes after the review.', '');
@@ -2812,11 +2809,11 @@ function mailText(md) {
     if (md.changes.abs.length) { out.push(['ID', 'Name', 'Absent days (review)', 'Absent days (final)'].join('\t')); md.changes.abs.forEach(x => out.push([x.id, x.name, x.before, x.after].join('\t'))); out.push(''); }
   }
   out.push('Conformance Deduction :', '');
-  if (md.ded.length) { out.push(['ID', 'Name', 'Total Deduction (min)'].join('\t')); md.ded.forEach(x => out.push([x.id, x.name, x.total].join('\t'))); } else out.push('No deduction minutes this month.');
+  if (md.ded.length) { out.push(['ID', 'Name', 'Total Deduction (min)'].join('\t')); md.ded.forEach(x => out.push([x.id, x.name, x.total].join('\t'))); } else out.push('No deduction minutes in this period.');
   if (md.abs) {
     out.push('', 'Absenteeism :', '');
-    if (md.abs.rows.length) { out.push(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(d => `${d}-${M}`)].join('\t')); md.abs.rows.forEach(a => out.push([a.id, a.name, a.days.length, ...md.abs.dates.map(d => (a.days.includes(d) ? 'Absent' : ''))].join('\t'))); }
-    else out.push('No absences this month.');
+    if (md.abs.rows.length) { out.push(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(dedDayLabel)].join('\t')); md.abs.rows.forEach(a => out.push([a.id, a.name, a.days.length, ...md.abs.dates.map(d => (a.days.includes(d) ? 'Absent' : ''))].join('\t'))); }
+    else out.push('No absences in this period.');
   }
   out.push('', state.mail.sign);
   return out.join('\r\n');
@@ -2884,20 +2881,20 @@ function mailHtml(md, logoSrc, preview) {
     if (c.ded.length) b += cardTable(['ID', 'Name', 'Review (min)', 'Final (min)'], c.ded.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.before) }, { t: String(x.after), b: true }]));
     if (c.abs.length) b += (c.ded.length ? '<p class="MsoNormal" style="margin:0">&nbsp;</p>' : '') + cardTable(['ID', 'Name', 'Absent days (review)', 'Absent days (final)'], c.abs.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.before) }, { t: String(x.after), b: true }]));
   }
-  b += cardH('Conformance Deduction', md.ded.length ? plural(md.ded.length, 'person', 'people') : '');
-  b += md.ded.length ? cardTable(['ID', 'Name', 'Total Deduction (min)'], md.ded.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.total), b: true }])) : cardP('No deduction minutes this month.');
+  b += cardH('Conformance Deduction', [md.period, md.ded.length ? plural(md.ded.length, 'person', 'people') : ''].filter(Boolean).join(' · '));
+  b += md.ded.length ? cardTable(['ID', 'Name', 'Total Deduction (min)'], md.ded.map(x => [{ t: esc(x.id) }, { t: esc(x.name), left: true }, { t: String(x.total), b: true }])) : cardP('No deduction minutes in this period.');
   let width = 600;
   if (md.abs) {
-    b += cardH('Absenteeism', md.abs.rows.length ? plural(md.abs.rows.length, 'person', 'people') : '');
+    b += cardH('Absenteeism', [md.period, md.abs.rows.length ? plural(md.abs.rows.length, 'person', 'people') : ''].filter(Boolean).join(' · '));
     if (md.abs.rows.length) {   // one line a cell: each column as wide as its longest text, a day 36pt ("Absent", "30-Oct"); the card grows to fit
       const L = md.abs.rows, longest = f => Math.max(...L.map(a => String(f(a) || '').length));
       const cols = [{ w: Math.max(56, Math.ceil(longest(a => a.id) * 5.4) + 12), pad: 6 }, { w: Math.max(110, Math.ceil(longest(a => a.name) * 5.2) + 14), pad: 7, left: true }, { w: 64, pad: 5 }, ...md.abs.dates.map(() => ({ w: 36, pad: 3 }))];
-      const G = cardGrid(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(d => `${d}-${M}`)], L.map(a => [{ t: esc(a.id) }, { t: esc(a.name) }, { t: String(a.days.length), b: true }, ...md.abs.dates.map(d => (a.days.includes(d) ? { t: 'Absent', absent: true } : { t: '&nbsp;' }))]), cols);
+      const G = cardGrid(['ID', 'Name', 'Total Absent', ...md.abs.dates.map(dedDayLabel)], L.map(a => [{ t: esc(a.id) }, { t: esc(a.name) }, { t: String(a.days.length), b: true }, ...md.abs.dates.map(d => (a.days.includes(d) ? { t: 'Absent', absent: true } : { t: '&nbsp;' }))]), cols);
       b += G.html; width = Math.max(600, G.width + 84 + 2);
-    } else b += cardP('No absences this month.');
+    } else b += cardP('No absences in this period.');
   }
   b += cardSign(state.mail.sign);
-  return cardMail({ eyebrow: `MC Workforce · ${fin ? 'Final' : 'For review'}`, title: `Monthly Deduction · ${MONTH_LONG[md.m - 1]} ${md.y}`, body: b, foot1: 'Member Care · Workforce Management', foot2: `Conformance deduction and absenteeism · ${M} ${md.y}`, logo: cardLogo(logoSrc), preview, width });
+  return cardMail({ eyebrow: `MC Workforce · ${fin ? 'Final' : 'For review'}`, title: `Monthly Deduction · ${MONTH_LONG[md.m - 1]} ${md.y}`, body: b, foot1: 'Member Care · Workforce Management', foot2: `Conformance deduction and absenteeism · ${md.periodY || `${M} ${md.y}`}`, logo: cardLogo(logoSrc), preview, width });
 }
 /** the incentive email (the classic one stays one tick away) */
 function incMailHtml(md, logoSrc, preview) {
@@ -2966,8 +2963,8 @@ async function incMailBytes() {
   state.ctx.logo = await xlLogo();
   return WriterInc.build(state.ctx, { model: incModel(), noIds: true });
 }
-/** the deduction email's workbook (Writer2.dedMail): the 13th of the month to the 12th of the next, the deduction brands' people in
-    the Attendance Report and the deduction scope in the Monthly Deduction (js/dedcycle.js) */
+/** the deduction email's workbook (Writer2.dedMail): the period (the 12th of the month before to the 13th of the month), the deduction
+    brands' people in the Attendance Report and the deduction scope in the Monthly Deduction (js/dedcycle.js) */
 function dedMailData() { return dedPeriodData(); }
 function snapNow(kind) {
   if (kind === 'ded') { const md = mailModel('review'); saveSnap('ded', { ded: md.dedFull, abs: md.abs ? md.abs.rows.map(a => ({ id: a.id, name: a.name, days: a.days })) : null }); }
@@ -2978,11 +2975,11 @@ function markSent(how) {
   if (state.mailStage === 'review') snapNow(state.mailKind);
   if (state.mailStage === 'final' && state.mailKind === 'inc' && !state.incWb && state.ctx) saveMonthToHistory('final incentive email').then(k => { if (k) setTimeout(() => toast(`${ymLabel(k)} added to the history`), 3600); });
   if (state.mailKind === 'inc' && state.incK) { const im = incMonth(); incMailSent(ymKey(im.y, im.m), state.mailStage, how); }   // Supervisors › Emails says it was prepared
-  if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(ymKey(mm.y, mm.m), 'deduction'); }   // the month-close step
+  if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(dedPeriod(mm.y, mm.m).closeK, 'deduction'); }   // the month-close step: the month being closed (October's, for November's 12 Oct – 13 Nov)
 }
 function renderEmail() {
   if (mailShared() && state.mailKind !== 'ded') state.mailKind = 'ded';
-  const eSig = `${state.mailKind}|${state.mailStage}|${state.mailSrc || ''}|${state.mailKind === 'inc' ? state.incK || monthKey() : state.mailSrc ? wsMonthNow() : monthKey()}`;   // another email: editing the old preview stops
+  const eSig = `${state.mailKind}|${state.mailStage}|${state.mailSrc || ''}|${state.mailKind === 'inc' ? state.incK || monthKey() : state.mailSrc ? dedMonthNow() : monthKey()}`;   // another email: editing the old preview stops
   if (state.mailEditOn && state.mailEditSig !== eSig) { state.mailEditOn = false; state.mailEditDirty = false; $('mEdit').checked = false; $('mEditNote').hidden = true; }
   state.mailEditSig = eSig;
   const cm = curMail(), md = cm.md, inc = cm.inc, fin = cm.stage === 'final', cfg = mailCfg();
@@ -3020,7 +3017,7 @@ function renderEmail() {
   $('mAttachWrap').hidden = !md.attach; $('mAttachLbl').textContent = md.attach ? `Attach ${md.attach.name} to the .eml` : '';
   $('attBtn').hidden = !md.attach; $('attBtn').title = md.attach ? `Save ${md.attach.name}` : '';
   $('mailWarns').innerHTML = md.warns.map(x => `<li>${esc(x)}</li>`).join('');
-  renderDedNext();   // The days after the month (the workbook's 13th to 12th)
+  renderDedNext();   // the period (the 12th of the month before to the 13th) and the box for the month's first days
   const to = cm.to, cc = cm.cc;
   const rowsInfo = inc ? (md.d ? `${plural(md.d.att.length, 'person', 'people')} in the attachment${fin && md.changes ? ` · ${plural(md.changes.length, 'person', 'people')} changed since the review${md.changes.length ? ' (see Compared with the review; not listed in the email)' : ''}` : ''}` : 'No data yet')
     : `${plural(md.ded.length, 'person', 'people')} in Conformance Deduction${md.abs ? ` · ${plural(md.abs.rows.length, 'person', 'people')} absent` : ''}${fin && md.changes ? ` · ${plural(md.changes.ded.length + md.changes.abs.length, 'change')} since the review` : ''}`;
@@ -3748,7 +3745,7 @@ function fillSettings() {
   $('month').value = `${state.y}-${String(state.m).padStart(2, '0')}`;
   $('monthHelp').textContent = state.monthManual ? 'Set by you. Files dropped later will not change it.' : 'Detected from the exports. Change it if a file covers more than one month.';
   $('target').value = +(s.target * 100).toFixed(2); $('floor').value = +(s.floor * 100).toFixed(2); $('inactiveMin').value = s.inactiveMin; $('hideNoSched').checked = s.hideNoSched !== false;
-  chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES); chips($('attTplTeams'), DEP_ORDER, 'attTplTeams', DEP_NAMES);
+  chips($('dedBrands'), BRANDS, 'dedBrands'); chips($('dedTeams'), DEP_ORDER, 'dedTeams', DEP_NAMES); dedPerFill(); chips($('incFull'), DEP_ORDER, 'incFullAdhTeams', DEP_NAMES); chips($('attTplTeams'), DEP_ORDER, 'attTplTeams', DEP_NAMES);
   $('mgrName').value = s.manager; $('mgrTitle').value = s.managerTitle; renderLogo();
   syncTheme();
   const u = Auth.user(); $('setSaved').textContent = state.db ? savedWhere() : 'Not saved in this view';
@@ -3939,6 +3936,16 @@ $('hideNoSched').addEventListener('change', e => { state.settings.hideNoSched = 
 for (const [id, key, div, lo, hi] of [['target', 'target', 100, 0, 100], ['floor', 'floor', 100, 0, 100], ['inactiveMin', 'inactiveMin', 1, 0, 31]]) {
   $(id).addEventListener('change', e => { const v = parseFloat(e.target.value); if (!Number.isFinite(v) || v < lo || v > hi) { fillSettings(); toast(`Use a number from ${lo} to ${hi}.`); return; } state.settings[key] = key === 'inactiveMin' ? Math.round(v) : v / div; refresh(); persistSettings(); });
 }
+/** Settings › Deduction period: the two days, and in words what a month's file runs (November's: 12 Oct – 13 Nov) */
+function dedPerFill() {
+  const s = state.settings, D = dedDaysSet(), t = new Date(), P = dedPeriod(t.getFullYear(), t.getMonth() + 1);
+  if (document.activeElement !== $('dedFrom')) $('dedFrom').value = D.F; if (document.activeElement !== $('dedTo')) $('dedTo').value = D.T;
+  $('dedPerHelp').textContent = `${MONTH_LONG[P.m - 1]} ${P.y}'s deduction email and workbook: ${P.label} (${plural(P.n, 'day')}). ${dedJoinText()} Default 12 to 13.${s.dedFrom === 1 ? ' 1 as the first day is the month\'s own 1st.' : ''}`;
+}
+for (const id of ['dedFrom', 'dedTo']) $(id).addEventListener('change', e => {
+  const v = Math.round(+e.target.value); if (!Number.isFinite(v) || v < 1 || v > 31) { dedPerFill(); toast('Use a day from 1 to 31.'); return; }
+  state.settings[id] = v; dedPerFill(); refresh(); persistSettings(); if (state.ws === 'wfm') renderWs();
+});
 for (const [id, key] of [['dedBrands', 'dedBrands'], ['dedTeams', 'dedTeams']]) $(id).addEventListener('change', () => { state.settings[key] = [...$(id).querySelectorAll('input:checked')].map(i => i.value); refresh(); persistSettings(); });
 $('theme').addEventListener('click', e => { const f = e.target.closest('button[data-f]'); if (f) setTheme(f.dataset.f); });
 $('resetSet').addEventListener('click', () => { state.settings = clone(DEFAULTS); if (state.monthManual) { state.monthManual = false; const g = Core.guessMonth(allDets()); state.y = g.y; state.m = g.m; } fillSettings(); refresh(); persistSettings(); toast('Settings reset to the defaults'); });
@@ -4018,8 +4025,13 @@ noteOn('click', e => {
   if (b.dataset.unpick) { state.attPicks.delete(b.dataset.unpick); persistAtt(); refresh(); renderNotes(); return; }
   if (b.dataset.undo) { state.attUndo.add(b.dataset.undo); persistAtt(); refresh(); renderNotes(); toast('Undone. The file\'s own value is used.', { label: 'Redo', fn: () => { state.attUndo.delete(b.dataset.undo); persistAtt(); refresh(); renderNotes(); } }); return; }
   if (b.dataset.redo) { state.attUndo.delete(b.dataset.redo); persistAtt(); refresh(); renderNotes(); return; }
+  if (b.dataset.rmnp) {
+    const gone = removePeople(rosterRows().filter(p => Core.notAPerson(p.name)).map(p => p._id)); renderNotes();
+    toast(`Removed ${plural(gone.length, 'entry', 'entries')} that ${gone.length === 1 ? 'was' : 'were'} not a person.`, { label: 'Undo', fn: () => { restorePeople(gone); refresh(); renderNotes(); } }); return;
+  }
   if (b.dataset.attadd != null && state.attRes) {
     const u = state.attRes.unmatched[+b.dataset.attadd]; if (!u) return;
+    if (Core.notAPerson(u.name)) { toast(`"${normSpace(u.name)}" is a day code or a heading from the sheet, not a person: it is not added.`); return; }
     const brand = BRANDS.find(x => normName(x) === normName(u.team)) || 'Virgin', team = DEP_ORDER.find(x => normName(x) === normName(u.dep)) || 'CC';
     const id = addPerson({ name: normSpace(u.name), nid: Core.cleanId(u.idRaw) || '', brand, team });
     renderNotes(); toast(`Added ${u.name} (${brand} · ${team}). Check them in People.`, { label: 'Undo', fn: () => { removePeople([id]); renderNotes(); } }); return;

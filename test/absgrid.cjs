@@ -1,7 +1,8 @@
 // The deduction email's Absenteeism table (card look) in the browser, made-up people only: with 26 people absent over the whole
 // month and long names, every cell stays on one line (no "Abse/nt", no name over three lines): fixed column widths, each row the
 // height of one line, nothing overflowing its cell, each cell's colour as bgcolor too (Outlook paints the whole cell), and the card
-// as wide as the table needs; with a few absences it stays 600pt.
+// as wide as the table needs; with a few absences it stays 600pt. The period is set to the calendar month (Settings › Deduction
+// period: 1 to 31) and September chosen, for a table of 30 days.
 // Usage: node test/absgrid.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -18,7 +19,7 @@ let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? '✓ ' : '�
   const mail = (n, every) => p.evaluate(([n, every]) => {
     const M = window.__mc, S = M.state, first = ['Abdulrahman', 'Mohammed', 'Khaled', 'Nawaf', 'Saleh', 'Fahad', 'Ayman', 'Thamer'], last = ['Testname', 'Samplename', 'Exampleson'];
     const rows = Array.from({ length: n }, (_, i) => { let d = ''; for (let k = 1; k <= 30; k++) d += every ? ((k * 7 + i * 3) % 11 === 0 ? 'X' : k % 7 === 4 ? 'O' : 'A') : (k === 3 + i ? 'X' : 'A'); return { id: String(1100000001 + i * 97), n: `${first[i % 8]} ${['Abdulaziz', 'Ali', 'Waleed'][i % 3]} ${last[i % 3]}${i % 5 === 0 ? ' Alqahtani' : ''}`, brand: 'Virgin', team: 'CC', d, ded: 10 + i }; });
-    S.history['2026-09'] = { y: 2026, m: 9, rows, tool: true, at: new Date().toISOString() }; S.histVer++; S.wsMonth = '2026-09'; S.mailSrc = 'shared'; S.mailKind = 'ded'; S.mailStage = 'review'; S.mail.classic = false;
+    S.history['2026-09'] = { y: 2026, m: 9, rows, tool: true, at: new Date().toISOString() }; S.histVer++; S.wsMonth = '2026-09'; S.dedMonth = '2026-09'; S.settings.dedFrom = 1; S.settings.dedTo = 31; S.mailSrc = 'shared'; S.mailKind = 'ded'; S.mailStage = 'review'; S.mail.classic = false;
     return M.curMail().html('', true);
   }, [n, every]);
   const look = async (html, file, vw) => {

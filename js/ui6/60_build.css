@@ -228,7 +228,7 @@ b.bad, .astats b.bad { color: var(--bad); }
 #mailFrame { width: 100%; border: 0; background: #fff; min-height: 420px; display: block; }
 .revstate { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; display: grid; gap: 6px; justify-items: start; }
 .revstate h3 { font-size: 13px; }
-/* The days after the month (js/dedcycle.js): where each part of the workbook's 13th to 12th comes from, and the drop box */
+/* The period box (js/dedcycle.js): where each part of the period (the 12th of the month before to the 13th) comes from, and the drop box */
 .dnext { display: grid; gap: 10px; }
 .dnext h2 { margin: 0; }
 .dnext .hint { margin: 0; }

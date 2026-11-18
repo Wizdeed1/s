@@ -74,4 +74,29 @@ ok('a roster with a "Joining date" column gives each person their joining date (
   assert.deepEqual(R.data.map(x => [x.name, x.joined]), [['Lina A.', '2026-01-18'], ['Omar B.', '2026-03-19'], ['Sara C.', '']]);
 });
 
+ok('an attendance sheet with its legend under the names, and another table below: only the people are read (synthetic, Nov 2026)', () => {
+  const days = Array.from({ length: 13 }, (_, i) => new Date(Date.UTC(2026, 10, i + 1)));
+  const row = (id, name, team, dep, f) => [id, name, team, dep, ...days.map((_, i) => f(i + 1))];
+  const rows = [['ID', 'Name', 'Team', 'Dep', ...days],
+    row('1000000001', 'Lina A.', 'Virgin', 'CC', d => (d === 3 ? 'SL' : [6, 7].includes(d) ? 'OFF' : 'Attend')),
+    row('1000000002', 'Omar B.', 'Virgin', 'CC', d => (d === 4 ? 'Absent' : [6, 7].includes(d) ? 'OFF' : 'Attend')),
+    row('1000000003', 'Sara C.', 'Friendi', 'CC', d => ([6, 7].includes(d) ? 'OFF' : 'Attend')),
+    [],
+    // the legend under the names, a second table beside it (its heading row, then its people in the day columns), as a supervisor's sheet had
+    ['', 'Absent', '', '', '', '', 'Attend', 'Rami D.', 'Friendi', 'CT'],
+    ['', 'After', '', '', '', '', 'ID', 'Name', 'Team', 'Dep'],
+    ['', 'AL', '', '', '', '', 'Attend', 'Hadi E.', 'Friendi', 'CT'],
+    ['', 'Attend', '', '', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'],
+    ['', 'compassion leave', '', '', '', '', 'Attend', 'Muna F.', 'Virgin', 'CT'],
+    ['', 'Exam'], ['', 'OFF'], ['', 'SL'], ['', 'Unpaid'], ['', 'Half AL'], ['', 'EID'], ['', 'Paternity leave']];
+  const d = Core.analyzeTables('Attendance Nov 2026.xlsx', [{ name: 'Attendance', state: 'visible', rows }]), A = (d || []).find(x => x.kind === 'attendance');
+  assert.ok(A, 'read as an attendance sheet');
+  assert.deepEqual(A.data.people.map(p => p.name), ['Lina A.', 'Omar B.', 'Sara C.'], 'the legend and the other table are not people');
+  for (const w of ['Absent', 'After', 'AL', 'Attend', 'compassion leave', 'Exam', 'OFF', 'SL', 'Unpaid', 'Name', 'Sun']) assert.ok(Core.notAPerson(w), w);
+  for (const w of ['Lina A.', 'Eid Mohammed', 'Ali', 'Sami Al Examiner']) assert.ok(!Core.notAPerson(w), w);
+  // a roster sheet with the same legend under its names
+  const R = (Core.analyzeTables('roster.xlsx', [{ name: 'Roster', rows: [['Name', 'National ID', 'Brand', 'Team'], ['Lina A.', '1000000001', 'Virgin', 'CC'], ['OFF', '', '', ''], ['Attend', '', '', ''], ['compassion leave', '', '', '']] }]) || []).find(x => x.kind === 'roster');
+  assert.deepEqual(R.data.map(x => x.name), ['Lina A.'], 'nor in a roster');
+});
+
 console.log(`${n} checks passed`);

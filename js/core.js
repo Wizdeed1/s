@@ -20,6 +20,20 @@ function cleanId(v) {
   s = s.replace(/\D/g, '');
   return s.length >= 6 ? s : '';
 }
+/** a name cell that is a day code, a legend line or a column heading, never a person ("Absent", "AL", "compassion leave", "OFF",
+    "Attend", "After", "Name", "Sun"): a sheet's legend written under its names was once read as people, and added to the roster */
+const NOT_A_PERSON = new RegExp(`^(${[
+  'attend(ed|ance)?', 'present', 'work(ing)?', 'off', 'day ?off', 'off ?day', 'rest( day)?', 'weekend', 'w/?o',
+  'al', 'a/l', 'al leaves?', 'annual( leaves?)?', 'vacation', 'half( day)?( al| sl| leave)?', 'sl', 's/l', 'sl leaves?', 'sick( leaves?)?',
+  'absent', 'absence', 'abs', 'no ?show', 'unpaid( leaves?)?', 'upl', 'lwp', 'exams?( leaves?)?', 'eid( leaves?| holidays?| off)?',
+  'national day( leaves?| off| holiday)?', 'founding day( leaves?| off)?', 'compassion(ate)?( leaves?)?', 'bereavement',
+  'paternity( leaves?)?', 'maternity( leaves?)?', 'ml', 'marriage( leaves?)?', 'leaves?', '(public )?holidays?', 'wfh', 'training',
+  'late', 'tard(y|iness)', 'exceptions?', 'totals?', 'grand total', 'sum', 'count', 'legend', 'key', 'codes?', 'notes?', 'remarks?',
+  'comments?', 'after', 'before', 'id', 'national id', 'names?', 'team', 'dep', 'dept', 'department', 'brand', 'dates?', 'days?', 'month',
+  'sun(day)?', 'mon(day)?', 'tue(s|sday)?', 'wed(nesday)?', 'thu(rs|rsday)?', 'fri(day)?', 'sat(urday)?'].join('|')})$`, 'i');
+function notAPerson(v) { const t = normSpace(v).toLowerCase().replace(/[.:]+$/, '').trim(); return !t || NOT_A_PERSON.test(t); }
+/** a column heading in a day cell: the header of another table further down the sheet */
+const HEADING_CELL = /^(id|national id|name|team|dep|dept|department|brand)$/i;
 const daysIn = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 const EPOCH = Date.UTC(1899, 11, 30);
 const serialToDate = n => new Date(EPOCH + Math.round(n * 86400000));
@@ -432,7 +446,7 @@ function parseRoster(rows) {
   const h = headerRow(rows, r => r.some(x => /^(name|member care champions|agent name)$/i.test(x)) && r.some(x => /national\s*id|^id$/i.test(x)));
   if (h < 0) return null;
   const hdr = rows[h].map(cellStr); const ic = infoCols(hdr, hdr.length);
-  const body = rows.slice(h + 1).filter(r => r && !isBlank(r[ic.name]) && !/^total/i.test(cellStr(r[ic.name])));
+  const body = rows.slice(h + 1).filter(r => r && !isBlank(r[ic.name]) && !/^total/i.test(cellStr(r[ic.name])) && !notAPerson(r[ic.name]));
   const g = groupCols(hdr, body, ic.groups);
   const col = re => hdr.findIndex(x => re.test(normSpace(x)));
   const em = col(/^(e-?mail|email address|work email)$/i), sp = col(/^(supervisor|team lead(er)?|leader|spv|direct (manager|leader))$/i), bs = col(/^(incentive base|base|incentive base \(sr\))$/i);
@@ -459,7 +473,10 @@ function parseGrid(rows) {
   if ((rows[h + 1] || []).some(v => /sched|actual|conformance|diff\s*\(min/i.test(cellStr(v)))) return { kind: 'deductionSheet' };
   const ic = infoCols(hdr, first);
   if (ic.name < 0 && ic.id < 0) return null;
-  const body = rows.slice(h + 1).filter(r => r && (!isBlank(r[ic.name]) || cleanId(r[ic.id])) && !/^(total|grand total|sum)/i.test(cellStr(r[ic.name])));
+  const idOk = r => ic.id >= 0 && cleanId(r[ic.id]).length >= 8;
+  const body = rows.slice(h + 1).filter(r => r && (!isBlank(r[ic.name]) || cleanId(r[ic.id])) && !/^(total|grand total|sum)/i.test(cellStr(r[ic.name]))
+    && !(ic.name >= 0 && !isBlank(r[ic.name]) && notAPerson(r[ic.name]) && !idOk(r))   // a legend under the names (OFF, Attend, AL, compassion leave)
+    && !r.some((v, c) => c >= first && dates[c] && HEADING_CELL.test(cellStr(v))));   // the heading row of another table below
   const g = groupCols(hdr, body, ic.groups);
   let words = 0, pct = 0;
   for (const r of body.slice(0, 80)) for (let c = first; c < dates.length; c++) {
@@ -511,7 +528,7 @@ function parseDayBlocks(rows) {
   const people = [];
   for (let i = h + 1; i < rows.length; i++) {
     const r = rows[i] || []; if (!r.some(v => !isBlank(v))) break;
-    const nm = normSpace(r[nameCol]); if (!/\p{L}/u.test(nm) || /^(total|grand total|sum|average)/i.test(nm)) continue;
+    const nm = normSpace(r[nameCol]); if (!/\p{L}/u.test(nm) || /^(total|grand total|sum|average)/i.test(nm) || notAPerson(nm)) continue;
     const cells = blocks.map(b => [b.d, r[b.att] ?? null]);
     if (!cells.some(([, v]) => !isBlank(v))) continue;
     const pv = blocks.map(b => (b.pct >= 0 ? r[b.pct] : null)).filter(v => typeof v === 'number' && Number.isFinite(v));
@@ -1091,7 +1108,7 @@ function buildModel(dets, settings, overrides = {}) {
   };
 }
 
-return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, cleanDate, daysIn, ymdSerial, weekday, colName, ref, round6,
+return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, notAPerson, cleanDate, daysIn, ymdSerial, weekday, colName, ref, round6,
   readZip, writeZip, crc32, readXlsx, readXlsb, parseCSV, parseHeaderDate, adhVal, ahtSeconds, normAtt, attCat, normDep, normTeam, normStatus, parseAttTemplate, ATT_TPL_MARK,
   analyzeFile, readTables, analyzeTables, parseDayBlocks, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
 })();

@@ -273,11 +273,12 @@ function rowsByPid(k) {
   }
   matchMemo.set(k, { sig, map: out }); return out;
 }
-/** every row of a draft month as it would be frozen today (rows nobody in the roster matches stay as saved) */
+/** every row of a draft month as it would be frozen today (rows nobody in the roster matches stay as saved); never a row named
+    after a day code or a heading ("Absent", "OFF": an attendance sheet's legend once read as people) */
 function liveRows(k) {
   const D = monthData(k); if (!D) return [];
   const map = rowsByPid(k), byRow = new Map(); for (const [pid, r] of map) byRow.set(rowKey(r), r);
-  return D.rows.map(r => byRow.get(rowKey(r)) || r);
+  return D.rows.filter(r => !(normSpace(r.n) && Core.notAPerson(r.n))).map(r => byRow.get(rowKey(r)) || r);
 }
 function wsPeople() {
   const r = roleNow(), all = rosterRows();
@@ -810,6 +811,7 @@ window.addEventListener('resize', () => { const n = innerWidth < 640; if (n !== 
 for (const id of ['teamBar', 'resultsBar', 'wfmBar', 'cycleBar']) $(id).addEventListener('change', e => {
   const t = e.target;
   if (t.matches('[data-wsmonth]')) { state.wsMonth = t.value; renderWs(); }
+  if (t.matches('[data-dedmonth]')) { state.dedMonth = t.value; state.updRes = null; renderWs(); }   // the deduction email's own month
   if (t.matches('[data-wsspv]')) { state.wsSpv = t.value; renderWs(); }
   if (t.matches('[data-wfmm]')) { state.wfmMetric = t.value; renderWs(); }
   if (t.matches('[data-wfmg]')) { state.wfmGroup = t.value; renderWs(); }

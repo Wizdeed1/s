@@ -19,7 +19,13 @@ const CAL_STEPS = [
 ];
 /** the month being closed now: the one before this calendar month */
 function closeMonthNow() { const t = new Date(); return t.getMonth() === 0 ? ymKey(t.getFullYear() - 1, 12) : ymKey(t.getFullYear(), t.getMonth()); }
-const calDays = () => ({ ...Object.fromEntries(CAL_STEPS.map(s => [s.id, s.day])), ...((state.calCfg && state.calCfg.days) || {}) });
+/** the deduction email's own day: three days after its period ends (the 16th, for the 12th-to-13th period); the 10th for a calendar month */
+const dedCalDay = () => { const { F, T } = dedDaysSet(); return F === 1 ? 10 : Math.min(28, T + 3); };
+const calDays = () => {
+  const o = { ...Object.fromEntries(CAL_STEPS.map(s => [s.id, s.day])), deduction: dedCalDay(), ...((state.calCfg && state.calCfg.days) || {}) }, { F, T } = dedDaysSet();
+  if (F > 1 && +o.deduction <= T) o.deduction = dedCalDay();   // a day saved before the period ended on the 13th: the email cannot go before its period ends
+  return o;
+};
 function calDue(k, id) {
   if (id === 'done') { const C = state.cycles[k]; if (C && C.deadline) return C.deadline; }
   const [y, m] = k.split('-').map(Number), ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;

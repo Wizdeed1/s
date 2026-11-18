@@ -129,7 +129,7 @@ function daysOf(line, ctx) {
   take(new RegExp(`\\b(\\d{1,2})${ORD}[\\s-]*(?:of\\s+)?([a-z]{3,9})\\.?(?:[\\s,-]+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[2]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[1]); return d && { days: [d] }; });
   take(new RegExp(`\\b([a-z]{3,9})\\.?[\\s-]+(\\d{1,2})${ORD}(?:[,\\s-]+(\\d{4}))?\\b`, 'g'), a => { const mo = monOf(a[1]); if (!mo) return null; const d = dayOk(Y(mo, a[3]), mo, +a[2]); return d && { days: [d] }; });   // Oct 27, Oct-27
   // no month: "from 27 to 29", "on 27, 28 and 31", "on the 10th", "10th"
-  const here = n => dayOk(ctx.y, ctx.m, +n);
+  const here = n => { const t = ctx.dayMonth ? ctx.dayMonth(+n) : ctx; return dayOk(t.y, t.m, +n); };   // a day with no month: the month that holds it (ctx.dayMonth: the deduction period's)
   take(new RegExp(`\\bfrom\\s+(?:the\\s+)?(\\d{1,2})${ORD}\\s*(?:-|to|till|until|through)\\s*(?:the\\s+)?(\\d{1,2})${ORD}\\b`, 'g'), a => { const d1 = here(a[1]), d2 = here(a[2]); return d1 && d2 && d1 <= d2 && { days: span(d1, d2), wide: true }; });
   take(new RegExp(`\\bon\\s+(?:the\\s+)?(\\d{1,2})${ORD}((?:\\s*(?:,|&|and)\\s*(?:the\\s+)?\\d{1,2}${ORD})*)\\b`, 'g'), a => { const L = [a[1], ...((a[2] || '').match(/\d{1,2}/g) || [])].map(here); return L.every(Boolean) && { days: L }; });
   take(/\b(\d{1,2})(?:st|nd|rd|th)\b/g, a => { const d = here(a[1]); return d && { days: [d] }; });

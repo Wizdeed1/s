@@ -48,6 +48,7 @@ absgrid|$PAGE|$OUT
 weekly|$PAGE|$OUT
 attupd|$PAGE|$OUT
 dedcycle|$PAGE|$OUT
+legend|$PAGE|$EX|$OUT
 perfrev|$PAGE|$OUT
 viewas|$PAGE|$OUT
 showcase|$PAGE|$SHOW|$OUT

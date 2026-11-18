@@ -99,4 +99,25 @@ ok('an attendance sheet with its legend under the names, and another table below
   assert.deepEqual(R.data.map(x => x.name), ['Lina A.'], 'nor in a roster');
 });
 
+ok('the teams\' own layouts (synthetic): 1–13 Nov then 14–31 Oct with the codes under the names; a row of weekdays under the dates; two tables on one tab', () => {
+  const D = (m, d) => new Date(Date.UTC(2026, m - 1, d)), nov = Array.from({ length: 13 }, (_, i) => D(11, i + 1)), oct = Array.from({ length: 18 }, (_, i) => D(10, 14 + i));
+  const roster = [{ _id: 'a', name: 'Lina A.', nid: '1000000001', brand: 'Virgin', team: 'CC' }, { _id: 'b', name: 'Omar B.', nid: '1000000002', brand: 'Virgin', team: 'CC' }, { _id: 'c', name: 'Sara C.', nid: '1000000003', brand: 'Friendi', team: 'QA' }];
+  const read = (rows, name = 'Sheet1') => (Core.analyzeTables('t.xlsx', [{ name, state: 'visible', rows }]) || []).find(x => x.kind === 'attendance');
+  const nov13 = (A, pid) => Att.merge([{ file: 't.xlsx', sheet: 'x', data: A.data }], roster, { y: 2026, m: 11 }).byPerson.get(pid);
+  // a supervisor's period sheet: its November days first, then October's from the 14th, then the code list under the names
+  const T = read([[], ['ID', 'Name', 'Team', 'Dep', ...nov, ...oct, 'Tardy', 'AL leave'],
+    ['1000000001', 'Lina A.', 'Virgin', 'CC', ...nov.map((_, i) => ([5, 6].includes(i) ? 'OFF' : 'Attend')), 'OFF'],
+    ['', 'Omar B.', 'Virgin', 'CC', ...nov.map((_, i) => (i === 2 ? 10 : i === 3 ? 'SL leaves' : 'Attend')), 'OFF'], [], [],
+    ...['OFF', 'Attend', 'AL', 'Absent', 'Unpaid', 'Half AL', 'Compassionate Leave', 'EID', 'Paternity leave', 'Exam', 'SL'].map(w => ['', w])], 'Attendance Report Template ');
+  assert.deepEqual(T.data.people.map(p => p.name), ['Lina A.', 'Omar B.'], 'the people, not the codes');
+  const o = nov13(T, 'b'); assert.equal(o.days.filter(v => v != null).length, 13, 'Omar: 1–13 Nov'); assert.equal(o.days[2], 10, 'late 10 min on the 3rd'); assert.equal(o.days[3], 'SL'); assert.equal(o.days[13], null, 'nothing past the 13th');
+  // a name-only sheet with a row of weekdays under the dates, "Attend" in its name cell
+  const M = read([['Name', ...nov.slice(0, 12)], ['Attend', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'], ['Lina A.', ...nov.slice(0, 12).map(() => 'Attend')]]);
+  assert.deepEqual(M.data.people.map(p => p.name), ['Lina A.'], 'the weekdays row is not a person');
+  // two tables on one tab, each with its heading row
+  const Q = read([[], [], [], ['ID', 'Name', 'Team', 'Dep', ...nov], ['1000000001', 'Lina A.', 'Virgin', 'QA', ...nov.map(() => 'Attend')], [], [], [],
+    ['ID', 'Name', 'Team', 'Dep', ...nov], ['1000000003', 'Sara C.', 'Friendi', 'QA', ...nov.map(() => 'OFF')]], 'Nov');
+  assert.deepEqual(Q.data.people.map(p => p.name), ['Lina A.', 'Sara C.'], 'both tables\' people, not the second heading');
+});
+
 console.log(`${n} checks passed`);

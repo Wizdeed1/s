@@ -1,7 +1,7 @@
-// WFM team › Emails › Deduction and absences over the period, the 12th of the month before to the 13th of the month, in the browser,
+// WFM team › Emails › Deduction and absences over the period, the 14th of the month before to the 13th of the month, in the browser,
 // as the WFM manager, with made-up people: a made-up October 2026 in the shared history, and November's first days dropped in the box.
-// November's email, its tables and its workbook (MC Monthly Deduction - Nov 2026.xlsx) run 12 Oct – 13 Nov:
-// 1. Before anything is dropped: the workbook's 33 days run 12 Oct – 13 Nov; its Attendance Report has only Virgin (every team, not
+// November's email, its tables and its workbook (MC Monthly Deduction - Nov 2026.xlsx) run 14 Oct – 13 Nov:
+// 1. Before anything is dropped: the workbook's 31 days run 14 Oct – 13 Nov; its Attendance Report has only Virgin (every team, not
 //    FRiENDi), its Monthly Deduction only Virgin · CC; October's days from the month, November's empty; a row named "Absent" (a
 //    sheet's legend once read as a person) is in neither, nor in the email, and the page says it was left out. The email's own tables
 //    run over the same days (Omar's 35 min), the review deadline is the 16th (three days after the period).
@@ -10,7 +10,7 @@
 //    the 3rd is a Diff of 15), the legend is not read, the warnings go, the email's absences show 4-Nov, kept with the shared data.
 // 3. A correction for a November day (Corrections after the review): Now shows the dropped day; the workbook shows it.
 // 4. October final: a correction for 20 Oct counts for the deduction only (dedfix/2026-10), October's own rows stay; Undo.
-// 5. Clear what was dropped, and Undo; Settings › Deduction period from the 14th: 14 Oct – 13 Nov; no errors.
+// 5. Clear what was dropped, and Undo; Settings › Deduction period from the 12th: 12 Oct – 13 Nov (the 12th and 13th in two files); no errors.
 // Usage: node test/dedcycle.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -64,21 +64,21 @@ const csv = rows => rows.map(r => r.map(v => (/[",]/.test(String(v)) ? `"${Strin
   const mail = () => p.evaluate(() => { const c = window.__mc.curMail(); return { period: c.md.period, ded: c.md.ded.map(x => `${x.name}:${x.total}`), abs: c.md.abs ? c.md.abs.rows.map(a => `${a.name}:${a.days.join('+')}`) : [], dates: c.md.abs ? c.md.abs.dates : [], deadline: c.md.deadline, text: c.text }; });
   // ---- 1. before anything is dropped
   let C = await card(), W = await warns(), X = await book(), E = await mail();
-  ok(X.name === 'MC Monthly Deduction - Nov 2026.xlsx' && X.title === 'MC Monthly Attendance - Nov - 2026 (12 Oct – 13 Nov)' && X.dates.length === 33 && X.dates[0] === '2026-10-12' && X.dates[19] === '2026-10-31' && X.dates[20] === '2026-11-01' && X.dates[32] === '2026-11-13' && X.dDates === 33,
-    `November's workbook (${X.name}): "${X.title}", ${X.dates.length} days from ${X.dates[0]} to ${X.dates[32]}, the Monthly Deduction the same ${X.dDates}`);
+  ok(X.name === 'MC Monthly Deduction - Nov 2026.xlsx' && X.title === 'MC Monthly Attendance - Nov - 2026 (14 Oct – 13 Nov)' && X.dates.length === 31 && X.dates[0] === '2026-10-14' && X.dates[17] === '2026-10-31' && X.dates[18] === '2026-11-01' && X.dates[30] === '2026-11-13' && X.dDates === 31,
+    `November's workbook (${X.name}): "${X.title}", ${X.dates.length} days from ${X.dates[0]} to ${X.dates[30]}, the Monthly Deduction the same ${X.dDates}`);
   ok(X.people.length === 3 && X.people.every(s => s.split('|')[1] === 'Virgin') && !X.people.some(s => s.startsWith('Nawal Testname')) && X.people.some(s => /^Nawal Sampleson\|Virgin\|SM$/.test(s)) && !X.people.some(s => s.startsWith('Absent')),
     `its Attendance Report: only Virgin, every team (${X.people.join(', ')}); the FRiENDi person and the "Absent" line left out`);
   ok(X.dPeople.slice().sort().join() === 'Omar Al Demo,Rayan Alexample', `its Monthly Deduction: Virgin · CC only (${X.dPeople.join(', ')})`);
-  ok(X.day('Omar Al Demo', '2026-10-12') === 'Attend' && X.day('Omar Al Demo', '2026-10-16') === 'OFF' && X.day('Omar Al Demo', '2026-11-01') == null && X.dd('Omar Al Demo', '2026-10-20', 2) === 10 && X.dd('Omar Al Demo', '2026-10-27', 2) === 25 && X.tot('Omar Al Demo') === 35 && X.dd('Omar Al Demo', '2026-11-03', 0) == null,
-    `October's days from the month (12 Oct Attend, 16 Oct OFF, 20 Oct Diff 10, 27 Oct Diff 25, total ${X.tot('Omar Al Demo')}); November's empty`);
-  ok(E.period === '12 Oct – 13 Nov' && E.ded.join() === 'Omar Al Demo:35' && /Period: 12 Oct – 13 Nov 2026\./.test(E.text) && !/\bAbsent\b.*\t/.test(E.text.split('Absenteeism')[0]) && !E.ded.some(x => x.startsWith('Absent')) && E.deadline === 'Nov 16th',
-    `the email's own tables over the period: ${E.ded.join(', ')} (zeros left out); "Period: 12 Oct – 13 Nov 2026."; review deadline ${E.deadline}`);
-  ok(/^The period: 12 Oct – 13 Nov$/.test(C.h) && C.li.length === 3 && /^ok: 12–31 Oct From October in the tool/.test(C.li[0]) && /^warn: 1–13 Nov · attendance Not in yet/.test(C.li[1]) && /^warn: 1–13 Nov · deduction minutes Not in yet/.test(C.li[2]) && C.drop,
+  ok(X.day('Omar Al Demo', '2026-10-14') === 'Attend' && X.day('Omar Al Demo', '2026-10-16') === 'OFF' && X.day('Omar Al Demo', '2026-11-01') == null && X.dd('Omar Al Demo', '2026-10-20', 2) === 10 && X.dd('Omar Al Demo', '2026-10-27', 2) === 25 && X.tot('Omar Al Demo') === 35 && X.dd('Omar Al Demo', '2026-11-03', 0) == null,
+    `October's days from the month (14 Oct Attend, 16 Oct OFF, 20 Oct Diff 10, 27 Oct Diff 25, total ${X.tot('Omar Al Demo')}); November's empty`);
+  ok(E.period === '14 Oct – 13 Nov' && E.ded.join() === 'Omar Al Demo:35' && /Period: 14 Oct – 13 Nov 2026\./.test(E.text) && !/\bAbsent\b.*\t/.test(E.text.split('Absenteeism')[0]) && !E.ded.some(x => x.startsWith('Absent')) && E.deadline === 'Nov 16th',
+    `the email's own tables over the period: ${E.ded.join(', ')} (zeros left out); "Period: 14 Oct – 13 Nov 2026."; review deadline ${E.deadline}`);
+  ok(/^The period: 14 Oct – 13 Nov$/.test(C.h) && C.li.length === 3 && /^ok: 14–31 Oct From October in the tool/.test(C.li[0]) && /^warn: 1–13 Nov · attendance Not in yet/.test(C.li[1]) && /^warn: 1–13 Nov · deduction minutes Not in yet/.test(C.li[2]) && C.drop,
     `the box: ${C.li.join(' | ')}`);
-  ok(W.some(w => /^The period runs 12 Oct – 13 Nov: no attendance for 1–13 Nov yet/.test(w)) && W.some(w => /^No deduction minutes for 1–13 Nov yet/.test(w)) && W.some(w => /^Left out, not people: "Absent"/.test(w)),
+  ok(W.some(w => /^The period runs 14 Oct – 13 Nov: no attendance for 1–13 Nov yet/.test(w)) && W.some(w => /^No deduction minutes for 1–13 Nov yet/.test(w)) && W.some(w => /^Left out, not people: "Absent"/.test(w)),
     `warnings on the page: ${W.filter(w => /Nov|Left out/.test(w)).map(w => w.slice(0, 60)).join(' | ')}`);
   const chip = await p.evaluate(() => ({ lbl: document.getElementById('periodLbl').textContent, ws: window.__mc.state.wsMonth, opts: [...document.querySelectorAll('#wfmBar [data-dedmonth] option')].map(o => o.textContent) }));
-  ok(chip.lbl === 'Nov 2026' && chip.ws === '2026-10' && chip.opts.join(' | ') === 'Nov 2026 · 12 Oct – 13 Nov | Oct 2026 · 12 Sep – 13 Oct',
+  ok(chip.lbl === 'Nov 2026' && chip.ws === '2026-10' && chip.opts.join(' | ') === 'Nov 2026 · 14 Oct – 13 Nov | Oct 2026 · 14 Sep – 13 Oct',
     `the email's own month: the top bar says ${chip.lbl} on this page (the other pages keep ${chip.ws}); its picker: ${chip.opts.join(' | ')}`);
   await p.evaluate(() => document.getElementById('dnCard').scrollIntoView({ block: 'center' })); await p.screenshot({ path: path.join(out, 'dedcycle-before.png') });
   // ---- 2. November's files dropped in the box
@@ -105,7 +105,7 @@ const csv = rows => rows.map(r => r.map(v => (/[",]/.test(String(v)) ? `"${Strin
   ok(/^ok: 1–13 Nov · attendance 4 people from 1 sheet dropped here/.test(C.li[1]) && /^ok: 1–13 Nov · deduction minutes 2 people from the Schedule and Agent Status Timeline dropped here/.test(C.li[2]) && /Zed Notinroster/.test(C.text) && /Noura B\./.test(C.text) && !/Not found in the roster:[^.]*\b(Absent|After|AL|OFF)\b/.test(C.text),
     `the box says where November's days come from: ${C.li.slice(1).join(' | ')}; not in the roster: Zed Notinroster (not the legend)`);
   ok(!W.some(w => /1–13 Nov/.test(w)), 'the warnings about November are gone');
-  ok(X.day('Omar Al Demo', '2026-11-01') === 'AL leave' && X.day('Omar Al Demo', '2026-11-03') === 'Attend' && X.cnt('Omar Al Demo', 'Tardy') === 15 && X.day('Omar Al Demo', '2026-11-06') === 'OFF' && X.day('Rayan Alexample', '2026-11-02') === 'SL leaves' && X.day('Nawal Sampleson', '2026-11-04') === 'Absent' && X.day('Omar Al Demo', '2026-11-13') === 'Attend' && X.people.length === 3 && X.dates.length === 33,
+  ok(X.day('Omar Al Demo', '2026-11-01') === 'AL leave' && X.day('Omar Al Demo', '2026-11-03') === 'Attend' && X.cnt('Omar Al Demo', 'Tardy') === 15 && X.day('Omar Al Demo', '2026-11-06') === 'OFF' && X.day('Rayan Alexample', '2026-11-02') === 'SL leaves' && X.day('Nawal Sampleson', '2026-11-04') === 'Absent' && X.day('Omar Al Demo', '2026-11-13') === 'Attend' && X.people.length === 3 && X.dates.length === 31,
     `1–13 Nov in the Attendance Report: Omar AL on the 1st, 15 min late on the 3rd (Attend, Tardy ${X.cnt('Omar Al Demo', 'Tardy')}), Rayan SL on the 2nd, the SM person absent on the 4th, the 13th in; still only Virgin, no legend`);
   ok(X.dd('Omar Al Demo', '2026-11-03', 2) === 15 && X.dd('Omar Al Demo', '2026-11-04', 2) === 0 && X.dd('Rayan Alexample', '2026-11-05', 2) === 0 && X.tot('Omar Al Demo') === 50 && X.dd('Omar Al Demo', '2026-11-06', 0) == null,
     `1–13 Nov in the Monthly Deduction: Omar's 3rd a Diff of ${X.dd('Omar Al Demo', '2026-11-03', 2)} (Sched. ${X.dd('Omar Al Demo', '2026-11-03', 0)}, Actual ${X.dd('Omar Al Demo', '2026-11-03', 1)}), his total ${X.tot('Omar Al Demo')} (35 in October + 15)`);
@@ -129,7 +129,7 @@ const csv = rows => rows.map(r => r.map(v => (/[",]/.test(String(v)) ? `"${Strin
   await p.fill('#wfmUpd [data-updtext]', 'Omar Al Demo SL 20 Oct'); await p.click('#wfmUpd [data-updread]'); await p.waitForTimeout(300);
   const fr = await p.evaluate(() => [...document.querySelectorAll('#wfmUpd .updprev tbody tr')].map(tr => ({ on: tr.querySelector('input').checked, t: [...tr.querySelectorAll('td')].slice(1).map(td => td.textContent.trim()).filter(Boolean).join(' ') })));
   const warnFin = await p.evaluate(() => (document.querySelector('#wfmUpd .warnline') || {}).textContent || '');
-  ok(fr.length === 1 && fr[0].on && /^20 Oct Attend → SL leave.*for the deduction only \(Oct 2026 is final\)/.test(fr[0].t) && /Oct 2026 is final: corrections for 12–31 Oct count for the deduction only/.test(warnFin),
+  ok(fr.length === 1 && fr[0].on && /^20 Oct Attend → SL leave.*for the deduction only \(Oct 2026 is final\)/.test(fr[0].t) && /Oct 2026 is final: corrections for 14–31 Oct count for the deduction only/.test(warnFin),
     `October final: 20 Oct can still be corrected, for the deduction only (${fr.map(r => r.t).join(' | ')})`);
   await p.click('#wfmUpd [data-updapply]'); await p.waitForTimeout(500);
   const fx = await p.evaluate(pid => {   // the workbook's data, read without a download (its toast would take the Undo's place)
@@ -150,11 +150,11 @@ const csv = rows => rows.map(r => r.map(v => (/[",]/.test(String(v)) ? `"${Strin
   await p.click('#toastAct'); await p.waitForTimeout(400);
   C = await card();
   ok(await p.evaluate(() => !!window.__mem['dednext/2026-11']) && /^ok: 1–13 Nov · attendance 4 people/.test(C.li[1]), 'Undo: back');
-  // Settings › Deduction period: from the 14th, each day in one month's file
-  await p.evaluate(() => { const S = window.__mc.state; S.settings.dedFrom = 14; window.__mc.renderWs(); }); await p.waitForTimeout(300);
+  // Settings › Deduction period: from the 12th, the 12th and 13th of each month in two months' files
+  await p.evaluate(() => { const S = window.__mc.state; S.settings.dedFrom = 12; window.__mc.renderWs(); }); await p.waitForTimeout(300);
   C = await card(); X = await book();
-  ok(/^The period: 14 Oct – 13 Nov$/.test(C.h) && X.dates.length === 31 && X.dates[0] === '2026-10-14' && /^ok: 14–31 Oct/.test(C.li[0]), `Settings › Deduction period from the 14th: "${C.h}", ${X.dates.length} days from ${X.dates[0]}`);
-  await p.evaluate(() => { const S = window.__mc.state; S.settings.dedFrom = 12; window.__mc.renderWs(); });
+  ok(/^The period: 12 Oct – 13 Nov$/.test(C.h) && X.dates.length === 33 && X.dates[0] === '2026-10-12' && /^ok: 12–31 Oct/.test(C.li[0]), `Settings › Deduction period from the 12th: "${C.h}", ${X.dates.length} days from ${X.dates[0]}`);
+  await p.evaluate(() => { const S = window.__mc.state; S.settings.dedFrom = 14; window.__mc.renderWs(); });
   ok(!errs.length, `no errors ${errs.join('; ')}`);
   await b.close();
   console.log(bad ? `${bad} failed` : 'all passed'); process.exit(bad ? 1 : 0);

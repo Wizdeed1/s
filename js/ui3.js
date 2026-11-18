@@ -42,7 +42,7 @@ const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
 const REVIEW_TABS = ['checks', 'issues', 'people', 'kpi', 'preview', 'history'];   // what to decide first, then the names, the people, the KPI results, the workbook, the past months
-const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], dedFrom: 12, dedTo: 13, incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
+const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], dedFrom: 14, dedTo: 13, incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
   step: 'import', tab: 'checks',
@@ -2742,7 +2742,7 @@ function pageAbsences() {
 }
 function mailModel(stage = state.mailStage) {
   const r = state.wb && state.wb.report, { y, m } = mailMonth(), warns = [];
-  // the period's own tables (js/dedcycle.js): the 12th of the month before to the 13th, from the months in the tool, this page or a
+  // the period's own tables (js/dedcycle.js): the 14th of the month before to the 13th, from the months in the tool, this page or a
   // dropped monthly report, the box's sheets and the corrections
   const PM = dedPeriodMail(), P = PM.P, ded = PM.ded, abs = mailShared() || PM.filled ? PM.abs : null;
   if (!mailShared()) {
@@ -2963,7 +2963,7 @@ async function incMailBytes() {
   state.ctx.logo = await xlLogo();
   return WriterInc.build(state.ctx, { model: incModel(), noIds: true });
 }
-/** the deduction email's workbook (Writer2.dedMail): the period (the 12th of the month before to the 13th of the month), the deduction
+/** the deduction email's workbook (Writer2.dedMail): the period (the 14th of the month before to the 13th of the month), the deduction
     brands' people in the Attendance Report and the deduction scope in the Monthly Deduction (js/dedcycle.js) */
 function dedMailData() { return dedPeriodData(); }
 function snapNow(kind) {
@@ -2975,7 +2975,7 @@ function markSent(how) {
   if (state.mailStage === 'review') snapNow(state.mailKind);
   if (state.mailStage === 'final' && state.mailKind === 'inc' && !state.incWb && state.ctx) saveMonthToHistory('final incentive email').then(k => { if (k) setTimeout(() => toast(`${ymLabel(k)} added to the history`), 3600); });
   if (state.mailKind === 'inc' && state.incK) { const im = incMonth(); incMailSent(ymKey(im.y, im.m), state.mailStage, how); }   // Supervisors › Emails says it was prepared
-  if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(dedPeriod(mm.y, mm.m).closeK, 'deduction'); }   // the month-close step: the month being closed (October's, for November's 12 Oct – 13 Nov)
+  if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(dedPeriod(mm.y, mm.m).closeK, 'deduction'); }   // the month-close step: the month being closed (October's, for November's 14 Oct – 13 Nov)
 }
 function renderEmail() {
   if (mailShared() && state.mailKind !== 'ded') state.mailKind = 'ded';
@@ -3017,7 +3017,7 @@ function renderEmail() {
   $('mAttachWrap').hidden = !md.attach; $('mAttachLbl').textContent = md.attach ? `Attach ${md.attach.name} to the .eml` : '';
   $('attBtn').hidden = !md.attach; $('attBtn').title = md.attach ? `Save ${md.attach.name}` : '';
   $('mailWarns').innerHTML = md.warns.map(x => `<li>${esc(x)}</li>`).join('');
-  renderDedNext();   // the period (the 12th of the month before to the 13th) and the box for the month's first days
+  renderDedNext();   // the period (the 14th of the month before to the 13th) and the box for the month's first days
   const to = cm.to, cc = cm.cc;
   const rowsInfo = inc ? (md.d ? `${plural(md.d.att.length, 'person', 'people')} in the attachment${fin && md.changes ? ` · ${plural(md.changes.length, 'person', 'people')} changed since the review${md.changes.length ? ' (see Compared with the review; not listed in the email)' : ''}` : ''}` : 'No data yet')
     : `${plural(md.ded.length, 'person', 'people')} in Conformance Deduction${md.abs ? ` · ${plural(md.abs.rows.length, 'person', 'people')} absent` : ''}${fin && md.changes ? ` · ${plural(md.changes.ded.length + md.changes.abs.length, 'change')} since the review` : ''}`;
@@ -3936,11 +3936,11 @@ $('hideNoSched').addEventListener('change', e => { state.settings.hideNoSched = 
 for (const [id, key, div, lo, hi] of [['target', 'target', 100, 0, 100], ['floor', 'floor', 100, 0, 100], ['inactiveMin', 'inactiveMin', 1, 0, 31]]) {
   $(id).addEventListener('change', e => { const v = parseFloat(e.target.value); if (!Number.isFinite(v) || v < lo || v > hi) { fillSettings(); toast(`Use a number from ${lo} to ${hi}.`); return; } state.settings[key] = key === 'inactiveMin' ? Math.round(v) : v / div; refresh(); persistSettings(); });
 }
-/** Settings › Deduction period: the two days, and in words what a month's file runs (November's: 12 Oct – 13 Nov) */
+/** Settings › Deduction period: the two days, and in words what a month's file runs (November's: 14 Oct – 13 Nov) */
 function dedPerFill() {
   const s = state.settings, D = dedDaysSet(), t = new Date(), P = dedPeriod(t.getFullYear(), t.getMonth() + 1);
   if (document.activeElement !== $('dedFrom')) $('dedFrom').value = D.F; if (document.activeElement !== $('dedTo')) $('dedTo').value = D.T;
-  $('dedPerHelp').textContent = `${MONTH_LONG[P.m - 1]} ${P.y}'s deduction email and workbook: ${P.label} (${plural(P.n, 'day')}). ${dedJoinText()} Default 12 to 13.${s.dedFrom === 1 ? ' 1 as the first day is the month\'s own 1st.' : ''}`;
+  $('dedPerHelp').textContent = `${MONTH_LONG[P.m - 1]} ${P.y}'s deduction email and workbook: ${P.label} (${plural(P.n, 'day')}). ${dedJoinText()} Default 14 to 13.${s.dedFrom === 1 ? ' 1 as the first day is the month\'s own 1st.' : ''}`;
 }
 for (const id of ['dedFrom', 'dedTo']) $(id).addEventListener('change', e => {
   const v = Math.round(+e.target.value); if (!Number.isFinite(v) || v < 1 || v > 31) { dedPerFill(); toast('Use a day from 1 to 31.'); return; }

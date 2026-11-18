@@ -1,5 +1,5 @@
 // WFM team › Emails › Deduction and absences: the corrections that come back after the review, in the browser, as the WFM manager,
-// with made-up people and a made-up October 2026 month only, on November's email (its period: 12 Oct – 13 Nov):
+// with made-up people and a made-up October 2026 month only, on November's email (its period: 14 Oct – 13 Nov):
 // 1. The box shows on Deduction and absences (not on the daily brand emails), for the email's period.
 // 2. A champion's table pasted from the email (its HTML: Name, Team, Dep, 27-Oct… "SL leaves", the full name against the shorter
 //    one in the roster) is read at once; each day shows now → new; Apply makes them the month's corrections (marked as an update,
@@ -34,7 +34,7 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
       R.forEach((p, i) => { p.name = names[i]; p.sys = ''; });
       const d = absent => Array.from({ length: 31 }, (_, i) => ([2, 9, 16, 23, 30].includes(i + 1) ? 'O' : absent.includes(i + 1) ? 'X' : 'A')).join('');
       const rows = R.map((p, i) => ({ id: String(p.nid), n: p.name, brand: p.brand, team: p.team, d: d(i === 0 ? [27, 28, 29, 31] : []), absent: i === 0 ? 4 : 0, worked: i === 0 ? 22 : 26, ded: i === 0 ? 4 : 0 }));
-      S.history['2026-10'] = { y: 2026, m: 10, rows, tool: true, at: new Date().toISOString() }; S.histVer++; S.wsMonth = '2026-10'; S.dedMonth = '2026-11';   // November's email: 12 Oct – 13 Nov
+      S.history['2026-10'] = { y: 2026, m: 10, rows, tool: true, at: new Date().toISOString() }; S.histVer++; S.wsMonth = '2026-10'; S.dedMonth = '2026-11';   // November's email: 14 Oct – 13 Nov
       window.__T = { pids: R.map(p => p._id) };
     });
     return p;
@@ -44,7 +44,7 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   const go = sub => p.evaluate(s => { const M = window.__mc; M.state.wfmTab = 'emails'; M.state.mailSub = s; M.setWs('wfm'); M.renderWs(); }, sub);
   await go('month'); await p.waitForSelector('#wfmUpd:not([hidden]) .updcard', { timeout: 20000 });
   // ---- 1. where it shows
-  ok(await p.evaluate(() => document.querySelector('#wfmUpd .updhd h2').textContent === 'Corrections after the review' && document.querySelector('#wfmUpd .updhd .pill').textContent === '12 Oct – 13 Nov'), 'the box on Deduction and absences, for the email\'s period (12 Oct – 13 Nov)');
+  ok(await p.evaluate(() => document.querySelector('#wfmUpd .updhd h2').textContent === 'Corrections after the review' && document.querySelector('#wfmUpd .updhd .pill').textContent === '14 Oct – 13 Nov'), 'the box on Deduction and absences, for the email\'s period (14 Oct – 13 Nov)');
   await go('daily'); const dailyHidden = await p.evaluate(() => document.getElementById('wfmUpd').hidden);
   await go('month'); await p.waitForSelector('#wfmUpd:not([hidden]) .updcard');
   ok(dailyHidden, 'not on the daily brand emails');
@@ -130,15 +130,15 @@ const quiet = () => { try { localStorage.setItem('mc-today-toast:u2', '2026-11-0
   ok(dedBefore === 281 && xr.ded === 38 && xr.da[10] === '472' && xr.da[18] === '480' && xr.da[21] === '450' && xr.da[28] === '480' && xr.da[23] === '480' && xr.d[4] === 'A' && xr.d[23] === 'S', `the month's deduction ${dedBefore} → ${xr.ded} min (11th 8, 19th 0, 22nd 30, 29th 0; the 24th SL, so none); the 5th attended, the 24th SL`);
   ok(/^Exceptions: 5 Oct Excuse \(the day\); 11 Oct PC loading \(2 min\); 19 Oct PC loading \(1 min\); 22 Oct 4:00 PM - 4:30 PM \(30 min\); 29 Oct Excuse \(the day\)$/.test(xr.dxn), `their note: ${xr.dxn}`);
   const mt = await p.evaluate(() => (window.__mc.curMail().md.dedFull.find(x => /Omar/.test(x.name)) || {}).total);
-  ok(mt === 30, `the deduction email's total for Omar over 12 Oct – 13 Nov: ${mt} (the 22nd's 30; the 11th's 8 is in October's own email, 12 Sep – 13 Oct)`);
+  ok(mt === 30, `the deduction email's total for Omar over 14 Oct – 13 Nov: ${mt} (the 22nd's 30; the 11th's 8 is in October's own email, 14 Sep – 13 Oct)`);
   const wb = await p.evaluate(async () => { const b = await Writer2.dedMail(window.__mc.dedData()); let s = ''; const u = new Uint8Array(b); for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); });
   const Core = require('../js/core.js'), wbs = await Core.readXlsx(Buffer.from(wb, 'base64')), md = wbs.find(x => x.name === 'Monthly Deduction'), om = md.rows.find(r => r && r[0] === 'Omar Al Demo');
-  // the workbook runs 12 Oct – 13 Nov: October's 12th is its first day (the 5th and the 11th are October's own file's, 12 Sep – 13 Oct)
-  const cell = (d, k) => om[3 + (d - 12) * 3 + k], ar = wbs.find(x => x.name === 'Attendance Report').rows.find(r => r && r[0] === 'Omar Al Demo'), TOT = 3 + 33 * 3;
+  // the workbook runs 14 Oct – 13 Nov: October's 14th is its first day (the 5th and the 11th are October's own file's, 14 Sep – 13 Oct)
+  const cell = (d, k) => om[3 + (d - 14) * 3 + k], ar = wbs.find(x => x.name === 'Attendance Report').rows.find(r => r && r[0] === 'Omar Al Demo'), TOT = 3 + 31 * 3;
   ok(om && cell(19, 1) === 480 && cell(19, 2) === 0 && cell(22, 1) === 450 && cell(22, 2) === 30 && cell(29, 2) === 0 && cell(24, 2) === 0 && om[TOT] === 30
     && /^Exceptions: 19 Oct PC loading \(1 min\); 22 Oct 4:00 PM - 4:30 PM \(30 min\); 29 Oct Excuse \(the day\)$/.test(om[TOT + 1]),
-    `the email's workbook (12 Oct – 13 Nov): Monthly Deduction with the Actual and Diff excused (the SL day none), total ${om && om[TOT]} (the 22nd's 30; the 11th's 8 is in October's own file), the Review Notes of its days: ${om && om[TOT + 1]}`);
-  ok(ar && /SL/.test(String(ar[3 + 24 - 12])) && /Attend/.test(String(ar[3 + 22 - 12])), `its Attendance Report: the 24th SL (${ar && ar[3 + 24 - 12]}), the 22nd Attend`);
+    `the email's workbook (14 Oct – 13 Nov): Monthly Deduction with the Actual and Diff excused (the SL day none), total ${om && om[TOT]} (the 22nd's 30; the 11th's 8 is in October's own file), the Review Notes of its days: ${om && om[TOT + 1]}`);
+  ok(ar && /SL/.test(String(ar[3 + 24 - 14])) && /Attend/.test(String(ar[3 + 22 - 14])), `its Attendance Report: the 24th SL (${ar && ar[3 + 24 - 14]}), the 22nd Attend`);
   const xd = await p.evaluate(() => [...document.querySelectorAll('#wfmUpd .upddone li')].map(li => li.textContent.replace(/\s+/g, ' ')).find(t => /Omar/.test(t)) || '');
   ok(/29 Oct: exception \(Excuse\)/.test(xd) && /19 Oct: exception \(PC loading, 1 min\)/.test(xd) && !/(^|\D)(5|11) Oct/.test(xd), `the list of corrections made from here names the period's (the 5th and the 11th are October's own email's): ${xd.slice(0, 160)}`);
   await p.click('#toastAct'); await p.waitForTimeout(300);

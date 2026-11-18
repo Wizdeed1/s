@@ -369,27 +369,28 @@ The file is downloaded and kept in Saved workbooks (*Smart-Link attendance*); th
 
 In the card look, the Absenteeism table (ID, Name, Total Absent and a column for each day someone was absent) no longer squeezes into the 600pt email: Outlook broke "Absent" over two lines and names over three or four. Every column now has a fixed width (the ID and Name as wide as the longest one, each day 36pt), no cell wraps (names keep their spaces as non-breaking ones), the cells are compact and carry their colour as `bgcolor` too, so Outlook shades the whole cell. When the table is wider than the email, the email widens with it (a month with 30 days of absences scrolls sideways). The classic look and the plain text are as they were.
 
-## November 2026, the deduction period: the 12th of the month before to the 13th
+## November 2026, the deduction period: the 14th of the month before to the 13th
 
 The deduction email (**WFM team › Emails › Deduction and absences**) now runs over the payroll period, as the WFM team asked:
-from the **12th of the month before to the 13th of the month**, and the month the email is named after is the month the
+from the **14th of the month before to the 13th of the month**, and the month the email is named after is the month the
 period **ends** in. November 2026's email, *MC Monthly Deduction | Nov 2026 For Review*, its own tables (the conformance
 deduction and the absenteeism in its body) and its workbook (*MC Monthly Deduction - Nov 2026.xlsx*) all run
-**12 Oct – 13 Nov**. (Before, the file ran from the 13th of its month to the 12th of the next, and the email's tables kept
+**14 Oct – 13 Nov**: the teams' own sheets run so (the November attendance template the team sent runs 14 Oct – 13 Nov,
+and the supervisors' November sheets stop on the 13th), and each day is in one month's file. (Before, the file ran from the 13th of its month to the 12th of the next, and the email's tables kept
 the calendar month.)
 
 | Part | What it is now |
 |---|---|
-| The days | **Settings › Deduction period**: from day 12 of the month before to day 13 of the month, by default. Under the two days, Settings says what the current month's file runs and how one month meets the next: with 12 and 13, the 12th and 13th of each month are in two months' files (counted twice); 14 as the first day counts each day once; 1 and 31 is the calendar month. |
-| The month | The email page has its own month, separate from the other pages (which keep the month being closed): it opens on the newest month whose period has ended (November from the 14th of November), and its picker shows each month with its period (*Nov 2026 · 12 Oct – 13 Nov*). It also offers the month after the newest one in the shared history, whose first days come in the box. |
+| The days | **Settings › Deduction period**: from day 14 of the month before to day 13 of the month, by default. Under the two days, Settings says what the current month's file runs and how one month meets the next: 14 and 13 counts each day once; 12 and 13 (asked for once) puts the 12th and 13th of each month in two months' files, counted twice; 1 and 31 is the calendar month. |
+| The month | The email page has its own month, separate from the other pages (which keep the month being closed): it opens on the newest month whose period has ended (November from the 14th of November), and its picker shows each month with its period (*Nov 2026 · 14 Oct – 13 Nov*). It also offers the month after the newest one in the shared history, whose first days come in the box. |
 | Attendance Report | The deduction brands' people (Settings › deduction scope: **Virgin**), every team: never FRiENDi or FRiENDi Pay. |
 | Monthly Deduction | The deduction scope (**Virgin · CC**): each day's Sched., Actual and Diff, the total over the period. |
-| The email's tables | The same days: each person's deduction is the total of the period's daily Diff (as the workbook's Total), the absences are listed with month-aware dates (*12-Oct*, *4-Nov*), and the email says *Period: 12 Oct – 13 Nov 2026*. |
+| The email's tables | The same days: each person's deduction is the total of the period's daily Diff (as the workbook's Total), the absences are listed with month-aware dates (*14-Oct*, *4-Nov*), and the email says *Period: 14 Oct – 13 Nov 2026*. |
 | Review deadline | The month-close calendar's day for the deduction email, now three days after the period ends: the **16th** (the senior manager can change it; a day saved before the period ends is not used). The final email ticks the step of the month being closed (October's, for November's email). |
 
-**Where the days come from.** The month before (12–31 Oct) comes from that month in the tool, with its corrections. The
+**Where the days come from.** The month before (14–31 Oct) comes from that month in the tool, with its corrections. The
 month's own first days (1–13 Nov) come from, in this order: the corrections made for those days, the files dropped in the box
-beside the email, **The period: 12 Oct – 13 Nov** (the supervisors' attendance sheets; the month's Schedule and Agent Status
+beside the email, **The period: 14 Oct – 13 Nov** (the supervisors' attendance sheets; the month's Schedule and Agent Status
 Timeline for the minutes; only 1–13 is read), then the month in the tool. What is dropped is kept with the shared data
 (`dednext/<month>`), and **Clear what was dropped here** takes it away (with Undo).
 
@@ -599,7 +600,7 @@ node test/trust.cjs "final/Cadence.html" test/shots             # accounts plant
 node test/tenure.cjs "final/Cadence.html" test/shots           # months in the job (joined 18 Jan: from Jul), roster import and Edit of the joining date, the absence penalty of 4 days per Absent day
 node test/depts.cjs "final/Cadence.html" test/shots exportsDir  # every department: the SPVs' card (Team Performance, month figures, typed by hand, its own base), a role's card from the person's page, NA ranks 5, Review › KPI results boxes, the card's base
 node test/dailyhist.cjs "final/Cadence.html" test/shots         # Emails › Daily brand emails: emails arriving show by themselves; Brands' history export, import (read first, keep or replace), refusals
-node test/dedcycle.cjs "final/Cadence.html" test/shots          # the deduction email over its period, 12 Oct – 13 Nov for November (Virgin only, no legend lines), the box for the month's first days, a correction for a November day and for a final October's day (the deduction's own), Clear and Undo, Settings › Deduction period
+node test/dedcycle.cjs "final/Cadence.html" test/shots          # the deduction email over its period, 14 Oct – 13 Nov for November (Virgin only, no legend lines), the box for the month's first days, a correction for a November day and for a final October's day (the deduction's own), Clear and Undo, Settings › Deduction period
 node test/legend.cjs "final/Cadence.html" /tmp/exports test/shots   # an attendance sheet's legend is never a person: Import skips it, the checks offer Remove them for the roster, Add to the roster refuses it
 node test/showcase.cjs "final/Cadence.html" "final/Cadence - Showcase.html" test/shots   # the Showcase told around the bonus, in the tool and the stand-alone file: every number against the engine, Try it, the Arabic receipt, Present, offline, 100 people at once (no time back, no test-suite tile)
 node tools/loadtest/run.cjs 100 120 15 45 3000                 # not a suite: how many people at the same time on one shared folder (saves lost, errors, how soon a save reaches the others)

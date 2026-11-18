@@ -12999,7 +12999,7 @@ function dedCounts(a) {
     a.days.filter(v => v === 'Attend' || typeof v === 'number').length, a.sched ?? '', a.actual ?? ''];
 }
 /**
- * d: { y, m, days?: [{ y, m, d }] (the file's days: the period, the 12th of the month before to the 13th of the month; the calendar month without), label?,
+ * d: { y, m, days?: [{ y, m, d }] (the file's days: the period, the 14th of the month before to the 13th of the month; the calendar month without), label?,
  *      att: [{ id, name, brand, team, days: [ND] (Attend, tardy minutes, OFF, AL, SL, Absent, other codes, null), tardy, sched, actual, note }],
  *      ded: [{ id, name, brand, team, sched: [ND] | null, act: [ND] | null, total, note }] } -> xlsx bytes (ND: the number of days)
  */
@@ -22662,7 +22662,7 @@ const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
 const REVIEW_TABS = ['checks', 'issues', 'people', 'kpi', 'preview', 'history'];   // what to decide first, then the names, the people, the KPI results, the workbook, the past months
-const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], dedFrom: 12, dedTo: 13, incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
+const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], dedFrom: 14, dedTo: 13, incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
   step: 'import', tab: 'checks',
@@ -26501,7 +26501,7 @@ function pageAbsences() {
 }
 function mailModel(stage = state.mailStage) {
   const r = state.wb && state.wb.report, { y, m } = mailMonth(), warns = [];
-  // the period's own tables (js/dedcycle.js): the 12th of the month before to the 13th, from the months in the tool, this page or a
+  // the period's own tables (js/dedcycle.js): the 14th of the month before to the 13th, from the months in the tool, this page or a
   // dropped monthly report, the box's sheets and the corrections
   const PM = dedPeriodMail(), P = PM.P, ded = PM.ded, abs = mailShared() || PM.filled ? PM.abs : null;
   if (!mailShared()) {
@@ -26722,7 +26722,7 @@ async function incMailBytes() {
   state.ctx.logo = await xlLogo();
   return WriterInc.build(state.ctx, { model: incModel(), noIds: true });
 }
-/** the deduction email's workbook (Writer2.dedMail): the period (the 12th of the month before to the 13th of the month), the deduction
+/** the deduction email's workbook (Writer2.dedMail): the period (the 14th of the month before to the 13th of the month), the deduction
     brands' people in the Attendance Report and the deduction scope in the Monthly Deduction (js/dedcycle.js) */
 function dedMailData() { return dedPeriodData(); }
 function snapNow(kind) {
@@ -26734,7 +26734,7 @@ function markSent(how) {
   if (state.mailStage === 'review') snapNow(state.mailKind);
   if (state.mailStage === 'final' && state.mailKind === 'inc' && !state.incWb && state.ctx) saveMonthToHistory('final incentive email').then(k => { if (k) setTimeout(() => toast(`${ymLabel(k)} added to the history`), 3600); });
   if (state.mailKind === 'inc' && state.incK) { const im = incMonth(); incMailSent(ymKey(im.y, im.m), state.mailStage, how); }   // Supervisors › Emails says it was prepared
-  if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(dedPeriod(mm.y, mm.m).closeK, 'deduction'); }   // the month-close step: the month being closed (October's, for November's 12 Oct – 13 Nov)
+  if (state.mailStage === 'final' && state.mailKind === 'ded') { const mm = mailMonth(); calAuto(dedPeriod(mm.y, mm.m).closeK, 'deduction'); }   // the month-close step: the month being closed (October's, for November's 14 Oct – 13 Nov)
 }
 function renderEmail() {
   if (mailShared() && state.mailKind !== 'ded') state.mailKind = 'ded';
@@ -26776,7 +26776,7 @@ function renderEmail() {
   $('mAttachWrap').hidden = !md.attach; $('mAttachLbl').textContent = md.attach ? `Attach ${md.attach.name} to the .eml` : '';
   $('attBtn').hidden = !md.attach; $('attBtn').title = md.attach ? `Save ${md.attach.name}` : '';
   $('mailWarns').innerHTML = md.warns.map(x => `<li>${esc(x)}</li>`).join('');
-  renderDedNext();   // the period (the 12th of the month before to the 13th) and the box for the month's first days
+  renderDedNext();   // the period (the 14th of the month before to the 13th) and the box for the month's first days
   const to = cm.to, cc = cm.cc;
   const rowsInfo = inc ? (md.d ? `${plural(md.d.att.length, 'person', 'people')} in the attachment${fin && md.changes ? ` · ${plural(md.changes.length, 'person', 'people')} changed since the review${md.changes.length ? ' (see Compared with the review; not listed in the email)' : ''}` : ''}` : 'No data yet')
     : `${plural(md.ded.length, 'person', 'people')} in Conformance Deduction${md.abs ? ` · ${plural(md.abs.rows.length, 'person', 'people')} absent` : ''}${fin && md.changes ? ` · ${plural(md.changes.ded.length + md.changes.abs.length, 'change')} since the review` : ''}`;
@@ -27695,11 +27695,11 @@ $('hideNoSched').addEventListener('change', e => { state.settings.hideNoSched = 
 for (const [id, key, div, lo, hi] of [['target', 'target', 100, 0, 100], ['floor', 'floor', 100, 0, 100], ['inactiveMin', 'inactiveMin', 1, 0, 31]]) {
   $(id).addEventListener('change', e => { const v = parseFloat(e.target.value); if (!Number.isFinite(v) || v < lo || v > hi) { fillSettings(); toast(`Use a number from ${lo} to ${hi}.`); return; } state.settings[key] = key === 'inactiveMin' ? Math.round(v) : v / div; refresh(); persistSettings(); });
 }
-/** Settings › Deduction period: the two days, and in words what a month's file runs (November's: 12 Oct – 13 Nov) */
+/** Settings › Deduction period: the two days, and in words what a month's file runs (November's: 14 Oct – 13 Nov) */
 function dedPerFill() {
   const s = state.settings, D = dedDaysSet(), t = new Date(), P = dedPeriod(t.getFullYear(), t.getMonth() + 1);
   if (document.activeElement !== $('dedFrom')) $('dedFrom').value = D.F; if (document.activeElement !== $('dedTo')) $('dedTo').value = D.T;
-  $('dedPerHelp').textContent = `${MONTH_LONG[P.m - 1]} ${P.y}'s deduction email and workbook: ${P.label} (${plural(P.n, 'day')}). ${dedJoinText()} Default 12 to 13.${s.dedFrom === 1 ? ' 1 as the first day is the month\'s own 1st.' : ''}`;
+  $('dedPerHelp').textContent = `${MONTH_LONG[P.m - 1]} ${P.y}'s deduction email and workbook: ${P.label} (${plural(P.n, 'day')}). ${dedJoinText()} Default 14 to 13.${s.dedFrom === 1 ? ' 1 as the first day is the month\'s own 1st.' : ''}`;
 }
 for (const id of ['dedFrom', 'dedTo']) $(id).addEventListener('change', e => {
   const v = Math.round(+e.target.value); if (!Number.isFinite(v) || v < 1 || v > 31) { dedPerFill(); toast('Use a day from 1 to 31.'); return; }
@@ -34553,7 +34553,7 @@ const updCtx = () => {
   const dayMonth = n => (n <= P.head.to || !P.tail || n < P.tail.from ? { y: P.head.y, m: P.head.m } : { y: P.tail.y, m: P.tail.m });
   return { y: M.y, m: M.m, people: updPeople(M.k), dayMonth };
 };
-/** a day of the deduction email's period (12 Oct – 13 Nov for November's): a final month's days in it take the deduction's own corrections */
+/** a day of the deduction email's period (14 Oct – 13 Nov for November's): a final month's days in it take the deduction's own corrections */
 function inDedPeriod(k, day) { const { y, m } = mailMonth(), P = dedPeriod(y, m); return P.segs.some(s => s.k === k && day >= s.from && day <= s.to); }
 /** a day as the month has it now, with the corrections already made (undefined: the tool has no days for the person that month) */
 function updNow(pid, k, day) {
@@ -34757,12 +34757,13 @@ $('wfmUpd').addEventListener('paste', e => {
 ['dragenter', 'dragover'].forEach(ev => $('wfmUpd').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-upddrop]'); if (z && e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); z.classList.add('over'); } }));
 ['dragleave', 'drop'].forEach(ev => $('wfmUpd').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('[data-upddrop]'); if (!z) return; z.classList.remove('over'); if (ev === 'drop' && e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); e.stopPropagation(); updFiles(e.dataTransfer.files); } }));   // read once: the page's own drop handler does not see it
 
-// ================================================================ THE DEDUCTION PERIOD: the 12th of the month before to the 13th of the month
-// WFM team › Emails › Deduction and absences. Payroll counts a month's deduction from the 12th of the month before to the 13th of the
-// month (Settings › Deduction period: day 12 to day 13 by default; 1 to 31 is the calendar month). Everything the email sends follows
+// ================================================================ THE DEDUCTION PERIOD: the 14th of the month before to the 13th of the month
+// WFM team › Emails › Deduction and absences. Payroll counts a month's deduction from the 14th of the month before to the 13th of the
+// month, as the teams' own sheets run it (Settings › Deduction period: day 14 to day 13 by default, each day in one month's file; 1 to
+// 31 is the calendar month). Everything the email sends follows
 // it: November 2026's review and final emails, their own tables (the conformance deduction, the absenteeism) and their workbook (MC
 // Monthly Deduction - Nov 2026.xlsx: the Attendance Report with the deduction brands' people, Virgin by default, every team; the
-// Monthly Deduction with the deduction scope, Virgin · CC, each day's Sched., Actual and Diff) all run 12 Oct – 13 Nov.
+// Monthly Deduction with the deduction scope, Virgin · CC, each day's Sched., Actual and Diff) all run 14 Oct – 13 Nov.
 // The month before's days come from that month in the tool, with its corrections; once that month is final, the corrections made
 // after the deduction review are the deduction's own (dedfix/<month>): they count here, and the month's results stay as frozen. The
 // month's own days come from, in this order: the corrections made for those days, the files dropped in the email page's box (the
@@ -34774,10 +34775,10 @@ const dedPrevKey = k => { const y = +k.slice(0, 4), m = +k.slice(5); return m ==
 /** Settings › Deduction period: its first day (in the month before; 1 is the month's own 1st) and its last day (in the month) */
 function dedDaysSet() {
   const s = state.settings || {}, f = Math.round(+s.dedFrom), t = Math.round(+s.dedTo);
-  return { F: f >= 1 && f <= 31 ? f : 12, T: t >= 1 && t <= 31 ? t : 13 };   // by default the 12th of the month before to the 13th
+  return { F: f >= 1 && f <= 31 ? f : 14, T: t >= 1 && t <= 31 ? t : 13 };   // by default the 14th of the month before to the 13th
 }
 /** the period of the month the email is named after: { y, m, k, days: [{ y, m, d }], segs: [{ y, m, k, from, to, n, i0, head }], tail
-    (the month before's part, or null), head (the month's part), label "12 Oct – 13 Nov", closeK (the month being closed: the first
+    (the month before's part, or null), head (the month's part), label "14 Oct – 13 Nov", closeK (the month being closed: the first
     day's), last } */
 function dedPeriod(y, m) {
   const { F, T } = dedDaysSet(), py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1, NDp = Core.daysIn(py, pm), t = Math.min(T, Core.daysIn(y, m)), segs = [];
@@ -34789,7 +34790,7 @@ function dedPeriod(y, m) {
   return { y, m, k: ymKey(y, m), days, segs, head: segs[segs.length - 1], tail: segs.length > 1 ? segs[0] : null, n: days.length, label,
     labelY: a.y === z.y ? `${label} ${z.y}` : label, closeK: segs[0].k, last: z };
 }
-const segLabel = s => `${s.from}–${s.to} ${MON[s.m - 1]}`;   // "12–31 Oct", "1–13 Nov"
+const segLabel = s => `${s.from}–${s.to} ${MON[s.m - 1]}`;   // "14–31 Oct", "1–13 Nov"
 const dedNextKey = k => { const y = +k.slice(0, 4), m = +k.slice(5); return m === 12 ? ymKey(y + 1, 1) : ymKey(y, m + 1); };
 /** the deduction email's months: every month in the shared history, and the one after the newest (its first days come in the box),
     up to this calendar month */
@@ -34806,7 +34807,7 @@ function dedMonthNow() {
   const today = todayIso(), ended = L.filter(k => dedDayKey(dedPeriod(+k.slice(0, 4), +k.slice(5)).last) < today);
   return ended.length ? ended[ended.length - 1] : L[L.length - 1];
 }
-/** the deduction email's month picker: each month with its period ("Nov 2026 · 12 Oct – 13 Nov") */
+/** the deduction email's month picker: each month with its period ("Nov 2026 · 14 Oct – 13 Nov") */
 const dedMonthSelHtml = k => { const L = dedMonths(); return L.length ? `<label class="wsfield"><span>Month</span><select class="cell" data-dedmonth aria-label="Month">${L.slice().reverse().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(`${ymLabel(x)} · ${dedPeriod(+x.slice(0, 4), +x.slice(5)).label}`)}</option>`).join('')}</select></label>` : ''; };
 /** a day of the period as the email keeps it (2026-10-12) and shows it (12-Oct) */
 const dedDayKey = x => `${x.y}-${String(x.m).padStart(2, '0')}-${String(x.d).padStart(2, '0')}`;
@@ -36487,7 +36488,7 @@ const CAL_STEPS = [
 ];
 /** the month being closed now: the one before this calendar month */
 function closeMonthNow() { const t = new Date(); return t.getMonth() === 0 ? ymKey(t.getFullYear() - 1, 12) : ymKey(t.getFullYear(), t.getMonth()); }
-/** the deduction email's own day: three days after its period ends (the 16th, for the 12th-to-13th period); the 10th for a calendar month */
+/** the deduction email's own day: three days after its period ends (the 16th, for a period to the 13th); the 10th for a calendar month */
 const dedCalDay = () => { const { F, T } = dedDaysSet(); return F === 1 ? 10 : Math.min(28, T + 3); };
 const calDays = () => {
   const o = { ...Object.fromEntries(CAL_STEPS.map(s => [s.id, s.day])), deduction: dedCalDay(), ...((state.calCfg && state.calCfg.days) || {}) }, { F, T } = dedDaysSet();
@@ -37718,7 +37719,7 @@ function syncHead() {
 }
 // ---- the reporting period (D13): every page except Build, where the month comes from the exports
 /** WFM team › Interactions and WFM team › Daily keep their own months (the months that have those files); so does the deduction
-    email (its month is the one its period ends in: November's runs 12 Oct – 13 Nov) */
+    email (its month is the one its period ends in: November's runs 14 Oct – 13 Nov) */
 const wfmOwnTab = () => (state.ws !== 'wfm' ? '' : state.wfmTab === 'inter' || state.wfmTab === 'daily' ? state.wfmTab : state.wfmTab === 'emails' && state.mailSub !== 'daily' && mailShared() ? 'ded' : '');
 function dailyKs() { try { const H = state.dhist || {}, hk = new Set(); for (const secs of Object.values(H)) for (const r of ((secs.voice || {}).daily || [])) hk.add(r.date.slice(0, 7)); return [...new Set([...dailyMonths(), ...hk])].sort(); } catch (e) { return []; } }
 function periodList() {
@@ -37956,7 +37957,7 @@ const DEPT = [
     '<b>Export › Build incentive file</b>: the incentive data workbook. It is kept with the shared data for the senior manager, who sends the incentive email to the champions (Supervisors › Incentive email); build it again after corrections and the senior manager gets the newer one. The card says so when the month\'s corrections changed after the file was built.',
     '<b>Refresh data</b> (the round arrows at the top of every page) reads the shared data again at once and counts the month again: use it when a change made on another computer has not shown yet.',
     '<b>Export › Smart-Link attendance</b>: first, <b>Set Smart-Link\'s list from its file</b> once (any of Smart-Link\'s attendance files: its ID and Name columns), so the file holds exactly Smart-Link\'s agents, the SM agents and those on Virgin too. Then the month\'s attendance of those agents in Smart-Link\'s own file (Smart-Link Attendance -Sep 2026.xlsx): each day\'s code, the late minutes and the counts with Smart-Link\'s formulas, and the National IDs, as Smart-Link\'s file has them. It is made from the shared month, with the supervisors\' corrections, and kept in Saved workbooks; send it to Smart-Link yourself.',
-    '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs. The email, its tables and its workbook run from the 12th of the month before to the 13th of the month (November\'s: 12 Oct – 13 Nov; Settings › Deduction period), the Attendance Report Virgin only: for the month\'s first days, drop the supervisors\' attendance sheets (and the month\'s Schedule and Agent Status Timeline for the minutes) in <b>The period</b> box, beside the email.',
+    '<b>Emails › Deduction and absences</b>: send the deduction for review, then the final after the review deadline (it lists what changed). Its attachment is one workbook with the Attendance Report and the Monthly Deduction, without National IDs. The email, its tables and its workbook run from the 14th of the month before to the 13th of the month (November\'s: 14 Oct – 13 Nov; Settings › Deduction period), the Attendance Report Virgin only: for the month\'s first days, drop the supervisors\' attendance sheets (and the month\'s Schedule and Agent Status Timeline for the minutes) in <b>The period</b> box, beside the email.',
     '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction (the Diff); a leave changes the Attendance Report and that day\'s deduction goes. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
     '<b>WFM team › Data</b>: <b>Export all data</b> puts everything the tool keeps in one file locked with a password you choose (to keep a copy, or to move the data to another folder or computer); <b>Import data</b> brings it back. Accounts and passwords are never in it.',
     'What you drop is kept (<b>Import › Saved uploads</b>): sign out and in, and the month is back. When the WFM manager is on vacation, tick it under Vacation cover on the WFM team page and you have their pages until they are back.',
@@ -37967,7 +37968,7 @@ const DEPT = [
     '<b>WFM team › Performance Review</b>: when the "MC performance Review" email comes (Rebooking, Network issues, Web + App, Social media and Vnet tickets by month), save it from Outlook (.msg) and drop it there. The tool reads its tables. Drop the <b>Call history export</b> from Crystal (.xls) for the OTP calls (two months, day by day) and the final termination calls (by month): the counts by day are kept, so each week\'s export adds its days. Drop your old deck (.pptx) once too: its OTP and final termination numbers are kept as they are, and the exports only add the days after them. For the brands\' slides drop the month\'s Call history export (Top Call Reasons) and the complaints email, the answer to Weekly commercial meeting (complaints logged, resolved on time, still open, Top Complaint Drivers), in step 2; the Tickets export still works without the email; without them those boxes show –. Also drop the <b>MC KPIs workbook</b> (.xlsx) for Rebooking by day, and once one of your decks (.pptx) for its logos. <b>Download deck</b> makes the MC performance Review as the team\'s own deck; <b>Email with the deck</b> makes the Outlook draft to the VP with it attached.',
     '<b>Emails › Daily brand emails › Brands\' history</b> (under the report day): <b>Export history</b> saves the history behind the month to date and the monthly tables as a member-care-history file; <b>Import history</b> brings such a file in, or the stand-alone Report Builder page itself (its .html, with the history built into it). It shows first what it adds per brand, then adds the months and days the tool does not have; where both have a day, the tool keeps its own numbers unless you tick to use the file\'s.',
     '<b>WFM team › Interactions</b>: add the week\'s interactions export.',
-    '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it. The email and its workbook run from the 12th of the month before to the 13th of the month (November\'s: 12 Oct – 13 Nov; Virgin only in the Attendance Report): <b>The period</b> box, beside the email, takes the supervisors\' sheets for the month\'s first days.',
+    '<b>WFM team › Emails › Deduction and absences</b>: the review and final emails for the month, from the shared month with the supervisors\' corrections. Edit any field, or the text in the preview, before you copy it. The email and its workbook run from the 14th of the month before to the 13th of the month (November\'s: 14 Oct – 13 Nov; Virgin only in the Attendance Report): <b>The period</b> box, beside the email, takes the supervisors\' sheets for the month\'s first days.',
     '<b>Corrections after the review</b> (above the deduction email): when a champion or a supervisor sends corrections, paste the table from their email (Name, Team, Dep and the days, like 27-Oct with SL leaves), drop the email itself (.msg or .eml) or a sheet, or type them, one a line: <i>set Nawaf as absent on 10 Oct</i>, <i>Sara K. SL 27-29 Oct</i>, <i>Omar late 20 min on 5 Oct</i>, <i>clear Nawaf 10 Oct</i>. Exceptions too, as the supervisors list them (a day, the name and the reason: <i>Oct-22 · Name · Excuse</i>, <i>PC loading for 2 min</i>, <i>4:00 PM - 4:30 PM</i>): the day\'s lateness is excused and its minutes, or the whole day, come off the deduction (the Diff); a leave changes the Attendance Report and that day\'s deduction goes. You see each day (now → new) and choose when two people have the name; <b>Apply</b> makes them the month\'s corrections, so every sheet, the workbooks and the final email have them. Undo, or Remove in the list, takes them back.',
     'When a WFM analyst is on vacation, tick their name under <b>Vacation cover</b> on the WFM team page: you then have their tabs (Import, Review, Export, Report builder) until you untick it.',
     '<b>WFM team › Data</b>: export all the data to one file locked with a password, or import such a file. Accounts and passwords are never in it.',

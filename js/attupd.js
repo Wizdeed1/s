@@ -26,7 +26,7 @@ const updCtx = () => {
   const dayMonth = n => (n <= P.head.to || !P.tail || n < P.tail.from ? { y: P.head.y, m: P.head.m } : { y: P.tail.y, m: P.tail.m });
   return { y: M.y, m: M.m, people: updPeople(M.k), dayMonth };
 };
-/** a day of the deduction email's period (14 Oct – 13 Nov for November's): a final month's days in it take the deduction's own corrections */
+/** a day of the deduction email's period (13 Oct – 12 Nov for November's): a final month's days in it take the deduction's own corrections */
 function inDedPeriod(k, day) { const { y, m } = mailMonth(), P = dedPeriod(y, m); return P.segs.some(s => s.k === k && day >= s.from && day <= s.to); }
 /** a day as the month has it now, with the corrections already made (undefined: the tool has no days for the person that month) */
 function updNow(pid, k, day) {

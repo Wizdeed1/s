@@ -1,10 +1,10 @@
-// ================================================================ THE DEDUCTION PERIOD: the 14th of the month before to the 13th of the month
-// WFM team › Emails › Deduction and absences. Payroll counts a month's deduction from the 14th of the month before to the 13th of the
-// month, as the teams' own sheets run it (Settings › Deduction period: day 14 to day 13 by default, each day in one month's file; 1 to
-// 31 is the calendar month). Everything the email sends follows
+// ================================================================ THE DEDUCTION PERIOD: the 13th of the month before to the 12th of the month
+// WFM team › Emails › Deduction and absences. Payroll counts a month's deduction from the 13th of the month before to the 12th of the
+// month, as the WFM team asked (Settings › Deduction period: day 13 to day 12 by default, each day in one month's file; 1 to 31 is the
+// calendar month). Everything the email sends follows
 // it: November 2026's review and final emails, their own tables (the conformance deduction, the absenteeism) and their workbook (MC
 // Monthly Deduction - Nov 2026.xlsx: the Attendance Report with the deduction brands' people, Virgin by default, every team; the
-// Monthly Deduction with the deduction scope, Virgin · CC, each day's Sched., Actual and Diff) all run 14 Oct – 13 Nov.
+// Monthly Deduction with the deduction scope, Virgin · CC, each day's Sched., Actual and Diff) all run 13 Oct – 12 Nov.
 // The month before's days come from that month in the tool, with its corrections; once that month is final, the corrections made
 // after the deduction review are the deduction's own (dedfix/<month>): they count here, and the month's results stay as frozen. The
 // month's own days come from, in this order: the corrections made for those days, the files dropped in the email page's box (the
@@ -16,10 +16,10 @@ const dedPrevKey = k => { const y = +k.slice(0, 4), m = +k.slice(5); return m ==
 /** Settings › Deduction period: its first day (in the month before; 1 is the month's own 1st) and its last day (in the month) */
 function dedDaysSet() {
   const s = state.settings || {}, f = Math.round(+s.dedFrom), t = Math.round(+s.dedTo);
-  return { F: f >= 1 && f <= 31 ? f : 14, T: t >= 1 && t <= 31 ? t : 13 };   // by default the 14th of the month before to the 13th
+  return { F: f >= 1 && f <= 31 ? f : 13, T: t >= 1 && t <= 31 ? t : 12 };   // by default the 13th of the month before to the 12th
 }
 /** the period of the month the email is named after: { y, m, k, days: [{ y, m, d }], segs: [{ y, m, k, from, to, n, i0, head }], tail
-    (the month before's part, or null), head (the month's part), label "14 Oct – 13 Nov", closeK (the month being closed: the first
+    (the month before's part, or null), head (the month's part), label "13 Oct – 12 Nov", closeK (the month being closed: the first
     day's), last } */
 function dedPeriod(y, m) {
   const { F, T } = dedDaysSet(), py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1, NDp = Core.daysIn(py, pm), t = Math.min(T, Core.daysIn(y, m)), segs = [];
@@ -31,7 +31,7 @@ function dedPeriod(y, m) {
   return { y, m, k: ymKey(y, m), days, segs, head: segs[segs.length - 1], tail: segs.length > 1 ? segs[0] : null, n: days.length, label,
     labelY: a.y === z.y ? `${label} ${z.y}` : label, closeK: segs[0].k, last: z };
 }
-const segLabel = s => `${s.from}–${s.to} ${MON[s.m - 1]}`;   // "14–31 Oct", "1–13 Nov"
+const segLabel = s => `${s.from}–${s.to} ${MON[s.m - 1]}`;   // "13–31 Oct", "1–12 Nov"
 const dedNextKey = k => { const y = +k.slice(0, 4), m = +k.slice(5); return m === 12 ? ymKey(y + 1, 1) : ymKey(y, m + 1); };
 /** the deduction email's months: every month in the shared history, and the one after the newest (its first days come in the box),
     up to this calendar month */
@@ -40,7 +40,7 @@ function dedMonths() {
   if (L.length) { const nx = dedNextKey(L[L.length - 1]); if (nx <= now) out.add(nx); }
   return [...out].sort();
 }
-/** the deduction email's month: the one chosen on its page, else the newest whose period has ended (November's from the 14th of
+/** the deduction email's month: the one chosen on its page, else the newest whose period has ended (November's from the 13th of
     November); the other pages keep theirs (the month being closed) */
 function dedMonthNow() {
   const L = dedMonths(); if (!L.length) return '';
@@ -48,7 +48,7 @@ function dedMonthNow() {
   const today = todayIso(), ended = L.filter(k => dedDayKey(dedPeriod(+k.slice(0, 4), +k.slice(5)).last) < today);
   return ended.length ? ended[ended.length - 1] : L[L.length - 1];
 }
-/** the deduction email's month picker: each month with its period ("Nov 2026 · 14 Oct – 13 Nov") */
+/** the deduction email's month picker: each month with its period ("Nov 2026 · 13 Oct – 12 Nov") */
 const dedMonthSelHtml = k => { const L = dedMonths(); return L.length ? `<label class="wsfield"><span>Month</span><select class="cell" data-dedmonth aria-label="Month">${L.slice().reverse().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(`${ymLabel(x)} · ${dedPeriod(+x.slice(0, 4), +x.slice(5)).label}`)}</option>`).join('')}</select></label>` : ''; };
 /** a day of the period as the email keeps it (2026-10-12) and shows it (12-Oct) */
 const dedDayKey = x => `${x.y}-${String(x.m).padStart(2, '0')}-${String(x.d).padStart(2, '0')}`;

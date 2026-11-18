@@ -683,7 +683,7 @@ function dedCounts(a) {
     a.days.filter(v => v === 'Attend' || typeof v === 'number').length, a.sched ?? '', a.actual ?? ''];
 }
 /**
- * d: { y, m, days?: [{ y, m, d }] (the file's days: the period, the 14th of the month before to the 13th of the month; the calendar month without), label?,
+ * d: { y, m, days?: [{ y, m, d }] (the file's days: the period, the 13th of the month before to the 12th of the month; the calendar month without), label?,
  *      att: [{ id, name, brand, team, days: [ND] (Attend, tardy minutes, OFF, AL, SL, Absent, other codes, null), tardy, sched, actual, note }],
  *      ded: [{ id, name, brand, team, sched: [ND] | null, act: [ND] | null, total, note }] } -> xlsx bytes (ND: the number of days)
  */

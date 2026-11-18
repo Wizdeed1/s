@@ -67,7 +67,9 @@ async function tryIt(p, scope) {
       return { page: [...document.querySelectorAll('#showLive .shbonus b')].map(x => x.textContent), want: [rows.length, earn.length, earn.reduce((a, r) => a + (+r.earned || 0), 0)].map(n => n.toLocaleString('en-US')) }; });
     ok(live.page.length === 4 && live.page[0] === live.want[0] && live.page[1] === live.want[1] && live.page[3] === live.want[2], `this month's bonus is the shared month's: ${live.page.join(' · ')}`);
     ok(!/\b(daily|weekly|commercial|performance review|report builder|import\w*|export\w*|upload\w*)\b/i.test(S.text), 'no word on the daily or weekly reports, nor on how files go in or out');
-    const proof = await p.evaluate(() => ({ t: document.querySelector('#showBody .sh-checks .shproof').textContent.replace(/\s+/g, ' ').trim(), n: document.querySelector('#showBody .sh-checks .shnotes').textContent }));
+    const proof = await p.evaluate(() => ({ t: document.querySelector('#showBody .sh-checks .shproof').textContent.replace(/\s+/g, ' ').trim(), n: document.querySelector('#showBody .sh-checks .shnotes').textContent,
+      cards: document.querySelector('#showBody .sh-before .shnums > div').textContent.replace(/\s+/g, ' ').trim(), cn: document.querySelector('#showBody .sh-before .shnotes').textContent }));
+    ok(/^9\s*scorecards: one for each department and role$/.test(proof.cards) && /by hand: 9 scorecards/.test(proof.cn), `the challenge: "${proof.cards}", as the team counts them (not the tool's 15 built in)`);
     ok(/^100\s*people using Cadence at the same time/.test(proof.t) && /a hundred people working at the same time/.test(proof.n) && !/10,000|ten thousand/i.test(proof.t + proof.n + S.text) && !/test suites|hours back|time back/i.test(S.text),
       `how many people at the same time, from the load test: "${proof.t}" (no 10,000, no time back, no test-suite tile)`);
     await p.click('#showBody .shroles [data-vago="wfm"]'); await p.waitForFunction(() => window.__mc.viewing(), null, { timeout: 10000 });
@@ -86,13 +88,14 @@ async function tryIt(p, scope) {
     const S = await p.evaluate(() => ({ title: document.title, secs: [...document.querySelectorAll('#showBody .shsec')].map(s => s.getAttribute('aria-label')), hero: document.querySelector('.shticket').textContent.replace(/\s+/g, ' '),
       theme: document.documentElement.getAttribute('data-theme'), over: document.scrollingElement.scrollWidth - innerWidth, figs: document.querySelectorAll('.shfig').length,
       proof: document.querySelector('.sh-checks .shproof').textContent.replace(/\s+/g, ' ').trim(), body: document.getElementById('showBody').textContent,
-      tiles: [...document.querySelectorAll('.sh-trust .shtile')].map(t => Math.round(t.getBoundingClientRect().right)) }));
+      tiles: [...document.querySelectorAll('.sh-trust .shtile')].map(t => Math.round(t.getBoundingClientRect().right)),
+      cards: document.querySelector('.sh-before .shnums > div').textContent.replace(/\s+/g, ' ').trim() }));
     await p.screenshot({ path: path.join(out, `showcase-file-${theme}-${vp.width}.png`) });
     const outside = reqs.filter(u => !/^(file|data|blob|about):/.test(u));
     ok(!outside.length && S.secs.length === 9 && !S.secs.includes('This month') && /764 SR/.test(S.hero) && S.theme === theme && S.over <= 1
       && /^100\s*people using Cadence at the same time/.test(S.proof) && !/10,000|ten thousand|test suites|hours back|time back/i.test(S.body)
-      && S.tiles.length === 5 && Math.abs(S.tiles[2] - S.tiles[4]) <= 1,
-      `the stand-alone file (${tag}): "${S.title}", ${S.secs.length} sections, the same 764 SR, 100 people at the same time, Trust's five tiles with no empty slot, ${outside.length} requests outside the file, nothing wider than the screen (${S.over} px)`);
+      && S.tiles.length === 5 && Math.abs(S.tiles[2] - S.tiles[4]) <= 1 && /^9\s*scorecards/.test(S.cards),
+      `the stand-alone file (${tag}): "${S.title}", ${S.secs.length} sections, the same 764 SR, 9 scorecards, 100 people at the same time, Trust's five tiles with no empty slot, ${outside.length} requests outside the file, nothing wider than the screen (${S.over} px)`);
     if (vp.width === 1440 && theme === 'light') {
       const T = await tryIt(p, '#showBody');
       ok(T.rows.every(([, a, e]) => a === e), `  Try it in the file follows the engine too: ${T.rows.map(([w, a]) => `${w} ${a}`).join(' · ')}`);

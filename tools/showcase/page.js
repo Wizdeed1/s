@@ -9,7 +9,7 @@
   const RM = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
   // the month's default rules, as the tool starts them (js/kpi.js DEFAULTS, js/rules.js ELIG0, js/extras.js BASES0 for Virgin)
   const D = Kpi.DEFAULTS(), H = typeof Hairline !== 'undefined' ? Hairline : null;
-  const env = { esc, card: D.teams.CC, cfg: Kpi.normCount(null), elig: { minFinal: 0.8, minDays: 5, minMonths: 6 }, base: 1000, cards: Object.keys(D.teams).length, people: null,
+  const env = { esc, card: D.teams.CC, cfg: Kpi.normCount(null), elig: { minFinal: 0.8, minDays: 5, minMonths: 6 }, base: 1000, people: null,
     strip: ['A made-up example', 'Counted by the tool itself', 'Works offline'], month: 'September 2026',
     fig: (name, label) => `<div class="shfig" data-fig="${esc(name)}" data-label="${esc(label)}" aria-hidden="false"></div>` };
   const root = $('showBody'), S = ShowStory.sections(env);

@@ -39245,9 +39245,12 @@ document.addEventListener('change', e => { const s = e.target.closest('[data-vap
 // Lina A., is counted by the tool's own engine (Kpi.score) with the champion's scorecard and the month's rules, so every number on the
 // page is the one the tool would pay her; Try it lets the room move her numbers and watch the ranks, the gates and the bonus follow.
 // Nothing here reads or writes any data. env gives what differs between the two places:
-//   { esc, card, cfg, elig, base, cards (how many scorecards), people (the roster's size, or null), strip: [text], month: label,
+//   { esc, card, cfg, elig, base, people (the roster's size, or null), strip: [text], month: label,
 //     live: () => html (the tool only), roleAct: role => html (View; the tool only), fig: (name, label) => html }
 const ShowStory = (() => {
+  // The challenge: the scorecards a bonus was counted on by hand before Cadence, as the WFM team counts them. Not the tool's own
+  // count (15 built in: 8 departments' cards and 7 role cards), which is not what that slide is about.
+  const BEFORE_CARDS = 9;
   // ---------------------------------------------------------------- the made-up champion and her month
   const EX = { name: 'Lina A.', init: 'LA', brand: 'Virgin', team: 'CC', sched: 22, att: 20, abs: 1, mon: 14, crit: false,
     v: { csat: 88, qobs: 92, aht: 158, emp: 87, fcr: 96, adh: 93, tardy: 8 } };
@@ -39381,9 +39384,9 @@ const ShowStory = (() => {
           <p class="shlead">Cadence counts every Member Care bonus from the month's own numbers: one set of rules for everyone, checked before it counts, and explained to the person it pays.</p>
           <div class="shcta"><button type="button" class="btn primary" data-showpresent>Present</button><button type="button" class="btn" data-showgo="try">Try a bonus</button></div>
           <ul class="shstrip" id="showStrip">${(env.strip || []).map(x => `<li>${E(x)}</li>`).join('')}</ul></div>${ticketHtml(env, c)}</div>` },
-      { id: 'before', name: 'The challenge', notes: `A bonus touches pay, so it has to be right. Before, it was counted by hand: ${env.cards} scorecards, up to ${env.card.kpis.length} KPIs each with its own bands and weight, numbers from more than ten places joined person by person. A slip showed up on a payslip, and every question meant opening the spreadsheets again.`,
+      { id: 'before', name: 'The challenge', notes: `A bonus touches pay, so it has to be right. Before, it was counted by hand: ${BEFORE_CARDS} scorecards, up to ${env.card.kpis.length} KPIs each with its own bands and weight, numbers from more than ten places joined person by person. A slip showed up on a payslip, and every question meant opening the spreadsheets again.`,
         html: `${head(E, 'The challenge', 'A bonus used to be counted <b>by hand.</b>', '')}
-          <div class="shnums shrise"><div><b>${E(String(env.cards))}</b><span>scorecards: one for each department and role</span></div><div><b>${env.card.kpis.length}</b><span>KPIs on a champion's scorecard, each with its own bands and weight</span></div><div class="hot"><b>10+</b><span>sources behind every bonus: Genesys, attendance, quality, the KPI file</span></div></div>
+          <div class="shnums shrise"><div><b>${BEFORE_CARDS}</b><span>scorecards: one for each department and role</span></div><div><b>${env.card.kpis.length}</b><span>KPIs on a champion's scorecard, each with its own bands and weight</span></div><div class="hot"><b>10+</b><span>sources behind every bonus: Genesys, attendance, quality, the KPI file</span></div></div>
           <div class="shcards three shrise">${[['Joined by hand', 'Adherence, AHT, attendance and quality came from different files and were matched person by person.'], ['Found on the payslip', 'A slip in a formula or a name showed up after the bonus was paid, not before.'], ['Hard to explain', 'A question about a bonus meant opening the spreadsheets again to work it out.']].map(([b, t]) => `<div class="shcard"><b>${b}</b><p>${t}</p></div>`).join('')}</div>` },
       { id: 'count', name: 'How a bonus is counted', notes: `Every bonus is counted the same way, in five steps. The month's numbers come in and are matched to each person. Each KPI is ranked from 1 to 5 against its bands. The ranks are weighted into the final. The days attended count against the days scheduled. Then the gates. ${EX.name}: ${E(String(c.res.finalRank))} of 5 is ${pctT(c.res.finalPct)}; ${EX.att} of ${EX.sched} days; ${nf(env.base)} riyals times ${pctT(c.res.daysPct)} times ${pctT(c.res.finalPct)} is ${nf(c.earned)}. The senior manager sets the rules once a month, and a change never touches a month that is closed.`,
         html: `${head(E, 'How a bonus is counted', 'Five steps, <b>the same for everyone.</b>', `One formula for every person, with the rules the senior manager sets for the month; a change never touches a month that is closed. Here is ${E(EX.name)}, a made-up champion, counted by the tool itself.`)}${stepsHtml(env, c)}` },
@@ -39495,7 +39498,7 @@ function showEnv() {
   const k = wsMonthNow() || monthKey(), R = rulesFor(k), C = R.cards && R.cards.teams ? R.cards : Kpi.DEFAULTS(), card = (C.teams && C.teams.CC) || Kpi.DEFAULTS().teams.CC;
   let base = 1000; try { const B = basesNow(k); base = B.Virgin != null ? +B.Virgin : +(C.base || 1000); } catch (e) { base = +(C.base || 1000); }
   const y = +k.slice(0, 4), m = +k.slice(5);
-  return { esc, card, cfg: R.count, elig: R.elig, base, cards: Object.keys(C.teams || {}).length, people: rosterRows().length, strip: showStripItems(),
+  return { esc, card, cfg: R.count, elig: R.elig, base, people: rosterRows().length, strip: showStripItems(),
     month: m ? `${MONTH_LONG[m - 1]} ${y}` : 'This month', live: showLiveHtml, roleAct: showRoleAct, fig: shFig };
 }
 function showHtml() {

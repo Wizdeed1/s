@@ -405,7 +405,7 @@ team, with the Weekly Commercial and Performance Review tabs taken out of what t
 | Section | What it shows |
 |---|---|
 | Cadence | *Every bonus, counted right.* A made-up champion's ticket (Lina A., Member Care Champion): final 84% (4.2 of 5 on 7 KPIs), 20 of 22 days, base 1,000 SR, **764 SR**, its gates ticked; the numbers count up as it comes into view. |
-| The challenge | A bonus used to be counted by hand: the scorecards (15 by default), 7 KPIs on a champion's card each with its bands and weight, 10+ sources. |
+| The challenge | A bonus used to be counted by hand: 9 scorecards (as the WFM team counts them; the tool has 15 built in, which is not this slide's point), 7 KPIs on a champion's card each with its bands and weight, 10+ sources. |
 | How a bonus is counted | The five steps, with the champion's own numbers: the month's numbers (matched by National ID, then name); each KPI ranked 1 to 5 against its bands; weighted into the final; the days that count; the gates (final 80% or more, no attitude critical error, 5 days, 6 months in the job). Then *1,000 SR × 91% × 84% = 764 SR*. |
 | Try it | A slider for every KPI of the card, the days attended, absent days, months in the job and an attitude error: every rank, the final, the gates and the bonus follow at once, counted by the tool's own engine. Back to her month. |
 | Checked before it counts | Every person matched, nothing missing in silence, attendance settled, reviewed then final; **100 people using Cadence at the same time**, tested (see *How many people at the same time* below). |

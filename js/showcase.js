@@ -35,7 +35,7 @@ function showEnv() {
   const k = wsMonthNow() || monthKey(), R = rulesFor(k), C = R.cards && R.cards.teams ? R.cards : Kpi.DEFAULTS(), card = (C.teams && C.teams.CC) || Kpi.DEFAULTS().teams.CC;
   let base = 1000; try { const B = basesNow(k); base = B.Virgin != null ? +B.Virgin : +(C.base || 1000); } catch (e) { base = +(C.base || 1000); }
   const y = +k.slice(0, 4), m = +k.slice(5);
-  return { esc, card, cfg: R.count, elig: R.elig, base, cards: Object.keys(C.teams || {}).length, people: rosterRows().length, strip: showStripItems(),
+  return { esc, card, cfg: R.count, elig: R.elig, base, people: rosterRows().length, strip: showStripItems(),
     month: m ? `${MONTH_LONG[m - 1]} ${y}` : 'This month', live: showLiveHtml, roleAct: showRoleAct, fig: shFig };
 }
 function showHtml() {

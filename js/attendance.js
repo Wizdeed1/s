@@ -187,7 +187,8 @@ function merge(dets, roster, opts) {
       tardyFile = Math.max(...vals2);
       if (vals2.length > 1) warns.push({ kind: 'tardy', pid, text: `${S.p.name}: different Tardy totals in the files (${totals.map(t => `${t.n} in ${t.src}`).join(', ')}); ${tardyFile} is used` });
     }
-    byPerson.set(pid, { days, tardyFile, dayTardy, srcs: [...S.srcs], filled: days.filter(v => v != null).length });
+    const colVals = S.totals.map(t => t.n).filter(Number.isFinite);   // the sheets' own Tardy column, whatever the day cells say (the deduction's Tardy)
+    byPerson.set(pid, { days, tardyFile, dayTardy, tardyCol: colVals.length ? Math.max(...colVals) : null, srcs: [...S.srcs], filled: days.filter(v => v != null).length });
     if (S.ids && S.ids.size === 1) {   // the roster has no ID for this person and the supervisor's file has one
       const [[id, src]] = [...S.ids], fid = `id:${pid}`;
       if (!undo.has(fid)) { idFills.push({ pid, name: S.p.name, id, src }); fix(fid, 'id', `${S.p.name}: no ID in the roster; took ${id} from ${src}`, 1, { undoable: true }); }

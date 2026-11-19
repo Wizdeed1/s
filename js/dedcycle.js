@@ -11,6 +11,10 @@
 // supervisors' attendance sheets; the Genesys Schedule and Agent Status Timeline for the minutes), the month in the tool. What is
 // dropped is kept with the shared data (dednext/<month>), so the final email, and another computer, have it too.
 // A row named after a day code or a heading ("Absent", "OFF": a sheet's legend once read as people) is never in it.
+// The Attendance Report's Tardy, as the WFM team counts it: the attendance sheets' Tardy column only, for everyone (never the
+// minutes on the day cells): the month's first days from the box's sheets; the month before from its total in the tool, less what
+// its own deduction already counted of its first days (that month's box, said in Review Notes), so each month's Tardy column is
+// counted once over the two periods it runs into.
 Object.assign(state, { dedNext: {}, dedFixBy: {}, dedFixVer: 0, dnBusy: false, dnMsg: '', dnGen: { k: '', sch: [], tl: [] } });
 const dedPrevKey = k => { const y = +k.slice(0, 4), m = +k.slice(5); return m === 1 ? ymKey(y - 1, 12) : ymKey(y, m - 1); };
 /** Settings › Deduction period: its first day (in the month before; 1 is the month's own 1st) and its last day (in the month) */
@@ -123,10 +127,12 @@ function dedSegPeople(seg) {
 // ---------------------------------------------------------------- the month's own days: the box, then the corrections
 /** the box's record for a month's first days: dednext/<month>, or the one the 13th-to-12th version kept under the month before */
 function dnDoc(k) { const a = state.dedNext[k]; if (a && a.dm === k) return a; const b = state.dedNext[dedPrevKey(k)]; return b && !b.dm ? b : null; }
-/** { att, sch, act: Map pid -> [n] (days 1 to n of the month, what wins over the month in the tool), notes, src } */
+/** { att, sch, act: Map pid -> [n] (days 1 to n of the month, what wins over the month in the tool), tard: Map pid -> minutes (the
+    Tardy column of the box's sheets), notes, src } */
 function dedHeadData(P) {
   const H = P.head, n = H.n, att = new Map(), sch = new Map(), act = new Map(), notes = new Map(), src = { att: false, ded: false, drop: false, corr: false };
   const D = dnDoc(H.k), E = monthLocked(H.k) ? dedFixOf(H.k) : (watchAttEdits(H.k), attEditsOf(H.k));
+  const tard = new Map(Object.entries((D && D.tard) || {}).filter(([, v]) => +v > 0).map(([pid, v]) => [pid, +v]));
   if (D) {
     for (const [pid, v] of Object.entries(D.att || {})) { const w = dnFit(v, n); if (w.some(x => x != null)) { att.set(pid, w); src.att = src.drop = true; } }
     for (const [pid, v] of Object.entries(D.sch || {})) {
@@ -141,7 +147,7 @@ function dedHeadData(P) {
     if (any) { att.set(pid, cur); src.att = src.corr = true; }
     const note = dnExcNote(E, pid, H.m, d => d <= n); if (note) notes.set(pid, note);
   }
-  return { att, sch, act, notes, src };
+  return { att, sch, act, tard, notes, src };
 }
 // ---------------------------------------------------------------- everyone over the period
 /** [{ key, pid, who, days: [P.n], sch, act, inDed, notes: { att: [], ded: [] }, noMin: [month] }], with the period's sources */
@@ -155,7 +161,7 @@ function dedPeriodPeople(P) {
   }
   const out = [];
   for (const [key, base] of keys) {
-    const days = [], sch = [], act = [], notes = { att: [], ded: [] }, noMin = []; let inDed = false;
+    const days = [], sch = [], act = [], notes = { att: [], ded: [] }, noMin = []; let inDed = false, tardy = 0;
     for (const { s, M } of parts) {
       const x = M ? M.get(key) : null, pid = base.pid, nul = () => Array(s.n).fill(null);
       let d = x && x.days ? x.days.slice() : nul(), sc = x && x.sch ? x.sch.slice() : nul(), ac = x && x.act ? x.act.slice() : nul();
@@ -166,11 +172,18 @@ function dedPeriodPeople(P) {
         if (H.notes.get(pid)) notes.ded.push(H.notes.get(pid));
       } else if (x && pid) { const nt = dnExcNote(dedEditsOf(s.k), pid, s.m, dd => dd >= s.from && dd <= s.to); if (nt) notes.ded.push(nt); }
       if (x && x.inDed) inDed = true;
-      if (x && !x.byDay && +x.tardyTot > 0) notes.att.push(`${MON[s.m - 1]} late minutes came as one total (${x.tardyTot} min), not by day, so they are not in Tardy`);
+      // Tardy, from the sheets' Tardy column only: the month's first days from the box's sheets; the month before from its total in
+      // the tool, less what its own deduction counted of its first days (its box)
+      if (s.head) { if (pid && H.tard.has(pid)) tardy += H.tard.get(pid); }
+      else if (x && +x.tardyTot > 0) {
+        const B = pid ? dnDoc(s.k) : null, before = B && B.tard && +B.tard[pid] > 0 ? +B.tard[pid] : 0, add = Math.max(0, Math.round(+x.tardyTot - before));
+        tardy += add;
+        if (before) notes.att.push(`${MON[s.m - 1]}'s Tardy column ${x.tardyTot} min, less ${before} min of its first days counted in ${MON[s.m - 1]}'s deduction: ${add} min`);
+      }
       if (x && x.inDed && !(x.sch && x.sch.some(v => v != null))) noMin.push(MON[s.m - 1]);
       days.push(...d); sch.push(...sc); act.push(...ac);
     }
-    out.push({ key, pid: base.pid, who: base.who, days, sch, act, inDed, notes, noMin });
+    out.push({ key, pid: base.pid, who: base.who, days, sch, act, inDed, notes, noMin, tardy });
   }
   return out;
 }
@@ -189,7 +202,7 @@ function dedPeriodData(P0) {
   for (const x of L) {
     if (brandOk(x.who) && x.days.some(v => v != null)) {
       const c = Kpi.countDays(x.days, cfg);
-      att.push({ ...x.who, days: x.days, tardy: c.tardy || 0, sched: c.sched, actual: c.counted, note: x.notes.att.join(' · ') });
+      att.push({ ...x.who, days: x.days, tardy: x.tardy || 0, sched: c.sched, actual: c.counted, note: x.notes.att.join(' · ') });
     }
     if (scopeOk(x.who) && x.inDed) {
       const any = x.sch.some((s, i) => s != null && x.act[i] != null), notes = [...x.notes.ded];
@@ -289,12 +302,15 @@ async function dnRead(files) {
       took.push({ name: f.name, kind: a.length ? 'attendance' : s.length ? 'schedule' : 'timeline' });
     }
     const prev = dnDoc(Hd.k) || {}, out = { k: Hd.k, dm: Hd.k, at: new Date().toISOString(), by: whoNow(), files: [...(prev.files || []).filter(f => !took.some(x => x.name === f.name)), ...took],
-      att: { ...(prev.att || {}) }, sch: { ...(prev.sch || {}) }, act: { ...(prev.act || {}) }, unmatched: [...(prev.unmatched || [])] };
+      att: { ...(prev.att || {}) }, tard: { ...(prev.tard || {}) }, sch: { ...(prev.sch || {}) }, act: { ...(prev.act || {}) }, unmatched: [...(prev.unmatched || [])] };
     const said = [], done = [];   // what went wrong stays on the box; what was read is said once
     if (att.length) {
       const R = Att.merge(att, rosterRows(), { y: Hd.y, m: Hd.m, links: state.attLinks });
       let people = 0;
-      for (const [pid, a] of R.byPerson) { const v = dnFit(a.days, n); if (!v.some(x => x != null)) continue; const old = dnFit(out.att[pid], n) || Array(n).fill(null); out.att[pid] = v.map((x, i) => (x != null ? x : old[i])); people++; }
+      for (const [pid, a] of R.byPerson) {
+        const v = dnFit(a.days, n); if (!v.some(x => x != null)) continue; const old = dnFit(out.att[pid], n) || Array(n).fill(null); out.att[pid] = v.map((x, i) => (x != null ? x : old[i])); people++;
+        if (a.tardyCol != null) out.tard[pid] = +a.tardyCol;   // the sheet's Tardy column: the deduction's Tardy
+      }
       out.unmatched = [...new Set([...out.unmatched, ...R.unmatched.map(u => normSpace(u.name || u.idRaw)).filter(x => x && !isLegend(x))])].slice(0, 200);
       const used = R.files.filter(f => f.used);
       if (used.length) done.push(`1–${n} ${MON[Hd.m - 1]} for ${plural(people, 'person', 'people')}`); else said.push(`No days of ${NM} in the sheets (${R.files.map(f => f.reason).filter(Boolean)[0] || 'no dates'})`);

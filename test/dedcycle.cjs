@@ -8,6 +8,10 @@
 // 2. The box "The period": a made-up November sheet (a leave, late minutes, an absence, someone not in the roster, and a legend under
 //    the names with another table's heading) and the November Schedule and Agent Status Timeline: 1–12 Nov fill in (15 min late on
 //    the 3rd is a Diff of 15), the legend is not read, the warnings go, the email's absences show 4-Nov, kept with the shared data.
+//    Tardy in the Attendance Report, as the WFM team counts it: the attendance sheets' Tardy column only, CC too (never Total (min),
+//    never the day cells' minutes): Omar 0, then 15 (November's sheet); the SM person: October's 30 less the 12 its own deduction
+//    counted of 1–12 Oct (October's box): 18, said in Review Notes; then 58 with November's sheet's Tardy column (40; the 25 minutes on
+//    one of her day cells do not count).
 // 3. A correction for a November day (Corrections after the review): Now shows the dropped day; the workbook shows it.
 // 4. October final: a correction for 20 Oct counts for the deduction only (dedfix/2026-10), October's own rows stay; Undo.
 // 5. Clear what was dropped, and Undo; Settings › Deduction period 14 to 13: 14 Oct – 13 Nov; no errors.
@@ -36,13 +40,15 @@ const csv = rows => rows.map(r => r.map(v => (/[",]/.test(String(v)) ? `"${Strin
     S.db = { doc: id => ({ set: async v => { mem[id] = JSON.parse(JSON.stringify(v)); tell(id); }, update: async v => { mem[id] = { ...(mem[id] || {}), ...v }; tell(id); }, delete: async () => { delete mem[id]; tell(id); }, get: async () => ({ exists: !!mem[id], data: () => mem[id] }) }),
       collection: path => ({ onSnapshot: cb => { subs.push({ path, cb }); setTimeout(() => cb(snap(path)), 0); return () => {}; }, get: async () => snap(path) }) };
     window.__mem = mem;
+    // October's own deduction counted 12 of the SM person's late minutes (its first days' sheet, in October's box)
+    mem['dednext/2026-10'] = { k: '2026-10', dm: '2026-10', att: {}, tard: { [S.roster.filter(x => x.team === 'SM' && x.brand === 'Virgin')[0]._id]: 12 }, sch: {}, act: {}, files: [], unmatched: [] };
     const R = S.roster.filter(x => x.team === 'CC' && x.brand === 'Virgin').slice(0, 2).concat(S.roster.filter(x => x.team === 'CC' && x.brand === 'Friendi').slice(0, 1), S.roster.filter(x => x.team === 'SM' && x.brand === 'Virgin').slice(0, 1));
     const names = ['Omar Al Demo', 'Rayan Alexample', 'Nawal Testname', 'Nawal Sampleson'];
     R.forEach((q, i) => { q.name = names[i]; q.sys = ''; });
     const off = d => [2, 9, 16, 23, 30].includes(d), A = { 20: 470, 27: 455 };
     const d = () => Array.from({ length: 31 }, (_, i) => (off(i + 1) ? 'O' : 'A')).join('');
     const sch = Array.from({ length: 31 }, (_, i) => (off(i + 1) ? '' : 480)), act = i0 => sch.map((v, i) => (v === '' ? '' : i0 === 0 ? A[i + 1] || 480 : 480));
-    const rows = R.map((q, i) => ({ id: String(q.nid), n: q.name, brand: q.brand, team: q.team, d: d(), worked: 26, ...(q.team === 'CC' ? { ds: sch.join(','), da: act(i).join(','), ded: i === 0 ? 10 + 25 : 0 } : {}) }));
+    const rows = R.map((q, i) => ({ id: String(q.nid), n: q.name, brand: q.brand, team: q.team, d: d(), worked: 26, ...(q.team === 'CC' ? { ds: sch.join(','), da: act(i).join(','), ded: i === 0 ? 10 + 25 : 0 } : { tardy: 30 }) }));   // the SM person: October's late minutes as one total (the sheet's Tardy column)
     rows.push({ id: '', n: 'Absent', brand: 'Virgin', team: 'CC', d: d(), worked: 26, ds: sch.join(','), da: act(1).join(','), ded: 0 });   // a sheet's legend line once read as a person
     S.history['2026-10'] = { y: 2026, m: 10, rows, tool: true, at: new Date().toISOString() }; S.histVer++; S.wsMonth = '2026-10';   // the other pages close October; the deduction email opens on November (its period ended on the 13th)
     S.wfmTab = 'emails'; S.mailSub = 'month'; M.setWs('wfm'); M.renderWs();
@@ -69,6 +75,8 @@ const csv = rows => rows.map(r => r.map(v => (/[",]/.test(String(v)) ? `"${Strin
   ok(X.people.length === 3 && X.people.every(s => s.split('|')[1] === 'Virgin') && !X.people.some(s => s.startsWith('Nawal Testname')) && X.people.some(s => /^Nawal Sampleson\|Virgin\|SM$/.test(s)) && !X.people.some(s => s.startsWith('Absent')),
     `its Attendance Report: only Virgin, every team (${X.people.join(', ')}); the FRiENDi person and the "Absent" line left out`);
   ok(X.dPeople.slice().sort().join() === 'Omar Al Demo,Rayan Alexample', `its Monthly Deduction: Virgin · CC only (${X.dPeople.join(', ')})`);
+  ok(X.cnt('Omar Al Demo', 'Tardy') === 0 && X.tot('Omar Al Demo') === 35 && X.cnt('Rayan Alexample', 'Tardy') === 0 && X.cnt('Nawal Sampleson', 'Tardy') === 18 && /Oct's Tardy column 30 min, less 12 min of its first days counted in Oct's deduction: 18 min/.test(X.cnt('Nawal Sampleson', 'Review Notes') || ''),
+    `Tardy from the sheets' Tardy column only: Omar ${X.cnt('Omar Al Demo', 'Tardy')} (not his Total (min), ${X.tot('Omar Al Demo')}), Rayan ${X.cnt('Rayan Alexample', 'Tardy')}; the SM person October's column less what October's deduction counted (${X.cnt('Nawal Sampleson', 'Tardy')}: "${X.cnt('Nawal Sampleson', 'Review Notes')}")`);
   ok(X.day('Omar Al Demo', '2026-10-13') === 'Attend' && X.day('Omar Al Demo', '2026-10-16') === 'OFF' && X.day('Omar Al Demo', '2026-11-01') == null && X.dd('Omar Al Demo', '2026-10-20', 2) === 10 && X.dd('Omar Al Demo', '2026-10-27', 2) === 25 && X.tot('Omar Al Demo') === 35 && X.dd('Omar Al Demo', '2026-11-03', 0) == null,
     `October's days from the month (13 Oct Attend, 16 Oct OFF, 20 Oct Diff 10, 27 Oct Diff 25, total ${X.tot('Omar Al Demo')}); November's empty`);
   ok(E.period === '13 Oct – 12 Nov' && E.ded.join() === 'Omar Al Demo:35' && /Period: 13 Oct – 12 Nov 2026\./.test(E.text) && !/\bAbsent\b.*\t/.test(E.text.split('Absenteeism')[0]) && !E.ded.some(x => x.startsWith('Absent')) && E.deadline === 'Nov 15th',
@@ -83,8 +91,8 @@ const csv = rows => rows.map(r => r.map(v => (/[",]/.test(String(v)) ? `"${Strin
   await p.evaluate(() => document.getElementById('dnCard').scrollIntoView({ block: 'center' })); await p.screenshot({ path: path.join(out, 'dedcycle-before.png') });
   // ---- 2. November's files dropped in the box
   const nov = Array.from({ length: 30 }, (_, i) => `2026-11-${String(i + 1).padStart(2, '0')}`), wk = d => ![6, 7].includes(d);   // 6 and 7 Nov: Friday and Saturday
-  const code = (who, d) => (!wk(d) ? 'OFF' : who === 0 && d === 1 ? 'AL' : who === 0 && d === 3 ? '15' : who === 1 && d === 2 ? 'SL' : who === 3 && d === 4 ? 'Absent' : 'Attend');
-  const attRows = [['Name', 'National ID', 'Team', 'Dep', ...nov], ...[0, 1, 2, 3].map(i => [T.names[i], T.nids[i], i === 2 ? 'Friendi' : 'Virgin', i === 3 ? 'SM' : 'CC', ...nov.map((_, j) => code(i, j + 1))]), ['Zed Notinroster', '1999999999', 'Virgin', 'CC', ...nov.map((_, j) => code(9, j + 1))],
+  const code = (who, d) => (!wk(d) ? 'OFF' : who === 0 && d === 1 ? 'AL' : who === 0 && d === 3 ? '15' : who === 1 && d === 2 ? 'SL' : who === 3 && d === 4 ? 'Absent' : who === 3 && d === 10 ? '25' : 'Attend');   // the SM person's 25 minutes on the 10th: a day cell, not the Tardy column
+  const attRows = [['Name', 'National ID', 'Team', 'Dep', ...nov, 'Tardy'], ...[0, 1, 2, 3].map(i => [T.names[i], T.nids[i], i === 2 ? 'Friendi' : 'Virgin', i === 3 ? 'SM' : 'CC', ...nov.map((_, j) => code(i, j + 1)), i === 0 ? 15 : i === 3 ? 40 : 0]), ['Zed Notinroster', '1999999999', 'Virgin', 'CC', ...nov.map((_, j) => code(9, j + 1)), 0],
     [], ['Absent', '', '', '', '', '', 'Attend', 'Rami D.', 'Friendi', 'CT'], ['After', '', '', '', '', '', 'ID', 'Name', 'Team', 'Dep'], ['AL', '', '', '', '', '', 'Attend', 'Hadi E.', 'Friendi', 'CT'], ['compassion leave'], ['OFF'], ['Unpaid']];   // a legend under the names, another table's heading
   const attF = path.join(out, 'Attendance - Nov 2026 (made-up).csv'); fs.writeFileSync(attF, csv(attRows));
   const dt = (d, h, m) => `11/${d}/2026 ${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`, hms = s => `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -106,7 +114,10 @@ const csv = rows => rows.map(r => r.map(v => (/[",]/.test(String(v)) ? `"${Strin
     `the box says where November's days come from: ${C.li.slice(1).join(' | ')}; not in the roster: Zed Notinroster (not the legend)`);
   ok(!W.some(w => /1–12 Nov/.test(w)), 'the warnings about November are gone');
   ok(X.day('Omar Al Demo', '2026-11-01') === 'AL leave' && X.day('Omar Al Demo', '2026-11-03') === 'Attend' && X.cnt('Omar Al Demo', 'Tardy') === 15 && X.day('Omar Al Demo', '2026-11-06') === 'OFF' && X.day('Rayan Alexample', '2026-11-02') === 'SL leaves' && X.day('Nawal Sampleson', '2026-11-04') === 'Absent' && !X.dates.includes('2026-11-13') && X.people.length === 3 && X.dates.length === 31,
-    `1–12 Nov in the Attendance Report: Omar AL on the 1st, 15 min late on the 3rd (Attend, Tardy ${X.cnt('Omar Al Demo', 'Tardy')}), Rayan SL on the 2nd, the SM person absent on the 4th, the 13th not in (it is December's); still only Virgin, no legend`);
+    `1–12 Nov in the Attendance Report: Omar AL on the 1st, 15 min late on the 3rd (Attend; Tardy ${X.cnt('Omar Al Demo', 'Tardy')}, his sheet's Tardy column), Rayan SL on the 2nd, the SM person absent on the 4th, the 13th not in (it is December's); still only Virgin, no legend`);
+  ok(X.cnt('Nawal Sampleson', 'Tardy') === 58 && X.cnt('Omar Al Demo', 'Tardy') === 15 && X.tot('Omar Al Demo') === 50, `Tardy after the drop: the SM person's November Tardy column (40; her 25 day-cell minutes not counted) with October's 18: ${X.cnt('Nawal Sampleson', 'Tardy')}; Omar his sheet's column, ${X.cnt('Omar Al Demo', 'Tardy')} (his Total (min) ${X.tot('Omar Al Demo')})`);
+  const kt = await p.evaluate(pid => ((window.__mem['dednext/2026-11'] || {}).tard || {})[pid], T.pids[3]);
+  ok(kt === 40, `  the box keeps the sheet's Tardy column with the days (dednext/2026-11: ${kt} min)`);
   ok(X.dd('Omar Al Demo', '2026-11-03', 2) === 15 && X.dd('Omar Al Demo', '2026-11-04', 2) === 0 && X.dd('Rayan Alexample', '2026-11-05', 2) === 0 && X.tot('Omar Al Demo') === 50 && X.dd('Omar Al Demo', '2026-11-06', 0) == null,
     `1–12 Nov in the Monthly Deduction: Omar's 3rd a Diff of ${X.dd('Omar Al Demo', '2026-11-03', 2)} (Sched. ${X.dd('Omar Al Demo', '2026-11-03', 0)}, Actual ${X.dd('Omar Al Demo', '2026-11-03', 1)}), his total ${X.tot('Omar Al Demo')} (35 in October + 15)`);
   ok(E.ded.join() === 'Omar Al Demo:50' && E.abs.join() === 'Nawal Sampleson:2026-11-04' && /\t4-Nov/.test(E.text) && !/Nawal Testname/.test(E.abs.join()),

@@ -12,6 +12,7 @@
     sub:   { size: 12.5,               lh: 14, color: COL.mute },
     lab:   { size: 10,   bold: 1, ls: 1.2, lh: 11, color: COL.mute },
     val:   { size: 30,   bold: 1, ls: -0.6, lh: 36, color: COL.ink },
+    big:   { size: 40,   bold: 1, ls: -0.8, lh: 46, color: COL.ink },
     note:  { size: 11,                 lh: 12, color: COL.mute },
     h2:    { size: 10.5, bold: 1, ls: 1.2, lh: 12, color: COL.mute },
     after: { size: 11,                 lh: 12, color: COL.mute },
@@ -82,28 +83,39 @@
     ctx.strokeStyle = stroke; ctx.lineWidth = bw; ctx.strokeRect(x + bw / 2, y + bw / 2, w - bw, h - bw);
   }
 
-  /* What the card says. s: { brand, flow, date, span, calls, agent, ended, abandoned, firstName, afterOut, afterMs,
-     busyOut: [{name, n}], busyMs: [{name, n}], daFile, actions, errors: [{name, runs, rate}] (worst first) }.
-     The names are the team's: IVR Summary daily report, IVR Calls, IVR deflection, Transfer to Agent, Errors. */
+  /* What the card says. s: { brand, flow, date, span, calls, u30, u60, agent (from the Interactions export of the IVR's flow),
+     lists, firstName, afterOut, afterMs, busyOut: [{name, n}], busyMs: [{name, n}] (the Flow Outcome and Milestone exports, when
+     dropped), daFile, actions, runs, errorsN, errors: [{name, runs, errors, rate}] (the Data Actions export: every action that
+     failed, the most errors first) }. The names are the team's: IVR Summary daily report, IVR Calls, IVR deflection, Transfer to
+     Agent, Errors. */
+  const errPct = r => (r == null ? '–' : r <= 0 ? '0%' : r < 0.0005 ? '<0.1%' : r < 0.1 ? Math.round(r * 1000) / 10 + '%' : Math.round(100 * r) + '%');
+  const andList = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
   function cardText(s) {
     const title = 'IVR Summary daily report' + (s.date ? ' · ' + s.date : '');
-    const sub = [s.flow ? s.flow + ' flow' : 'Flow not named in the exports', s.span].filter(Boolean).join(' · ');
-    const worst = s.errors[0];
-    const tiles = [
-      { lab: 'IVR Calls', val: fmt(s.calls), note: (s.firstName ? 'visits to ' + s.firstName : 'no outcomes in the export') + (s.abandoned ? ' · ' + fmt(s.abandoned) + ' abandoned left out' : '') },
-      { lab: 'IVR deflection', val: pctOf(s.ended, s.calls), note: fmt(s.ended) + ' of ' + fmt(s.calls) + ' calls' },
-      { lab: 'Transfer to Agent', val: pctOf(s.agent, s.calls), note: fmt(s.agent) + ' transfers' },
-      !s.daFile ? { lab: 'Errors', val: '–', note: 'no data actions export' }
-        : !s.actions ? { lab: 'Errors', val: '–', note: 'no actions for this flow' }
-        : { lab: 'Errors', val: String(s.errors.length), note: worst ? 'worst: ' + rateTxt(worst.rate) + ' of ' + fmt(worst.runs) + ' runs' : 'none of ' + fmt(s.actions) + ' failed', alert: !!worst }
-    ];
-    const sources = s.daFile ? 'Flow Outcome Detail, Flow Milestone Detail and Data Actions Performance' : 'Flow Outcome Detail and Flow Milestone Detail';
-    const foot = 'IVR deflection = IVR calls minus transfers to an agent' + (s.abandoned != null ? ', abandoned calls left out' : '') + '. Source: Genesys ' + sources + ' exports' + (s.date ? ', ' + s.date : '') + '.';
-    return { title: title, sub: sub, tiles: tiles, foot: foot };
+    const sub = [s.flow ? s.flow + ' flow' : 'Flow not named in the export', s.span].filter(Boolean).join(' · ');
+    const er = s.runs ? s.errorsN / s.runs : null, calls = s.calls || 0;
+    const tiles = {
+      calls: { lab: 'IVR Calls', val: fmt(calls), note: 'calls into ' + (s.flow || 'the IVR') },
+      d60: { lab: 'IVR deflection · under 60s', val: pctOf(s.u60, calls), note: fmt(s.u60) + ' of ' + fmt(calls) + ' calls' },
+      d30: { lab: 'IVR deflection · under 30s', val: pctOf(s.u30, calls), note: fmt(s.u30) + ' of ' + fmt(calls) + ' calls' },
+      agent: { lab: 'Transfer to Agent', val: pctOf(s.agent, calls), note: fmt(s.agent) + ' transfers' },
+      errors: !s.daFile ? { lab: 'Errors', val: '–', note: 'no data actions export' }
+        : !s.actions ? { lab: 'Errors', val: '–', note: 'no data actions for ' + (s.flow || 'this flow') }
+        : { lab: 'Errors', val: errPct(er), note: fmt(s.errorsN) + (s.errorsN === 1 ? ' error' : ' errors') + ' of ' + fmt(s.runs) + ' data action runs', alert: er >= 0.05 }
+    };
+    const order = [tiles.calls, tiles.d60, tiles.d30, tiles.agent, tiles.errors];
+    const sources = ['Interactions' + (s.flow ? ' (' + s.flow + ')' : '')].concat(s.daFile ? ['Data Actions Performance'] : [], s.lists ? ['Flow Outcome Detail', 'Flow Milestone Detail'] : []);
+    const foot = 'IVR deflection = calls with no queue that ended within 60 s or 30 s, of all IVR calls. Transfer to Agent = calls an agent took.'
+      + (s.daFile ? ' Errors = data action runs that failed, of all the flow’s runs, Customer Type included.' : '')
+      + ' Source: Genesys ' + andList(sources) + (sources.length > 1 ? ' exports' : ' export') + (s.date ? ', ' + s.date : '') + '.';
+    return { title: title, sub: sub, tiles: tiles, order: order, foot: foot };
   }
+  /* an error row: the action the errors belong to, a pill with how many, and the share of its runs that failed */
+  const errPill = e => fmt(e.errors) + (e.errors === 1 ? ' error' : ' errors');
+  const errRuns = e => rateTxt(e.rate) + ' of ' + fmt(e.runs) + ' runs';
 
   function paint(ctx, s, H, draw) {
-    const X = CARD.X, CW = CARD.CW, t = cardText(s);
+    const X = CARD.X, CW = CARD.CW, t = cardText(s), T = t.tiles;
     if (draw) { ctx.fillStyle = COL.white; ctx.fillRect(0, 0, CARD.W, H); }
     let y = 26;
     y = block(ctx, TS.eb, 'IVR SCORECARD', X, y, CW, draw);
@@ -111,23 +123,28 @@
     y = block(ctx, TS.sub, t.sub, X, y + 2, CW, draw);
     y += 18;
 
-    // four tiles, two by two; tiles in a row share the taller height
+    // the tiles as the WFM team lays them out: the calls on the left, as tall as the two deflections beside it (under 60 s above
+    // under 30 s); under them the transfers to an agent and the errors
     const TW = (CW - 10) / 2, IW = TW - 4 - 28;
-    for (let r = 0; r < 2; r++) {
-      const pair = t.tiles.slice(2 * r, 2 * r + 2);
-      const h = Math.max.apply(null, pair.map(k => 2 + 12 + wrap(ctx, TS.lab, k.lab.toUpperCase(), IW).length * TS.lab.lh + 2 + TS.val.lh + 1 + wrap(ctx, TS.note, k.note, IW).length * TS.note.lh + 11 + 2));
-      if (draw) pair.forEach((k, i) => {
-        const x = X + i * (TW + 10), ix = x + 16;
-        frame(ctx, x, y, TW, h, k.alert ? COL.pink : COL.white, k.alert ? COL.red : COL.ink, 2);
-        let ty = block(ctx, TS.lab, k.lab.toUpperCase(), ix, y + 14, IW, true, k.alert ? COL.red2 : COL.mute);
-        ty = block(ctx, TS.val, k.val, ix, ty + 2, IW, true);
-        block(ctx, TS.note, k.note, ix, ty + 1, IW, true);
-      });
-      y += h + (r ? 0 : 10);
+    const inner = (k, big) => wrap(ctx, TS.lab, k.lab.toUpperCase(), IW).length * TS.lab.lh + 2 + (big ? TS.big.lh : TS.val.lh) + 1 + wrap(ctx, TS.note, k.note, IW).length * TS.note.lh;
+    const tileH = (k, big) => 2 + 12 + inner(k, big) + 11 + 2;
+    function tile(k, x, ty, h, big) {
+      if (!draw) return;
+      frame(ctx, x, ty, TW, h, k.alert ? COL.pink : COL.white, k.alert ? COL.red : COL.ink, 2);
+      const ix = x + 16;
+      let cy = big ? ty + (h - inner(k, true)) / 2 : ty + 14;
+      cy = block(ctx, TS.lab, k.lab.toUpperCase(), ix, cy, IW, true, k.alert ? COL.red2 : COL.mute);
+      cy = block(ctx, big ? TS.big : TS.val, k.val, ix, cy + 2, IW, true);
+      block(ctx, TS.note, k.note, ix, cy + 1, IW, true);
     }
-    y += 20;
+    const hr = Math.max(tileH(T.d60), tileH(T.d30), Math.ceil((tileH(T.calls, true) - 10) / 2)), hl = 2 * hr + 10;
+    tile(T.calls, X, y, hl, true); tile(T.d60, X + TW + 10, y, hr); tile(T.d30, X + TW + 10, y + hr + 10, hr);
+    y += hl + 10;
+    const hb = Math.max(tileH(T.agent), tileH(T.errors));
+    tile(T.agent, X, y, hb); tile(T.errors, X + TW + 10, y, hb);
+    y += hb;
 
-    // top 5 lists: name | bar | number
+    // top 5 lists: name | bar | number (only when the Flow Outcome and Milestone exports were dropped too)
     function list(head, after, rows, y) {
       y = block(ctx, TS.h2, head.toUpperCase(), X, y, CW, draw);
       if (after) y = block(ctx, TS.after, after, X, y + 2, CW, draw);
@@ -153,21 +170,24 @@
       });
       return y;
     }
-    y = list('Top 5 outcomes · attempts', s.afterOut, s.busyOut, y);
-    y = list('Top 5 milestones · hits', s.afterMs, s.busyMs, y + 16);
+    if (s.lists) {
+      y = list('Top 5 outcomes · attempts', s.afterOut, s.busyOut, y + 20);
+      y = list('Top 5 milestones · hits', s.afterMs, s.busyMs, y + 16);
+    }
 
-    // data action errors, only when there are some
+    // data action errors, only when there are some: every action that failed, Customer Type too, so each error has its place;
+    // each row the action, a pill with its errors (red from 5% of its runs) and the share of its runs that failed
     if (s.daFile && s.actions && s.errors.length) {
       y += 18;
-      const top = y, IX = X + 16, IWE = CW - 32, rows = s.errors.slice(0, 5), more = s.errors.length - rows.length;
+      const top = y, IX = X + 16, IWE = CW - 32;
       const head = ('Data action errors' + (s.flow ? ' · ' + s.flow : '')).toUpperCase();
-      const lay = rows.map(e => {
-        const pill = rateTxt(e.rate) + ' failed', runs = 'of ' + fmt(e.runs) + ' runs';
-        const pw = textW(ctx, TS.pill, pill) + 17, rw = Math.max(84, textW(ctx, TS.runs, runs));
+      const lay = s.errors.map(e => {
+        const pill = errPill(e), runs = errRuns(e);
+        const pw = textW(ctx, TS.pill, pill) + 17, rw = Math.max(96, textW(ctx, TS.runs, runs));
         const nl = wrap(ctx, TS.nm, e.name, IWE - pw - rw - 20);
         return { e: e, pill: pill, runs: runs, pw: pw, rw: rw, nl: nl, ch: Math.max(nl.length * TS.nm.lh, 18) };
       });
-      const h = 2 + 12 + wrap(ctx, TS.h2, head, IWE).length * TS.h2.lh + 6 + lay.reduce((a, r, i) => a + (i ? 1 : 0) + 10 + r.ch, 0) + (more ? 1 + TS.more.lh + 8 : 0) + 8 + 2;
+      const h = 2 + 12 + wrap(ctx, TS.h2, head, IWE).length * TS.h2.lh + 6 + lay.reduce((a, r, i) => a + (i ? 1 : 0) + 10 + r.ch, 0) + 8 + 2;
       if (draw) frame(ctx, X, top, CW, h, COL.pink, COL.ink, 2);
       let ry = block(ctx, TS.h2, head, IX, top + 14, IWE, draw, COL.red) + 6;
       lay.forEach((r, i) => {
@@ -185,10 +205,6 @@
         }
         ry = ct + r.ch + 5;
       });
-      if (more) {
-        if (draw) { ctx.fillStyle = COL.erule; ctx.fillRect(IX, ry, IWE, 1); }
-        block(ctx, TS.more, '+' + more + ' more ' + (more === 1 ? 'action' : 'actions') + ' with errors', IX, ry + 5, IWE, draw);
-      }
       y = top + h;
     }
 
@@ -212,10 +228,10 @@
   // the card in words, for screen readers
   function alt(s) {
     const t = cardText(s);
-    const parts = [t.title + '.', t.sub + '.'].concat(t.tiles.map(k => k.lab + ': ' + k.val + ', ' + k.note + '.'));
-    if (s.busyOut.length) parts.push('Top outcomes: ' + s.busyOut.map(r => r.name + ' ' + fmt(r.n)).join(', ') + '.');
-    if (s.busyMs.length) parts.push('Top milestones: ' + s.busyMs.map(r => r.name + ' ' + fmt(r.n)).join(', ') + '.');
-    if (s.daFile && s.errors.length) parts.push('Data action errors: ' + s.errors.slice(0, 5).map(e => e.name + ' ' + rateTxt(e.rate) + ' of ' + fmt(e.runs) + ' runs').join(', ') + '.');
+    const parts = [t.title + '.', t.sub + '.'].concat(t.order.map(k => k.lab + ': ' + k.val + ', ' + k.note + '.'));
+    if (s.lists && s.busyOut.length) parts.push('Top outcomes: ' + s.busyOut.map(r => r.name + ' ' + fmt(r.n)).join(', ') + '.');
+    if (s.lists && s.busyMs.length) parts.push('Top milestones: ' + s.busyMs.map(r => r.name + ' ' + fmt(r.n)).join(', ') + '.');
+    if (s.daFile && s.errors.length) parts.push('Data action errors: ' + s.errors.map(e => e.name + ' ' + errPill(e) + ', ' + errRuns(e)).join('; ') + '.');
     return parts.join(' ');
   }
 
@@ -226,7 +242,7 @@
      numbers can be changed before it goes. W: the width it fills, in px (688 in the IVR Summary Daily Report email). */
   function mailHtml(s, W) {
     W = W || 688;
-    const t = cardText(s), F = 'font-family:&quot;Aptos&quot;,Arial,sans-serif;';
+    const t = cardText(s), T = t.tiles, F = 'font-family:&quot;Aptos&quot;,Arial,sans-serif;';
     const pt = px => +(px * 0.75).toFixed(2) + 'pt';
     const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
     // a paragraph of one run: size in pt; o: bold, ls (letter spacing, pt), mt/mb (margins, pt), align, box (more of the paragraph's style)
@@ -246,17 +262,22 @@
       + line(t.title, 18, COL.ink, { bold: 1, ls: -0.3, mt: 4.5 })
       + line(t.sub, 10, COL.mute, { mt: 1.5 });
 
-    // four tiles, two by two; the tiles of a row are one table row, so they share its height
+    // the tiles as the team lays them out: the calls on the left, as tall as the two deflections beside it (one cell over three
+    // rows: under 60 s, the space, under 30 s), then the transfers and the errors; the cells of a row share its height
     const TW = (W - 10) / 2;
-    const tile = k => {
+    const tile = (k, big, attrs) => {
       const bg = k.alert ? COL.pink : COL.white;
       return cell(TW, line(k.lab.toUpperCase(), 7.5, k.alert ? COL.red2 : COL.mute, { bold: 1, ls: 0.9 })
-        + line(k.val, 24, COL.ink, { bold: 1, ls: -0.45, mt: 1.5 })
+        + line(k.val, big ? 30 : 24, COL.ink, { bold: 1, ls: -0.45, mt: 1.5 })
         + line(k.note, 8.5, COL.mute, { mt: 0.75 }),
-        `border:solid ${k.alert ? COL.red : COL.ink} 1.5pt;background:${bg};padding:${pt(12)} ${pt(16)} ${pt(11)} ${pt(16)}`, ` valign="top" bgcolor="${bg}"`);
+        `border:solid ${k.alert ? COL.red : COL.ink} 1.5pt;background:${bg};padding:${pt(12)} ${pt(16)} ${pt(11)} ${pt(16)}`, ` valign="${big ? 'middle' : 'top'}" bgcolor="${bg}"${attrs || ''}`);
     };
-    const tileRow = r => '<tr>' + tile(t.tiles[2 * r]) + cell(10, gap(10), 'padding:0in') + tile(t.tiles[2 * r + 1]) + '</tr>';
-    const tiles = table(W, tileRow(0) + `<tr><td colspan="3" style="padding:0in">${gap(10)}</td></tr>` + tileRow(1));
+    const space = attrs => cell(10, gap(10), 'padding:0in', attrs || '');
+    const tiles = table(W, '<tr>' + tile(T.calls, true, ' rowspan="3"') + space(' rowspan="3"') + tile(T.d60) + '</tr>'
+      + `<tr><td style="padding:0in">${gap(10)}</td></tr>`
+      + '<tr>' + tile(T.d30) + '</tr>'
+      + `<tr><td colspan="3" style="padding:0in">${gap(10)}</td></tr>`
+      + '<tr>' + tile(T.agent) + space() + tile(T.errors) + '</tr>');
 
     // the top 5 lists: name | bar | number, a hairline above each row; a bar is a row of two cells, the dark one as long as the number
     const BW = 280, NUM = 92, NAME = W - BW - NUM;
@@ -278,30 +299,28 @@
         + (after ? line(after, 8.5, COL.mute, { mt: 1.5 }) : '')
         + gap(6) + table(W, body);
     };
+    const lists = s.lists ? gap(22) + list('Top 5 outcomes · attempts', s.afterOut, s.busyOut) + gap(16) + list('Top 5 milestones · hits', s.afterMs, s.busyMs) : '';
 
-    // data action errors, only when there are some: a pink box; each row the action, a pill with the share that failed, the runs
+    // data action errors, only when there are some: a pink box; every action that failed (Customer Type too), a pill with its
+    // errors and the share of its runs that failed
     let errs = '';
     if (s.daFile && s.actions && s.errors.length) {
-      const rows = s.errors.slice(0, 5), more = s.errors.length - rows.length;
       const pad = (i, l) => `${i ? `border-top:solid ${COL.erule} 1.0pt;` : ''}padding:${pt(5)} 0in ${pt(5)} ${pt(l)}`;
       const pill = e => {
         const hi = e.rate >= 0.05, c = hi ? COL.red : COL.ink, bg = hi ? COL.red : COL.white;
-        return line(rateTxt(e.rate) + ' failed', 8.5, hi ? COL.white : COL.ink, { bold: 1, align: 'center', box: `border:solid ${c} 1.0pt;padding:1.0pt 0in 1.0pt 0in;background:${bg};border-radius:9px` });
+        return line(errPill(e), 8.5, hi ? COL.white : COL.ink, { bold: 1, align: 'center', box: `border:solid ${c} 1.0pt;padding:1.0pt 0in 1.0pt 0in;background:${bg};border-radius:9px` });
       };
-      const body = rows.map((e, i) => '<tr>'
+      const body = s.errors.map((e, i) => '<tr>'
         + cell(0, line(e.name, 10, COL.ink), pad(i, 0), ' valign="middle"')
-        + cell(86, pill(e), pad(i, 10), ' valign="middle"')
-        + cell(96, line('of ' + fmt(e.runs) + ' runs', 8.5, COL.mute, { align: 'right' }), pad(i, 10), ' valign="middle" align="right"')
-        + '</tr>').join('')
-        + (more ? '<tr>' + cell(0, line('+' + more + ' more ' + (more === 1 ? 'action' : 'actions') + ' with errors', 8.5, COL.mute), pad(1, 0), ' colspan="3"') + '</tr>' : '');
+        + cell(92, pill(e), pad(i, 10), ' valign="middle"')
+        + cell(112, line(errRuns(e), 8.5, COL.mute, { align: 'right' }), pad(i, 10), ' valign="middle" align="right"')
+        + '</tr>').join('');
       errs = table(W, '<tr>' + cell(W, line(('Data action errors' + (s.flow ? ' · ' + s.flow : '')).toUpperCase(), 8, COL.red, { bold: 1, ls: 0.9 }) + gap(4) + table('100%', body) + gap(4),
         `border:solid ${COL.ink} 1.5pt;background:${COL.pink};padding:${pt(14)} ${pt(16)} ${pt(8)} ${pt(16)}`, ` bgcolor="${COL.pink}"`) + '</tr>');
     }
 
     // the parts one under the other, a paragraph of space between them; the footnote under a rule (the paragraph's own border)
-    return head + gap(18) + tiles + gap(22)
-      + list('Top 5 outcomes · attempts', s.afterOut, s.busyOut) + gap(16)
-      + list('Top 5 milestones · hits', s.afterMs, s.busyMs) + gap(errs ? 18 : 16)
+    return head + gap(18) + tiles + lists + gap(18)
       + (errs ? errs + gap(16) : '')
       + line(t.foot, 8, COL.mute, { box: `border-top:solid ${COL.ink} 1.5pt;padding:${pt(12)} 0in 0in 0in` });
   }

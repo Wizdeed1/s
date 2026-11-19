@@ -50,6 +50,12 @@ const recogKpiNames = () => [...new Set(allTeamCards().flatMap(c => (c.kpis || [
 const recogOpts = () => ({ today: new Date(), kpiNames: recogKpiNames(), learned: recogLearned() });
 
 // ---------------------------------------------------------------- one file -> a verdict
+/** an Interactions export filtered by an IVR flow ("Flows: VirginMobilePhase2") is the IVR scorecard's (Report builder), not the
+    interactions page's nor the WFM Daily Review's, though its columns are theirs */
+const RECOG_IVRINT = { kind: 'dailyIvr', why: 'The Interactions export of an IVR flow (its Filters say Flows), as the Report builder reads it for the IVR scorecard' };
+async function recogIvrInt(f) {
+  try { await rbBoot(); const E = rbE(); if (!E) return null; const c = E.classify(f.name, 'csv', E.parseCsv(await f.text())); return c.type === 'ivrInt' && c.brand ? RECOG_IVRINT : null; } catch (e) { return null; }
+}
 /** the Report builder's own readers decide the daily exports (they stay the reference for those files) */
 async function recogDaily(f) {
   try {
@@ -57,9 +63,10 @@ async function recogDaily(f) {
     if (/\.xls$/i.test(f.name)) { const sh = window.parseXls(await f.arrayBuffer()), c = E.classify(f.name, 'xls', { rows: sh[0] ? sh[0].rows : [] }); return c.type === 'history' ? { kind: 'dailyCalls', why: 'A Crystal call history export (.xls), as the Report builder reads it' } : c.type === 'tickets' ? { kind: 'tickets', why: 'A Crystal tickets export (.xls)' } : null; }
     if (/\.xlsx$/i.test(f.name)) { for (const sh of await window.parseXlsx(await f.arrayBuffer())) { const p = E.sheetPayload(sh.rows || []); if (E.isLeaderTickets(p) || E.isTicketSheet(p)) return { kind: 'tickets', why: 'A tickets sheet, as the Report builder reads it' }; } return null; }
     if (/\.(csv|txt)$/i.test(f.name)) {
-      const text = await f.text(), wt = window.WFM ? window.WFM.table(text, f.name) : null, ws = wt ? window.WFM.detect(wt, f.name) : null;
+      const text = await f.text(), c = E.classify(f.name, 'csv', E.parseCsv(text));
+      if (c.type === 'ivrInt' && c.brand) return RECOG_IVRINT;
+      const wt = window.WFM ? window.WFM.table(text, f.name) : null, ws = wt ? window.WFM.detect(wt, f.name) : null;
       if (ws && window.WFM.isOwn(ws)) return { kind: 'wfmDaily', why: 'A day\'s export the WFM Daily Review reads' };
-      const c = E.classify(f.name, 'csv', E.parseCsv(text));
       if (c.type === 'fpayTickets') return { kind: 'tickets', why: 'The FRiENDi Pay tickets export' };
       if (/^ivr/.test(c.type) && c.brand) return { kind: 'dailyIvr', why: `A Genesys IVR export (${{ ivrOut: 'Flow Outcome Detail', ivrMs: 'Flow Milestone Detail', ivrDa: 'Data Actions Performance' }[c.type]}), as the Report builder reads it` };
       if (c.type !== 'unknown' && c.brand) return { kind: /queue/i.test(c.type) ? 'dailyQueue' : /call/i.test(c.type) ? 'dailyCalls' : 'dailySm', why: `A ${c.brand} ${c.type} export, as the Report builder reads it` };
@@ -73,6 +80,7 @@ async function recogOne(f) {
   if (/^image\//.test(f.type || '') || /\.(png|jpe?g|gif|webp)$/i.test(n)) return Recog.verdictOf(n, 'logo', { level: 'likely', confidence: 0.75, reasons: ['An image file'] });
   if (/\.json$/i.test(n)) return Recog.verdictOf(n, 'rbHistory', { level: 'likely', confidence: 0.7, reasons: ['A JSON file, as the Report builder saves its history'] });
   if (/\.html?$/i.test(n)) { const t = await f.text(); return dhSeedOf(t) != null ? Recog.verdictOf(n, 'rbHistory', { level: 'sure', confidence: 0.95, reasons: ['A Report Builder page: the brands\' history built into it'] }) : Recog.verdictOf(n, 'unknown', { level: 'unsure', confidence: 0, reasons: ['A web page with no brands\' history in it'] }); }
+  if (/\.(csv|txt)$/i.test(n)) { const d = await recogIvrInt(f); if (d) return Recog.verdictOf(n, d.kind, { level: 'sure', confidence: 0.95, reasons: [d.why] }); }
   let v = null;
   if (!/\.xls$/i.test(n)) { try { const r = await parse(n, await f.arrayBuffer(), true, 'recog', recogOpts()); v = r && r.rec; } catch (e) { v = Recog.verdictOf(n, 'unknown', { level: 'unsure', confidence: 0, reasons: ['It could not be read. If it has a password, save a copy without one'], error: 'read' }); } }
   if (!v || v.kind === 'unknown' || (v.level !== 'sure' && /\.(csv|txt|xls)$/i.test(n))) {

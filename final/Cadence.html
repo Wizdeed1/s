@@ -5304,25 +5304,65 @@ body.presenting .shtry-out { position: static; }
     return Array.from(new Set((rows || []).map(r => String(r['Flow Name'] || '').trim()).filter(Boolean)));
   }
 
-  /* Data Actions Performance export: the actions of the IVR's own flow (Action Category = the flow's
-     name) that had errors, worst first, at most five. Error % is a fraction there (0.38 = 38%). */
+  /* The Interactions export of the IVR's own flow (Genesys Interactions filtered by the flow: "Flows: VirginMobilePhase2" in its
+     Filters column): one row a call into the IVR. */
+  function flowsFromFilters(s) {
+    const m = String(s || '').match(/\bFlows?\s*:\s*([^;|\n]+)/i);
+    return m ? m[1].split(',').map(x => x.trim()).filter(Boolean) : [];
+  }
+  function isIvrInteractions(payload) {
+    const h = payload.headers || [], has = n => h.indexOf(n) >= 0, r = (payload.rows || [])[0];
+    return has('Filters') && has('Duration') && has('Queue') && !!r && flowsFromFilters(r['Filters']).length > 0;
+  }
+  /* what the card counts of each call, and nothing else (no caller's number, no agent's name): its date, its duration, whether
+     it reached a queue and whether an agent took it; the flow, so the card can name it */
+  function ivrInteractionRows(rows) {
+    const flows = flowsFromFilters(((rows || [])[0] || {})['Filters']).join(', ');
+    return (rows || []).map(r => ({ 'Date': r['Date'], 'Duration': r['Duration'], 'Queue': String(r['Queue'] || '').trim() ? 'queue' : '',
+      'Users': String(r['Users'] || '').trim() ? 'agent' : '', 'Flow Name': flows }));
+  }
+  /* The IVR numbers, counted as the WFM team counts them from that export: every row is a call into the IVR; a call with no queue
+     that ended between 0 s and 30 s (or 60 s) was deflected; a call an agent took (Users) was transferred to an agent. */
+  function ivrInteractions(rows) {
+    const secs = v => (/:/.test(String(v)) ? dur(v) : num(v));
+    let calls = 0, u30 = 0, u60 = 0, agent = 0, noQueue = 0;
+    (rows || []).forEach(r => {
+      calls++;
+      if (String(r['Users'] || '').trim()) agent++;
+      if (String(r['Queue'] || '').trim()) return;
+      noQueue++;
+      const d = secs(r['Duration']);
+      if (d === null || !(d >= 0)) return;
+      if (d <= 30) u30++;
+      if (d <= 60) u60++;
+    });
+    return { calls: calls, u30: u30, u60: u60, agent: agent, noQueue: noQueue };
+  }
+
+  /* Data Actions Performance export: the actions of the IVR's own flow (Action Category = the flow's name), Customer Type
+     included, and their errors: every action that failed (the most errors first), how many of the flow's actions ran and the
+     flow's errors of all its runs. Error % is a fraction there (0.38 = 38%); an Errors column, when the export has one, is the
+     count itself. An action's errors are counted whole, at least 1 when it failed at all, so the actions add up to the total. */
   function dataActionErrors(rows, flows, brand) {
     const BRAND_RE = { virgin: /virgin/i, fpay: /fpay|friendi\s*pay/i, friendi: /friendi(?!\s*pay)/i };
     const want = flows && flows.length ? (c => flows.indexOf(c) >= 0) : (c => !!BRAND_RE[brand] && BRAND_RE[brand].test(c));
-    // the number check (Customer Type) runs on every call: the WFM team leaves its errors out of the list and the count
     const det = (rows || []).filter(r => String(r['Aggregate or Detailed'] || '').trim().toLowerCase() !== 'aggregate' &&
-      String(r['Action Name'] || '').trim() && !/customer[\s_-]*type/i.test(String(r['Action Name'])) && want(String(r['Action Category'] || '').trim()));
+      String(r['Action Name'] || '').trim() && want(String(r['Action Category'] || '').trim()));
     const scale = det.some(r => (num(r['Error %']) || 0) > 1) ? 100 : 1;   // an export that writes 38 for 38%
+    const errCol = det.length ? Object.keys(det[0]).find(k => /^(errors?|error count)$/i.test(k.trim())) || null : null;
     const acc = {};
     det.forEach(r => {
       const n = String(r['Action Name']).trim(), runs = num(r['Executions']) || 0, rate = (num(r['Error %']) || 0) / scale;
+      const e = errCol && num(r[errCol]) !== null ? num(r[errCol]) : runs * rate;
       const a = acc[n] = acc[n] || { name: n, runs: 0, errs: 0 };
-      a.runs += runs; a.errs += runs * rate;
+      a.runs += runs; a.errs += e;
     });
-    const all = Object.keys(acc).map(k => acc[k]).filter(a => a.errs > 0 && a.runs > 0)
-      .map(a => ({ name: a.name, runs: a.runs, rate: a.errs / a.runs }))
-      .sort((a, b) => b.rate - a.rate || b.runs - a.runs);
-    return { list: all.slice(0, 5), all: all, actions: Object.keys(acc).length, from: flows && flows.length ? flows.join(', ') : null };
+    const acts = Object.keys(acc).map(k => acc[k]);
+    const all = acts.filter(a => a.errs > 0 && a.runs > 0)
+      .map(a => ({ name: a.name, runs: a.runs, errors: Math.max(1, Math.round(a.errs)), rate: a.errs / a.runs }))
+      .sort((a, b) => b.errors - a.errors || b.rate - a.rate);
+    const runs = acts.reduce((t, a) => t + a.runs, 0), errors = all.reduce((t, a) => t + a.errors, 0);
+    return { list: all.slice(0, 5), all: all, actions: acts.length, runs: runs, errors: errors, from: flows && flows.length ? flows.join(', ') : null };
   }
 
   function classify(name, kind, payload) {
@@ -5336,6 +5376,7 @@ body.presenting .shtry-out { position: static; }
     const h = payload.headers;
     const has = n => h.indexOf(n) >= 0;
     if (isFpayTicketSummary(h) || isTicketSheet(payload)) return { type: 'fpayTickets', brand: 'fpay' };
+    if (isIvrInteractions(payload)) return { type: 'ivrInt', brand: brandFromFlow(flowsFromFilters(payload.rows[0]['Filters']).map(f => ({ 'Flow Name': f }))) };
     if (has('Total Queue')) {
       // The Queue column can list several queues for transferred calls, so read the
       // export's own filter string first and fall back to a majority vote.
@@ -6001,7 +6042,7 @@ body.presenting .shtry-out { position: static; }
 
   root.Engine = {
     parseCsv, dur, num, fmtDur, fmtPct, fmtInt, excelDate, ymd, ymdLocal,
-    classify, brandFromFlow, ivrSummary, flowNames, dataActionErrors, totalRow, voiceFromCalls, q85FromQueue, nonVoiceFromSm,
+    classify, brandFromFlow, ivrSummary, flowNames, dataActionErrors, flowsFromFilters, isIvrInteractions, ivrInteractionRows, ivrInteractions, totalRow, voiceFromCalls, q85FromQueue, nonVoiceFromSm,
     historyRows, ticketRows, sliceHistory, sliceTickets, contactMix, topReasons,
     tally, parsePastedTickets, intervalDate, rowDate, monthKey, mean, averageRow,
     addDays, dayDiff, weekday, dateRange, parseStamp, rowStamp, splitByDay, inDates,
@@ -10082,31 +10123,36 @@ root.WFM = {
 
     const dates = period.days;
     const when = single ? period.end : R.dayShort(period.start, period.end) + ' (' + R.niceRange(period.start, period.end) + ')';
-    // the IVR numbers (Flow Outcome Detail + Flow Milestone Detail exports) for the IVR scorecard; Virgin Postpaid shares the Virgin
-    // Mobile IVR. They are not in the report itself (the WFM team took the IVR box out of the emails), so nothing here is a check of it
+    // the IVR numbers for the IVR scorecard; Virgin Postpaid shares the Virgin Mobile IVR. The calls, the deflection and the transfers
+    // come from the Interactions export of the IVR's flow, the errors from the Data Actions Performance export; the Flow Outcome
+    // Detail and Flow Milestone Detail exports, when dropped too, add the top 5 outcomes and milestones. They are not in the report
+    // itself (the WFM team took the IVR box out of the emails), so nothing here is a check of it
     const ivrKey = key === 'postpaid' ? 'virgin' : key;
-    const ivrO = (bag.ivrOut || {})[ivrKey], ivrM = (bag.ivrMs || {})[ivrKey];
-    if (ivrO || ivrM) {
-      const oRows = [], mRows = [], gap = [];
+    const ivrI = (bag.ivrInt || {})[ivrKey], ivrO = (bag.ivrOut || {})[ivrKey], ivrM = (bag.ivrMs || {})[ivrKey];
+    if (ivrI || ivrO || ivrM) {
+      const iRows = [], oRows = [], mRows = [], gap = [];
       period.days.forEach(d => {
-        const o = ivrO && ivrO[d], ms = ivrM && ivrM[d];
+        const i = ivrI && ivrI[d], o = ivrO && ivrO[d], ms = ivrM && ivrM[d];
+        if (i) iRows.push.apply(iRows, i);
         if (o) oRows.push.apply(oRows, o);
         if (ms) mRows.push.apply(mRows, ms);
-        if (!o || !ms) gap.push(d);
+        if (!i) gap.push(d);
       });
-      if (oRows.length || mRows.length) {
+      if (iRows.length || oRows.length || mRows.length) {
         out.ivr = E.ivrSummary(oRows, mRows);
-        out.ivr.flows = E.flowNames(oRows.concat(mRows));
+        out.ivr.lists = oRows.length > 0 || mRows.length > 0;
+        out.ivr.ix = iRows.length ? E.ivrInteractions(iRows) : null;
+        out.ivr.flows = E.flowNames(iRows.concat(oRows, mRows));
         const ivrD = (bag.ivrDa || {}).all;
         if (ivrD) {
           const dRows = [];
           period.days.forEach(d => { if (ivrD[d]) dRows.push.apply(dRows, ivrD[d]); });
           const errs = E.dataActionErrors(dRows, out.ivr.flows, ivrKey);
           out.ivr.errors = errs.list; out.ivr.errorsFrom = errs.from;
-          // for the IVR scorecard: every action with errors, and how many of the flow's actions ran
-          out.ivr.errorsAll = errs.all; out.ivr.actions = errs.actions; out.ivr.daFile = dRows.length > 0;
+          // for the IVR scorecard: every action with errors (Customer Type too), how many ran, and the flow's errors of all its runs
+          out.ivr.errorsAll = errs.all; out.ivr.actions = errs.actions; out.ivr.runs = errs.runs; out.ivr.errorsN = errs.errors; out.ivr.daFile = dRows.length > 0;
         }
-        out.ivr.gapDays = gap.map(label);   // days of the period with no IVR exports: the scorecard says it counts the others only
+        out.ivr.gapDays = gap.map(label);   // days of the period with no Interactions export: the scorecard says it counts the others only
       }
     }
     if (bag.history) {
@@ -10310,6 +10356,7 @@ root.WFM = {
     sub:   { size: 12.5,               lh: 14, color: COL.mute },
     lab:   { size: 10,   bold: 1, ls: 1.2, lh: 11, color: COL.mute },
     val:   { size: 30,   bold: 1, ls: -0.6, lh: 36, color: COL.ink },
+    big:   { size: 40,   bold: 1, ls: -0.8, lh: 46, color: COL.ink },
     note:  { size: 11,                 lh: 12, color: COL.mute },
     h2:    { size: 10.5, bold: 1, ls: 1.2, lh: 12, color: COL.mute },
     after: { size: 11,                 lh: 12, color: COL.mute },
@@ -10380,28 +10427,39 @@ root.WFM = {
     ctx.strokeStyle = stroke; ctx.lineWidth = bw; ctx.strokeRect(x + bw / 2, y + bw / 2, w - bw, h - bw);
   }
 
-  /* What the card says. s: { brand, flow, date, span, calls, agent, ended, abandoned, firstName, afterOut, afterMs,
-     busyOut: [{name, n}], busyMs: [{name, n}], daFile, actions, errors: [{name, runs, rate}] (worst first) }.
-     The names are the team's: IVR Summary daily report, IVR Calls, IVR deflection, Transfer to Agent, Errors. */
+  /* What the card says. s: { brand, flow, date, span, calls, u30, u60, agent (from the Interactions export of the IVR's flow),
+     lists, firstName, afterOut, afterMs, busyOut: [{name, n}], busyMs: [{name, n}] (the Flow Outcome and Milestone exports, when
+     dropped), daFile, actions, runs, errorsN, errors: [{name, runs, errors, rate}] (the Data Actions export: every action that
+     failed, the most errors first) }. The names are the team's: IVR Summary daily report, IVR Calls, IVR deflection, Transfer to
+     Agent, Errors. */
+  const errPct = r => (r == null ? '–' : r <= 0 ? '0%' : r < 0.0005 ? '<0.1%' : r < 0.1 ? Math.round(r * 1000) / 10 + '%' : Math.round(100 * r) + '%');
+  const andList = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
   function cardText(s) {
     const title = 'IVR Summary daily report' + (s.date ? ' · ' + s.date : '');
-    const sub = [s.flow ? s.flow + ' flow' : 'Flow not named in the exports', s.span].filter(Boolean).join(' · ');
-    const worst = s.errors[0];
-    const tiles = [
-      { lab: 'IVR Calls', val: fmt(s.calls), note: (s.firstName ? 'visits to ' + s.firstName : 'no outcomes in the export') + (s.abandoned ? ' · ' + fmt(s.abandoned) + ' abandoned left out' : '') },
-      { lab: 'IVR deflection', val: pctOf(s.ended, s.calls), note: fmt(s.ended) + ' of ' + fmt(s.calls) + ' calls' },
-      { lab: 'Transfer to Agent', val: pctOf(s.agent, s.calls), note: fmt(s.agent) + ' transfers' },
-      !s.daFile ? { lab: 'Errors', val: '–', note: 'no data actions export' }
-        : !s.actions ? { lab: 'Errors', val: '–', note: 'no actions for this flow' }
-        : { lab: 'Errors', val: String(s.errors.length), note: worst ? 'worst: ' + rateTxt(worst.rate) + ' of ' + fmt(worst.runs) + ' runs' : 'none of ' + fmt(s.actions) + ' failed', alert: !!worst }
-    ];
-    const sources = s.daFile ? 'Flow Outcome Detail, Flow Milestone Detail and Data Actions Performance' : 'Flow Outcome Detail and Flow Milestone Detail';
-    const foot = 'IVR deflection = IVR calls minus transfers to an agent' + (s.abandoned != null ? ', abandoned calls left out' : '') + '. Source: Genesys ' + sources + ' exports' + (s.date ? ', ' + s.date : '') + '.';
-    return { title: title, sub: sub, tiles: tiles, foot: foot };
+    const sub = [s.flow ? s.flow + ' flow' : 'Flow not named in the export', s.span].filter(Boolean).join(' · ');
+    const er = s.runs ? s.errorsN / s.runs : null, calls = s.calls || 0;
+    const tiles = {
+      calls: { lab: 'IVR Calls', val: fmt(calls), note: 'calls into ' + (s.flow || 'the IVR') },
+      d60: { lab: 'IVR deflection · under 60s', val: pctOf(s.u60, calls), note: fmt(s.u60) + ' of ' + fmt(calls) + ' calls' },
+      d30: { lab: 'IVR deflection · under 30s', val: pctOf(s.u30, calls), note: fmt(s.u30) + ' of ' + fmt(calls) + ' calls' },
+      agent: { lab: 'Transfer to Agent', val: pctOf(s.agent, calls), note: fmt(s.agent) + ' transfers' },
+      errors: !s.daFile ? { lab: 'Errors', val: '–', note: 'no data actions export' }
+        : !s.actions ? { lab: 'Errors', val: '–', note: 'no data actions for ' + (s.flow || 'this flow') }
+        : { lab: 'Errors', val: errPct(er), note: fmt(s.errorsN) + (s.errorsN === 1 ? ' error' : ' errors') + ' of ' + fmt(s.runs) + ' data action runs', alert: er >= 0.05 }
+    };
+    const order = [tiles.calls, tiles.d60, tiles.d30, tiles.agent, tiles.errors];
+    const sources = ['Interactions' + (s.flow ? ' (' + s.flow + ')' : '')].concat(s.daFile ? ['Data Actions Performance'] : [], s.lists ? ['Flow Outcome Detail', 'Flow Milestone Detail'] : []);
+    const foot = 'IVR deflection = calls with no queue that ended within 60 s or 30 s, of all IVR calls. Transfer to Agent = calls an agent took.'
+      + (s.daFile ? ' Errors = data action runs that failed, of all the flow’s runs, Customer Type included.' : '')
+      + ' Source: Genesys ' + andList(sources) + (sources.length > 1 ? ' exports' : ' export') + (s.date ? ', ' + s.date : '') + '.';
+    return { title: title, sub: sub, tiles: tiles, order: order, foot: foot };
   }
+  /* an error row: the action the errors belong to, a pill with how many, and the share of its runs that failed */
+  const errPill = e => fmt(e.errors) + (e.errors === 1 ? ' error' : ' errors');
+  const errRuns = e => rateTxt(e.rate) + ' of ' + fmt(e.runs) + ' runs';
 
   function paint(ctx, s, H, draw) {
-    const X = CARD.X, CW = CARD.CW, t = cardText(s);
+    const X = CARD.X, CW = CARD.CW, t = cardText(s), T = t.tiles;
     if (draw) { ctx.fillStyle = COL.white; ctx.fillRect(0, 0, CARD.W, H); }
     let y = 26;
     y = block(ctx, TS.eb, 'IVR SCORECARD', X, y, CW, draw);
@@ -10409,23 +10467,28 @@ root.WFM = {
     y = block(ctx, TS.sub, t.sub, X, y + 2, CW, draw);
     y += 18;
 
-    // four tiles, two by two; tiles in a row share the taller height
+    // the tiles as the WFM team lays them out: the calls on the left, as tall as the two deflections beside it (under 60 s above
+    // under 30 s); under them the transfers to an agent and the errors
     const TW = (CW - 10) / 2, IW = TW - 4 - 28;
-    for (let r = 0; r < 2; r++) {
-      const pair = t.tiles.slice(2 * r, 2 * r + 2);
-      const h = Math.max.apply(null, pair.map(k => 2 + 12 + wrap(ctx, TS.lab, k.lab.toUpperCase(), IW).length * TS.lab.lh + 2 + TS.val.lh + 1 + wrap(ctx, TS.note, k.note, IW).length * TS.note.lh + 11 + 2));
-      if (draw) pair.forEach((k, i) => {
-        const x = X + i * (TW + 10), ix = x + 16;
-        frame(ctx, x, y, TW, h, k.alert ? COL.pink : COL.white, k.alert ? COL.red : COL.ink, 2);
-        let ty = block(ctx, TS.lab, k.lab.toUpperCase(), ix, y + 14, IW, true, k.alert ? COL.red2 : COL.mute);
-        ty = block(ctx, TS.val, k.val, ix, ty + 2, IW, true);
-        block(ctx, TS.note, k.note, ix, ty + 1, IW, true);
-      });
-      y += h + (r ? 0 : 10);
+    const inner = (k, big) => wrap(ctx, TS.lab, k.lab.toUpperCase(), IW).length * TS.lab.lh + 2 + (big ? TS.big.lh : TS.val.lh) + 1 + wrap(ctx, TS.note, k.note, IW).length * TS.note.lh;
+    const tileH = (k, big) => 2 + 12 + inner(k, big) + 11 + 2;
+    function tile(k, x, ty, h, big) {
+      if (!draw) return;
+      frame(ctx, x, ty, TW, h, k.alert ? COL.pink : COL.white, k.alert ? COL.red : COL.ink, 2);
+      const ix = x + 16;
+      let cy = big ? ty + (h - inner(k, true)) / 2 : ty + 14;
+      cy = block(ctx, TS.lab, k.lab.toUpperCase(), ix, cy, IW, true, k.alert ? COL.red2 : COL.mute);
+      cy = block(ctx, big ? TS.big : TS.val, k.val, ix, cy + 2, IW, true);
+      block(ctx, TS.note, k.note, ix, cy + 1, IW, true);
     }
-    y += 20;
+    const hr = Math.max(tileH(T.d60), tileH(T.d30), Math.ceil((tileH(T.calls, true) - 10) / 2)), hl = 2 * hr + 10;
+    tile(T.calls, X, y, hl, true); tile(T.d60, X + TW + 10, y, hr); tile(T.d30, X + TW + 10, y + hr + 10, hr);
+    y += hl + 10;
+    const hb = Math.max(tileH(T.agent), tileH(T.errors));
+    tile(T.agent, X, y, hb); tile(T.errors, X + TW + 10, y, hb);
+    y += hb;
 
-    // top 5 lists: name | bar | number
+    // top 5 lists: name | bar | number (only when the Flow Outcome and Milestone exports were dropped too)
     function list(head, after, rows, y) {
       y = block(ctx, TS.h2, head.toUpperCase(), X, y, CW, draw);
       if (after) y = block(ctx, TS.after, after, X, y + 2, CW, draw);
@@ -10451,21 +10514,24 @@ root.WFM = {
       });
       return y;
     }
-    y = list('Top 5 outcomes · attempts', s.afterOut, s.busyOut, y);
-    y = list('Top 5 milestones · hits', s.afterMs, s.busyMs, y + 16);
+    if (s.lists) {
+      y = list('Top 5 outcomes · attempts', s.afterOut, s.busyOut, y + 20);
+      y = list('Top 5 milestones · hits', s.afterMs, s.busyMs, y + 16);
+    }
 
-    // data action errors, only when there are some
+    // data action errors, only when there are some: every action that failed, Customer Type too, so each error has its place;
+    // each row the action, a pill with its errors (red from 5% of its runs) and the share of its runs that failed
     if (s.daFile && s.actions && s.errors.length) {
       y += 18;
-      const top = y, IX = X + 16, IWE = CW - 32, rows = s.errors.slice(0, 5), more = s.errors.length - rows.length;
+      const top = y, IX = X + 16, IWE = CW - 32;
       const head = ('Data action errors' + (s.flow ? ' · ' + s.flow : '')).toUpperCase();
-      const lay = rows.map(e => {
-        const pill = rateTxt(e.rate) + ' failed', runs = 'of ' + fmt(e.runs) + ' runs';
-        const pw = textW(ctx, TS.pill, pill) + 17, rw = Math.max(84, textW(ctx, TS.runs, runs));
+      const lay = s.errors.map(e => {
+        const pill = errPill(e), runs = errRuns(e);
+        const pw = textW(ctx, TS.pill, pill) + 17, rw = Math.max(96, textW(ctx, TS.runs, runs));
         const nl = wrap(ctx, TS.nm, e.name, IWE - pw - rw - 20);
         return { e: e, pill: pill, runs: runs, pw: pw, rw: rw, nl: nl, ch: Math.max(nl.length * TS.nm.lh, 18) };
       });
-      const h = 2 + 12 + wrap(ctx, TS.h2, head, IWE).length * TS.h2.lh + 6 + lay.reduce((a, r, i) => a + (i ? 1 : 0) + 10 + r.ch, 0) + (more ? 1 + TS.more.lh + 8 : 0) + 8 + 2;
+      const h = 2 + 12 + wrap(ctx, TS.h2, head, IWE).length * TS.h2.lh + 6 + lay.reduce((a, r, i) => a + (i ? 1 : 0) + 10 + r.ch, 0) + 8 + 2;
       if (draw) frame(ctx, X, top, CW, h, COL.pink, COL.ink, 2);
       let ry = block(ctx, TS.h2, head, IX, top + 14, IWE, draw, COL.red) + 6;
       lay.forEach((r, i) => {
@@ -10483,10 +10549,6 @@ root.WFM = {
         }
         ry = ct + r.ch + 5;
       });
-      if (more) {
-        if (draw) { ctx.fillStyle = COL.erule; ctx.fillRect(IX, ry, IWE, 1); }
-        block(ctx, TS.more, '+' + more + ' more ' + (more === 1 ? 'action' : 'actions') + ' with errors', IX, ry + 5, IWE, draw);
-      }
       y = top + h;
     }
 
@@ -10510,10 +10572,10 @@ root.WFM = {
   // the card in words, for screen readers
   function alt(s) {
     const t = cardText(s);
-    const parts = [t.title + '.', t.sub + '.'].concat(t.tiles.map(k => k.lab + ': ' + k.val + ', ' + k.note + '.'));
-    if (s.busyOut.length) parts.push('Top outcomes: ' + s.busyOut.map(r => r.name + ' ' + fmt(r.n)).join(', ') + '.');
-    if (s.busyMs.length) parts.push('Top milestones: ' + s.busyMs.map(r => r.name + ' ' + fmt(r.n)).join(', ') + '.');
-    if (s.daFile && s.errors.length) parts.push('Data action errors: ' + s.errors.slice(0, 5).map(e => e.name + ' ' + rateTxt(e.rate) + ' of ' + fmt(e.runs) + ' runs').join(', ') + '.');
+    const parts = [t.title + '.', t.sub + '.'].concat(t.order.map(k => k.lab + ': ' + k.val + ', ' + k.note + '.'));
+    if (s.lists && s.busyOut.length) parts.push('Top outcomes: ' + s.busyOut.map(r => r.name + ' ' + fmt(r.n)).join(', ') + '.');
+    if (s.lists && s.busyMs.length) parts.push('Top milestones: ' + s.busyMs.map(r => r.name + ' ' + fmt(r.n)).join(', ') + '.');
+    if (s.daFile && s.errors.length) parts.push('Data action errors: ' + s.errors.map(e => e.name + ' ' + errPill(e) + ', ' + errRuns(e)).join('; ') + '.');
     return parts.join(' ');
   }
 
@@ -10524,7 +10586,7 @@ root.WFM = {
      numbers can be changed before it goes. W: the width it fills, in px (688 in the IVR Summary Daily Report email). */
   function mailHtml(s, W) {
     W = W || 688;
-    const t = cardText(s), F = 'font-family:&quot;Aptos&quot;,Arial,sans-serif;';
+    const t = cardText(s), T = t.tiles, F = 'font-family:&quot;Aptos&quot;,Arial,sans-serif;';
     const pt = px => +(px * 0.75).toFixed(2) + 'pt';
     const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
     // a paragraph of one run: size in pt; o: bold, ls (letter spacing, pt), mt/mb (margins, pt), align, box (more of the paragraph's style)
@@ -10544,17 +10606,22 @@ root.WFM = {
       + line(t.title, 18, COL.ink, { bold: 1, ls: -0.3, mt: 4.5 })
       + line(t.sub, 10, COL.mute, { mt: 1.5 });
 
-    // four tiles, two by two; the tiles of a row are one table row, so they share its height
+    // the tiles as the team lays them out: the calls on the left, as tall as the two deflections beside it (one cell over three
+    // rows: under 60 s, the space, under 30 s), then the transfers and the errors; the cells of a row share its height
     const TW = (W - 10) / 2;
-    const tile = k => {
+    const tile = (k, big, attrs) => {
       const bg = k.alert ? COL.pink : COL.white;
       return cell(TW, line(k.lab.toUpperCase(), 7.5, k.alert ? COL.red2 : COL.mute, { bold: 1, ls: 0.9 })
-        + line(k.val, 24, COL.ink, { bold: 1, ls: -0.45, mt: 1.5 })
+        + line(k.val, big ? 30 : 24, COL.ink, { bold: 1, ls: -0.45, mt: 1.5 })
         + line(k.note, 8.5, COL.mute, { mt: 0.75 }),
-        `border:solid ${k.alert ? COL.red : COL.ink} 1.5pt;background:${bg};padding:${pt(12)} ${pt(16)} ${pt(11)} ${pt(16)}`, ` valign="top" bgcolor="${bg}"`);
+        `border:solid ${k.alert ? COL.red : COL.ink} 1.5pt;background:${bg};padding:${pt(12)} ${pt(16)} ${pt(11)} ${pt(16)}`, ` valign="${big ? 'middle' : 'top'}" bgcolor="${bg}"${attrs || ''}`);
     };
-    const tileRow = r => '<tr>' + tile(t.tiles[2 * r]) + cell(10, gap(10), 'padding:0in') + tile(t.tiles[2 * r + 1]) + '</tr>';
-    const tiles = table(W, tileRow(0) + `<tr><td colspan="3" style="padding:0in">${gap(10)}</td></tr>` + tileRow(1));
+    const space = attrs => cell(10, gap(10), 'padding:0in', attrs || '');
+    const tiles = table(W, '<tr>' + tile(T.calls, true, ' rowspan="3"') + space(' rowspan="3"') + tile(T.d60) + '</tr>'
+      + `<tr><td style="padding:0in">${gap(10)}</td></tr>`
+      + '<tr>' + tile(T.d30) + '</tr>'
+      + `<tr><td colspan="3" style="padding:0in">${gap(10)}</td></tr>`
+      + '<tr>' + tile(T.agent) + space() + tile(T.errors) + '</tr>');
 
     // the top 5 lists: name | bar | number, a hairline above each row; a bar is a row of two cells, the dark one as long as the number
     const BW = 280, NUM = 92, NAME = W - BW - NUM;
@@ -10576,30 +10643,28 @@ root.WFM = {
         + (after ? line(after, 8.5, COL.mute, { mt: 1.5 }) : '')
         + gap(6) + table(W, body);
     };
+    const lists = s.lists ? gap(22) + list('Top 5 outcomes · attempts', s.afterOut, s.busyOut) + gap(16) + list('Top 5 milestones · hits', s.afterMs, s.busyMs) : '';
 
-    // data action errors, only when there are some: a pink box; each row the action, a pill with the share that failed, the runs
+    // data action errors, only when there are some: a pink box; every action that failed (Customer Type too), a pill with its
+    // errors and the share of its runs that failed
     let errs = '';
     if (s.daFile && s.actions && s.errors.length) {
-      const rows = s.errors.slice(0, 5), more = s.errors.length - rows.length;
       const pad = (i, l) => `${i ? `border-top:solid ${COL.erule} 1.0pt;` : ''}padding:${pt(5)} 0in ${pt(5)} ${pt(l)}`;
       const pill = e => {
         const hi = e.rate >= 0.05, c = hi ? COL.red : COL.ink, bg = hi ? COL.red : COL.white;
-        return line(rateTxt(e.rate) + ' failed', 8.5, hi ? COL.white : COL.ink, { bold: 1, align: 'center', box: `border:solid ${c} 1.0pt;padding:1.0pt 0in 1.0pt 0in;background:${bg};border-radius:9px` });
+        return line(errPill(e), 8.5, hi ? COL.white : COL.ink, { bold: 1, align: 'center', box: `border:solid ${c} 1.0pt;padding:1.0pt 0in 1.0pt 0in;background:${bg};border-radius:9px` });
       };
-      const body = rows.map((e, i) => '<tr>'
+      const body = s.errors.map((e, i) => '<tr>'
         + cell(0, line(e.name, 10, COL.ink), pad(i, 0), ' valign="middle"')
-        + cell(86, pill(e), pad(i, 10), ' valign="middle"')
-        + cell(96, line('of ' + fmt(e.runs) + ' runs', 8.5, COL.mute, { align: 'right' }), pad(i, 10), ' valign="middle" align="right"')
-        + '</tr>').join('')
-        + (more ? '<tr>' + cell(0, line('+' + more + ' more ' + (more === 1 ? 'action' : 'actions') + ' with errors', 8.5, COL.mute), pad(1, 0), ' colspan="3"') + '</tr>' : '');
+        + cell(92, pill(e), pad(i, 10), ' valign="middle"')
+        + cell(112, line(errRuns(e), 8.5, COL.mute, { align: 'right' }), pad(i, 10), ' valign="middle" align="right"')
+        + '</tr>').join('');
       errs = table(W, '<tr>' + cell(W, line(('Data action errors' + (s.flow ? ' · ' + s.flow : '')).toUpperCase(), 8, COL.red, { bold: 1, ls: 0.9 }) + gap(4) + table('100%', body) + gap(4),
         `border:solid ${COL.ink} 1.5pt;background:${COL.pink};padding:${pt(14)} ${pt(16)} ${pt(8)} ${pt(16)}`, ` bgcolor="${COL.pink}"`) + '</tr>');
     }
 
     // the parts one under the other, a paragraph of space between them; the footnote under a rule (the paragraph's own border)
-    return head + gap(18) + tiles + gap(22)
-      + list('Top 5 outcomes · attempts', s.afterOut, s.busyOut) + gap(16)
-      + list('Top 5 milestones · hits', s.afterMs, s.busyMs) + gap(errs ? 18 : 16)
+    return head + gap(18) + tiles + lists + gap(18)
       + (errs ? errs + gap(16) : '')
       + line(t.foot, 8, COL.mute, { box: `border-top:solid ${COL.ink} 1.5pt;padding:${pt(12)} 0in 0in 0in` });
   }
@@ -32195,9 +32260,9 @@ const rbVisible = t => state.ws === 'wfm' && (t === 'dmail' ? state.wfmTab === '
 const rbName = key => (rbB() && rbB().REPORTS[key] ? rbB().REPORTS[key].name : { postpaid: 'Virgin Postpaid', virgin: 'Virgin Mobile', friendi: 'FRiENDi Mobile', fpay: 'FRiENDi Pay', leaders: 'MC Leaders', wfm: 'WFM Daily Review' }[key] || key);
 
 // ---------------------------------------------------------------- the dropped files, kept per brand and per day (as the stand-alone builder kept them)
-const RB_BAGT = ['calls', 'sm', 'queue', 'ivrOut', 'ivrMs', 'ivrDa'];   // the Genesys exports, kept per brand and day
+const RB_BAGT = ['calls', 'sm', 'queue', 'ivrInt', 'ivrOut', 'ivrMs', 'ivrDa'];   // the Genesys exports, kept per brand and day
 function rbEmptyBag() {
-  return { calls: {}, sm: {}, queue: {}, ivrOut: {}, ivrMs: {}, ivrDa: {}, dated: { calls: {}, sm: {}, queue: {}, ivrOut: {}, ivrMs: {}, ivrDa: {} }, undated: [], datedFiles: [],
+  return { calls: {}, sm: {}, queue: {}, ivrInt: {}, ivrOut: {}, ivrMs: {}, ivrDa: {}, dated: { calls: {}, sm: {}, queue: {}, ivrInt: {}, ivrOut: {}, ivrMs: {}, ivrDa: {} }, undated: [], datedFiles: [],
     history: null, tickets: null, historyFiles: {}, ticketFiles: {}, fpayTicketsFile: null, leaderRows: null };
 }
 function rbComposeBag() {
@@ -32231,7 +32296,7 @@ function rbShortDays(dates) {
 }
 function rbLabelFor(c) {
   const b = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay', postpaid: 'Virgin Postpaid', all: 'All flows' }[c.brand] || c.brand;
-  return b + ' · ' + ({ calls: 'Calls', sm: 'Social/Email', queue: 'Queue times', ivrOut: 'IVR outcomes', ivrMs: 'IVR milestones', ivrDa: 'IVR data actions' }[c.type] || c.type);
+  return b + ' · ' + ({ calls: 'Calls', sm: 'Social/Email', queue: 'Queue times', ivrInt: 'IVR calls (Interactions)', ivrOut: 'IVR outcomes', ivrMs: 'IVR milestones', ivrDa: 'IVR data actions' }[c.type] || c.type);
 }
 async function rbAddFiles(list) {
   await rbBoot(); const E = rbE(), R = rbR();
@@ -32264,11 +32329,13 @@ async function rbAddFiles(list) {
         } else notes.push({ name: f.name, label: 'not recognised', bad: true });
         continue;
       }
-      const text = await f.text();
+      const text = await f.text(), payload = E.parseCsv(text), c = E.classify(f.name, 'csv', payload);
+      // the IVR's own Interactions export (filtered by its flow: "Flows: VirginMobilePhase2") is the IVR scorecard's: only what the
+      // card counts of each call is kept (its date, its duration, whether it reached a queue and an agent), no number, no name
+      if (c.type === 'ivrInt') payload.rows = E.ivrInteractionRows(payload.rows);
       // the WFM Daily Review's own exports (agent performance, status, interactions, adherence, schedules) first
-      const wt = window.WFM ? window.WFM.table(text, f.name) : null, wslot = wt ? window.WFM.detect(wt, f.name) : null;
+      const wt = c.type !== 'ivrInt' && window.WFM ? window.WFM.table(text, f.name) : null, wslot = wt ? window.WFM.detect(wt, f.name) : null;
       if (wslot && window.WFM.isOwn(wslot)) { notes.push({ name: f.name, label: window.WFM.add(wt, wslot) + ' · ' + E.fmtInt(wt.rows) + ' rows', wfm: true }); continue; }
-      const payload = E.parseCsv(text), c = E.classify(f.name, 'csv', payload);
       if (wt && c.type === 'calls' && /^(virgin|friendi|fpay)$/.test(c.brand || '')) window.WFM.addCalls(c.brand, wt);
       if (c.type === 'fpayTickets') rbTicketSheet(f.name, E.isFpayTicketSummary(payload.headers) ? E.parseFpayTicketSummary(payload) : E.parseTicketSheet(payload), notes);
       else if (c.type !== 'unknown' && c.brand) {
@@ -32746,7 +32813,7 @@ function rbSkeleton() {
         <input type="file" multiple accept=".csv,.xls,.xlsx" hidden data-rbpick>
         <div class="rbfiles" data-rbfiles></div>
         <div class="rbmini"><button class="btn sm ghost" data-rbclear>Clear files</button></div>
-        <details class="rbhelp"><summary>What to drop</summary><p>On Sunday, drop Thursday's, Friday's and Saturday's Genesys exports (one set per day, ideally one drop per day), the two Crystal files for Thu–Sat, and the FRiENDi Pay "Tickets by Category" sheet. Queue exports carry no date, so each one takes the day of the files dropped or exported with it; change it in the list if needed. The MC Leaders email is filled from the same Crystal tickets export, so there is nothing extra to drop. For the WFM Daily Review, also drop that day's agent performance, agent status, interactions, adherence (one per brand) and schedule exports. For the IVR scorecard (a picture for Teams, on Emails › Daily brand emails), add the Virgin IVR's Flow Outcome Detail and Flow Milestone Detail exports, and the Data Actions Performance export for its errors. The IVR numbers are not in the emails.</p></details></div>
+        <details class="rbhelp"><summary>What to drop</summary><p>On Sunday, drop Thursday's, Friday's and Saturday's Genesys exports (one set per day, ideally one drop per day), the two Crystal files for Thu–Sat, and the FRiENDi Pay "Tickets by Category" sheet. Queue exports carry no date, so each one takes the day of the files dropped or exported with it; change it in the list if needed. The MC Leaders email is filled from the same Crystal tickets export, so there is nothing extra to drop. For the WFM Daily Review, also drop that day's agent performance, agent status, interactions, adherence (one per brand) and schedule exports. For the IVR scorecard (a picture for Teams, and the IVR Summary Daily Report email), add the day's Interactions export filtered by the IVR's flow (Flows: VirginMobilePhase2) for the calls, the deflection and the transfers, and the Data Actions Performance export for its errors; the Flow Outcome Detail and Flow Milestone Detail exports, if you drop them too, add the top 5 outcomes and milestones. The IVR numbers are not in the emails.</p></details></div>
       <div class="card rbcard"><div class="rbstep"><span class="n">3</span><div><h2>FRiENDi Pay tickets</h2><p class="cap">Only when there is no tickets sheet to drop.</p></div></div>
         <textarea class="rbta" data-rbfpay placeholder="Paste the ticket table from your email here (Date · Category · SubCategory), header row included."></textarea>
         <p class="hint">Easiest: drop the tickets sheet in step 2. Monday to Thursday that is the Date · Category .xlsx, Sunday the "Tickets by Category" sheet. "Category::SubCategory" is split for you, and a dropped sheet takes over from anything pasted here.</p></div>
@@ -33257,18 +33324,21 @@ for (const page of [$('wfmDm'), $('wfmRb')]) {
 // ---------------------------------------------------------------- the IVR scorecard: the day's IVR numbers as a picture for Teams (Member Care Report Builder 15.8's card)
 const RB_IVR_BRAND = { virgin: 'Virgin Mobile', postpaid: 'Virgin Mobile', friendi: 'FRiENDi mobile', fpay: 'FRiENDi PAY' };
 let rbIvrCur = null;
-/** the card's model, as the builder gives it to its scorecard: the brand and flow, the day, the calls, and the busiest outcomes, milestones and data actions */
+/** the card's model, as the builder gives it to its scorecard: the brand and flow, the day; the calls, the deflection under 60 s
+    and 30 s and the transfers (the Interactions export of the IVR's flow); the errors of its data actions, Customer Type included
+    (the Data Actions export); the top 5 outcomes and milestones when those exports were dropped too */
 function rbIvrCard(key, p, x) {
-  const E = rbE(), R = rbR(), S = window.Scorecard, flows = x.flows || [], skipped = x.skippedMilestones || [];
+  const E = rbE(), R = rbR(), S = window.Scorecard, flows = x.flows || [], skipped = x.skippedMilestones || [], ix = x.ix || {};
   return {
     brand: flows.length ? S.brandOf(flows[0]) : RB_IVR_BRAND[key], flow: flows.join(', '),
     date: p.multi ? R.niceRange(p.start, p.end) : R.dayShort(p.end, p.end) + ', ' + R.niceRange(p.end, p.end),
     span: p.multi ? R.dayShort(p.start, p.end) + ' · ' + p.days.length + ' days' : '24 hours', slug: p.multi ? p.start + '_to_' + p.end : p.end,
-    calls: x.calls, agent: x.agent, ended: x.ended, abandoned: x.abandoned != null ? x.abandoned : null, firstName: x.topOutcome ? x.topOutcome.name : '',
+    calls: ix.calls || 0, u60: ix.u60 || 0, u30: ix.u30 || 0, agent: ix.agent || 0,
+    lists: !!x.lists, firstName: x.topOutcome ? x.topOutcome.name : '',
     afterOut: x.topOutcome ? 'After ' + x.topOutcome.name + ' · ' + E.fmtInt(x.topOutcome.attempts) : '',
     afterMs: skipped.length ? 'After ' + skipped.map(o => o.name + ' · ' + E.fmtInt(o.hits)).join(', ') : '',
     busyOut: (x.topOutcomes || []).map(o => ({ name: o.name, n: o.attempts })), busyMs: (x.topMilestones || []).map(o => ({ name: o.name, n: o.hits })),
-    daFile: !!x.daFile, actions: x.actions || 0, errors: x.errorsAll || [],
+    daFile: !!x.daFile, actions: x.actions || 0, runs: x.runs || 0, errorsN: x.errorsN || 0, errors: x.errorsAll || [],
   };
 }
 /** the IVR Summary Daily Report email, laid out as the WFM team sends it: a light page, a white card with a navy header (MC Workforce,
@@ -33300,14 +33370,14 @@ function rbIvrMailHtml(cur) {
 }
 function rbIvrOpen(c) {
   const x = c.data && c.data.ivr; if (!x || !window.Scorecard) return;
-  if (x.calls === null || x.agent === null) { toast(`The scorecard needs both IVR exports: drop the ${x.calls === null ? 'Flow Outcome Detail' : 'Flow Milestone Detail'} export too.`); return; }
+  if (!x.ix) { toast('The IVR scorecard counts from the Interactions export of the IVR\'s flow: in Genesys, export the day\'s Interactions filtered by the flow (Flows: VirginMobilePhase2) and drop it here.'); return; }
   const s = rbIvrCard(c.key, c.period, x), cv = window.Scorecard.draw(s, 2);
   const slug = (s.brand || 'IVR').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'IVR';
   const cur = rbIvrCur = { name: `IVR-Scorecard-${slug}-${s.slug || 'report'}.png`, blob: null, day: s.slug || 'report', s, png: cv.toDataURL('image/png'), alt: window.Scorecard.alt(s) };
   cur.ready = new Promise(res => cv.toBlob(b => { cur.blob = b; res(b); }, 'image/png'));
   const img = $('ivrImg'); img.src = cur.png; img.alt = cur.alt;
   $('ivrSub').textContent = `${rbName(c.key)} · ${s.date}`;
-  $('ivrStatus').textContent = (x.gapDays || []).length ? `No IVR exports for ${x.gapDays.join(', ')}: the card counts the other days only.` : '';
+  $('ivrStatus').textContent = (x.gapDays || []).length ? `No IVR Interactions export for ${x.gapDays.join(', ')}: the card counts the other days only.` : '';
   openDrawer('dIvr');
 }
 document.addEventListener('click', async e => {
@@ -39908,6 +39978,12 @@ const recogKpiNames = () => [...new Set(allTeamCards().flatMap(c => (c.kpis || [
 const recogOpts = () => ({ today: new Date(), kpiNames: recogKpiNames(), learned: recogLearned() });
 
 // ---------------------------------------------------------------- one file -> a verdict
+/** an Interactions export filtered by an IVR flow ("Flows: VirginMobilePhase2") is the IVR scorecard's (Report builder), not the
+    interactions page's nor the WFM Daily Review's, though its columns are theirs */
+const RECOG_IVRINT = { kind: 'dailyIvr', why: 'The Interactions export of an IVR flow (its Filters say Flows), as the Report builder reads it for the IVR scorecard' };
+async function recogIvrInt(f) {
+  try { await rbBoot(); const E = rbE(); if (!E) return null; const c = E.classify(f.name, 'csv', E.parseCsv(await f.text())); return c.type === 'ivrInt' && c.brand ? RECOG_IVRINT : null; } catch (e) { return null; }
+}
 /** the Report builder's own readers decide the daily exports (they stay the reference for those files) */
 async function recogDaily(f) {
   try {
@@ -39915,9 +39991,10 @@ async function recogDaily(f) {
     if (/\.xls$/i.test(f.name)) { const sh = window.parseXls(await f.arrayBuffer()), c = E.classify(f.name, 'xls', { rows: sh[0] ? sh[0].rows : [] }); return c.type === 'history' ? { kind: 'dailyCalls', why: 'A Crystal call history export (.xls), as the Report builder reads it' } : c.type === 'tickets' ? { kind: 'tickets', why: 'A Crystal tickets export (.xls)' } : null; }
     if (/\.xlsx$/i.test(f.name)) { for (const sh of await window.parseXlsx(await f.arrayBuffer())) { const p = E.sheetPayload(sh.rows || []); if (E.isLeaderTickets(p) || E.isTicketSheet(p)) return { kind: 'tickets', why: 'A tickets sheet, as the Report builder reads it' }; } return null; }
     if (/\.(csv|txt)$/i.test(f.name)) {
-      const text = await f.text(), wt = window.WFM ? window.WFM.table(text, f.name) : null, ws = wt ? window.WFM.detect(wt, f.name) : null;
+      const text = await f.text(), c = E.classify(f.name, 'csv', E.parseCsv(text));
+      if (c.type === 'ivrInt' && c.brand) return RECOG_IVRINT;
+      const wt = window.WFM ? window.WFM.table(text, f.name) : null, ws = wt ? window.WFM.detect(wt, f.name) : null;
       if (ws && window.WFM.isOwn(ws)) return { kind: 'wfmDaily', why: 'A day\'s export the WFM Daily Review reads' };
-      const c = E.classify(f.name, 'csv', E.parseCsv(text));
       if (c.type === 'fpayTickets') return { kind: 'tickets', why: 'The FRiENDi Pay tickets export' };
       if (/^ivr/.test(c.type) && c.brand) return { kind: 'dailyIvr', why: `A Genesys IVR export (${{ ivrOut: 'Flow Outcome Detail', ivrMs: 'Flow Milestone Detail', ivrDa: 'Data Actions Performance' }[c.type]}), as the Report builder reads it` };
       if (c.type !== 'unknown' && c.brand) return { kind: /queue/i.test(c.type) ? 'dailyQueue' : /call/i.test(c.type) ? 'dailyCalls' : 'dailySm', why: `A ${c.brand} ${c.type} export, as the Report builder reads it` };
@@ -39931,6 +40008,7 @@ async function recogOne(f) {
   if (/^image\//.test(f.type || '') || /\.(png|jpe?g|gif|webp)$/i.test(n)) return Recog.verdictOf(n, 'logo', { level: 'likely', confidence: 0.75, reasons: ['An image file'] });
   if (/\.json$/i.test(n)) return Recog.verdictOf(n, 'rbHistory', { level: 'likely', confidence: 0.7, reasons: ['A JSON file, as the Report builder saves its history'] });
   if (/\.html?$/i.test(n)) { const t = await f.text(); return dhSeedOf(t) != null ? Recog.verdictOf(n, 'rbHistory', { level: 'sure', confidence: 0.95, reasons: ['A Report Builder page: the brands\' history built into it'] }) : Recog.verdictOf(n, 'unknown', { level: 'unsure', confidence: 0, reasons: ['A web page with no brands\' history in it'] }); }
+  if (/\.(csv|txt)$/i.test(n)) { const d = await recogIvrInt(f); if (d) return Recog.verdictOf(n, d.kind, { level: 'sure', confidence: 0.95, reasons: [d.why] }); }
   let v = null;
   if (!/\.xls$/i.test(n)) { try { const r = await parse(n, await f.arrayBuffer(), true, 'recog', recogOpts()); v = r && r.rec; } catch (e) { v = Recog.verdictOf(n, 'unknown', { level: 'unsure', confidence: 0, reasons: ['It could not be read. If it has a password, save a copy without one'], error: 'read' }); } }
   if (!v || v.kind === 'unknown' || (v.level !== 'sure' && /\.(csv|txt|xls)$/i.test(n))) {

@@ -527,31 +527,36 @@
 
     const dates = period.days;
     const when = single ? period.end : R.dayShort(period.start, period.end) + ' (' + R.niceRange(period.start, period.end) + ')';
-    // the IVR numbers (Flow Outcome Detail + Flow Milestone Detail exports) for the IVR scorecard; Virgin Postpaid shares the Virgin
-    // Mobile IVR. They are not in the report itself (the WFM team took the IVR box out of the emails), so nothing here is a check of it
+    // the IVR numbers for the IVR scorecard; Virgin Postpaid shares the Virgin Mobile IVR. The calls, the deflection and the transfers
+    // come from the Interactions export of the IVR's flow, the errors from the Data Actions Performance export; the Flow Outcome
+    // Detail and Flow Milestone Detail exports, when dropped too, add the top 5 outcomes and milestones. They are not in the report
+    // itself (the WFM team took the IVR box out of the emails), so nothing here is a check of it
     const ivrKey = key === 'postpaid' ? 'virgin' : key;
-    const ivrO = (bag.ivrOut || {})[ivrKey], ivrM = (bag.ivrMs || {})[ivrKey];
-    if (ivrO || ivrM) {
-      const oRows = [], mRows = [], gap = [];
+    const ivrI = (bag.ivrInt || {})[ivrKey], ivrO = (bag.ivrOut || {})[ivrKey], ivrM = (bag.ivrMs || {})[ivrKey];
+    if (ivrI || ivrO || ivrM) {
+      const iRows = [], oRows = [], mRows = [], gap = [];
       period.days.forEach(d => {
-        const o = ivrO && ivrO[d], ms = ivrM && ivrM[d];
+        const i = ivrI && ivrI[d], o = ivrO && ivrO[d], ms = ivrM && ivrM[d];
+        if (i) iRows.push.apply(iRows, i);
         if (o) oRows.push.apply(oRows, o);
         if (ms) mRows.push.apply(mRows, ms);
-        if (!o || !ms) gap.push(d);
+        if (!i) gap.push(d);
       });
-      if (oRows.length || mRows.length) {
+      if (iRows.length || oRows.length || mRows.length) {
         out.ivr = E.ivrSummary(oRows, mRows);
-        out.ivr.flows = E.flowNames(oRows.concat(mRows));
+        out.ivr.lists = oRows.length > 0 || mRows.length > 0;
+        out.ivr.ix = iRows.length ? E.ivrInteractions(iRows) : null;
+        out.ivr.flows = E.flowNames(iRows.concat(oRows, mRows));
         const ivrD = (bag.ivrDa || {}).all;
         if (ivrD) {
           const dRows = [];
           period.days.forEach(d => { if (ivrD[d]) dRows.push.apply(dRows, ivrD[d]); });
           const errs = E.dataActionErrors(dRows, out.ivr.flows, ivrKey);
           out.ivr.errors = errs.list; out.ivr.errorsFrom = errs.from;
-          // for the IVR scorecard: every action with errors, and how many of the flow's actions ran
-          out.ivr.errorsAll = errs.all; out.ivr.actions = errs.actions; out.ivr.daFile = dRows.length > 0;
+          // for the IVR scorecard: every action with errors (Customer Type too), how many ran, and the flow's errors of all its runs
+          out.ivr.errorsAll = errs.all; out.ivr.actions = errs.actions; out.ivr.runs = errs.runs; out.ivr.errorsN = errs.errors; out.ivr.daFile = dRows.length > 0;
         }
-        out.ivr.gapDays = gap.map(label);   // days of the period with no IVR exports: the scorecard says it counts the others only
+        out.ivr.gapDays = gap.map(label);   // days of the period with no Interactions export: the scorecard says it counts the others only
       }
     }
     if (bag.history) {

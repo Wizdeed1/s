@@ -1,14 +1,20 @@
 // WFM team › Report builder, as Member Care Report Builder 15.8, in the browser, as a WFM analyst, made-up exports only:
 // 1. The history the tool carries (15.8's built-in one) lies under this browser's copy: its months are there, and a month this
 //    browser has keeps its own numbers.
-// 2. The day's Genesys exports with the three IVR ones (Flow Outcome Detail, Flow Milestone Detail, Data Actions Performance) and
-//    FRiENDi Pay's Ticket Summary Details: each recognised and listed by brand and day; Recognise files sends an IVR export there.
-// 3. The IVR numbers (for the IVR scorecard): the calls, the share that finished in the IVR, the top outcomes and milestones, and
-//    the data actions with errors. No brand email has an IVR box (the WFM team took it out), nor a check about it.
+// 2. The day's Genesys exports with the IVR ones (the Interactions export filtered by the IVR's flow, Flow Outcome Detail, Flow
+//    Milestone Detail, Data Actions Performance) and FRiENDi Pay's Ticket Summary Details: each recognised and listed by brand and
+//    day; the Interactions export goes to the IVR, not to the WFM Daily Review, and only what the card counts of each call is kept
+//    (no caller's number, no agent's name); Recognise files sends the IVR exports there.
+// 3. The IVR numbers (for the IVR scorecard), as the WFM team counts them from the Interactions export: every row a call; deflected
+//    under 30 s and 60 s = no queue and a duration from 0 s to 30 s (60 s), of all the calls; transferred = an agent took it. The
+//    top outcomes and milestones (their exports were dropped too), and the data actions with errors, Customer Type included, the
+//    most errors first. No brand email has an IVR box (the WFM team took it out), nor a check about it.
 // 4. MC Leaders: the tickets to exclude of the report day: read, left out of the email, the ones not found named; Clear the list.
 // 5. Emails › Daily brand emails: the Virgin email still has IVR scorecard; it opens the card in a drawer of the tool's own, with
 //    Copy for Teams and Download PNG (a PNG of the card is saved), and Open in Outlook (.eml): the IVR Summary Daily Report email
-//    with the card written into its body as text and tables (no picture of it), in the shape Word keeps.
+//    with the card written into its body as text and tables (no picture of it), in the shape Word keeps: the calls beside the two
+//    deflections (one cell over their rows), the transfers and the errors (their share of the data action runs, the count under
+//    it), and every action that failed with its errors.
 // Usage: node test/rb158.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -29,6 +35,12 @@ const files = {
   'Data_Actions_Performance_-_2026-10-08T070812.120.csv': csv([['Interval Start', 'Interval End', 'Action Category', 'Action Name', 'Executions', 'Error %', 'Aggregate or Detailed'],
     [D0, D1, 'Virgin Main IVR', 'Get Balance', 500, 0.02, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Check Customer', 800, 0, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Customer_Type', 3000, 0.03, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Create Callback', 30, 0.1, 'Detailed'],
     [D0, D1, 'Another Flow', 'Lookup', 10, 0.5, 'Detailed'], [D0, D1, '', '', 1340, 0.01, 'Aggregate']]),
+  // the IVR's own Interactions export (filtered by its flow), made up: 40 calls; 20 an agent took from a queue, 2 left in a queue
+  // (one of them within a minute: not deflected), 18 with no queue: 6 ended within 30 s, 5 more within 60 s, 7 later
+  'Interactions_-_2026-10-08T070912.120.csv': csv([['Full Export Completed', 'Partial Result Timestamp', 'Filters', 'Media Type', 'Users', 'Remote', 'Date', 'Duration', 'Direction', 'Queue', 'Wrap-up', 'ANI', 'Disconnect Type', 'Error Code'],
+    ...[...Array.from({ length: 20 }, (_, i) => [`Agent ${String.fromCharCode(65 + i)}.`, 'Virgin_Ar', 100 + 7 * i, 'Agent']), ['', 'Virgin_En', 45, 'External'], ['', 'Virgin_En', 80, 'External'],
+      ...[0.8, 5, 12.5, 18, 25, 30, 31, 45, 52, 59.9, 60, 61.2, 75, 90, 120, 200, 300, 61].map(d => ['', '', d, d > 250 ? 'System' : 'External'])]
+      .map(([u, q, d, x], i) => ['YES', '', 'Flows: Virgin Main IVR', 'voice', u, 'Mobile Number, Example', `10/7/26 ${String(8 + (i % 4)).padStart(2, '0')}:${String(i).padStart(2, '0')} AM`, String(d), 'Inbound', q, '', `tel:+1000000${String(i).padStart(4, '0')}`, x, i === 3 ? 'error.ininedgecontrol.session.inactive' : ''])]),
   'Ticket Summary Details.csv': csv([['TicketNumber', 'StartedAt', 'Category', 'SubCategory'], ['900001', '2026-10-07 09:10', 'Remittance', 'Technical error'], ['900002', '2026-10-07 11:40', 'Card', 'Already used'], ['900003', '2026-10-07 13:05', 'Remittance', 'Technical error']]),
 };
 (async () => {
@@ -59,19 +71,32 @@ const files = {
   await p.setInputFiles('#wfmRb [data-rbpick]', paths);
   await p.waitForFunction(n => window.__mc.rb().files.length >= n, Object.keys(files).length, { timeout: 30000 }); await p.waitForTimeout(800);
   const F = await p.evaluate(() => window.__mc.rb().files.map(f => `${f.bad ? '✗' : ''}${f.label}`));
-  ok(F.includes('Virgin · IVR outcomes · 07-Oct') && F.includes('Virgin · IVR milestones · 07-Oct') && F.includes('All flows · IVR data actions · 07-Oct') && F.some(x => /^FRiENDi Pay · Tickets · 3 tickets/.test(x)) && !F.some(x => x.startsWith('✗')),
+  ok(F.includes('Virgin · IVR calls (Interactions) · 07-Oct') && F.includes('Virgin · IVR outcomes · 07-Oct') && F.includes('Virgin · IVR milestones · 07-Oct') && F.includes('All flows · IVR data actions · 07-Oct') && F.some(x => /^FRiENDi Pay · Tickets · 3 tickets/.test(x)) && !F.some(x => x.startsWith('✗')),
     `the exports recognised: ${F.join(' | ')}`);
+  const kept = await p.evaluate(() => { const RB = window.__mc.rb(), r = ((RB.bag.dated.ivrInt || {}).virgin || {})['2026-10-07'] || [], wfm = window.WFM && window.WFM.state ? JSON.stringify(Object.keys(window.WFM.state.files || {})) : '';
+    return { n: r.length, keys: [...new Set(r.flatMap(x => Object.keys(x)))].sort().join(), leak: JSON.stringify(r).match(/tel:|Agent [A-Z]\.|Virgin_|Mobile Number|session\.inactive/g) || [], wfm }; });
+  ok(kept.n === 40 && kept.keys === 'Date,Duration,Flow Name,Queue,Users' && !kept.leak.length && !/interactions/.test(kept.wfm),
+    `  the Interactions export of the IVR's flow: for the IVR, not the WFM Daily Review; of each of its ${kept.n} calls only ${kept.keys} (no number, no name${kept.leak.length ? '; found: ' + kept.leak.join(', ') : ''})`);
+  const U = await p.evaluate(() => { const r = (q, d, u) => ({ Queue: q, Duration: d, Users: u }); return window.Engine.ivrInteractions([r('', '0', ''), r('', '30', ''), r('', '30.001', ''), r('', '60', ''), r('', '60.5', ''), r('Virgin_Ar', '10', ''), r('Virgin_Ar', '200', 'Agent A.'), r('', '00:00:45', '')]); });
+  ok(U.calls === 8 && U.u30 === 2 && U.u60 === 5 && U.agent === 1, `  the rule: no queue and 0 s to 30 s (30 s itself in, 30.001 s out), 0 s to 60 s, a queued call never deflected, a duration as 00:00:45 read too (${U.u30} and ${U.u60} of ${U.calls}, ${U.agent} transfer)`);
   ok(await p.evaluate(() => window.__mc.rb().date) === '2026-10-07', 'the report day follows the exports: 7 Oct 2026');
   await p.setInputFiles('#recogPicker', paths[1]); await p.waitForSelector('#dRecog:not([hidden]) .rcard', { timeout: 20000 }); await p.waitForTimeout(300);
   const rk = await p.evaluate(() => { const c = document.querySelector('#dRecog .rcard'); return { lead: c.querySelector('.rlead').textContent.replace(/\s+/g, ' '), all: c.textContent, use: (c.querySelector('[data-ruse]') || {}).textContent || '' }; });
   ok(/daily IVR export/.test(rk.lead) && /Flow Outcome Detail/.test(rk.all) && /Report builder/i.test(rk.use), `Recognise files: an IVR export is a daily IVR export, for the Report builder ("${rk.lead.slice(0, 90)}" · ${rk.use.trim()})`);
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  await p.setInputFiles('#recogPicker', paths[4]); await p.waitForSelector('#dRecog:not([hidden]) .rcard', { timeout: 20000 }); await p.waitForTimeout(300);
+  const rk2 = await p.evaluate(() => { const c = document.querySelector('#dRecog .rcard'); return { lead: c.querySelector('.rlead').textContent.replace(/\s+/g, ' '), all: c.textContent.replace(/\s+/g, ' ') }; });
+  ok(/daily IVR export/.test(rk2.lead) && /Interactions export of an IVR flow/.test(rk2.all), `Recognise files: the Interactions export of the IVR's flow is a daily IVR export too, not the WFM Daily Review's ("${rk2.lead.slice(0, 80)}")`);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   // ---- 3. the IVR box
-  const ivr = await p.evaluate(() => { const x = (window.__mc.rb().data.virgin || {}).ivr; return x && { calls: x.calls, agent: x.agent, ended: x.ended, abandoned: x.abandoned, out: x.topOutcomes.map(o => o.name).join(','), ms: x.topMilestones.map(o => o.name).join(','), skip: x.skippedMilestones.map(o => o.name).join(','), errs: (x.errors || []).map(e => `${e.name} ${Math.round(e.rate * 100)}%`).join(',') }; });
-  ok(ivr && ivr.calls === 1000 && ivr.abandoned === 40 && ivr.agent === 460 && ivr.ended === 540, `Virgin's IVR: ${ivr && ivr.calls} calls in (${ivr && ivr.abandoned} abandoned left out), ${ivr && ivr.agent} transferred to an agent (the ReachedAgent too, not the abandoned transfer), ${ivr && ivr.ended} finished in the IVR`);
-  ok(ivr && ivr.out === 'Balance Inquiry,Bill Payment,Data Bundle,Language,Recharge' && ivr.ms === 'Self Service Balance,Self Service Recharge,Promo Played,Agent Callback' && ivr.skip === 'Customer Type Check',
-    `  the top five outcomes after the first menu, and the top milestones without the number check (${ivr && ivr.skip}), ReachedAgent or a Transfer (${ivr && ivr.ms})`);
-  ok(ivr && ivr.errs === 'Create Callback 10%,Get Balance 2%', `  the IVR flow's data actions with errors, worst first; another flow's left out (${ivr && ivr.errs})`);
+  const ivr = await p.evaluate(() => { const x = (window.__mc.rb().data.virgin || {}).ivr; return x && { ix: x.ix || {}, lists: x.lists, out: x.topOutcomes.map(o => o.name).join(','), ms: x.topMilestones.map(o => o.name).join(','), skip: x.skippedMilestones.map(o => o.name).join(','),
+    errs: (x.errorsAll || []).map(e => `${e.name} ${e.errors}/${e.runs}`).join(','), runs: x.runs, errorsN: x.errorsN, actions: x.actions }; });
+  const ix = (ivr && ivr.ix) || {};
+  ok(ix.calls === 40 && ix.u60 === 11 && ix.u30 === 6 && ix.agent === 20, `Virgin's IVR, from the Interactions export: ${ix.calls} calls, ${ix.u60} with no queue ended within 60 s and ${ix.u30} within 30 s (a queued call within a minute not counted), ${ix.agent} an agent took`);
+  ok(ivr && ivr.lists && ivr.out === 'Balance Inquiry,Bill Payment,Data Bundle,Language,Recharge' && ivr.ms === 'Self Service Balance,Self Service Recharge,Promo Played,Agent Callback' && ivr.skip === 'Customer Type Check',
+    `  the top five outcomes after the first menu, and the top milestones without the number check (${ivr && ivr.skip}), ReachedAgent or a Transfer (${ivr && ivr.ms}): their exports were dropped too`);
+  ok(ivr && ivr.errs === 'Customer_Type 90/3000,Get Balance 10/500,Create Callback 3/30' && ivr.errorsN === 103 && ivr.runs === 4330 && ivr.actions === 4,
+    `  the IVR flow's data actions with errors, Customer Type included, the most errors first; another flow's and the roll-up left out (${ivr && ivr.errs}: ${ivr && ivr.errorsN} errors of ${ivr && ivr.runs} runs)`);
   const box = await p.evaluate(() => { const RB = window.__mc.rb(), M = RB.models, txt = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.replace(/\s+/g, ' '); }; const o = {}; for (const k of ['virgin', 'postpaid', 'friendi', 'fpay']) o[k] = { t: txt(window.Templater.render(window.TEMPLATES[k === 'postpaid' ? 'virgin' : k], M[k], window.Build.REPORTS[k])), r: txt(window.Render.renderEmail(M[k])), w: (RB.data[k].warnings || []).join(' | ') }; return o; });
   const IVRBOX = /IVR REPORT|Finished in the IVR|Top 5 outcomes|Top 5 milestones|Data action errors|Balance Inquiry|Create Callback/;
   ok(Object.values(box).every(b => !IVRBOX.test(b.t) && !IVRBOX.test(b.r) && !/IVR/.test(b.w)) && /Calls Presented|Inbound Voice/i.test(box.virgin.t), `no IVR box in any brand email (Virgin, Postpaid, FRiENDi, FRiENDi Pay; the template and the plain one), and no check about it (Virgin: "${box.virgin.w.slice(0, 80)}")`);
@@ -99,8 +124,10 @@ const files = {
   await p.click('#wfmDm [data-rba="ivr"]'); await p.waitForSelector('#dIvr:not([hidden]) #ivrImg', { timeout: 10000 }); await p.waitForTimeout(400);
   const card = await p.evaluate(() => { const i = document.getElementById('ivrImg'); return { w: i.naturalWidth, h: i.naturalHeight, alt: i.alt, sub: document.getElementById('ivrSub').textContent, title: document.getElementById('h-ivr').textContent }; });
   ok(card.w === 1280 && card.h > 600 && /Balance Inquiry/.test(card.alt) && /Virgin Mobile · /.test(card.sub), `IVR scorecard: the card in a drawer of the tool's own (${card.w}×${card.h}), described for screen readers`);
-  const names = ['IVR Summary daily report · Wed, 7 Oct 2026.', 'IVR Calls: 1,000, visits to Main Menu · 40 abandoned left out.', 'IVR deflection: 54%, 540 of 1,000 calls.', 'Transfer to Agent: 46%, 460 transfers.', 'Errors: 2, worst: 10% of 30 runs.', 'Top milestones: Self Service Balance 250, Self Service Recharge 100, Promo Played 80, Agent Callback 30.'];
-  ok(names.every(t => card.alt.includes(t)) && !/Calls into the IVR|Finished in the IVR|Went to an agent|Data actions failing|ReachedAgent|Transfer_Billing/.test(card.alt), `  the team's names on the card, abandoned calls left out, Top milestones without ReachedAgent or a Transfer: "${card.alt.slice(0, 200)}…"`);
+  const names = ['IVR Summary daily report · Wed, 7 Oct 2026.', 'Virgin Main IVR flow · 24 hours.', 'IVR Calls: 40, calls into Virgin Main IVR.', 'IVR deflection · under 60s: 28%, 11 of 40 calls.', 'IVR deflection · under 30s: 15%, 6 of 40 calls.',
+    'Transfer to Agent: 50%, 20 transfers.', 'Errors: 2.4%, 103 errors of 4,330 data action runs.', 'Top milestones: Self Service Balance 250, Self Service Recharge 100, Promo Played 80, Agent Callback 30.',
+    'Data action errors: Customer_Type 90 errors, 3% of 3,000 runs; Get Balance 10 errors, 2% of 500 runs; Create Callback 3 errors, 10% of 30 runs.'];
+  ok(names.every(t => card.alt.includes(t)) && !/visits to|abandoned left out|worst:|ReachedAgent|Transfer_Billing/.test(card.alt), `  the team's names on the card: the calls, the deflection under 60 s and 30 s, the transfers, the errors, every failing action: "${card.alt.slice(0, 220)}…"${names.filter(t => !card.alt.includes(t)).map(t => ' MISSING: ' + t).join('')}`);
   await p.screenshot({ path: path.join(out, 'rb158-scorecard.png') });
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.click('#dIvr [data-ivr="save"]')]);
   const png = path.join(out, dl.suggestedFilename()); await dl.saveAs(png); const head = fs.readFileSync(png).subarray(0, 8).toString('hex');
@@ -122,12 +149,15 @@ const files = {
     const d = new DOMParser().parseFromString(h.replace(/</g, ' <'), 'text/html'), dark = [...d.querySelectorAll('td[bgcolor="#201e1d"]')].map(td => +td.getAttribute('width'));
     return { txt: d.body.textContent.replace(/\s+/g, ' '), dark, imgs: d.images.length };
   }, html);
-  const said = ['IVR SCORECARD IVR Summary daily report · Wed, 7 Oct 2026 Virgin Main IVR flow · 24 hours', 'IVR CALLS 1,000 visits to Main Menu · 40 abandoned left out', 'IVR DEFLECTION 54% 540 of 1,000 calls',
-    'TRANSFER TO AGENT 46% 460 transfers', 'ERRORS 2 worst: 10% of 30 runs', 'TOP 5 OUTCOMES · ATTEMPTS After Main Menu · 1,000 Balance Inquiry 300 Bill Payment 120 Data Bundle 80 Language 60 Recharge 40',
+  const said = ['IVR SCORECARD IVR Summary daily report · Wed, 7 Oct 2026 Virgin Main IVR flow · 24 hours', 'IVR CALLS 40 calls into Virgin Main IVR', 'IVR DEFLECTION · UNDER 60S 28% 11 of 40 calls',
+    'IVR DEFLECTION · UNDER 30S 15% 6 of 40 calls', 'TRANSFER TO AGENT 50% 20 transfers', 'ERRORS 2.4% 103 errors of 4,330 data action runs', 'TOP 5 OUTCOMES · ATTEMPTS After Main Menu · 1,000 Balance Inquiry 300 Bill Payment 120 Data Bundle 80 Language 60 Recharge 40',
     'TOP 5 MILESTONES · HITS After Customer Type Check · 900 Self Service Balance 250 Self Service Recharge 100 Promo Played 80 Agent Callback 30',
-    'DATA ACTION ERRORS · VIRGIN MAIN IVR Create Callback 10% failed of 30 runs Get Balance 2% failed of 500 runs', 'IVR deflection = IVR calls minus transfers to an agent, abandoned calls left out.'];
+    'DATA ACTION ERRORS · VIRGIN MAIN IVR Customer_Type 90 errors 3% of 3,000 runs Get Balance 10 errors 2% of 500 runs Create Callback 3 errors 10% of 30 runs',
+    'IVR deflection = calls with no queue that ended within 60 s or 30 s, of all IVR calls. Transfer to Agent = calls an agent took. Errors = data action runs that failed, of all the flow’s runs, Customer Type included.'];
   const missing = said.filter(x => !mt.txt.includes(x));
-  ok(!missing.length && mt.imgs === 1 && !/Customer_Type|ReachedAgent|Transfer_Billing/.test(mt.txt), `  the card in the body as text: the tiles, both top 5 lists and the data action errors (no Customer Type)${missing.length ? '; missing: ' + missing.join(' | ') : ''}`);
+  const order = ['IVR CALLS', 'IVR DEFLECTION · UNDER 60S', 'IVR DEFLECTION · UNDER 30S', 'TRANSFER TO AGENT', 'ERRORS'].map(x => mt.txt.indexOf(x));
+  ok(!missing.length && mt.imgs === 1 && !/ReachedAgent|Transfer_Billing/.test(mt.txt) && order.every((v, i) => v >= 0 && (!i || v > order[i - 1])) && /<td width="339"[^>]*rowspan="3"/.test(html),
+    `  the card in the body as text: the calls beside the two deflections (one cell over their rows), the transfers, the errors, both top 5 lists and every failing action, Customer Type included${missing.length ? '; missing: ' + missing.join(' | ') : ''}`);
   ok(mt.dark.join() === '280,112,75,56,37,280,112,90,34', `  the bars as table cells, each as long as its number against the top one (${mt.dark.join(', ')} of 280 px)`);
   // the shape Word keeps (Outlook writes mail with Word): a table never ends a cell, two tables never touch, every paragraph has its text's size
   const from = html.indexOf('padding:.5in 42.0pt .5in 42.0pt">'), mail = html.slice(from, html.indexOf('border-top:solid #F1F5F9', from));

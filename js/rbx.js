@@ -101,9 +101,9 @@ const rbVisible = t => state.ws === 'wfm' && (t === 'dmail' ? state.wfmTab === '
 const rbName = key => (rbB() && rbB().REPORTS[key] ? rbB().REPORTS[key].name : { postpaid: 'Virgin Postpaid', virgin: 'Virgin Mobile', friendi: 'FRiENDi Mobile', fpay: 'FRiENDi Pay', leaders: 'MC Leaders', wfm: 'WFM Daily Review' }[key] || key);
 
 // ---------------------------------------------------------------- the dropped files, kept per brand and per day (as the stand-alone builder kept them)
-const RB_BAGT = ['calls', 'sm', 'queue', 'ivrOut', 'ivrMs', 'ivrDa'];   // the Genesys exports, kept per brand and day
+const RB_BAGT = ['calls', 'sm', 'queue', 'ivrInt', 'ivrOut', 'ivrMs', 'ivrDa'];   // the Genesys exports, kept per brand and day
 function rbEmptyBag() {
-  return { calls: {}, sm: {}, queue: {}, ivrOut: {}, ivrMs: {}, ivrDa: {}, dated: { calls: {}, sm: {}, queue: {}, ivrOut: {}, ivrMs: {}, ivrDa: {} }, undated: [], datedFiles: [],
+  return { calls: {}, sm: {}, queue: {}, ivrInt: {}, ivrOut: {}, ivrMs: {}, ivrDa: {}, dated: { calls: {}, sm: {}, queue: {}, ivrInt: {}, ivrOut: {}, ivrMs: {}, ivrDa: {} }, undated: [], datedFiles: [],
     history: null, tickets: null, historyFiles: {}, ticketFiles: {}, fpayTicketsFile: null, leaderRows: null };
 }
 function rbComposeBag() {
@@ -137,7 +137,7 @@ function rbShortDays(dates) {
 }
 function rbLabelFor(c) {
   const b = { virgin: 'Virgin', friendi: 'FRiENDi', fpay: 'FRiENDi Pay', postpaid: 'Virgin Postpaid', all: 'All flows' }[c.brand] || c.brand;
-  return b + ' · ' + ({ calls: 'Calls', sm: 'Social/Email', queue: 'Queue times', ivrOut: 'IVR outcomes', ivrMs: 'IVR milestones', ivrDa: 'IVR data actions' }[c.type] || c.type);
+  return b + ' · ' + ({ calls: 'Calls', sm: 'Social/Email', queue: 'Queue times', ivrInt: 'IVR calls (Interactions)', ivrOut: 'IVR outcomes', ivrMs: 'IVR milestones', ivrDa: 'IVR data actions' }[c.type] || c.type);
 }
 async function rbAddFiles(list) {
   await rbBoot(); const E = rbE(), R = rbR();
@@ -170,11 +170,13 @@ async function rbAddFiles(list) {
         } else notes.push({ name: f.name, label: 'not recognised', bad: true });
         continue;
       }
-      const text = await f.text();
+      const text = await f.text(), payload = E.parseCsv(text), c = E.classify(f.name, 'csv', payload);
+      // the IVR's own Interactions export (filtered by its flow: "Flows: VirginMobilePhase2") is the IVR scorecard's: only what the
+      // card counts of each call is kept (its date, its duration, whether it reached a queue and an agent), no number, no name
+      if (c.type === 'ivrInt') payload.rows = E.ivrInteractionRows(payload.rows);
       // the WFM Daily Review's own exports (agent performance, status, interactions, adherence, schedules) first
-      const wt = window.WFM ? window.WFM.table(text, f.name) : null, wslot = wt ? window.WFM.detect(wt, f.name) : null;
+      const wt = c.type !== 'ivrInt' && window.WFM ? window.WFM.table(text, f.name) : null, wslot = wt ? window.WFM.detect(wt, f.name) : null;
       if (wslot && window.WFM.isOwn(wslot)) { notes.push({ name: f.name, label: window.WFM.add(wt, wslot) + ' · ' + E.fmtInt(wt.rows) + ' rows', wfm: true }); continue; }
-      const payload = E.parseCsv(text), c = E.classify(f.name, 'csv', payload);
       if (wt && c.type === 'calls' && /^(virgin|friendi|fpay)$/.test(c.brand || '')) window.WFM.addCalls(c.brand, wt);
       if (c.type === 'fpayTickets') rbTicketSheet(f.name, E.isFpayTicketSummary(payload.headers) ? E.parseFpayTicketSummary(payload) : E.parseTicketSheet(payload), notes);
       else if (c.type !== 'unknown' && c.brand) {
@@ -652,7 +654,7 @@ function rbSkeleton() {
         <input type="file" multiple accept=".csv,.xls,.xlsx" hidden data-rbpick>
         <div class="rbfiles" data-rbfiles></div>
         <div class="rbmini"><button class="btn sm ghost" data-rbclear>Clear files</button></div>
-        <details class="rbhelp"><summary>What to drop</summary><p>On Sunday, drop Thursday's, Friday's and Saturday's Genesys exports (one set per day, ideally one drop per day), the two Crystal files for Thu–Sat, and the FRiENDi Pay "Tickets by Category" sheet. Queue exports carry no date, so each one takes the day of the files dropped or exported with it; change it in the list if needed. The MC Leaders email is filled from the same Crystal tickets export, so there is nothing extra to drop. For the WFM Daily Review, also drop that day's agent performance, agent status, interactions, adherence (one per brand) and schedule exports. For the IVR scorecard (a picture for Teams, on Emails › Daily brand emails), add the Virgin IVR's Flow Outcome Detail and Flow Milestone Detail exports, and the Data Actions Performance export for its errors. The IVR numbers are not in the emails.</p></details></div>
+        <details class="rbhelp"><summary>What to drop</summary><p>On Sunday, drop Thursday's, Friday's and Saturday's Genesys exports (one set per day, ideally one drop per day), the two Crystal files for Thu–Sat, and the FRiENDi Pay "Tickets by Category" sheet. Queue exports carry no date, so each one takes the day of the files dropped or exported with it; change it in the list if needed. The MC Leaders email is filled from the same Crystal tickets export, so there is nothing extra to drop. For the WFM Daily Review, also drop that day's agent performance, agent status, interactions, adherence (one per brand) and schedule exports. For the IVR scorecard (a picture for Teams, and the IVR Summary Daily Report email), add the day's Interactions export filtered by the IVR's flow (Flows: VirginMobilePhase2) for the calls, the deflection and the transfers, and the Data Actions Performance export for its errors; the Flow Outcome Detail and Flow Milestone Detail exports, if you drop them too, add the top 5 outcomes and milestones. The IVR numbers are not in the emails.</p></details></div>
       <div class="card rbcard"><div class="rbstep"><span class="n">3</span><div><h2>FRiENDi Pay tickets</h2><p class="cap">Only when there is no tickets sheet to drop.</p></div></div>
         <textarea class="rbta" data-rbfpay placeholder="Paste the ticket table from your email here (Date · Category · SubCategory), header row included."></textarea>
         <p class="hint">Easiest: drop the tickets sheet in step 2. Monday to Thursday that is the Date · Category .xlsx, Sunday the "Tickets by Category" sheet. "Category::SubCategory" is split for you, and a dropped sheet takes over from anything pasted here.</p></div>
@@ -1163,18 +1165,21 @@ for (const page of [$('wfmDm'), $('wfmRb')]) {
 // ---------------------------------------------------------------- the IVR scorecard: the day's IVR numbers as a picture for Teams (Member Care Report Builder 15.8's card)
 const RB_IVR_BRAND = { virgin: 'Virgin Mobile', postpaid: 'Virgin Mobile', friendi: 'FRiENDi mobile', fpay: 'FRiENDi PAY' };
 let rbIvrCur = null;
-/** the card's model, as the builder gives it to its scorecard: the brand and flow, the day, the calls, and the busiest outcomes, milestones and data actions */
+/** the card's model, as the builder gives it to its scorecard: the brand and flow, the day; the calls, the deflection under 60 s
+    and 30 s and the transfers (the Interactions export of the IVR's flow); the errors of its data actions, Customer Type included
+    (the Data Actions export); the top 5 outcomes and milestones when those exports were dropped too */
 function rbIvrCard(key, p, x) {
-  const E = rbE(), R = rbR(), S = window.Scorecard, flows = x.flows || [], skipped = x.skippedMilestones || [];
+  const E = rbE(), R = rbR(), S = window.Scorecard, flows = x.flows || [], skipped = x.skippedMilestones || [], ix = x.ix || {};
   return {
     brand: flows.length ? S.brandOf(flows[0]) : RB_IVR_BRAND[key], flow: flows.join(', '),
     date: p.multi ? R.niceRange(p.start, p.end) : R.dayShort(p.end, p.end) + ', ' + R.niceRange(p.end, p.end),
     span: p.multi ? R.dayShort(p.start, p.end) + ' · ' + p.days.length + ' days' : '24 hours', slug: p.multi ? p.start + '_to_' + p.end : p.end,
-    calls: x.calls, agent: x.agent, ended: x.ended, abandoned: x.abandoned != null ? x.abandoned : null, firstName: x.topOutcome ? x.topOutcome.name : '',
+    calls: ix.calls || 0, u60: ix.u60 || 0, u30: ix.u30 || 0, agent: ix.agent || 0,
+    lists: !!x.lists, firstName: x.topOutcome ? x.topOutcome.name : '',
     afterOut: x.topOutcome ? 'After ' + x.topOutcome.name + ' · ' + E.fmtInt(x.topOutcome.attempts) : '',
     afterMs: skipped.length ? 'After ' + skipped.map(o => o.name + ' · ' + E.fmtInt(o.hits)).join(', ') : '',
     busyOut: (x.topOutcomes || []).map(o => ({ name: o.name, n: o.attempts })), busyMs: (x.topMilestones || []).map(o => ({ name: o.name, n: o.hits })),
-    daFile: !!x.daFile, actions: x.actions || 0, errors: x.errorsAll || [],
+    daFile: !!x.daFile, actions: x.actions || 0, runs: x.runs || 0, errorsN: x.errorsN || 0, errors: x.errorsAll || [],
   };
 }
 /** the IVR Summary Daily Report email, laid out as the WFM team sends it: a light page, a white card with a navy header (MC Workforce,
@@ -1206,14 +1211,14 @@ function rbIvrMailHtml(cur) {
 }
 function rbIvrOpen(c) {
   const x = c.data && c.data.ivr; if (!x || !window.Scorecard) return;
-  if (x.calls === null || x.agent === null) { toast(`The scorecard needs both IVR exports: drop the ${x.calls === null ? 'Flow Outcome Detail' : 'Flow Milestone Detail'} export too.`); return; }
+  if (!x.ix) { toast('The IVR scorecard counts from the Interactions export of the IVR\'s flow: in Genesys, export the day\'s Interactions filtered by the flow (Flows: VirginMobilePhase2) and drop it here.'); return; }
   const s = rbIvrCard(c.key, c.period, x), cv = window.Scorecard.draw(s, 2);
   const slug = (s.brand || 'IVR').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'IVR';
   const cur = rbIvrCur = { name: `IVR-Scorecard-${slug}-${s.slug || 'report'}.png`, blob: null, day: s.slug || 'report', s, png: cv.toDataURL('image/png'), alt: window.Scorecard.alt(s) };
   cur.ready = new Promise(res => cv.toBlob(b => { cur.blob = b; res(b); }, 'image/png'));
   const img = $('ivrImg'); img.src = cur.png; img.alt = cur.alt;
   $('ivrSub').textContent = `${rbName(c.key)} · ${s.date}`;
-  $('ivrStatus').textContent = (x.gapDays || []).length ? `No IVR exports for ${x.gapDays.join(', ')}: the card counts the other days only.` : '';
+  $('ivrStatus').textContent = (x.gapDays || []).length ? `No IVR Interactions export for ${x.gapDays.join(', ')}: the card counts the other days only.` : '';
   openDrawer('dIvr');
 }
 document.addEventListener('click', async e => {

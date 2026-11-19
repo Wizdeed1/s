@@ -131,25 +131,65 @@
     return Array.from(new Set((rows || []).map(r => String(r['Flow Name'] || '').trim()).filter(Boolean)));
   }
 
-  /* Data Actions Performance export: the actions of the IVR's own flow (Action Category = the flow's
-     name) that had errors, worst first, at most five. Error % is a fraction there (0.38 = 38%). */
+  /* The Interactions export of the IVR's own flow (Genesys Interactions filtered by the flow: "Flows: VirginMobilePhase2" in its
+     Filters column): one row a call into the IVR. */
+  function flowsFromFilters(s) {
+    const m = String(s || '').match(/\bFlows?\s*:\s*([^;|\n]+)/i);
+    return m ? m[1].split(',').map(x => x.trim()).filter(Boolean) : [];
+  }
+  function isIvrInteractions(payload) {
+    const h = payload.headers || [], has = n => h.indexOf(n) >= 0, r = (payload.rows || [])[0];
+    return has('Filters') && has('Duration') && has('Queue') && !!r && flowsFromFilters(r['Filters']).length > 0;
+  }
+  /* what the card counts of each call, and nothing else (no caller's number, no agent's name): its date, its duration, whether
+     it reached a queue and whether an agent took it; the flow, so the card can name it */
+  function ivrInteractionRows(rows) {
+    const flows = flowsFromFilters(((rows || [])[0] || {})['Filters']).join(', ');
+    return (rows || []).map(r => ({ 'Date': r['Date'], 'Duration': r['Duration'], 'Queue': String(r['Queue'] || '').trim() ? 'queue' : '',
+      'Users': String(r['Users'] || '').trim() ? 'agent' : '', 'Flow Name': flows }));
+  }
+  /* The IVR numbers, counted as the WFM team counts them from that export: every row is a call into the IVR; a call with no queue
+     that ended between 0 s and 30 s (or 60 s) was deflected; a call an agent took (Users) was transferred to an agent. */
+  function ivrInteractions(rows) {
+    const secs = v => (/:/.test(String(v)) ? dur(v) : num(v));
+    let calls = 0, u30 = 0, u60 = 0, agent = 0, noQueue = 0;
+    (rows || []).forEach(r => {
+      calls++;
+      if (String(r['Users'] || '').trim()) agent++;
+      if (String(r['Queue'] || '').trim()) return;
+      noQueue++;
+      const d = secs(r['Duration']);
+      if (d === null || !(d >= 0)) return;
+      if (d <= 30) u30++;
+      if (d <= 60) u60++;
+    });
+    return { calls: calls, u30: u30, u60: u60, agent: agent, noQueue: noQueue };
+  }
+
+  /* Data Actions Performance export: the actions of the IVR's own flow (Action Category = the flow's name), Customer Type
+     included, and their errors: every action that failed (the most errors first), how many of the flow's actions ran and the
+     flow's errors of all its runs. Error % is a fraction there (0.38 = 38%); an Errors column, when the export has one, is the
+     count itself. An action's errors are counted whole, at least 1 when it failed at all, so the actions add up to the total. */
   function dataActionErrors(rows, flows, brand) {
     const BRAND_RE = { virgin: /virgin/i, fpay: /fpay|friendi\s*pay/i, friendi: /friendi(?!\s*pay)/i };
     const want = flows && flows.length ? (c => flows.indexOf(c) >= 0) : (c => !!BRAND_RE[brand] && BRAND_RE[brand].test(c));
-    // the number check (Customer Type) runs on every call: the WFM team leaves its errors out of the list and the count
     const det = (rows || []).filter(r => String(r['Aggregate or Detailed'] || '').trim().toLowerCase() !== 'aggregate' &&
-      String(r['Action Name'] || '').trim() && !/customer[\s_-]*type/i.test(String(r['Action Name'])) && want(String(r['Action Category'] || '').trim()));
+      String(r['Action Name'] || '').trim() && want(String(r['Action Category'] || '').trim()));
     const scale = det.some(r => (num(r['Error %']) || 0) > 1) ? 100 : 1;   // an export that writes 38 for 38%
+    const errCol = det.length ? Object.keys(det[0]).find(k => /^(errors?|error count)$/i.test(k.trim())) || null : null;
     const acc = {};
     det.forEach(r => {
       const n = String(r['Action Name']).trim(), runs = num(r['Executions']) || 0, rate = (num(r['Error %']) || 0) / scale;
+      const e = errCol && num(r[errCol]) !== null ? num(r[errCol]) : runs * rate;
       const a = acc[n] = acc[n] || { name: n, runs: 0, errs: 0 };
-      a.runs += runs; a.errs += runs * rate;
+      a.runs += runs; a.errs += e;
     });
-    const all = Object.keys(acc).map(k => acc[k]).filter(a => a.errs > 0 && a.runs > 0)
-      .map(a => ({ name: a.name, runs: a.runs, rate: a.errs / a.runs }))
-      .sort((a, b) => b.rate - a.rate || b.runs - a.runs);
-    return { list: all.slice(0, 5), all: all, actions: Object.keys(acc).length, from: flows && flows.length ? flows.join(', ') : null };
+    const acts = Object.keys(acc).map(k => acc[k]);
+    const all = acts.filter(a => a.errs > 0 && a.runs > 0)
+      .map(a => ({ name: a.name, runs: a.runs, errors: Math.max(1, Math.round(a.errs)), rate: a.errs / a.runs }))
+      .sort((a, b) => b.errors - a.errors || b.rate - a.rate);
+    const runs = acts.reduce((t, a) => t + a.runs, 0), errors = all.reduce((t, a) => t + a.errors, 0);
+    return { list: all.slice(0, 5), all: all, actions: acts.length, runs: runs, errors: errors, from: flows && flows.length ? flows.join(', ') : null };
   }
 
   function classify(name, kind, payload) {
@@ -163,6 +203,7 @@
     const h = payload.headers;
     const has = n => h.indexOf(n) >= 0;
     if (isFpayTicketSummary(h) || isTicketSheet(payload)) return { type: 'fpayTickets', brand: 'fpay' };
+    if (isIvrInteractions(payload)) return { type: 'ivrInt', brand: brandFromFlow(flowsFromFilters(payload.rows[0]['Filters']).map(f => ({ 'Flow Name': f }))) };
     if (has('Total Queue')) {
       // The Queue column can list several queues for transferred calls, so read the
       // export's own filter string first and fall back to a majority vote.
@@ -828,7 +869,7 @@
 
   root.Engine = {
     parseCsv, dur, num, fmtDur, fmtPct, fmtInt, excelDate, ymd, ymdLocal,
-    classify, brandFromFlow, ivrSummary, flowNames, dataActionErrors, totalRow, voiceFromCalls, q85FromQueue, nonVoiceFromSm,
+    classify, brandFromFlow, ivrSummary, flowNames, dataActionErrors, flowsFromFilters, isIvrInteractions, ivrInteractionRows, ivrInteractions, totalRow, voiceFromCalls, q85FromQueue, nonVoiceFromSm,
     historyRows, ticketRows, sliceHistory, sliceTickets, contactMix, topReasons,
     tally, parsePastedTickets, intervalDate, rowDate, monthKey, mean, averageRow,
     addDays, dayDiff, weekday, dateRange, parseStamp, rowStamp, splitByDay, inDates,

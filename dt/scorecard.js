@@ -112,7 +112,7 @@
   }
   /* an error row: the action the errors belong to, a pill with how many, and the share of its runs that failed */
   const errPill = e => fmt(e.errors) + (e.errors === 1 ? ' error' : ' errors');
-  const errRuns = e => rateTxt(e.rate) + ' of ' + fmt(e.runs) + ' runs';
+  const errRuns = e => errPct(e.rate) + ' of ' + fmt(e.runs) + ' runs';   // a small share with its tenth (0.6%), as the tile
 
   function paint(ctx, s, H, draw) {
     const X = CARD.X, CW = CARD.CW, t = cardText(s), T = t.tiles;

@@ -5367,8 +5367,8 @@ body.presenting .shtry-out { position: static; }
     const calls = to ? out[to] : null, hasMs = Object.keys(ms).length > 0;
     const agent = Object.keys(ms).filter(n => /agent/i.test(n)).reduce((a, n) => a + ms[n], 0);
     const ended = calls !== null && hasMs ? Math.max(0, calls - agent) : null;
-    // milestones that only say the call went on to an agent (ReachedAgent, a Transfer) are counted in the hand-offs, not listed
-    const listed = n => !/customer\s*type/i.test(n) && !/reached\s*agent|transfer/i.test(n);
+    // milestones that only say the call went on to an agent (ReachedAgent or ReachAgent, a Transfer) are counted in the hand-offs, not listed
+    const listed = n => !/customer\s*type/i.test(n) && !/reach(?:ed)?[\s_]*agent|transfer/i.test(n);
     return {
       calls: calls, agent: hasMs ? agent : null, ended: ended, pct: ended !== null && calls ? ended / calls : null,
       // calls into the IVR the export marks abandoned (on its first menu), left out; null when it has no such column
@@ -10538,7 +10538,7 @@ root.WFM = {
   }
   /* an error row: the action the errors belong to, a pill with how many, and the share of its runs that failed */
   const errPill = e => fmt(e.errors) + (e.errors === 1 ? ' error' : ' errors');
-  const errRuns = e => rateTxt(e.rate) + ' of ' + fmt(e.runs) + ' runs';
+  const errRuns = e => errPct(e.rate) + ' of ' + fmt(e.runs) + ' runs';   // a small share with its tenth (0.6%), as the tile
 
   function paint(ctx, s, H, draw) {
     const X = CARD.X, CW = CARD.CW, t = cardText(s), T = t.tiles;

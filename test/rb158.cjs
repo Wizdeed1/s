@@ -30,7 +30,7 @@ const files = {
     ...[['Main Menu', 1000], ['Balance Inquiry', 300], ['Bill Payment', 120], ['Data Bundle', 80], ['Language', 60], ['Recharge', 40], ['Complaint', 20]].map(([o, n]) => [D0, D1, 'Virgin Main IVR', o, n, 'No']),
     [D0, D1, 'Virgin Main IVR', 'Main Menu', 40, 'Yes'], [D0, D1, 'Virgin Main IVR', 'Balance Inquiry', 15, 'Yes']]),
   'Virgin_Flow_Milestone_Detail_-_2026-10-08T070712.120.csv': csv([['Interval Start', 'Interval End', 'Flow Name', 'Milestone', 'Hits', 'Abandoned'],
-    ...[['Customer Type Check', 900], ['Transfer to Agent', 420], ['Self Service Balance', 250], ['Self Service Recharge', 100], ['Promo Played', 80], ['Agent Callback', 30], ['Transfer_Billing', 25], ['ReachedAgent', 10]].map(([m, n]) => [D0, D1, 'Virgin Main IVR', m, n, 'No']),
+    ...[['Customer Type Check', 900], ['Transfer to Agent', 420], ['Self Service Balance', 250], ['Self Service Recharge', 100], ['Promo Played', 80], ['Agent Callback', 30], ['Transfer_Billing', 25], ['Billing_ReachAgent', 15], ['ReachedAgent', 10]].map(([m, n]) => [D0, D1, 'Virgin Main IVR', m, n, 'No']),
     [D0, D1, 'Virgin Main IVR', 'Transfer to Agent', 12, 'Yes']]),
   'Data_Actions_Performance_-_2026-10-08T070812.120.csv': csv([['Interval Start', 'Interval End', 'Action Category', 'Action Name', 'Executions', 'Error %', 'Aggregate or Detailed'],
     [D0, D1, 'Virgin Main IVR', 'Get Balance', 500, 0.02, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Check Customer', 800, 0, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Customer_Type', 3000, 0.03, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Create Callback', 30, 0.1, 'Detailed'],
@@ -78,6 +78,13 @@ const files = {
   ok(kept.n === 40 && kept.keys === 'Date,Duration,Flow Name,Queue,Users' && !kept.leak.length && !/interactions/.test(kept.wfm),
     `  the Interactions export of the IVR's flow: for the IVR, not the WFM Daily Review; of each of its ${kept.n} calls only ${kept.keys} (no number, no name${kept.leak.length ? '; found: ' + kept.leak.join(', ') : ''})`);
   const U = await p.evaluate(() => { const r = (q, d, u) => ({ Queue: q, Duration: d, Users: u }); return window.Engine.ivrInteractions([r('', '0', ''), r('', '30', ''), r('', '30.001', ''), r('', '60', ''), r('', '60.5', ''), r('Virgin_Ar', '10', ''), r('Virgin_Ar', '200', 'Agent A.'), r('', '00:00:45', '')]); });
+  // the Data Actions export as Genesys writes it today: an Errors column (the count itself), other categories (Genesys Cloud Data
+  // Actions) and the roll-ups left out
+  const DA = await p.evaluate(() => { const r = (c, n, x, e, er, a) => ({ 'Aggregate or Detailed': a || 'Detailed', 'Action Category': c, 'Action Name': n, 'Executions': x, 'Error %': e, 'Errors': er });
+    const o = window.Engine.dataActionErrors([r('Flow X', 'Customer_Type', '2889', '0.01', '16'), r('Flow X', 'Survey Rating', '1015', '0.00', '4'), r('Flow X', 'Get Offer', '700', '0', '0'),
+      r('Genesys Cloud Data Actions', 'Insert Welcome', '435', '1.00', '435'), r('Flow X', '', '4604', '0.00', '20', 'Aggregate'), r('', '', '5039', '0.09', '455', '')], ['Flow X'], 'virgin');
+    return { all: o.all.map(e => `${e.name} ${e.errors}/${e.runs}`).join(','), runs: o.runs, errors: o.errors, actions: o.actions }; });
+  ok(DA.all === 'Customer_Type 16/2889,Survey Rating 4/1015' && DA.runs === 4604 && DA.errors === 20 && DA.actions === 3, `  the Errors column read as the count (0.00% with 4 errors kept), another category and the roll-ups left out (${DA.all}: ${DA.errors} of ${DA.runs} runs)`);
   ok(U.calls === 8 && U.u30 === 2 && U.u60 === 5 && U.agent === 1, `  the rule: no queue and 0 s to 30 s (30 s itself in, 30.001 s out), 0 s to 60 s, a queued call never deflected, a duration as 00:00:45 read too (${U.u30} and ${U.u60} of ${U.calls}, ${U.agent} transfer)`);
   ok(await p.evaluate(() => window.__mc.rb().date) === '2026-10-07', 'the report day follows the exports: 7 Oct 2026');
   await p.setInputFiles('#recogPicker', paths[1]); await p.waitForSelector('#dRecog:not([hidden]) .rcard', { timeout: 20000 }); await p.waitForTimeout(300);
@@ -94,7 +101,7 @@ const files = {
   const ix = (ivr && ivr.ix) || {};
   ok(ix.calls === 40 && ix.u60 === 11 && ix.u30 === 6 && ix.agent === 20, `Virgin's IVR, from the Interactions export: ${ix.calls} calls, ${ix.u60} with no queue ended within 60 s and ${ix.u30} within 30 s (a queued call within a minute not counted), ${ix.agent} an agent took`);
   ok(ivr && ivr.lists && ivr.out === 'Balance Inquiry,Bill Payment,Data Bundle,Language,Recharge' && ivr.ms === 'Self Service Balance,Self Service Recharge,Promo Played,Agent Callback' && ivr.skip === 'Customer Type Check',
-    `  the top five outcomes after the first menu, and the top milestones without the number check (${ivr && ivr.skip}), ReachedAgent or a Transfer (${ivr && ivr.ms}): their exports were dropped too`);
+    `  the top five outcomes after the first menu, and the top milestones without the number check (${ivr && ivr.skip}), ReachedAgent, ReachAgent or a Transfer (${ivr && ivr.ms}): their exports were dropped too`);
   ok(ivr && ivr.errs === 'Customer_Type 90/3000,Get Balance 10/500,Create Callback 3/30' && ivr.errorsN === 103 && ivr.runs === 4330 && ivr.actions === 4,
     `  the IVR flow's data actions with errors, Customer Type included, the most errors first; another flow's and the roll-up left out (${ivr && ivr.errs}: ${ivr && ivr.errorsN} errors of ${ivr && ivr.runs} runs)`);
   const box = await p.evaluate(() => { const RB = window.__mc.rb(), M = RB.models, txt = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.replace(/\s+/g, ' '); }; const o = {}; for (const k of ['virgin', 'postpaid', 'friendi', 'fpay']) o[k] = { t: txt(window.Templater.render(window.TEMPLATES[k === 'postpaid' ? 'virgin' : k], M[k], window.Build.REPORTS[k])), r: txt(window.Render.renderEmail(M[k])), w: (RB.data[k].warnings || []).join(' | ') }; return o; });
@@ -127,7 +134,7 @@ const files = {
   const names = ['IVR Summary daily report · Wed, 7 Oct 2026.', 'Virgin Main IVR flow · 24 hours.', 'IVR Calls: 40, calls into Virgin Main IVR.', 'IVR deflection · under 60s: 28%, 11 of 40 calls.', 'IVR deflection · under 30s: 15%, 6 of 40 calls.',
     'Transfer to Agent: 50%, 20 transfers.', 'Errors: 2.4%, 103 errors of 4,330 data action runs.', 'Top milestones: Self Service Balance 250, Self Service Recharge 100, Promo Played 80, Agent Callback 30.',
     'Data action errors: Customer_Type 90 errors, 3% of 3,000 runs; Get Balance 10 errors, 2% of 500 runs; Create Callback 3 errors, 10% of 30 runs.'];
-  ok(names.every(t => card.alt.includes(t)) && !/visits to|abandoned left out|worst:|ReachedAgent|Transfer_Billing/.test(card.alt), `  the team's names on the card: the calls, the deflection under 60 s and 30 s, the transfers, the errors, every failing action: "${card.alt.slice(0, 220)}…"${names.filter(t => !card.alt.includes(t)).map(t => ' MISSING: ' + t).join('')}`);
+  ok(names.every(t => card.alt.includes(t)) && !/visits to|abandoned left out|worst:|ReachedAgent|ReachAgent|Transfer_Billing/.test(card.alt), `  the team's names on the card: the calls, the deflection under 60 s and 30 s, the transfers, the errors, every failing action: "${card.alt.slice(0, 220)}…"${names.filter(t => !card.alt.includes(t)).map(t => ' MISSING: ' + t).join('')}`);
   await p.screenshot({ path: path.join(out, 'rb158-scorecard.png') });
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.click('#dIvr [data-ivr="save"]')]);
   const png = path.join(out, dl.suggestedFilename()); await dl.saveAs(png); const head = fs.readFileSync(png).subarray(0, 8).toString('hex');

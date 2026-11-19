@@ -6,6 +6,8 @@
 // Nothing here reads or writes any data. env gives what differs between the two places:
 //   { esc, card, cfg, elig, base, people (the roster's size, or null), strip: [text], month: label,
 //     live: () => html (the tool only), roleAct: role => html (View; the tool only), fig: (name, label) => html }
+// A role's key is the account role whose interface View opens; a department's manager is that role with the department
+// ('spv:CT': the Complaint Team's manager, who signs in as a supervisor and sees their own team; 'spv:DE' likewise).
 const ShowStory = (() => {
   // The challenge: the scorecards a bonus was counted on by hand before Cadence, as the WFM team counts them. Not the tool's own
   // count (15 built in: 8 departments' cards and 7 role cards), which is not what that slide is about.
@@ -130,7 +132,9 @@ const ShowStory = (() => {
     ['wfm', 'WFM manager', 'Sends the month\'s numbers for review and sees every trend behind them.', 'i-chart'],
     ['senior', 'Senior manager', 'Reviews every result and finalizes the month\'s bonuses.', 'i-clock'],
     ['spv', 'Supervisor', 'Confirms the team\'s attendance and coaches from each agent\'s own numbers.', 'i-team'],
-    ['quality', 'Quality team', 'Enters the quality scores once; they count the same in every bonus.', 'i-star'],
+    ['spv:CT', 'Complaint manager', 'Sends the complaint team\'s attendance in one sheet a month; their own bonus counts complaints resolved on time.', 'i-mail'],
+    ['spv:DE', 'Digital experience manager', 'Sends the digital experience team\'s attendance in one sheet a month; their own bonus counts the digital projects achieved.', 'i-monitor'],
+    ['quality', 'Quality manager', 'Enters the quality scores once; they count the same in every bonus.', 'i-star'],
     ['agent', 'Agent', 'Sees their bonus and exactly how it was counted, and can question it, in English or Arabic.', 'i-user'],
   ];
   function sections(env) {
@@ -160,11 +164,11 @@ const ShowStory = (() => {
         html: `${head(E, 'Every bonus explained', 'A question about a bonus, <b>answered in a click.</b>', 'Every result carries how it was counted. The agent sees it on their own page, in English or Arabic; their supervisor and the senior manager see the same lines.')}
           <div class="shexplain shrise"><div class="seg shlang" role="group" aria-label="Language"><button type="button" data-shlang="en" aria-pressed="true">English</button><button type="button" data-shlang="ar" aria-pressed="false" lang="ar">العربية</button></div>
             <div class="shrcpt" data-rcpt dir="ltr" lang="en">${receiptHtml(env, c, 'en')}</div></div>` },
-      { id: 'roles', name: 'Every role', notes: env.roleAct ? 'Every role plays its part in the bonus, on its own page, seeing only what is theirs. Press View on a role to open its page live, on today\'s data. It is a preview: nothing is saved while you view, and Back to Admin returns here.' : 'Every role plays its part in the bonus, on its own page, seeing only what is theirs: the analysts build the month, quality enters the scores once, the supervisors confirm attendance, the senior manager finalizes, and every agent sees how their own bonus was counted.',
-        html: `${head(E, 'Every role', 'Every role <b>plays its part.</b>', env.roleAct ? 'Press View to open that page live, on today\'s data, exactly as its role sees it. Nothing is saved and National IDs are hidden while you view; Back to Admin returns here.' : 'Each role has its own page in Cadence and sees only what is theirs.')}
+      { id: 'roles', name: 'Every role', notes: env.roleAct ? 'Every role has its own interface in Cadence, made for its part, and sees only what is theirs. Press View on a role to open its interface live, on today\'s data; for a supervisor or a manager, choose whose team first. It is a preview: nothing is saved while you view, and Back to Admin returns here.' : 'Every role has its own interface in Cadence, made for its part, and sees only what is theirs: the analysts build the month, the quality manager enters the scores once, the supervisors confirm their teams\' attendance and the complaint and digital experience managers send theirs, the senior manager finalizes, and every agent sees how their own bonus was counted.',
+        html: `<div class="shrhead">${head(E, 'Every role', 'Every role has <b>its own interface.</b>', env.roleAct ? 'From the WFM team to every agent, each role signs in to its own interface and sees only what is theirs. Press View to open one live, on today\'s data; nothing is saved and National IDs are hidden while you view, and Back to Admin returns here.' : 'From the WFM team to every agent, each role signs in to its own interface, made for its part, and sees only what is theirs.')}
+            ${fig('hub', 'A hub and its tiles: one set of data, an interface for every role')}</div>
           <div class="shroles shrise">${ROLES.map(([r, name, part, ico]) => `<div class="shrole"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#${ico}"/></svg></span><b>${E(name)}</b></div><p class="now"><span>Their part</span>${E(part)}</p>${env.roleAct ? env.roleAct(r) : ''}</div>`).join('')}
-            ${env.roleAct ? '<div class="shrole admin"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><b>Admin</b></div><p class="now"><span>Their part</span>Accounts and roles, vacation cover, and this Showcase.</p><div class="shract"><span class="pill info">You are here</span></div></div>' : ''}
-            ${fig('hub', 'A hub and its tiles: one set of data, a page for every role')}</div>` },
+            ${env.roleAct ? '<div class="shrole admin"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><b>Admin</b></div><p class="now"><span>Their part</span>Accounts and roles, vacation cover, and this Showcase.</p><div class="shract"><span class="pill info">You are here</span></div></div>' : ''}</div>` },
       ...(env.live ? [{ id: 'live', name: 'This month', notes: 'This is this month\'s bonus, straight from the shared data: how many people were scored, how many earn a bonus, the average final and the bonuses in riyals. Totals only, never a name.',
         html: `${head(E, 'This month', 'This month\'s bonus, <b>at a glance.</b>', 'Straight from the shared data: totals only, never a name.')}<div id="showLive">${env.live()}</div>` }] : []),
       { id: 'trust', name: 'Trust', notes: 'A bonus is pay, the most sensitive data Member Care has. It stays on our own computers, encrypted, and only accounts made in the tool can read it. Nothing is sent anywhere. National IDs are kept out of the files attached to emails. Every change to results, rules and roles keeps who and when.',

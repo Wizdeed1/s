@@ -159,21 +159,22 @@ const nf = n => Number(n).toLocaleString('en-US');
   pic(s, 'sc-receipt-ar', { x: x + w + gap, y: 2.85, h }, 'up|600|receipt-ar', 'The same receipt in Arabic, right to left.');
 }
 
-// =============================================================================================== 7. every role plays its part
+// =============================================================================================== 7. every role has its own interface
+// as the Showcase lays it out: the hub beside the title, the roles in two rows of four (a long name takes two lines beside its icon)
 {
   const sec = SEC('roles'), s = add('SHOW', sec);
   eyebrow(s, sec.eyebrow); title(s, sec);
-  lead(s, sec.lead, { y: leadY(sec), w: 8.4, h: 0.4 });
-  const area = 8.95, w = (area - 0.44) / 3, h = 1.86;
+  lead(s, sec.lead, { y: leadY(sec), w: 9.4, h: 0.62 });
+  pic(s, 'sc-fig-hub', { x: X1 - 1.75, y: 0.78, w: 1.75 }, 'up|900|fig', '');
+  const n = 4, gap = 0.22, w = (CW - (n - 1) * gap) / n, h = 1.95, top = 2.45;
   sec.roles.forEach((r, i) => {
-    const x = X0 + (i % 3) * (w + 0.22), y = 2.75 + Math.floor(i / 3) * (h + 0.22), d = 300 + i * 100;
+    const x = X0 + (i % n) * (w + gap), y = top + Math.floor(i / n) * (h + gap), d = 300 + i * 90;
     card(s, x, y, w, h, { t: d });
-    pic(s, `sc-role-${i}`, { x: x + 0.24, y: y + 0.22, w: 0.34 }, `up|${d}|icon`, '');
-    T(s, r.name, { x: x + 0.7, y: y + 0.22, w: w - 0.9, h: 0.34, fontSize: 12.5, bold: true, color: C.ink, valign: 'middle', objectName: `up|${d}|h` });
-    T(s, r.label.toUpperCase(), { x: x + 0.24, y: y + 0.7, w: w - 0.48, h: 0.18, fontSize: 7.5, bold: true, color: C.blue, charSpacing: 1.4, objectName: `up|${d}|l` });
-    T(s, r.part, { x: x + 0.24, y: y + 0.92, w: w - 0.48, h: 0.86, fontSize: 10.5, color: C.muted, valign: 'top', lineSpacingMultiple: 1.08, objectName: `up|${d}|p` });
+    pic(s, `sc-role-${i}`, { x: x + 0.24, y: y + 0.28, w: 0.34 }, `up|${d}|icon`, '');
+    T(s, r.name, { x: x + 0.7, y: y + 0.2, w: w - 0.9, h: 0.5, fontSize: 12, bold: true, color: C.ink, valign: 'middle', lineSpacingMultiple: 0.95, objectName: `up|${d}|h` });
+    T(s, r.label.toUpperCase(), { x: x + 0.24, y: y + 0.84, w: w - 0.48, h: 0.18, fontSize: 7.5, bold: true, color: C.blue, charSpacing: 1.4, objectName: `up|${d}|l` });
+    T(s, r.part, { x: x + 0.24, y: y + 1.06, w: w - 0.48, h: 0.8, fontSize: 10, color: C.muted, valign: 'top', lineSpacingMultiple: 1.08, objectName: `up|${d}|p` });
   });
-  pic(s, 'sc-fig-hub', { x: X0 + area + 0.45, y: 3.35, w: X1 - (X0 + area + 0.45) }, 'up|900|fig', '');
 }
 
 // =============================================================================================== 8. trust: pay data stays ours

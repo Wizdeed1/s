@@ -64,7 +64,6 @@ body.presenting .shlogo { --h: 64px; }
 
 /* the line figures (hairline): the card's own ground behind them */
 .shfig { --hairline-plate: var(--surface); width: 100%; max-width: 440px; justify-self: center; aspect-ratio: 5 / 4; }   /* its size before it is drawn, so it is seen coming into view */
-.shroles .shfig { max-width: 220px; }
 
 /* the problem: three numbers */
 .shnums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
@@ -87,7 +86,17 @@ body.presenting .shlogo { --h: 64px; }
 .shcard.stat b, .shcard.stat p { color: var(--on-accent); }
 
 
-/* every role */
+/* every role: the title with the hub beside it (one set of data, an interface for every role), the roles in two rows of four under
+   it, and in the tool the admin's own part as a line under them */
+.shrhead { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sh-gap); align-items: center; margin-bottom: var(--sh-gap); }
+.shrhead .shhead { margin-bottom: 0; max-width: none; } .shrhead h2 { text-wrap: balance; } .shrhead .shlead { max-width: 68ch; }
+.shrhead .shfig { width: 170px; }
+body.presenting .shrhead { margin-bottom: clamp(16px, 2.4vw, 28px); } body.presenting .shrhead .shhead { margin-bottom: 0; }
+@media (max-height: 860px) {   /* a laptop's screen: the roles still fit, closer together, each one's part on the label's line */
+  body.presenting .shsec.sh-roles { padding-block: clamp(20px, 4vh, 36px); }
+  body.presenting .sh-roles .shrole { padding: 10px 14px; gap: 5px; }
+  body.presenting .sh-roles .shrole p span { display: inline; margin-right: 8px; }
+}
 .shroles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: stretch; }
 .shrole { background: var(--sunk); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; transition: border-color .18s, box-shadow .18s; }
 .shrole:hover { border-color: var(--accent-line); box-shadow: 0 8px 22px rgba(13, 118, 189, .08); }
@@ -101,7 +110,10 @@ body.presenting .shlogo { --h: 64px; }
 .shrole p.was { color: var(--muted); }
 .shract { margin-top: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .shract .shpick, .shract .vapick { flex: 1; min-width: 0; display: block; } .shract .vapick select { margin: 0; width: 100%; }
-.shroles .shfig { grid-column: span 1; align-self: center; }
+.shrole.admin { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-block: 10px; }
+.shrole.admin p.now { flex: 1; min-width: 220px; }
+.shrole.admin p.now span { display: inline; margin-right: 10px; }
+.shrole.admin .shract { margin-top: 0; }
 
 /* today's data */
 .shcounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -178,15 +190,14 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
 @media (prefers-reduced-motion: reduce) { html.mczoom body { transition: none; } }
 
 /* ---- narrower screens */
-@media (max-width: 1180px) { .shroles { grid-template-columns: repeat(3, 1fr); } .shtiles { grid-template-columns: repeat(2, 1fr); } .shtile:last-child:nth-child(odd) { grid-column: 1 / -1; } }
-@media (max-width: 1000px) { .shroles { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 1180px) { .shroles { grid-template-columns: repeat(2, 1fr); } .shrhead .shfig { width: 160px; } .shtiles { grid-template-columns: repeat(2, 1fr); } .shtile:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 @media (max-width: 900px) {
   .shhero, .shtrust, .shend { grid-template-columns: 1fr; }
   .shfig { max-width: 320px; }
   .shcards.three, .shnums { grid-template-columns: 1fr; }
   .shcounts { grid-template-columns: repeat(2, 1fr); }
 }
-@media (max-width: 600px) { .shroles, .shtiles, .shcards.two { grid-template-columns: 1fr; } .shtop { flex-direction: column; align-items: flex-start; } }
+@media (max-width: 600px) { .shroles, .shtiles, .shcards.two { grid-template-columns: 1fr; } .shtop { flex-direction: column; align-items: flex-start; } .shrhead { grid-template-columns: 1fr; } .shrhead .shfig { justify-self: start; width: 140px; } }
 @media print { .shctl, .viewbar, .mcspot { display: none !important; } html.mczoom body { transform: none !important; } .shsec .shrise { opacity: 1; transform: none; } }
 @media (forced-colors: active) { .shnums > div, .shtile, .shcard.stat, .viewbar, .shctl { border: 1px solid CanvasText; } .mcspot { display: none; } }
 

@@ -1,6 +1,7 @@
 // ================================================================ VIEW AS: the admin opens every role's interface
 // The admin can see any interface on the shared data exactly as its role sees it: the WFM analyst's, the WFM manager's, the
-// senior manager's, one supervisor's (their own team), the quality team's and one agent's own page. It is a preview: while it is
+// senior manager's, one supervisor's (their own team; on the Showcase also the complaint and the digital experience managers,
+// chosen among the supervisors of those departments' people), the quality team's and one agent's own page. It is a preview: while it is
 // on, the data store refuses every write (store.js, localDb) and queueWrite keeps nothing to try again, so a click during a
 // meeting never changes the shared data. The account menu, the account checks and every record of who did what keep the admin's
 // own account (auth.js). National IDs are hidden on the screen while it is on. Back to Admin ends it, on the page it started from.
@@ -22,7 +23,7 @@ function realAdmin() { try { return ((Auth.realUser && Auth.realUser()) || {}).r
 function viewLabel(v = Auth.viewAs()) {
   if (!v) return '';
   const r = VIEW_ROLES.find(x => x[0] === v.role);
-  return `${r ? r[1] : ROLE_NAME[v.role] || v.role}${v.name ? ' · ' + v.name : ''}`;
+  return `${v.as || (r ? r[1] : ROLE_NAME[v.role] || v.role)}${v.name ? ' · ' + v.name : ''}`;
 }
 /** the label ending a sentence (a name like "Omar B." already ends with its own full stop) */
 const viewSentence = () => { const t = viewLabel(); return /\.$/.test(t) ? t : t + '.'; };
@@ -33,17 +34,29 @@ function viewRefused() {
   const now = Date.now(); if (now - viewToldAt < 4000) return; viewToldAt = now;
   toast(`Not saved: you are viewing as ${viewSentence()} Nothing changes while you view; Back to Admin to make changes.`);
 }
-/** the people to choose from: supervisors with their team's size, and everyone active on the roster (for an agent's page) */
-function viewPeople(kind) {
-  if (kind === 'spv') return spvList().filter(s => s.pid).sort((a, b) => (b.size || 0) - (a.size || 0) || String(a.name).localeCompare(String(b.name)));
+/** a picker's key: whom it chooses ('spv', 'agent'), and for a department's manager the department too ('spv:CT', on the
+    Showcase's Complaint manager: a supervisor's interface, chosen among those who lead the Complaint Team's people) */
+const viewKey = key => { const [kind, dep = ''] = String(key || '').split(':'); return { kind, dep }; };
+const VIEW_DEP = { CT: 'the complaint team', DE: 'the digital experience team' };
+/** the people to choose from: supervisors with their team's size (those leading a department's active people, for its manager),
+    and everyone active on the roster (for an agent's page) */
+function viewPeople(kind, dep) {
+  if (kind === 'spv') return spvList().filter(s => s.pid && (!dep || teamOf(s.pid).some(p => p.status !== 'Inactive' && normSpace(p.team) === dep))).sort((a, b) => (b.size || 0) - (a.size || 0) || String(a.name).localeCompare(String(b.name)));
   return rosterRows().filter(p => p.status !== 'Inactive').map(p => ({ pid: p._id, name: p.name, unit: unitOf(p) })).sort((a, b) => sortUnits(a.unit, b.unit) || String(a.name).localeCompare(String(b.name)));
 }
-function viewPickHtml(kind) {
-  const L = viewPeople(kind); if (!L.length) return `<span class="hint">${kind === 'spv' ? 'No supervisor on the roster yet.' : 'Nobody on the roster yet.'}</span>`;
-  const cur = L.some(x => x.pid === state.viewPick[kind]) ? state.viewPick[kind] : '';   // nobody shown until the admin chooses (a meeting sees the screen)
+/** what a picker asks for, and says when there is nobody to choose */
+function viewAsk(key) {
+  const { kind, dep } = viewKey(key);
+  if (kind !== 'spv') return { which: 'Which agent', choose: 'Choose an agent…', none: 'Nobody on the roster yet.', tell: 'Choose the agent whose page to see, then View.' };
+  if (dep) return { which: 'Which manager', choose: 'Choose the manager…', none: `No manager of ${VIEW_DEP[dep] || dep} on the roster yet.`, tell: 'Choose the manager whose team to see, then View.' };
+  return { which: 'Which supervisor', choose: 'Choose a supervisor…', none: 'No supervisor on the roster yet.', tell: 'Choose the supervisor whose team to see, then View.' };
+}
+function viewPickHtml(key) {
+  const { kind, dep } = viewKey(key), A = viewAsk(key), L = viewPeople(kind, dep); if (!L.length) return `<span class="hint">${esc(A.none)}</span>`;
+  const cur = L.some(x => x.pid === state.viewPick[key]) ? state.viewPick[key] : '';   // nobody shown until the admin chooses (a meeting sees the screen)
   const opt = x => `<option value="${esc(x.pid)}"${x.pid === cur ? ' selected' : ''}>${esc(x.name)}${kind === 'spv' && x.size ? ` (${x.size})` : ''}</option>`;
   const body = kind === 'spv' ? L.map(opt).join('') : [...new Set(L.map(x => x.unit))].map(u => `<optgroup label="${esc(u)}">${L.filter(x => x.unit === u).map(opt).join('')}</optgroup>`).join('');
-  return `<label class="vapick"><span class="sr">${kind === 'spv' ? 'Which supervisor' : 'Which agent'}</span><select class="cell" data-vapick="${kind}" aria-label="${kind === 'spv' ? 'Which supervisor' : 'Which agent'}"><option value=""${cur ? '' : ' selected'}>${kind === 'spv' ? 'Choose a supervisor…' : 'Choose an agent…'}</option>${body}</select></label>`;
+  return `<label class="vapick"><span class="sr">${A.which}</span><select class="cell" data-vapick="${esc(key)}" aria-label="${A.which}"><option value=""${cur ? '' : ' selected'}>${A.choose}</option>${body}</select></label>`;
 }
 /** the choice of roles (account menu › View as another role, and the Showcase's role cards) */
 function openViewAs() {
@@ -61,20 +74,23 @@ async function viewSaveIdle() {
   const t0 = Date.now();
   while ((inflight > 0 || setTimer) && Date.now() - t0 < 6000) await new Promise(r => setTimeout(r, 100));
 }
-async function startViewAs(role, pid) {
+/** key: the picker the person was chosen with (a department's manager is chosen among that department's supervisors); as: the
+    name of the Showcase's card it was opened from, for the banner (Quality manager, Complaint manager…), when it has one */
+async function startViewAs(role, pid, key, as) {
   if (!realAdmin()) return;
   const R = VIEW_ROLES.find(x => x[0] === role); if (!R) return;
   let person = null;
   if (R[3]) {
-    const L = viewPeople(R[3]); person = L.find(x => x.pid === (pid || state.viewPick[R[3]])) || null;
-    if (!person) { toast(!L.length ? (R[3] === 'spv' ? 'No supervisor on the roster yet.' : 'Nobody on the roster yet.') : R[3] === 'spv' ? 'Choose the supervisor whose team to see, then View.' : 'Choose the agent whose page to see, then View.'); const sel = document.querySelector(`[data-vapick="${R[3]}"]`); if (sel) sel.focus(); return; }
-    state.viewPick[R[3]] = person.pid;
+    if (!key || viewKey(key).kind !== R[3]) key = R[3];
+    const L = viewPeople(R[3], viewKey(key).dep); person = L.find(x => x.pid === (pid || state.viewPick[key])) || null;
+    if (!person) { const A = viewAsk(key); toast(!L.length ? A.none : A.tell); const sel = document.querySelector(`[data-vapick="${key}"]`); if (sel) sel.focus(); return; }
+    state.viewPick[key] = person.pid;
   }
   if (!viewing()) { state.viewFrom = state.ws; state.viewRefused = 0; await viewSaveIdle(); }
   if (openId === 'dViewAs') closeDrawer();
   if (state.db && state.db.readOnly) state.db.readOnly(true, viewRefused);
   stopAgentData(); state.me = null;
-  Auth.setViewAs({ role, pid: person ? person.pid : '', name: person ? person.name : '' });
+  Auth.setViewAs({ role, pid: person ? person.pid : '', name: person ? person.name : '', as: normSpace(as || '') });
   document.body.classList.add('viewing'); renderViewBar();
   applyRole();
   nidWatch(true);
@@ -143,7 +159,13 @@ function renderViewBar() {
 }
 document.addEventListener('click', e => {
   const go = e.target.closest('[data-vago]');
-  if (go) { const r = go.dataset.vago, R = VIEW_ROLES.find(x => x[0] === r), sel = R && R[3] ? (go.closest('.varow, .shrole') || document).querySelector(`[data-vapick="${R[3]}"]`) : null; startViewAs(r, sel ? sel.value : ''); return; }
+  if (go) {   // the picker beside the button (its row or its card) says whom: a supervisor, a department's manager or an agent
+    const r = go.dataset.vago, R = VIEW_ROLES.find(x => x[0] === r), box = go.closest('.varow, .shrole');
+    const sel = R && R[3] ? (box ? box.querySelector('[data-vapick]') : document.querySelector(`[data-vapick="${R[3]}"]`)) : null;
+    const pk = !sel && box ? box.querySelector('.shpick[data-kind]') : null;   // a card with nobody to choose: its own key, never another card's choice
+    const as = box && box.classList.contains('shrole') ? (box.querySelector('.shrtop b') || {}).textContent : '';   // the banner says the card's name
+    startViewAs(r, sel ? sel.value : '', sel ? sel.dataset.vapick : pk ? pk.dataset.kind : '', as); return;
+  }
   if (e.target.closest('[data-vbback], [data-vaback]')) { endViewAs(); return; }
   if (e.target.closest('[data-vbswitch]')) openViewAs();
 });

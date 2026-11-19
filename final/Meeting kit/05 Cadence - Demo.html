@@ -3810,7 +3810,6 @@ body.presenting .shlogo { --h: 64px; }
 
 /* the line figures (hairline): the card's own ground behind them */
 .shfig { --hairline-plate: var(--surface); width: 100%; max-width: 440px; justify-self: center; aspect-ratio: 5 / 4; }   /* its size before it is drawn, so it is seen coming into view */
-.shroles .shfig { max-width: 220px; }
 
 /* the problem: three numbers */
 .shnums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
@@ -3833,7 +3832,17 @@ body.presenting .shlogo { --h: 64px; }
 .shcard.stat b, .shcard.stat p { color: var(--on-accent); }
 
 
-/* every role */
+/* every role: the title with the hub beside it (one set of data, an interface for every role), the roles in two rows of four under
+   it, and in the tool the admin's own part as a line under them */
+.shrhead { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sh-gap); align-items: center; margin-bottom: var(--sh-gap); }
+.shrhead .shhead { margin-bottom: 0; max-width: none; } .shrhead h2 { text-wrap: balance; } .shrhead .shlead { max-width: 68ch; }
+.shrhead .shfig { width: 170px; }
+body.presenting .shrhead { margin-bottom: clamp(16px, 2.4vw, 28px); } body.presenting .shrhead .shhead { margin-bottom: 0; }
+@media (max-height: 860px) {   /* a laptop's screen: the roles still fit, closer together, each one's part on the label's line */
+  body.presenting .shsec.sh-roles { padding-block: clamp(20px, 4vh, 36px); }
+  body.presenting .sh-roles .shrole { padding: 10px 14px; gap: 5px; }
+  body.presenting .sh-roles .shrole p span { display: inline; margin-right: 8px; }
+}
 .shroles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: stretch; }
 .shrole { background: var(--sunk); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; transition: border-color .18s, box-shadow .18s; }
 .shrole:hover { border-color: var(--accent-line); box-shadow: 0 8px 22px rgba(13, 118, 189, .08); }
@@ -3847,7 +3856,10 @@ body.presenting .shlogo { --h: 64px; }
 .shrole p.was { color: var(--muted); }
 .shract { margin-top: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .shract .shpick, .shract .vapick { flex: 1; min-width: 0; display: block; } .shract .vapick select { margin: 0; width: 100%; }
-.shroles .shfig { grid-column: span 1; align-self: center; }
+.shrole.admin { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-block: 10px; }
+.shrole.admin p.now { flex: 1; min-width: 220px; }
+.shrole.admin p.now span { display: inline; margin-right: 10px; }
+.shrole.admin .shract { margin-top: 0; }
 
 /* today's data */
 .shcounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -3924,15 +3936,14 @@ html.mczoom body { transition: transform .22s cubic-bezier(.2, .7, .2, 1); will-
 @media (prefers-reduced-motion: reduce) { html.mczoom body { transition: none; } }
 
 /* ---- narrower screens */
-@media (max-width: 1180px) { .shroles { grid-template-columns: repeat(3, 1fr); } .shtiles { grid-template-columns: repeat(2, 1fr); } .shtile:last-child:nth-child(odd) { grid-column: 1 / -1; } }
-@media (max-width: 1000px) { .shroles { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 1180px) { .shroles { grid-template-columns: repeat(2, 1fr); } .shrhead .shfig { width: 160px; } .shtiles { grid-template-columns: repeat(2, 1fr); } .shtile:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 @media (max-width: 900px) {
   .shhero, .shtrust, .shend { grid-template-columns: 1fr; }
   .shfig { max-width: 320px; }
   .shcards.three, .shnums { grid-template-columns: 1fr; }
   .shcounts { grid-template-columns: repeat(2, 1fr); }
 }
-@media (max-width: 600px) { .shroles, .shtiles, .shcards.two { grid-template-columns: 1fr; } .shtop { flex-direction: column; align-items: flex-start; } }
+@media (max-width: 600px) { .shroles, .shtiles, .shcards.two { grid-template-columns: 1fr; } .shtop { flex-direction: column; align-items: flex-start; } .shrhead { grid-template-columns: 1fr; } .shrhead .shfig { justify-self: start; width: 140px; } }
 @media print { .shctl, .viewbar, .mcspot { display: none !important; } html.mczoom body { transform: none !important; } .shsec .shrise { opacity: 1; transform: none; } }
 @media (forced-colors: active) { .shnums > div, .shtile, .shcard.stat, .viewbar, .shctl { border: 1px solid CanvasText; } .mcspot { display: none; } }
 
@@ -39356,7 +39367,8 @@ todayGo = function (go) {
 
 // ================================================================ VIEW AS: the admin opens every role's interface
 // The admin can see any interface on the shared data exactly as its role sees it: the WFM analyst's, the WFM manager's, the
-// senior manager's, one supervisor's (their own team), the quality team's and one agent's own page. It is a preview: while it is
+// senior manager's, one supervisor's (their own team; on the Showcase also the complaint and the digital experience managers,
+// chosen among the supervisors of those departments' people), the quality team's and one agent's own page. It is a preview: while it is
 // on, the data store refuses every write (store.js, localDb) and queueWrite keeps nothing to try again, so a click during a
 // meeting never changes the shared data. The account menu, the account checks and every record of who did what keep the admin's
 // own account (auth.js). National IDs are hidden on the screen while it is on. Back to Admin ends it, on the page it started from.
@@ -39378,7 +39390,7 @@ function realAdmin() { try { return ((Auth.realUser && Auth.realUser()) || {}).r
 function viewLabel(v = Auth.viewAs()) {
   if (!v) return '';
   const r = VIEW_ROLES.find(x => x[0] === v.role);
-  return `${r ? r[1] : ROLE_NAME[v.role] || v.role}${v.name ? ' · ' + v.name : ''}`;
+  return `${v.as || (r ? r[1] : ROLE_NAME[v.role] || v.role)}${v.name ? ' · ' + v.name : ''}`;
 }
 /** the label ending a sentence (a name like "Omar B." already ends with its own full stop) */
 const viewSentence = () => { const t = viewLabel(); return /\.$/.test(t) ? t : t + '.'; };
@@ -39389,17 +39401,29 @@ function viewRefused() {
   const now = Date.now(); if (now - viewToldAt < 4000) return; viewToldAt = now;
   toast(`Not saved: you are viewing as ${viewSentence()} Nothing changes while you view; Back to Admin to make changes.`);
 }
-/** the people to choose from: supervisors with their team's size, and everyone active on the roster (for an agent's page) */
-function viewPeople(kind) {
-  if (kind === 'spv') return spvList().filter(s => s.pid).sort((a, b) => (b.size || 0) - (a.size || 0) || String(a.name).localeCompare(String(b.name)));
+/** a picker's key: whom it chooses ('spv', 'agent'), and for a department's manager the department too ('spv:CT', on the
+    Showcase's Complaint manager: a supervisor's interface, chosen among those who lead the Complaint Team's people) */
+const viewKey = key => { const [kind, dep = ''] = String(key || '').split(':'); return { kind, dep }; };
+const VIEW_DEP = { CT: 'the complaint team', DE: 'the digital experience team' };
+/** the people to choose from: supervisors with their team's size (those leading a department's active people, for its manager),
+    and everyone active on the roster (for an agent's page) */
+function viewPeople(kind, dep) {
+  if (kind === 'spv') return spvList().filter(s => s.pid && (!dep || teamOf(s.pid).some(p => p.status !== 'Inactive' && normSpace(p.team) === dep))).sort((a, b) => (b.size || 0) - (a.size || 0) || String(a.name).localeCompare(String(b.name)));
   return rosterRows().filter(p => p.status !== 'Inactive').map(p => ({ pid: p._id, name: p.name, unit: unitOf(p) })).sort((a, b) => sortUnits(a.unit, b.unit) || String(a.name).localeCompare(String(b.name)));
 }
-function viewPickHtml(kind) {
-  const L = viewPeople(kind); if (!L.length) return `<span class="hint">${kind === 'spv' ? 'No supervisor on the roster yet.' : 'Nobody on the roster yet.'}</span>`;
-  const cur = L.some(x => x.pid === state.viewPick[kind]) ? state.viewPick[kind] : '';   // nobody shown until the admin chooses (a meeting sees the screen)
+/** what a picker asks for, and says when there is nobody to choose */
+function viewAsk(key) {
+  const { kind, dep } = viewKey(key);
+  if (kind !== 'spv') return { which: 'Which agent', choose: 'Choose an agent…', none: 'Nobody on the roster yet.', tell: 'Choose the agent whose page to see, then View.' };
+  if (dep) return { which: 'Which manager', choose: 'Choose the manager…', none: `No manager of ${VIEW_DEP[dep] || dep} on the roster yet.`, tell: 'Choose the manager whose team to see, then View.' };
+  return { which: 'Which supervisor', choose: 'Choose a supervisor…', none: 'No supervisor on the roster yet.', tell: 'Choose the supervisor whose team to see, then View.' };
+}
+function viewPickHtml(key) {
+  const { kind, dep } = viewKey(key), A = viewAsk(key), L = viewPeople(kind, dep); if (!L.length) return `<span class="hint">${esc(A.none)}</span>`;
+  const cur = L.some(x => x.pid === state.viewPick[key]) ? state.viewPick[key] : '';   // nobody shown until the admin chooses (a meeting sees the screen)
   const opt = x => `<option value="${esc(x.pid)}"${x.pid === cur ? ' selected' : ''}>${esc(x.name)}${kind === 'spv' && x.size ? ` (${x.size})` : ''}</option>`;
   const body = kind === 'spv' ? L.map(opt).join('') : [...new Set(L.map(x => x.unit))].map(u => `<optgroup label="${esc(u)}">${L.filter(x => x.unit === u).map(opt).join('')}</optgroup>`).join('');
-  return `<label class="vapick"><span class="sr">${kind === 'spv' ? 'Which supervisor' : 'Which agent'}</span><select class="cell" data-vapick="${kind}" aria-label="${kind === 'spv' ? 'Which supervisor' : 'Which agent'}"><option value=""${cur ? '' : ' selected'}>${kind === 'spv' ? 'Choose a supervisor…' : 'Choose an agent…'}</option>${body}</select></label>`;
+  return `<label class="vapick"><span class="sr">${A.which}</span><select class="cell" data-vapick="${esc(key)}" aria-label="${A.which}"><option value=""${cur ? '' : ' selected'}>${A.choose}</option>${body}</select></label>`;
 }
 /** the choice of roles (account menu › View as another role, and the Showcase's role cards) */
 function openViewAs() {
@@ -39417,20 +39441,23 @@ async function viewSaveIdle() {
   const t0 = Date.now();
   while ((inflight > 0 || setTimer) && Date.now() - t0 < 6000) await new Promise(r => setTimeout(r, 100));
 }
-async function startViewAs(role, pid) {
+/** key: the picker the person was chosen with (a department's manager is chosen among that department's supervisors); as: the
+    name of the Showcase's card it was opened from, for the banner (Quality manager, Complaint manager…), when it has one */
+async function startViewAs(role, pid, key, as) {
   if (!realAdmin()) return;
   const R = VIEW_ROLES.find(x => x[0] === role); if (!R) return;
   let person = null;
   if (R[3]) {
-    const L = viewPeople(R[3]); person = L.find(x => x.pid === (pid || state.viewPick[R[3]])) || null;
-    if (!person) { toast(!L.length ? (R[3] === 'spv' ? 'No supervisor on the roster yet.' : 'Nobody on the roster yet.') : R[3] === 'spv' ? 'Choose the supervisor whose team to see, then View.' : 'Choose the agent whose page to see, then View.'); const sel = document.querySelector(`[data-vapick="${R[3]}"]`); if (sel) sel.focus(); return; }
-    state.viewPick[R[3]] = person.pid;
+    if (!key || viewKey(key).kind !== R[3]) key = R[3];
+    const L = viewPeople(R[3], viewKey(key).dep); person = L.find(x => x.pid === (pid || state.viewPick[key])) || null;
+    if (!person) { const A = viewAsk(key); toast(!L.length ? A.none : A.tell); const sel = document.querySelector(`[data-vapick="${key}"]`); if (sel) sel.focus(); return; }
+    state.viewPick[key] = person.pid;
   }
   if (!viewing()) { state.viewFrom = state.ws; state.viewRefused = 0; await viewSaveIdle(); }
   if (openId === 'dViewAs') closeDrawer();
   if (state.db && state.db.readOnly) state.db.readOnly(true, viewRefused);
   stopAgentData(); state.me = null;
-  Auth.setViewAs({ role, pid: person ? person.pid : '', name: person ? person.name : '' });
+  Auth.setViewAs({ role, pid: person ? person.pid : '', name: person ? person.name : '', as: normSpace(as || '') });
   document.body.classList.add('viewing'); renderViewBar();
   applyRole();
   nidWatch(true);
@@ -39499,7 +39526,13 @@ function renderViewBar() {
 }
 document.addEventListener('click', e => {
   const go = e.target.closest('[data-vago]');
-  if (go) { const r = go.dataset.vago, R = VIEW_ROLES.find(x => x[0] === r), sel = R && R[3] ? (go.closest('.varow, .shrole') || document).querySelector(`[data-vapick="${R[3]}"]`) : null; startViewAs(r, sel ? sel.value : ''); return; }
+  if (go) {   // the picker beside the button (its row or its card) says whom: a supervisor, a department's manager or an agent
+    const r = go.dataset.vago, R = VIEW_ROLES.find(x => x[0] === r), box = go.closest('.varow, .shrole');
+    const sel = R && R[3] ? (box ? box.querySelector('[data-vapick]') : document.querySelector(`[data-vapick="${R[3]}"]`)) : null;
+    const pk = !sel && box ? box.querySelector('.shpick[data-kind]') : null;   // a card with nobody to choose: its own key, never another card's choice
+    const as = box && box.classList.contains('shrole') ? (box.querySelector('.shrtop b') || {}).textContent : '';   // the banner says the card's name
+    startViewAs(r, sel ? sel.value : '', sel ? sel.dataset.vapick : pk ? pk.dataset.kind : '', as); return;
+  }
   if (e.target.closest('[data-vbback], [data-vaback]')) { endViewAs(); return; }
   if (e.target.closest('[data-vbswitch]')) openViewAs();
 });
@@ -39513,6 +39546,8 @@ document.addEventListener('change', e => { const s = e.target.closest('[data-vap
 // Nothing here reads or writes any data. env gives what differs between the two places:
 //   { esc, card, cfg, elig, base, people (the roster's size, or null), strip: [text], month: label,
 //     live: () => html (the tool only), roleAct: role => html (View; the tool only), fig: (name, label) => html }
+// A role's key is the account role whose interface View opens; a department's manager is that role with the department
+// ('spv:CT': the Complaint Team's manager, who signs in as a supervisor and sees their own team; 'spv:DE' likewise).
 const ShowStory = (() => {
   // The challenge: the scorecards a bonus was counted on by hand before Cadence, as the WFM team counts them. Not the tool's own
   // count (15 built in: 8 departments' cards and 7 role cards), which is not what that slide is about.
@@ -39637,7 +39672,9 @@ const ShowStory = (() => {
     ['wfm', 'WFM manager', 'Sends the month\'s numbers for review and sees every trend behind them.', 'i-chart'],
     ['senior', 'Senior manager', 'Reviews every result and finalizes the month\'s bonuses.', 'i-clock'],
     ['spv', 'Supervisor', 'Confirms the team\'s attendance and coaches from each agent\'s own numbers.', 'i-team'],
-    ['quality', 'Quality team', 'Enters the quality scores once; they count the same in every bonus.', 'i-star'],
+    ['spv:CT', 'Complaint manager', 'Sends the complaint team\'s attendance in one sheet a month; their own bonus counts complaints resolved on time.', 'i-mail'],
+    ['spv:DE', 'Digital experience manager', 'Sends the digital experience team\'s attendance in one sheet a month; their own bonus counts the digital projects achieved.', 'i-monitor'],
+    ['quality', 'Quality manager', 'Enters the quality scores once; they count the same in every bonus.', 'i-star'],
     ['agent', 'Agent', 'Sees their bonus and exactly how it was counted, and can question it, in English or Arabic.', 'i-user'],
   ];
   function sections(env) {
@@ -39667,11 +39704,11 @@ const ShowStory = (() => {
         html: `${head(E, 'Every bonus explained', 'A question about a bonus, <b>answered in a click.</b>', 'Every result carries how it was counted. The agent sees it on their own page, in English or Arabic; their supervisor and the senior manager see the same lines.')}
           <div class="shexplain shrise"><div class="seg shlang" role="group" aria-label="Language"><button type="button" data-shlang="en" aria-pressed="true">English</button><button type="button" data-shlang="ar" aria-pressed="false" lang="ar">العربية</button></div>
             <div class="shrcpt" data-rcpt dir="ltr" lang="en">${receiptHtml(env, c, 'en')}</div></div>` },
-      { id: 'roles', name: 'Every role', notes: env.roleAct ? 'Every role plays its part in the bonus, on its own page, seeing only what is theirs. Press View on a role to open its page live, on today\'s data. It is a preview: nothing is saved while you view, and Back to Admin returns here.' : 'Every role plays its part in the bonus, on its own page, seeing only what is theirs: the analysts build the month, quality enters the scores once, the supervisors confirm attendance, the senior manager finalizes, and every agent sees how their own bonus was counted.',
-        html: `${head(E, 'Every role', 'Every role <b>plays its part.</b>', env.roleAct ? 'Press View to open that page live, on today\'s data, exactly as its role sees it. Nothing is saved and National IDs are hidden while you view; Back to Admin returns here.' : 'Each role has its own page in Cadence and sees only what is theirs.')}
+      { id: 'roles', name: 'Every role', notes: env.roleAct ? 'Every role has its own interface in Cadence, made for its part, and sees only what is theirs. Press View on a role to open its interface live, on today\'s data; for a supervisor or a manager, choose whose team first. It is a preview: nothing is saved while you view, and Back to Admin returns here.' : 'Every role has its own interface in Cadence, made for its part, and sees only what is theirs: the analysts build the month, the quality manager enters the scores once, the supervisors confirm their teams\' attendance and the complaint and digital experience managers send theirs, the senior manager finalizes, and every agent sees how their own bonus was counted.',
+        html: `<div class="shrhead">${head(E, 'Every role', 'Every role has <b>its own interface.</b>', env.roleAct ? 'From the WFM team to every agent, each role signs in to its own interface and sees only what is theirs. Press View to open one live, on today\'s data; nothing is saved and National IDs are hidden while you view, and Back to Admin returns here.' : 'From the WFM team to every agent, each role signs in to its own interface, made for its part, and sees only what is theirs.')}
+            ${fig('hub', 'A hub and its tiles: one set of data, an interface for every role')}</div>
           <div class="shroles shrise">${ROLES.map(([r, name, part, ico]) => `<div class="shrole"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#${ico}"/></svg></span><b>${E(name)}</b></div><p class="now"><span>Their part</span>${E(part)}</p>${env.roleAct ? env.roleAct(r) : ''}</div>`).join('')}
-            ${env.roleAct ? '<div class="shrole admin"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><b>Admin</b></div><p class="now"><span>Their part</span>Accounts and roles, vacation cover, and this Showcase.</p><div class="shract"><span class="pill info">You are here</span></div></div>' : ''}
-            ${fig('hub', 'A hub and its tiles: one set of data, a page for every role')}</div>` },
+            ${env.roleAct ? '<div class="shrole admin"><div class="shrtop"><span class="shrico" aria-hidden="true"><svg><use href="#i-lock"/></svg></span><b>Admin</b></div><p class="now"><span>Their part</span>Accounts and roles, vacation cover, and this Showcase.</p><div class="shract"><span class="pill info">You are here</span></div></div>' : ''}</div>` },
       ...(env.live ? [{ id: 'live', name: 'This month', notes: 'This is this month\'s bonus, straight from the shared data: how many people were scored, how many earn a bonus, the average final and the bonuses in riyals. Totals only, never a name.',
         html: `${head(E, 'This month', 'This month\'s bonus, <b>at a glance.</b>', 'Straight from the shared data: totals only, never a name.')}<div id="showLive">${env.live()}</div>` }] : []),
       { id: 'trust', name: 'Trust', notes: 'A bonus is pay, the most sensitive data Member Care has. It stays on our own computers, encrypted, and only accounts made in the tool can read it. Nothing is sent anywhere. National IDs are kept out of the files attached to emails. Every change to results, rules and roles keeps who and when.',
@@ -39756,8 +39793,12 @@ function showStripItems() {
   return [k ? ymLabel(k) : '', `${rosterRows().length} people`, `${plural(wsMonths().length, 'month')} of history`, 'works offline'].filter(Boolean);
 }
 const showStripHtml = () => showStripItems().map(x => `<li>${esc(x)}</li>`).join('');
-/** View for a role: that role's page, live (a supervisor or an agent chosen first) */
-function showRoleAct(r) { const R = VIEW_ROLES.find(x => x[0] === r), kind = R && R[3]; return `<div class="shract">${kind ? `<span class="shpick" data-kind="${kind}">${viewPickHtml(kind)}</span>` : ''}<button class="btn sm primary" data-vago="${r}">View</button></div>`; }
+/** View for a role: that role's interface, live (a supervisor or an agent chosen first). A department's manager ('spv:CT') is
+    a supervisor's interface, chosen among those who lead that department's people */
+function showRoleAct(r) {
+  const [role, dep] = String(r).split(':'), R = VIEW_ROLES.find(x => x[0] === role), kind = R && R[3], key = kind ? (dep ? `${kind}:${dep}` : kind) : '';
+  return `<div class="shract">${key ? `<span class="shpick" data-kind="${esc(key)}">${viewPickHtml(key)}</span>` : ''}<button class="btn sm primary" data-vago="${esc(role)}">View</button></div>`;
+}
 /** what the story needs from the tool: the month's rules (the champion's scorecard, how it is counted, who earns it, the brand's base),
     today's figures and View for every role (js/showstory.js) */
 function showEnv() {

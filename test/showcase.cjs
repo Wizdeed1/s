@@ -5,7 +5,9 @@
 //    no word on the daily or weekly reports; the proof says how many people can use it at once (100, from tools/loadtest), with no
 //    10,000, no time back and no test-suite tile; View as the WFM manager has no Weekly commercial or Performance Review.
 // 2. The stand-alone file: opened as a file it asks for nothing on the network and reports no error; nine sections (no live data);
-//    the same bonus and the same 100 people at once; Try it; Present with the arrow keys and Esc; Light and Dark; a phone keeps to its width.
+//    the same bonus and the same 100 people at once; every role has its own interface: eight roles, with the complaint and the digital
+//    experience managers and the quality manager (not "Quality team"), in two rows of four; Try it; Present with the arrow keys and
+//    Esc, the roles fitting a laptop's screen; Light and Dark; a phone keeps to its width.
 // Usage: node test/showcase.cjs page.html showcase.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -89,13 +91,18 @@ async function tryIt(p, scope) {
       theme: document.documentElement.getAttribute('data-theme'), over: document.scrollingElement.scrollWidth - innerWidth, figs: document.querySelectorAll('.shfig').length,
       proof: document.querySelector('.sh-checks .shproof').textContent.replace(/\s+/g, ' ').trim(), body: document.getElementById('showBody').textContent,
       tiles: [...document.querySelectorAll('.sh-trust .shtile')].map(t => Math.round(t.getBoundingClientRect().right)),
-      cards: document.querySelector('.sh-before .shnums > div').textContent.replace(/\s+/g, ' ').trim() }));
+      cards: document.querySelector('.sh-before .shnums > div').textContent.replace(/\s+/g, ' ').trim(),
+      roles: { h: document.querySelector('.sh-roles h2').textContent.replace(/\s+/g, ' ').trim(), lead: document.querySelector('.sh-roles .shlead').textContent, names: [...document.querySelectorAll('.sh-roles .shrole .shrtop b')].map(b => b.textContent),
+        rows: [...new Set([...document.querySelectorAll('.sh-roles .shrole')].map(r => Math.round(r.getBoundingClientRect().top)))].length } }));
     await p.screenshot({ path: path.join(out, `showcase-file-${theme}-${vp.width}.png`) });
     const outside = reqs.filter(u => !/^(file|data|blob|about):/.test(u));
     ok(!outside.length && S.secs.length === 9 && !S.secs.includes('This month') && /764 SR/.test(S.hero) && S.theme === theme && S.over <= 1
       && /^100\s*people using Cadence at the same time/.test(S.proof) && !/10,000|ten thousand|test suites|hours back|time back/i.test(S.body)
       && S.tiles.length === 5 && Math.abs(S.tiles[2] - S.tiles[4]) <= 1 && /^9\s*scorecards/.test(S.cards),
       `the stand-alone file (${tag}): "${S.title}", ${S.secs.length} sections, the same 764 SR, 9 scorecards, 100 people at the same time, Trust's five tiles with no empty slot, ${outside.length} requests outside the file, nothing wider than the screen (${S.over} px)`);
+    const R8 = ['WFM analyst', 'WFM manager', 'Senior manager', 'Supervisor', 'Complaint manager', 'Digital experience manager', 'Quality manager', 'Agent'];
+    ok(S.roles.h === 'Every role has its own interface.' && /each role signs in to its own interface/.test(S.roles.lead) && S.roles.names.join('|') === R8.join('|') && !/Quality team/.test(S.body) && (vp.width < 600 || S.roles.rows === 2),
+      `  every role has its own interface (${tag}): ${S.roles.names.length} roles${vp.width < 600 ? '' : ` in ${S.roles.rows} rows`}, the complaint and digital experience managers among them, "Quality manager" for the quality team's card`);
     if (vp.width === 1440 && theme === 'light') {
       const T = await tryIt(p, '#showBody');
       ok(T.rows.every(([, a, e]) => a === e), `  Try it in the file follows the engine too: ${T.rows.map(([w, a]) => `${w} ${a}`).join(' · ')}`);
@@ -112,6 +119,15 @@ async function tryIt(p, scope) {
       ok(t1 === 'dark,dark' && t2 === 'light', `  Light and Dark from the bar, kept as the tool keeps it (${t1} → ${t2})`);
     }
     ok(!errs.length, `  no errors (${tag}) ${errs.join('; ')}`);
+    await ctx.close();
+  }
+  // the roles, presented on a laptop's screen: all eight seen, nothing to scroll
+  for (const [w, h] of [[1366, 768], [1280, 720]]) {
+    const ctx = await b.newContext({ viewport: { width: w, height: h }, reducedMotion: 'reduce', colorScheme: 'light' }), p = await ctx.newPage();
+    await p.goto('file://' + path.resolve(show0)); await p.waitForSelector('#showBody .sh-roles'); await p.waitForTimeout(300);
+    await p.evaluate(() => { window.__showcase.present(true); window.__showcase.go([...document.querySelectorAll('#showBody .shsec')].findIndex(s => s.classList.contains('sh-roles'))); }); await p.waitForTimeout(400);
+    const fit = await p.evaluate(() => { const s = document.querySelector('#showBody .shsec.cur'); return s && s.classList.contains('sh-roles') ? { over: s.scrollHeight - s.clientHeight, n: s.querySelectorAll('.shrole').length } : { over: -1, n: 0 }; });
+    ok(fit.over === 0 && fit.n === 8, `  Present at ${w}×${h}: the ${fit.n} roles on the screen, nothing to scroll (${fit.over} px over)`);
     await ctx.close();
   }
   await b.close();

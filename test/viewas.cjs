@@ -2,7 +2,9 @@
 // 1. The admin's pages end with the Showcase: its ten sections, the line figures drawn as they come into view, Present (one
 //    section at a time, the arrow keys, the speaker notes on N, Esc to end).
 // 2. View as each role from the Showcase: that role's own pages (no Showcase among them), the banner, Back to Admin on the Showcase.
-// 3. A supervisor sees their own team only; an agent's page loads for the agent chosen. National IDs are hidden while viewing
+// 3. A supervisor sees their own team only; an agent's page loads for the agent chosen; the Showcase's Complaint manager is chosen
+//    among the Complaint Team's supervisors and opens that one's team, named on the banner, and the Digital experience manager, with
+//    nobody leading that team, opens nobody (never another card's choice). National IDs are hidden while viewing
 //    (on the page, in a preview, in an ID field) and show again after Back to Admin.
 // 4. Nothing is saved while viewing: a write to the folder is refused (code "preview"), queueWrite keeps nothing to try again and
 //    the save line shows no error; the record is not in the folder. After Back to Admin writes go through again, and the refused
@@ -42,7 +44,7 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   ok(/^dash,.*,show$/.test(N), `the admin's pages end with the Showcase: ${N}`);
   await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector('#showBody .shsec', { timeout: 10000 });
   const sh = await p.evaluate(() => ({ n: document.querySelectorAll('#showBody .shsec').length, h: (document.getElementById('h-show') || {}).textContent, roles: document.querySelectorAll('#showBody .shroles [data-vago]').length, notes: document.querySelectorAll('#showBody .shnotes').length, hash: location.hash }));
-  ok(sh.n === 10 && sh.h === 'Showcase' && sh.roles === 6 && sh.notes === 10 && sh.hash === '#/show', `the Showcase: ${sh.n} sections with speaker notes, ${sh.roles} roles to view, at ${sh.hash}`);
+  ok(sh.n === 10 && sh.h === 'Showcase' && sh.roles === 8 && sh.notes === 10 && sh.hash === '#/show', `the Showcase: ${sh.n} sections with speaker notes, ${sh.roles} roles to view, at ${sh.hash}`);
   for (let i = 0; i < 8; i++) { await p.evaluate(i => { const f = document.querySelectorAll('#showBody .shfig')[i]; if (f) f.scrollIntoView({ block: 'center' }); }, i); await p.waitForTimeout(200); }
   await p.waitForTimeout(400);
   const figs = await p.evaluate(() => ({ all: document.querySelectorAll('#showBody .shfig').length, drawn: [...document.querySelectorAll('#showBody .shfig')].filter(f => f.querySelector('svg')).length, lib: typeof Hairline !== 'undefined' && Object.keys(Hairline).length }));
@@ -66,7 +68,7 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   ok(sp1 && sp2 && z1 && z2, 'the admin\'s keys: S a spotlight, Z a zoom, Esc takes them off');
 
   // ---- 2. view as each role from the Showcase, and back
-  for (const [r, first, label] of [['user', 'dash', 'WFM analyst'], ['wfm', 'dash', 'WFM manager'], ['senior', 'dash', 'Senior manager'], ['quality', 'quality', 'Quality team']]) {
+  for (const [r, first, label] of [['user', 'dash', 'WFM analyst'], ['wfm', 'dash', 'WFM manager'], ['senior', 'dash', 'Senior manager'], ['quality', 'quality', 'Quality manager']]) {
     await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector(`#showBody [data-vago="${r}"]`);
     await p.click(`#showBody .shroles [data-vago="${r}"]`); await p.waitForFunction(() => window.__mc.viewing(), null, { timeout: 10000 });
     await p.waitForTimeout(250);
@@ -136,6 +138,29 @@ const URL = 'http://localhost:8765/mc.html', html = fs.readFileSync(path.resolve
   ok(me.nav === 'me' && (await bar()).includes('Viewing as Agent ·'), `View as an agent: only their page (${me.nav}), "${me.h}", loaded for them`);
   await p.evaluate(() => window.__mc.endViewAs()); await p.waitForTimeout(200);
   ok(await p.evaluate(() => window.__mc.state.me === null && !window.__mc.viewing()), 'Back to Admin: the agent\'s page is put away');
+
+  // the departments' managers on the Showcase: the Complaint manager is chosen among the supervisors of the Complaint Team's people
+  // and opens that one's own team, named so on the banner; the Digital experience manager, with nobody leading that department in
+  // the made-up roster, says so and opens nobody, not even the supervisor chosen on the Supervisor card
+  await p.evaluate(() => window.__mc.setWs('show')); await p.waitForSelector('#showBody [data-vapick="spv:CT"]');
+  const card = name => `#showBody .shrole:has(.shrtop b:text-is("${name}"))`;   // the card itself (class shrole), not the grid around it
+  const mg = await p.evaluate(() => {
+    const R = window.__mc.state.roster, sel = document.querySelector('#showBody [data-vapick="spv:CT"]'), de = [...document.querySelectorAll('#showBody .shrole')].find(c => c.querySelector('.shrtop b').textContent === 'Digital experience manager');
+    return { opts: [...sel.options].slice(1).map(o => o.value), leads: [...new Set(R.filter(x => x.team === 'CT' && x.status !== 'Inactive' && x.spv).map(x => x.spv))], first: sel.options[sel.selectedIndex].textContent,
+      in: sel.closest('.shrole').querySelector('.shrtop b').textContent, de: ((de && de.querySelector('.hint')) || {}).textContent || '', spv: window.__mc.state.viewPick.spv };
+  });
+  ok(mg.in === 'Complaint manager' && mg.opts.length > 0 && mg.opts.length === mg.leads.length && mg.opts.every(v => mg.leads.includes(v)) && /Choose the manager/.test(mg.first), `the Complaint manager: chosen among the Complaint Team's supervisors only (${mg.opts.length}), nobody shown until chosen ("${mg.first}")`);
+  await p.click(`${card('Digital experience manager')} [data-vago="spv"]`); await p.waitForTimeout(200);
+  const de = await p.evaluate(() => ({ viewing: window.__mc.viewing(), toast: document.getElementById('toastMsg').textContent }));
+  ok(/No manager of the digital experience team on the roster yet/.test(mg.de) && !de.viewing && /No manager of the digital experience team/.test(de.toast) && mg.spv === 'p2', `the Digital experience manager: "${mg.de}"; View opens nobody, not the supervisor chosen on the Supervisor card`);
+  await p.selectOption('#showBody [data-vapick="spv:CT"]', mg.opts[0]);
+  await p.click(`${card('Complaint manager')} [data-vago="spv"]`); await p.waitForFunction(() => window.__mc.viewing() && window.__mc.state.ws === 'team', null, { timeout: 10000 });
+  await p.waitForSelector('#teamBody', { timeout: 10000 }); await p.waitForTimeout(400);
+  const ctm = await p.evaluate(pid => { const R = window.__mc.state.roster, rows = [...document.querySelectorAll('#teamBody tr[data-row]')].map(t => t.dataset.row), of = id => R.find(x => x._id === id) || {}; return { n: rows.length, theirs: rows.filter(id => of(id).spv === pid).length, ct: rows.filter(id => of(id).team === 'CT').length, name: of(pid).name, pick: window.__mc.state.viewPick }; }, mg.opts[0]);
+  const ctb = await bar();
+  ok(ctm.n > 0 && ctm.theirs === ctm.n && ctm.ct > 0 && ctb.includes(`Viewing as Complaint manager · ${ctm.name}`) && ctm.pick.spv === 'p2' && ctm.pick['spv:CT'] === mg.opts[0], `View as the Complaint manager (${ctm.name}): their own team only, ${ctm.n} people with the complaint team among them; the banner says "Complaint manager"; the Supervisor card keeps its own choice`);
+  await p.evaluate(() => window.__mc.endViewAs()); await p.waitForTimeout(200);
+  ok(await p.evaluate(() => !window.__mc.viewing() && window.__mc.state.ws === 'show'), 'Back to Admin: on the Showcase again');
 
   // ---- 5. the account menu for the admin
   await p.click('#acctBtn'); await p.waitForTimeout(100);

@@ -27,8 +27,12 @@ function showStripItems() {
   return [k ? ymLabel(k) : '', `${rosterRows().length} people`, `${plural(wsMonths().length, 'month')} of history`, 'works offline'].filter(Boolean);
 }
 const showStripHtml = () => showStripItems().map(x => `<li>${esc(x)}</li>`).join('');
-/** View for a role: that role's page, live (a supervisor or an agent chosen first) */
-function showRoleAct(r) { const R = VIEW_ROLES.find(x => x[0] === r), kind = R && R[3]; return `<div class="shract">${kind ? `<span class="shpick" data-kind="${kind}">${viewPickHtml(kind)}</span>` : ''}<button class="btn sm primary" data-vago="${r}">View</button></div>`; }
+/** View for a role: that role's interface, live (a supervisor or an agent chosen first). A department's manager ('spv:CT') is
+    a supervisor's interface, chosen among those who lead that department's people */
+function showRoleAct(r) {
+  const [role, dep] = String(r).split(':'), R = VIEW_ROLES.find(x => x[0] === role), kind = R && R[3], key = kind ? (dep ? `${kind}:${dep}` : kind) : '';
+  return `<div class="shract">${key ? `<span class="shpick" data-kind="${esc(key)}">${viewPickHtml(key)}</span>` : ''}<button class="btn sm primary" data-vago="${esc(role)}">View</button></div>`;
+}
 /** what the story needs from the tool: the month's rules (the champion's scorecard, how it is counted, who earns it, the brand's base),
     today's figures and View for every role (js/showstory.js) */
 function showEnv() {

@@ -1,5 +1,5 @@
 // The launch deck: Cadence introduced as a new product, for the management team. It tells the idea and what Member Care gets
-// from it (the hook, the challenge, the idea, what Member Care gets: time back, right the first time, fairness people can see;
+// from it (the hook, the challenge, the idea, what Member Care gets: every bonus counted right, right the first time, fairness people can see;
 // every role, the coaching loop, continuity, trust, proof, what changes, and what comes next), with a messaging framework (the
 // main message, the value proposition, key messages with their proof, a message for every role) and plain copy. It never
 // explains how files go in or out: the room hears the idea and the benefits.
@@ -170,10 +170,10 @@ pres.addSection({ title: 'Launch' });
 // =============================================================================================== 5. what Member Care gets
 pres.addSection({ title: 'Benefits' });
 {
-  const s = add('LIGHT', 'Benefits', 'What Member Care gets, in six parts: time back, 188 hours a month; fewer errors and fewer disputes; fairness everyone can see; the month at a glance for every manager; no single point of failure; and privacy by design. Each is something the team can feel in the first month.');
+  const s = add('LIGHT', 'Benefits', 'What Member Care gets, in six parts: every bonus counted right; fewer errors and fewer disputes; fairness everyone can see; the month at a glance for every manager; no single point of failure; and privacy by design. Each is something the team can feel in the first month.');
   eyebrow(s, 'What Member Care gets');
   title(s, 'What Member Care *gets*');
-  const L = [['clock', 'Time back for Member Care', '188 hours a month go back to coaching, quality and service.'],
+  const L = [['check', 'Every bonus counted right', 'Every champion\'s incentive, counted the same way every month.'],
     ['target', 'Fewer errors and disputes', 'Problems are settled before anything goes out, so fewer corrections follow.'],
     ['eye', 'Fairness people can see', 'Every bonus explains itself; the same rules for everyone; agents see their own.'],
     ['chart', 'The month at a glance', 'Managers see where the close stands, what is late and who is next.'],
@@ -189,41 +189,12 @@ pres.addSection({ title: 'Benefits' });
   });
 }
 
-// =============================================================================================== 6. time back, as the team set it
-{
-  const s = add('DARK', 'Benefits', 'Time back for Member Care, role by role: the WFM analyst gets five hours back every working day and the WFM manager three; each QA, CT and TS supervisor and manager gets two hours a month. That is 188 hours a month: 2,256 hours, or 282 working days, a year, more than one full-time person, every month. A month here has 22 working days of 8 hours.');
-  eyebrow(s, 'Time back', true);
-  title(s, 'Time back for *Member Care*');
-  lead(s, 'Hours back, role by role: every working day for the WFM team, every month for the supervisors and managers.', true, { w: 11.5, h: 0.5 });
-  // the totals, with the hours as set: 5 a day and 3 a day over 22 working days, and 6 people at 2 a month
-  const DAYS = 22, month = 5 * DAYS + 3 * DAYS + 6 * 2, f = n => n.toLocaleString('en-US');
-  const tiles = [[f(month), 'hours back a month'], [f(month * 12), 'hours back a year'], [f(month * 12 / 8), 'working days back a year']];
-  const tw = (R - M - 0.5) / 3;
-  tiles.forEach(([n, l], i) => {
-    const x = M + i * (tw + 0.25), d = 300 + i * 140, on = i === 2;
-    card(s, x, 2.35, tw, 1.35, { dark: true, fill: on ? C.blue : C.ink, t: d });
-    T(s, n, { x: x + 0.32, y: 2.47, w: tw - 0.64, h: 0.72, fontSize: 38, bold: true, color: C.white, valign: 'top', objectName: `up|${d}|n` });
-    T(s, l, { x: x + 0.32, y: 3.2, w: tw - 0.64, h: 0.34, fontSize: 13, color: on ? C.white : C.dmuted, objectName: `up|${d}|l` });
-  });
-  const L = [['team', 'WFM analyst', '5 h a day', `${5 * DAYS} hours a month, from assembling to analysis.`], ['star', 'WFM manager', '3 h a day', `${3 * DAYS} hours a month, from chasing to deciding.`],
-    ['pen', 'Supervisors and managers', '2 h a month each', 'QA, CT and TS: 12 hours a month, from paperwork to coaching.']];
-  L.forEach(([icon, who, big, more], i) => {
-    const x = M + i * (tw + 0.25), d = 700 + i * 160;
-    card(s, x, 3.95, tw, 2.45, { dark: true, fill: C.ink, t: d });
-    dot(s, icon, x + 0.3, 4.22, 0.48, C.edge, 'white', d);
-    T(s, who, { x: x + 0.3, y: 4.86, w: tw - 0.6, h: 0.36, fontSize: 15, bold: true, color: C.white, objectName: `up|${d}|w` });
-    T(s, big, { x: x + 0.3, y: 5.22, w: tw - 0.6, h: 0.52, fontSize: 24, bold: true, color: C.white, objectName: `up|${d}|b` });
-    T(s, more, { x: x + 0.3, y: 5.78, w: tw - 0.6, h: 0.5, fontSize: 12.5, color: C.dmuted, valign: 'top', lineSpacingMultiple: 1.05, objectName: `up|${d}|t` });
-  });
-  T(s, `A month of ${DAYS} working days; a working day of 8 hours. About ${(month / (DAYS * 8)).toFixed(1)} full-time people's hours, every month.`, { x: M, y: 6.55, w: R - M, h: 0.3, fontSize: 11, color: C.dmuted, objectName: 'fade|1200|basis' });
-}
-
 // =============================================================================================== 7. right the first time
 {
   const s = add('LIGHT', 'Benefits', 'Right the first time. Problems surface before anything counts: the questions that matter hold the month until someone decides, and every decision is kept with who made it and when. So fewer corrections follow the emails, and fewer surprises reach agents.');
   eyebrow(s, 'Right the first time');
   title(s, 'Settled *before it counts*');
-  pic(s, 'z-checks', { x: M, y: 2.0, h: 4.75 }, 70, 'up|250|shot');
+  pic(s, 'z-checks', { x: M, y: 2.0, w: 7.75 }, 70, 'up|250|shot');   // by its width: it ends before the words beside it
   T(s, 'Problems are settled before a number reaches a payslip or an email.', { x: 8.55, y: 2.0, w: R - 8.55, h: 1.3, fontSize: 20, bold: true, color: C.ink, valign: 'top', lineSpacingMultiple: 1.05, objectName: 'up|450|claim' });
   [['target', 'Decided first', 'Nothing counts until someone decides.'], ['user', 'Every decision kept', 'Who decided, and when.'], ['check', 'One version', 'The same month for everyone.']]
     .forEach((p, i) => point(s, p, 8.55, 3.75 + i * 1.02, R - 8.55, { t: 650 + i * 150, d: 0.5, hs: 15, ts: 12.5, th: 0.5, bg: i ? C.ink : C.blue }));
@@ -306,7 +277,7 @@ pres.addSection({ title: 'Trust' });
   eyebrow(s, 'Private by design', true);
   title(s, 'Your data *stays yours*');
   const tiles = [['0', 'web requests', 'Nothing is sent anywhere: the data stays on our own computers.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read it.'],
-    ['No IDs', 'in email attachments', 'National IDs never leave the tool in an email.'], ['By role', 'what each person sees', 'An agent sees only their own page; a supervisor, only their team.'],
+    ['No IDs', 'in email attachments', 'National IDs are kept out of the files attached to emails.'], ['By role', 'what each person sees', 'An agent sees only their own page; a supervisor, only their team.'],
     ['Reviewed', 'for security', 'Every finding fixed and covered by tests.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.']];
   const tw = (R - M - 0.4) / 3;
   tiles.forEach(([big, small, t], i) => {
@@ -320,11 +291,11 @@ pres.addSection({ title: 'Trust' });
 
 // =============================================================================================== 13. proof
 {
-  const s = add('LIGHT', 'Trust', 'It is tested like a product. Every counting rule runs over ten thousand synthetic people with the expected results. Thirty-seven automated browser test suites run before every change ships. Every role\'s pages are checked, in light and dark.');
+  const s = add('LIGHT', 'Trust', 'It is tested like a product. A hundred people used it at the same time on one shared folder: every change reached everyone else, and none was lost. Every role\'s pages are checked, in light and dark, and every calculation, email and permission is tested before each change ships.');
   eyebrow(s, 'Built to be right');
   title(s, 'Tested like a *product*');
-  const stats = [['10,000', 'synthetic people', 'run through every counting rule, with the expected results'], ['37', 'browser test suites', 'run before every change ships'], ['7', 'roles', 'every page checked,\nin light and dark']];
-  const cw = (R - M - 0.7) / 3;
+  const stats = [['100', 'people at the same time', 'tested: every change reached everyone, none lost'], ['7', 'roles', 'every page checked,\nin light and dark']];
+  const cw = (R - M - 0.35) / 2;
   stats.forEach(([n, h, t], i) => {
     const x = M + i * (cw + 0.35), d = 300 + i * 200, on = i === 0;
     card(s, x, 2.15, cw, 3.55, { t: d, fill: on ? C.blue : C.soft, px: on ? undefined : C.blue });

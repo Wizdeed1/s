@@ -1,348 +1,209 @@
-// The launch deck: Cadence introduced as a new product, for the management team. It tells the idea and what Member Care gets
-// from it (the hook, the challenge, the idea, what Member Care gets: every bonus counted right, right the first time, fairness people can see;
-// every role, the coaching loop, continuity, trust, proof, what changes, and what comes next), with a messaging framework (the
-// main message, the value proposition, key messages with their proof, a message for every role) and plain copy. It never
-// explains how files go in or out: the room hears the idea and the benefits.
-// On the Beyond One template the team's decks are made with (the decks the tool makes have the same look: js/bodeck.js): the cover
-// is the template's title slide; every other slide has the moving logo at the top left, its section in small capitals beside a
-// square at the top right, CONFIDENTIAL and its number at the foot, and its title in capitals with the words that matter in bold;
-// Poppins; flat boxes in the template's colours; hairline's line figures (vendor/hairline.js) as illustrations; dark slides for
-// the emails, for privacy and to close.
-// The tool is shown large enough to read: close-ups of its screens, the dashboard with its parts pointed out, and the roles' own
-// pages (tools/deck/shots.cjs and art.cjs, synthetic data only). Motion: every slide fades in and its parts rise in one after another.
-// Usage: node tools/deck/make_deck.cjs artDir out.pptx   (needs pptxgenjs: npm i pptxgenjs)
+// The overview deck, told and drawn as the Showcase: its nine sections, one a slide, around the core idea (Cadence counts every
+// bonus right). The words, the speaker notes and what moves Lina A.'s bonus come from the stand-alone Showcase itself
+// (tools/deck/showcase_shots.cjs reads them from final/Cadence - Showcase.html, made-up data only), so the deck and the Showcase
+// say the same; the parts that show the tool are its own drawings, taken from the Showcase: the ticket, the five steps, the
+// scorecard of Try it, the receipt in English and in Arabic, the role icons and hairline's line figures.
+// The look is the Showcase's in Present: each slide a white card with 20 px corners on the sky gradient, the black square at its top
+// right and the strip of the logo's colours along its foot (one picture, on the layout); a label with a blue square, the title in
+// capitals with the words that matter in bold, the lead in grey, and light cards with a hairline border. Poppins throughout.
+// Every slide fades in and its parts rise in, one after another; CONFIDENTIAL and the number at the foot.
+// Usage: node tools/deck/make_deck.cjs artDir out.pptx   (artDir: what showcase_shots.cjs made; needs pptxgenjs: npm i pptxgenjs)
 const fs = require('node:fs'), path = require('node:path');
 const Pptx = require('pptxgenjs');
 const ROOT = path.join(__dirname, '..', '..');
 const Core = require(path.join(ROOT, 'js', 'core.js'));
 const [artDir, outFile] = process.argv.slice(2);
 const A = n => path.join(artDir, n.endsWith('.png') ? n : n + '.png');
-const LOGO = n => path.join(ROOT, 'assets', 'brand', `beyond-one-${n}.gif`);   // the template's stacked logo, moving as the company's own (a GIF PowerPoint plays)
 const size = f => { const b = fs.readFileSync(f); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) }; };
+const SC = JSON.parse(fs.readFileSync(path.join(artDir, 'showcase.json'), 'utf8')), SEC = id => SC.sections.find(x => x.id === id);
 
-// the template's colours (its theme "Beyond") and its dark grey, with the greys the tool's pages use beside them
-const C = { ink: '080808', char: '323131', edge: '4A4949', white: 'FFFFFF', ink2: '262626', muted: '595959', faint: '8C8C8C', line: 'E4E4E7', soft: 'F4F4F5', row: 'F8F8FA',
-  dmuted: 'BFBFBF', blue: '0D76BD', btext: '0B65A3', bsoft: 'E7F1F9', pink: 'F6ADCC', lav: '9693C8', orange: 'ED7D31', teal: '0C7B6C', tealBlue: '007FA2', red: 'ED1C24', lilac: 'BF9DCA' };
+// the Showcase's colours (js/ui6/00_tokens.css, light): ink, its greys, the accent blue, a hairline, and the logo's pink for "10+"
+const C = { ink: '0A1222', ink2: '1B2840', muted: '41506A', faint: '4F5C74', white: 'FFFFFF', line: 'E3E8F0', blue: '1273D4', btext: '0B5CAE', bsoft: 'EAF2FC',
+  pink: 'F6ADCC', red: 'B42318', rsoft: 'FDECEA', green: '0C7B6C', black: '080808' };
+// the theme keeps the company's (Beyond) colours, so PowerPoint's own palette is the template's
 const THEME = { name: 'Beyond', head: 'Poppins', body: 'Poppins',
-  colors: { dk1: C.ink, lt1: C.white, dk2: C.blue, lt2: C.pink, accent1: C.lav, accent2: C.orange, accent3: C.teal, accent4: C.tealBlue, accent5: C.red, accent6: C.lilac, hlink: '00DFED', folHlink: '778DA5' } };
-const W = 13.333, M = 0.45, R = W - M, FONT = 'Poppins', LIGHT = 'Poppins Light';
+  colors: { dk1: '080808', lt1: 'FFFFFF', dk2: '0D76BD', lt2: 'F6ADCC', accent1: '9693C8', accent2: 'ED7D31', accent3: '0C7B6C', accent4: '007FA2', accent5: 'ED1C24', accent6: 'BF9DCA', hlink: '00DFED', folHlink: '778DA5' } };
+const W = 13.333, X0 = 0.8, X1 = 12.53, CW = X1 - X0, FONT = 'Poppins', LIGHT = 'Poppins Light';
 const pres = new Pptx(); pres.layout = 'LAYOUT_WIDE';
-pres.title = 'Cadence'; pres.subject = 'Introducing Cadence: Member Care\'s month end, in one place'; pres.author = 'Member Care WFM team'; pres.company = 'Member Care';
+pres.title = 'Cadence'; pres.subject = 'Cadence: every bonus, counted right'; pres.author = 'Member Care WFM team'; pres.company = 'Member Care';
 pres.theme = { headFontFace: THEME.head, bodyFontFace: THEME.body };
 
-// ---- layouts, as the template has them: light and dark content slides (the title in the same place on every one), a split slide
-// with the black panel, the cover and the last slide. The logo, the square, CONFIDENTIAL and the number are on the layouts.
-const logo = dark => ({ image: { x: 0.40, y: 0.30, w: 0.42, h: 0.64, path: LOGO(dark ? 'stacked-white' : 'stacked-black') } });
-const square = dark => ({ rect: { x: 12.76, y: 0.335, w: 0.15, h: 0.15, fill: { color: dark ? C.white : C.ink } } });
-const panel = w => ({ rect: { x: 0, y: 0, w, h: 7.5, fill: { color: C.ink } } });
-const conf = c => ({ text: { text: 'CONFIDENTIAL', options: { x: 0.40, y: 7.10, w: 3.5, h: 0.22, fontSize: 7, color: c, fontFace: FONT, charSpacing: 1.4, margin: 0, valign: 'middle' } } });
-const num = c => ({ x: 11.91, y: 7.10, w: 1.0, h: 0.22, fontSize: 7, color: c, fontFace: FONT, align: 'right' });
-const titlePh = (dark, x = M, w = R - M, h = 0.62, size = 28) => ({ placeholder: { options: { name: 'title', type: 'title', x, y: 1.04, w, h, fontSize: size, bold: false, fontFace: FONT, color: dark ? C.white : C.ink, align: 'left', valign: 'top', margin: 0 }, text: '' } });
-pres.defineSlideMaster({ title: 'LIGHT', background: { color: C.white }, objects: [logo(false), square(false), conf(C.muted), titlePh(false)], slideNumber: num(C.muted) });
-pres.defineSlideMaster({ title: 'DARK', background: { color: C.char }, objects: [logo(true), square(true), conf(C.dmuted), titlePh(true)], slideNumber: num(C.dmuted) });
-pres.defineSlideMaster({ title: 'SPLIT', background: { color: C.white }, objects: [panel(5.15), logo(true), square(false), conf(C.dmuted), titlePh(false, 6.0, R - 6.0, 1.3)], slideNumber: num(C.muted) });
-pres.defineSlideMaster({ title: 'COVER', background: { color: C.white }, objects: [panel(4.25), { image: { x: 1.436, y: 2.70, w: 1.378, h: 2.10, path: LOGO('stacked-white') } }, square(false), conf(C.dmuted)] });
-pres.defineSlideMaster({ title: 'END', background: { color: C.ink }, objects: [logo(true), square(true), conf(C.dmuted), titlePh(true, M, 6.6, 1.3, 36)] });
+// ---- the layouts: the Showcase's card (a picture), CONFIDENTIAL and the number inside its foot, and the title where the Showcase has
+// it (larger on the first slide)
+const foot = [{ text: { text: 'CONFIDENTIAL', options: { x: X0, y: 6.86, w: 3.5, h: 0.2, fontSize: 7, color: C.faint, fontFace: FONT, charSpacing: 1.4, margin: 0, valign: 'middle' } } }];
+const num = { x: X1 - 1.0, y: 6.86, w: 1.0, h: 0.2, fontSize: 7, color: C.faint, fontFace: FONT, align: 'right' };
+const titlePh = (y, w, h, size) => ({ placeholder: { options: { name: 'title', type: 'title', x: X0, y, w, h, fontSize: size, bold: false, fontFace: LIGHT, color: C.ink, align: 'left', valign: 'top', margin: 0, lineSpacingMultiple: 0.95 }, text: '' } });
+pres.defineSlideMaster({ title: 'SHOW', background: { path: A('sc-frame') }, objects: [...foot, titlePh(1.06, 10.8, 1.2, 30)], slideNumber: num });
+pres.defineSlideMaster({ title: 'HERO', background: { path: A('sc-frame') }, objects: [...foot, titlePh(2.02, 6.6, 1.6, 40)], slideNumber: num });
 
 // ---- pieces. An object's name says how it comes in and when: 'up|300|…' rises in 300 ms after the slide, 'fade|0|…' fades in
 const T = (s, text, o) => s.addText(text, { isTextBox: true, margin: 0, fontFace: FONT, ...o });
-const ALT = { 'laptop-dark': 'The dashboard, in dark, on a laptop', 'hero-dash': 'The dashboard: shortcuts, the month at a glance, the month close and the bell',
-  'z-import': 'Import: the four Genesys exports recognised and ready', 'z-checks': 'Checks: what needs a decision before anything counts', 'z-email': 'The deduction email for review, ready to copy into Outlook',
-  'z-templates': 'Attendance templates: one for each department', 'z-how': 'How this was counted, for one agent: each KPI, its band, ranking and points', 'win-xlsx': 'An attendance template open on How to fill',
-  'win-builder': 'WFM team, Report builder', 'win-team': 'A supervisor\'s own team', 'win-agent-ar': 'An agent\'s own page, in Arabic', 'paper-form': 'A one-to-one form on one A4 page' };
-/** a picture whose visible part (inside `pad` transparent pixels kept for its shadow) is put at x, y with width w (or height h) */
-function pic(s, n, b, pad, name) {
-  const z = size(A(n)), vw = z.w - 2 * pad, vh = z.h - 2 * pad, k = b.w ? b.w / vw : b.h / vh;
-  s.addImage({ path: A(n), x: b.x - pad * k, y: b.y - pad * k, w: z.w * k, h: z.h * k, objectName: name, altText: ALT[n] ?? '' });
-  return { x: b.x, y: b.y, w: vw * k, h: vh * k, k };
+/** a title as the Showcase writes it and breaks it: in capitals, the words it makes bold in bold (Poppins), the rest light, a new
+    line where the Showcase starts one (lines: [[{ t, b }]]) */
+const runs = L => L.flatMap((line, li) => line.map((r, ri) => ({ text: (ri ? ' ' : '') + r.t.trim().toUpperCase(), options: { bold: r.b, fontFace: r.b ? FONT : LIGHT, ...(ri === line.length - 1 && li < L.length - 1 ? { breakLine: true } : {}) } })));
+const title = (s, sec) => s.addText(runs(sec.lines), { placeholder: 'title' });
+/** the label above the title: a blue square and the section's name in small capitals */
+function eyebrow(s, text, y = 0.82) {
+  s.addShape(pres.shapes.RECTANGLE, { x: X0, y: y + 0.055, w: 0.075, h: 0.075, fill: { color: C.blue }, line: { type: 'none' }, objectName: 'fade|0|label-dot' });
+  T(s, text.toUpperCase(), { x: X0 + 0.16, y, w: 8, h: 0.19, fontSize: 7.5, color: C.ink2, bold: true, charSpacing: 1.6, valign: 'middle', objectName: 'fade|0|label' });
 }
-/** a title as the template writes it: in capitals, the words between * * in bold (else the last word) */
-function runs(t) {
-  const up = String(t).toUpperCase();
-  if (up.includes('*')) return up.split('*').map((text, i) => ({ text, options: { bold: i % 2 === 1 } })).filter(r => r.text);
-  const w = up.trim().split(/\s+/), last = w.pop();
-  return [...(w.length ? [{ text: w.join(' ') + ' ', options: { bold: false } }] : []), { text: last, options: { bold: true } }];
+/** the lead, right under the title (two lines of title or one) */
+const leadY = sec => 1.06 + Math.max(1, sec.lines.length) * 0.47 + 0.18;
+const lead = (s, text, o = {}) => text && T(s, text, { x: o.x ?? X0, y: o.y ?? 2.2, w: o.w ?? 8.4, h: o.h ?? 0.62, fontSize: o.size ?? 13, fontFace: LIGHT, color: C.muted, valign: 'top', lineSpacingMultiple: 1.1, objectName: `up|${o.t ?? 250}|lead` });
+/** a light card, as the Showcase's: white with a hairline border and soft corners (or the accent blue) */
+const card = (s, x, y, w, h, o = {}) => s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: o.r ?? 0.12, fill: { color: o.fill || C.white }, line: o.fill && o.fill !== C.white ? { type: 'none' } : { color: C.line, width: 0.75 }, objectName: `up|${o.t ?? 300}|card` });
+/** a part the Showcase draws, as it draws it (a picture), placed by its width (or height) */
+function pic(s, n, b, name, alt = '') {
+  const z = size(A(n)), k = b.w ? b.w / z.w : b.h / z.h;
+  s.addImage({ path: A(n), x: b.x, y: b.y, w: z.w * k, h: z.h * k, objectName: name, altText: alt });
+  return { x: b.x, y: b.y, w: z.w * k, h: z.h * k };
 }
-/** the slide's section, in small capitals at the top right, beside the template's square */
-const eyebrow = (s, text, dark) => T(s, text.toUpperCase(), { x: 5.30, y: 0.30, w: 7.32, h: 0.22, fontSize: 7, color: dark ? C.white : C.ink, charSpacing: 1.4, align: 'right', valign: 'middle', objectName: 'fade|0|section' });
-const title = (s, text) => s.addText(runs(text), { placeholder: 'title' });
-const lead = (s, text, dark, o = {}) => T(s, text, { x: o.x ?? M, y: o.y ?? 1.78, w: o.w ?? 7.6, h: o.h ?? 0.62, fontSize: 15, fontFace: LIGHT, color: dark ? C.dmuted : C.muted, valign: 'top', lineSpacingMultiple: 1.08, objectName: `up|${o.t ?? 180}|lead` });
-/** the template's pixel squares: [x, y, side, colour] */
-const pixels = (s, list, t = 0) => list.forEach(([x, y, w, c], i) => s.addShape(pres.shapes.RECTANGLE, { x, y, w, h: w, fill: { color: c }, line: { type: 'none' }, objectName: `fade|${t + i * 60}|pixel` }));
-/** a flat box, as the template's: pale grey on the light slides, black on the dark ones; a pixel of colour at its corner if asked */
-function card(s, x, y, w, h, o = {}) {
-  s.addShape(pres.shapes.RECTANGLE, { x, y, w, h, fill: { color: o.fill || (o.dark ? C.ink : C.soft) }, line: o.line ? { color: o.dark ? C.edge : C.line, width: 0.75 } : { type: 'none' }, objectName: o.name || `up|${o.t ?? 300}|card` });
-  if (o.px) s.addShape(pres.shapes.RECTANGLE, { x, y, w: 0.12, h: 0.12, fill: { color: o.px }, line: { type: 'none' }, objectName: `up|${o.t ?? 300}|pixel` });
-}
-/** an icon in a square of colour, the template's pixel */
-function dot(s, icon, x, y, d, bg, fg, t) {
-  s.addShape(pres.shapes.RECTANGLE, { x, y, w: d, h: d, fill: { color: bg }, line: { type: 'none' }, objectName: `up|${t}|dot-${icon}` });
-  s.addImage({ path: A(`icon-${icon}-${fg}`), x: x + d * 0.22, y: y + d * 0.22, w: d * 0.56, h: d * 0.56, objectName: `up|${t}|icon-${icon}`, altText: '' });
-}
-/** an icon in its square, a bold line and the words under it */
-function point(s, [icon, head, text], x, y, w, o = {}) {
-  const d = o.d ?? 0.56, t = o.t ?? 300, dark = !!o.dark;
-  dot(s, icon, x, y, d, o.bg || C.ink, o.fg || 'white', t);
-  T(s, head, { x: x + d + 0.24, y: y - 0.03, w: w - d - 0.24, h: 0.36, fontSize: o.hs ?? 16, bold: true, color: dark ? C.white : C.ink, objectName: `up|${t}|h` });
-  T(s, text, { x: x + d + 0.24, y: y + 0.36, w: w - d - 0.24, h: o.th ?? 0.66, fontSize: o.ts ?? 13, color: dark ? C.dmuted : C.muted, valign: 'top', lineSpacingMultiple: 1.05, objectName: `up|${t}|t` });
-}
-/** a numbered marker in the template's blue */
-function marker(s, n, cx, cy, t, d = 0.4) {
-  s.addShape(pres.shapes.RECTANGLE, { x: cx - d / 2, y: cy - d / 2, w: d, h: d, fill: { color: C.blue }, line: { color: C.white, width: 1.5 }, objectName: `up|${t}|m${n}` });
-  T(s, String(n), { x: cx - d / 2, y: cy - d / 2, w: d, h: d, fontSize: 13, bold: true, color: C.white, align: 'center', valign: 'middle', objectName: `up|${t}|m${n}t` });
-}
-/** a word in a box; returns its width */
-function chip(s, text, x, y, o = {}) {
-  const w = (o.pad ?? 0.4) + text.length * (o.cw ?? 0.092);
-  s.addShape(pres.shapes.RECTANGLE, { x, y, w, h: 0.4, fill: { color: o.fill || (o.dark ? C.ink : C.white) }, line: { color: o.dark ? C.edge : C.line, width: 0.75 }, objectName: `up|${o.t ?? 400}|chip` });
-  T(s, text, { x, y, w, h: 0.4, fontSize: 12, color: o.color || (o.dark ? C.white : C.ink), align: 'center', valign: 'middle', objectName: `up|${o.t ?? 400}|chip-t` });
+/** a word in a pill, as the Showcase's chips; returns its width */
+function pill(s, text, x, y, o = {}) {
+  const w = 0.34 + text.length * 0.068;
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h: 0.3, rectRadius: 0.15, fill: { color: o.fill || C.white }, line: o.fill ? { type: 'none' } : { color: C.line, width: 0.75 }, objectName: `up|${o.t ?? 500}|pill` });
+  T(s, text, { x, y, w, h: 0.3, fontSize: 9, color: o.color || C.ink2, align: 'center', valign: 'middle', objectName: `up|${o.t ?? 500}|pill-t` });
   return w;
 }
 const slides = [];
-const add = (layout, sec, notes) => { const s = pres.addSlide({ masterName: layout, sectionTitle: sec }); s.addNotes(notes); slides.push(s); return s; };
+const add = (layout, sec) => { pres.addSection({ title: sec.name }); const s = pres.addSlide({ masterName: layout, sectionTitle: sec.name }); s.addNotes(sec.notes); slides.push(s); return s; };
+const nf = n => Number(n).toLocaleString('en-US');
 
-/** one of hairline's line figures at rest (art.cjs renders them, light and dark), as a picture with no words of its own */
-const fig = (s, name, b, dark, t) => pic(s, `fig-${name}-${dark ? 'dark' : 'light'}`, b, 0, `up|${t ?? 300}|fig-${name}`);
-
-// =============================================================================================== 1. cover: the template's title slide
-pres.addSection({ title: 'Launch' });
+// =============================================================================================== 1. Cadence: every bonus, counted right
 {
-  const s = add('COVER', 'Launch', 'Introducing Cadence: Member Care\'s month, in one place. One shared place where every role works from the same numbers, every number is settled before it counts, and every result is explained to the person it touches. In the next minutes: the problem, the idea, what Member Care gets, every role, trust, and what comes next.');
-  s.addShape(pres.shapes.RECTANGLE, { x: 5.05, y: 1.30, w: 5.70, h: 3.95, fill: { color: C.lav }, line: { type: 'none' }, objectName: 'fade|0|title-box' });
-  pixels(s, [[4.60, 0.88, 0.52, C.red], [9.10, 0.60, 0.26, C.pink], [4.52, 4.78, 0.86, C.tealBlue], [11.40, 5.70, 0.32, C.teal], [12.20, 1.62, 0.13, C.blue], [11.05, 4.98, 0.17, C.orange]], 150);
-  T(s, [{ text: 'INTRODUCING', options: { fontSize: 13, bold: true, charSpacing: 3, breakLine: true } }, { text: 'CADENCE', options: { fontSize: 50, bold: true, breakLine: true } }, { text: 'MEMBER CARE PERFORMANCE', options: { fontSize: 13, charSpacing: 2 } }], { x: 5.42, y: 1.62, w: 5.0, h: 2.2, color: C.white, valign: 'top', objectName: 'up|120|title' });
-  T(s, 'Member Care\'s month, in one place.', { x: 5.42, y: 3.95, w: 5.0, h: 1.05, fontSize: 14, color: C.white, valign: 'bottom', objectName: 'up|260|sub' });
-  T(s, 'November 2026', { x: 6.2, y: 6.18, w: 6.7, h: 0.32, fontSize: 12, bold: true, color: C.ink, align: 'right', objectName: 'fade|600|date' });
-  T(s, 'Member Care · WFM team', { x: 6.2, y: 6.52, w: 6.7, h: 0.3, fontSize: 10, color: C.muted, align: 'right', objectName: 'fade|600|who' });
+  const sec = SEC('hero'), s = add('HERO', sec);
+  pic(s, 'sc-logo', { x: X0, y: 0.95, h: 0.46 }, 'fade|0|logo', 'Beyond One');
+  eyebrow(s, sec.eyebrow, 1.66);
+  title(s, sec);
+  lead(s, sec.lead, { y: 3.72, w: 6.1, h: 0.95, t: 300 });
+  let x = X0; (sec.strip || []).forEach((t, i) => { x += pill(s, t, x, 4.9, { t: 450 + i * 80, ...(i ? {} : { fill: C.bsoft, color: C.btext }) }) + 0.12; });
+  pic(s, 'sc-ticket', { x: 7.35, y: 1.12, w: 5.0 }, 'up|350|ticket', 'Lina A., a made-up Member Care Champion, September 2026: final 84% (4.2 of 5 on 7 KPIs), 20 of 22 days, base 1,000 SR; bonus earned 764 SR; every gate met.');
 }
 
-// =============================================================================================== 2. the idea in one line
+// =============================================================================================== 2. the challenge: by hand
 {
-  const s = add('LIGHT', 'Launch', 'The idea in one line: Member Care\'s month, in one place. One shared truth for the whole month: the numbers every role works from, settled before they count, and explained to the person they touch. Three promises: one truth for every role, right before it counts, and every number explained.');
-  eyebrow(s, 'The idea');
-  title(s, 'Member Care\'s month, *in one place*');
-  lead(s, 'One shared truth for the whole month: the numbers every role works from, settled before they count, and explained to the person they touch.', false, { w: 5.7, h: 1.0 });
-  [['team', 'One truth for every role', 'Seven roles on the same numbers, the same day.'], ['check', 'Right before it counts', 'Questions settled before anything goes out.'], ['eye', 'Every number explained', 'Anyone can see how a result was reached.']]
-    .forEach((p, i) => point(s, p, M, 3.05 + i * 1.12, 5.7, { t: 400 + i * 150, th: 0.55, bg: i ? C.ink : C.blue }));
-  pic(s, 'laptop-dark', { x: 6.6, y: 2.05, w: 6.1 }, 90, 'up|250|laptop');
-  let x = M;
-  for (const [i, c] of ['A page for every role', 'Works offline', 'Encrypted'].entries()) x += chip(s, c, x, 6.45, { t: 1000 + i * 100 }) + 0.12;
-}
-
-// =============================================================================================== 3. the challenge
-{
-  const s = add('SPLIT', 'Launch', 'Month end used to run on people and spreadsheets: numbers from more than ten places, joined by hand, for seven roles waiting on one deadline. Skilled people spent their month assembling instead of improving service; a question about a bonus meant reopening the spreadsheets; and when one person was away, the month waited.');
-  pixels(s, [[4.93, 1.05, 0.44, C.red], [4.80, 5.85, 0.26, C.pink], [5.38, 6.45, 0.13, C.blue]], 100);
-  [['10+', 'sources of numbers'], ['7', 'roles on the same numbers'], ['1', 'deadline for all of it']].forEach(([n, l], i) => {
-    const y = 1.45 + i * 1.85, t = 200 + i * 160;
-    T(s, n, { x: 0.85, y, w: 3.6, h: 1.05, fontSize: 64, bold: true, color: i === 2 ? C.pink : C.white, valign: 'top', objectName: `up|${t}|n${i}` });
-    T(s, l, { x: 0.85, y: y + 1.08, w: 3.8, h: 0.4, fontSize: 15, fontFace: LIGHT, color: C.dmuted, objectName: `up|${t}|l${i}` });
+  const sec = SEC('before'), s = add('SHOW', sec);
+  eyebrow(s, sec.eyebrow); title(s, sec);
+  const w = (CW - 0.5) / 3;
+  sec.nums.forEach((n, i) => {
+    const x = X0 + i * (w + 0.25), d = 300 + i * 120;
+    card(s, x, 2.45, w, 1.9, { t: d });
+    T(s, n.n, { x: x + 0.28, y: 2.62, w: w - 0.56, h: 0.82, fontSize: 46, bold: true, color: n.hot ? C.pink : C.ink, objectName: `up|${d}|n` });
+    T(s, n.t, { x: x + 0.28, y: 3.5, w: w - 0.56, h: 0.72, fontSize: 11.5, color: C.muted, valign: 'top', lineSpacingMultiple: 1.08, objectName: `up|${d}|t` });
   });
-  eyebrow(s, 'The challenge');
-  title(s, 'Month end ran on *people and spreadsheets*');
-  [['clock', 'Hours spent assembling', 'Skilled people joined and checked numbers instead of improving service.'],
-    ['help', 'Hard to explain, easy to dispute', 'A question about pay meant reopening the spreadsheets.'],
-    ['user', 'The month lived with one person', 'When they were away, the month waited.']]
-    .forEach((p, i) => point(s, p, 6.0, 2.75 + i * 1.32, R - 6.0, { t: 400 + i * 150 }));
-}
-
-// =============================================================================================== 4. the idea on screen: the dashboard, pointed out
-{
-  const s = add('LIGHT', 'Launch', 'This is the idea on screen: everyone opens the same month. One: what this person does next, one click away. Two: the month at a glance, each number against the month before. Three: the month close, step by step, and whose turn it is. Four: the bell keeps each person\'s deadlines, so nobody has to chase anyone.');
-  eyebrow(s, 'The idea');
-  title(s, 'Everyone on *the same month*');
-  const H = JSON.parse(fs.readFileSync(path.join(artDir, 'hero.json'), 'utf8')), B = H.boxes, css = B.view.width;
-  const win = pic(s, 'hero-dash', { x: M, y: 1.95, w: 7.55 }, H.pad, 'up|200|hero');
-  const k = win.w / H.winW, X = x => win.x + x * (H.winW / css) * k, Y = y => win.y + (H.bar + y * (H.winW / css)) * k, cap = y => Math.min(y, B.view.height - 10);
-  const out = (b, t, g = 0.03) => s.addShape(pres.shapes.RECTANGLE, { x: X(b.x) - g, y: Y(b.y) - g, w: X(b.x + b.w) - X(b.x) + 2 * g, h: Y(cap(b.y + b.h)) - Y(b.y) + 2 * g, fill: { type: 'none' }, line: { color: C.blue, width: 2 }, objectName: `fade|${t}|frame` });
-  const pts = [[B.acts, 'Next, for your role', 'What this person does next, one click away.'], [B.kpis, 'The month at a glance', 'Every number with its trend.'],
-    [B.close, 'The month close', 'Each step, done or due, and whose turn it is.'], [B.bell, 'Nobody chases', 'Each person\'s own deadlines, in the bell.']];
-  pts.forEach(([b, h, t], i) => {
-    const d = 700 + i * 260;
-    if (b) { out(b, d, b === B.bell ? 0.04 : 0.03); if (b === B.bell) marker(s, i + 1, X(b.x) - 0.28, Y(b.y + b.h / 2), d, 0.34); else marker(s, i + 1, X(b.x) - 0.03, Y(b.y) - 0.03, d, 0.34); }
-    const y = 2.05 + i * 1.12;
-    marker(s, i + 1, 8.85, y + 0.17, d, 0.38);
-    T(s, h, { x: 9.25, y: y - 0.02, w: R - 9.25, h: 0.36, fontSize: 16, bold: true, color: C.ink, objectName: `up|${d}|h${i}` });
-    T(s, t, { x: 9.25, y: y + 0.36, w: R - 9.25, h: 0.62, fontSize: 13, color: C.muted, valign: 'top', objectName: `up|${d}|t${i}` });
+  sec.cards.forEach((c, i) => {
+    const x = X0 + i * (w + 0.25), d = 700 + i * 120;
+    card(s, x, 4.6, w, 1.55, { t: d });
+    T(s, c.b, { x: x + 0.28, y: 4.8, w: w - 0.56, h: 0.32, fontSize: 13, bold: true, color: C.ink, objectName: `up|${d}|h` });
+    T(s, c.p, { x: x + 0.28, y: 5.16, w: w - 0.56, h: 0.82, fontSize: 11, color: C.muted, valign: 'top', lineSpacingMultiple: 1.08, objectName: `up|${d}|p` });
   });
 }
 
-// =============================================================================================== 5. what Member Care gets
-pres.addSection({ title: 'Benefits' });
+// =============================================================================================== 3. how a bonus is counted: five steps
 {
-  const s = add('LIGHT', 'Benefits', 'What Member Care gets, in six parts: every bonus counted right; fewer errors and fewer disputes; fairness everyone can see; the month at a glance for every manager; no single point of failure; and privacy by design. Each is something the team can feel in the first month.');
-  eyebrow(s, 'What Member Care gets');
-  title(s, 'What Member Care *gets*');
-  const L = [['check', 'Every bonus counted right', 'Every champion\'s incentive, counted the same way every month.'],
-    ['target', 'Fewer errors and disputes', 'Problems are settled before anything goes out, so fewer corrections follow.'],
-    ['eye', 'Fairness people can see', 'Every bonus explains itself; the same rules for everyone; agents see their own.'],
-    ['chart', 'The month at a glance', 'Managers see where the close stands, what is late and who is next.'],
-    ['sync', 'No single point of failure', 'Shared, saved and covered during holidays: never one person\'s spreadsheet.'],
-    ['shield', 'Private by design', 'The data stays on our own computers, encrypted; each role sees only its own.']];
-  const cw = (R - M - 0.5) / 3, ch = 2.1;
-  L.forEach(([icon, h, t], i) => {
-    const x = M + (i % 3) * (cw + 0.25), y = 2.0 + Math.floor(i / 3) * (ch + 0.25), d = 300 + i * 120, on = i === 0;
-    card(s, x, y, cw, ch, { t: d, fill: on ? C.blue : C.soft });
-    dot(s, icon, x + 0.3, y + 0.3, 0.52, on ? C.white : C.ink, on ? 'blue' : 'white', d);
-    T(s, h, { x: x + 0.3, y: y + 1.0, w: cw - 0.6, h: 0.38, fontSize: 17, bold: true, color: on ? C.white : C.ink, objectName: `up|${d}|h` });
-    T(s, t, { x: x + 0.3, y: y + 1.4, w: cw - 0.6, h: 0.62, fontSize: 12.5, color: on ? C.white : C.muted, valign: 'top', lineSpacingMultiple: 1.05, objectName: `up|${d}|t` });
+  const sec = SEC('count'), s = add('SHOW', sec);
+  eyebrow(s, sec.eyebrow); title(s, sec);
+  lead(s, sec.lead, { y: leadY(sec), w: 10.2, h: 0.55 });
+  const sz = size(A('sc-steps')), sh = 3.25, sw = sh * sz.w / sz.h;   // as tall as the room above the result and the foot allows
+  const st = pic(s, 'sc-steps', { x: X0 + (CW - sw) / 2, y: 2.8, h: sh }, 'up|400|steps', 'The five steps for Lina A.: the month\'s numbers; each KPI ranked 1 to 5 against its bands; weighted into the final (4.2 of 5, 84%); the days that count (20 of 22, 91%); the gates, every one met.');
+  const y = st.y + st.h + 0.13, r = sec.result;
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: X0, y, w: CW, h: 0.58, rectRadius: 0.1, fill: { color: C.blue }, line: { type: 'none' }, objectName: 'up|800|result' });
+  T(s, [{ text: r.label.toUpperCase() + '   ', options: { fontSize: 8, bold: true, charSpacing: 1.4, color: 'D6E6F8' } }, { text: r.formula + '   ', options: { fontSize: 17, bold: true, color: C.white } }, { text: r.small, options: { fontSize: 9, color: 'D6E6F8' } }],
+    { x: X0 + 0.3, y, w: CW - 0.6, h: 0.58, valign: 'middle', objectName: 'up|800|result-t' });
+}
+
+// =============================================================================================== 4. try it: what moves her bonus
+{
+  const sec = SEC('try'), s = add('SHOW', sec), WI = SC.whatIf;
+  eyebrow(s, sec.eyebrow); title(s, sec);
+  lead(s, sec.lead, { y: leadY(sec), w: 10.2, h: 0.55 });
+  pic(s, 'sc-try', { x: X0, y: 2.9, w: 7.45 }, 'up|400|scorecard', 'Lina A.\'s scorecard as Try it shows it: each KPI with its weight, her number and its rank; days attended, absent days and months in the job; the final, the days, the gates and the bonus (764 SR).');
+  const x = X0 + 7.75, w = X1 - x, rh = 0.5, y0 = 2.9;
+  card(s, x, y0, w, 0.62 + WI.rows.length * rh + 0.12, { t: 600 });
+  T(s, `What moves ${WI.name}'s bonus`, { x: x + 0.24, y: y0 + 0.16, w: w - 0.48, h: 0.26, fontSize: 12.5, bold: true, color: C.ink, objectName: 'up|600|wi-h' });
+  T(s, 'counted by the same engine', { x: x + 0.24, y: y0 + 0.4, w: w - 0.48, h: 0.2, fontSize: 9, color: C.faint, objectName: 'up|600|wi-s' });
+  WI.rows.forEach((r, i) => {
+    const y = y0 + 0.68 + i * rh, d = 700 + i * 90, zero = !r.earned;
+    if (i) s.addShape(pres.shapes.LINE, { x: x + 0.24, y: y - 0.04, w: w - 0.48, h: 0, line: { color: C.line, width: 0.75 }, objectName: `up|${d}|wi-line` });
+    T(s, [{ text: r.t, options: { breakLine: !!r.why } }, ...(r.why ? [{ text: `Stopped by: ${r.why.toLowerCase()}`, options: { fontSize: 8.5, color: C.red } }] : [])], { x: x + 0.24, y, w: w - 1.5, h: rh - 0.08, fontSize: 10.5, color: C.ink2, valign: 'middle', objectName: `up|${d}|wi-t` });
+    T(s, `${nf(r.earned)} SR`, { x: x + w - 1.2, y, w: 0.96, h: rh - 0.08, fontSize: 14, bold: true, color: zero ? C.red : i === 0 ? C.btext : C.ink, align: 'right', valign: 'middle', objectName: `up|${d}|wi-v` });
   });
 }
 
-// =============================================================================================== 7. right the first time
+// =============================================================================================== 5. checked before it counts
 {
-  const s = add('LIGHT', 'Benefits', 'Right the first time. Problems surface before anything counts: the questions that matter hold the month until someone decides, and every decision is kept with who made it and when. So fewer corrections follow the emails, and fewer surprises reach agents.');
-  eyebrow(s, 'Right the first time');
-  title(s, 'Settled *before it counts*');
-  pic(s, 'z-checks', { x: M, y: 2.0, w: 7.75 }, 70, 'up|250|shot');   // by its width: it ends before the words beside it
-  T(s, 'Problems are settled before a number reaches a payslip or an email.', { x: 8.55, y: 2.0, w: R - 8.55, h: 1.3, fontSize: 20, bold: true, color: C.ink, valign: 'top', lineSpacingMultiple: 1.05, objectName: 'up|450|claim' });
-  [['target', 'Decided first', 'Nothing counts until someone decides.'], ['user', 'Every decision kept', 'Who decided, and when.'], ['check', 'One version', 'The same month for everyone.']]
-    .forEach((p, i) => point(s, p, 8.55, 3.75 + i * 1.02, R - 8.55, { t: 650 + i * 150, d: 0.5, hs: 15, ts: 12.5, th: 0.5, bg: i ? C.ink : C.blue }));
-}
-
-// =============================================================================================== 8. fairness people can see
-{
-  const s = add('LIGHT', 'Benefits', 'Fairness people can see. For any agent, every result explains itself: each KPI with its result, band, ranking and points, then the days and the amount. The same rules apply to everyone, kept by the senior manager with every change logged, and agents see their own results. A question about pay is answered in a click.');
-  eyebrow(s, 'Fairness');
-  title(s, 'Fairness people *can see*');
-  pic(s, 'z-how', { x: M, y: 1.95, h: 4.95 }, 70, 'up|250|shot');
-  card(s, 6.05, 2.0, R - 6.05, 1.58, { fill: C.blue, t: 400 });
-  T(s, '94.96%  →  95%', { x: 6.4, y: 2.12, w: R - 6.75, h: 0.75, fontSize: 34, bold: true, color: C.white, objectName: 'up|400|stat' });
-  T(s, 'The same rounding for everyone, shown in every result.', { x: 6.4, y: 2.86, w: R - 6.75, h: 0.5, fontSize: 13, color: C.white, objectName: 'up|400|stat-t' });
-  [['star', 'One set of rules', 'Kept by the senior manager; every change logged.'],
-    ['eye', 'Every person, step by step', 'Each KPI, band, ranking and points, then the days and the amount.'],
-    ['user', 'Agents see their own', 'Their own results, explained, in English or Arabic.']]
-    .forEach((p, i) => point(s, p, 6.05, 3.95 + i * 1.0, R - 6.05, { t: 600 + i * 150, th: 0.55 }));
-}
-
-// =============================================================================================== 9. every role
-pres.addSection({ title: 'Everyone' });
-{
-  const s = add('LIGHT', 'Everyone', 'Every role gets a better month, on its own page, seeing only what is theirs. WFM analysts spend their time on analysis; the WFM manager sends checked numbers on time; the senior manager sees the whole close and decides with every number explained; supervisors coach from the month\'s own numbers; the quality team enters quality once; agents see and understand their own results; and the admin gives each person their role.');
-  eyebrow(s, 'Every role');
-  title(s, 'A better month for *every role*');
-  const roles = [['up', 'WFM analyst', 'Time for analysis, not assembling'], ['mail', 'WFM manager', 'Checked numbers, sent on time'],
-    ['star', 'Senior manager', 'The whole close, every number explained'], ['team', 'Supervisor', 'More coaching, less paperwork'],
-    ['check', 'Quality team', 'Quality entered once, counted everywhere'], ['user', 'Agent', 'Own results, understood, English or Arabic'], ['lock', 'Admin', 'Each person in their role']];
-  roles.forEach(([icon, h, t], i) => {
-    const y = 1.95 + i * 0.67, d = 300 + i * 90, cw = 6.7;
-    card(s, M, y, cw, 0.58, { t: d });
-    dot(s, icon, M + 0.09, y + 0.09, 0.4, i === 0 ? C.blue : C.ink, 'white', d);
-    T(s, h, { x: M + 0.72, y, w: 1.9, h: 0.58, fontSize: 15, bold: true, color: C.ink, valign: 'middle', objectName: `up|${d}|h` });
-    T(s, t, { x: M + 2.65, y, w: cw - 2.8, h: 0.58, fontSize: 13, color: C.muted, valign: 'middle', objectName: `up|${d}|t` });
+  const sec = SEC('checks'), s = add('SHOW', sec);
+  eyebrow(s, sec.eyebrow); title(s, sec);
+  lead(s, sec.lead, { y: leadY(sec), w: 8.2, h: 0.55 });
+  const w = 3.72, h = 1.72;
+  sec.cards.forEach((c, i) => {
+    const x = X0 + (i % 2) * (w + 0.22), y = 2.95 + Math.floor(i / 2) * (h + 0.22), d = 300 + i * 120;
+    card(s, x, y, w, h, { t: d });
+    T(s, String(i + 1).padStart(2, '0'), { x: x + 0.26, y: y + 0.2, w: 1, h: 0.2, fontSize: 9, bold: true, color: C.blue, charSpacing: 1.4, objectName: `up|${d}|n` });
+    T(s, c.b, { x: x + 0.26, y: y + 0.44, w: w - 0.52, h: 0.32, fontSize: 13, bold: true, color: C.ink, objectName: `up|${d}|h` });
+    T(s, c.p, { x: x + 0.26, y: y + 0.8, w: w - 0.52, h: 0.8, fontSize: 10.5, color: C.muted, valign: 'top', lineSpacingMultiple: 1.08, objectName: `up|${d}|p` });
   });
-  pic(s, 'win-team', { x: 7.55, y: 1.95, w: 4.6 }, 90, 'up|450|team');
-  pic(s, 'win-agent-ar', { x: R - 4.6, y: 3.6, w: 4.6 }, 90, 'up|650|agent');
+  const px = X0 + 2 * w + 0.6, pw = X1 - px;
+  T(s, sec.proof.n, { x: px, y: 2.95, w: pw, h: 0.95, fontSize: 60, bold: true, color: C.btext, align: 'center', objectName: 'up|800|proof-n' });
+  T(s, sec.proof.t, { x: px + 0.3, y: 3.95, w: pw - 0.6, h: 0.78, fontSize: 11, color: C.muted, align: 'center', valign: 'top', lineSpacingMultiple: 1.08, objectName: 'up|850|proof-t' });
+  pic(s, 'sc-fig-sieve', { x: px + (pw - 2.0) / 2, y: 4.85, w: 2.0 }, 'up|950|fig', '');
 }
 
-// =============================================================================================== 10. the coaching loop
+// =============================================================================================== 6. every bonus explained, in English and in Arabic
 {
-  const s = add('LIGHT', 'Everyone', 'The coaching loop is closed in one place. Results reach each agent\'s own page; the one-to-one is filled from the month\'s numbers and fits on one A4 page; the agent comments and signs after the supervisor; and if an agent disagrees with a number, the supervisor answers first and the senior manager decides. Better conversations, on the same facts.');
-  eyebrow(s, 'Coaching');
-  title(s, 'The coaching loop, *closed*');
-  pic(s, 'paper-form', { x: 0.75, y: 2.15, h: 4.6 }, 110, 'up|250|form');
-  const nodes = [['chart', 'Results shared', 'Each agent sees the month on their own page.'], ['pen', 'One-to-one', 'Filled from the numbers, on one A4 page.'],
-    ['check', 'Signed together', 'The agent comments and signs after the supervisor.'], ['handshake', 'Questions answered', 'Supervisor first; the senior manager decides.']];
-  const nx = [5.2, 9.5], ny = [2.05, 4.6], nw = 3.3, nh = 2.1, pos = [[0, 0], [1, 0], [1, 1], [0, 1]];
-  nodes.forEach(([icon, h, t], i) => {
-    const x = nx[pos[i][0]], y = ny[pos[i][1]], d = 450 + i * 220;
-    card(s, x, y, nw, nh, { t: d });
-    marker(s, i + 1, x + 0.42, y + 0.45, d, 0.42);
-    dot(s, icon, x + nw - 0.8, y + 0.22, 0.5, C.ink, 'white', d);
-    T(s, h, { x: x + 0.3, y: y + 0.9, w: nw - 0.6, h: 0.38, fontSize: 16, bold: true, color: C.ink, objectName: `up|${d}|h` });
-    T(s, t, { x: x + 0.3, y: y + 1.3, w: nw - 0.6, h: 0.65, fontSize: 13, color: C.muted, valign: 'top', objectName: `up|${d}|t` });
+  const sec = SEC('explain'), s = add('SHOW', sec);
+  eyebrow(s, sec.eyebrow); title(s, sec);
+  lead(s, sec.lead, { y: leadY(sec), w: 10.2, h: 0.55 });
+  const z = size(A('sc-receipt-en')), h = 3.85, w = h * z.w / z.h, gap = 0.4, x = X0 + (CW - 2 * w - gap) / 2;   // as tall as the room above the foot
+  pic(s, 'sc-receipt-en', { x, y: 2.85, h }, 'up|400|receipt-en', 'How the bonus was counted, in English: each KPI with its value, rank and weight; the final, the days, the base, the gates and the bonus, 764 SR.');
+  pic(s, 'sc-receipt-ar', { x: x + w + gap, y: 2.85, h }, 'up|600|receipt-ar', 'The same receipt in Arabic, right to left.');
+}
+
+// =============================================================================================== 7. every role plays its part
+{
+  const sec = SEC('roles'), s = add('SHOW', sec);
+  eyebrow(s, sec.eyebrow); title(s, sec);
+  lead(s, sec.lead, { y: leadY(sec), w: 8.4, h: 0.4 });
+  const area = 8.95, w = (area - 0.44) / 3, h = 1.86;
+  sec.roles.forEach((r, i) => {
+    const x = X0 + (i % 3) * (w + 0.22), y = 2.75 + Math.floor(i / 3) * (h + 0.22), d = 300 + i * 100;
+    card(s, x, y, w, h, { t: d });
+    pic(s, `sc-role-${i}`, { x: x + 0.24, y: y + 0.22, w: 0.34 }, `up|${d}|icon`, '');
+    T(s, r.name, { x: x + 0.7, y: y + 0.22, w: w - 0.9, h: 0.34, fontSize: 12.5, bold: true, color: C.ink, valign: 'middle', objectName: `up|${d}|h` });
+    T(s, r.label.toUpperCase(), { x: x + 0.24, y: y + 0.7, w: w - 0.48, h: 0.18, fontSize: 7.5, bold: true, color: C.blue, charSpacing: 1.4, objectName: `up|${d}|l` });
+    T(s, r.part, { x: x + 0.24, y: y + 0.92, w: w - 0.48, h: 0.86, fontSize: 10.5, color: C.muted, valign: 'top', lineSpacingMultiple: 1.08, objectName: `up|${d}|p` });
   });
-  const ln = (x, y, w, h, o, d) => s.addShape(pres.shapes.LINE, { x, y, w, h, line: { color: C.blue, width: 2.25, endArrowType: 'triangle' }, ...o, objectName: `fade|${d}|arrow` });
-  ln(nx[0] + nw + 0.06, ny[0] + nh / 2, nx[1] - nx[0] - nw - 0.12, 0, {}, 650);
-  ln(nx[1] + nw / 2, ny[0] + nh + 0.06, 0, ny[1] - ny[0] - nh - 0.12, {}, 870);
-  ln(nx[0] + nw + 0.06, ny[1] + nh / 2, nx[1] - nx[0] - nw - 0.12, 0, { flipH: true }, 1090);
-  ln(nx[0] + nw / 2, ny[0] + nh + 0.06, 0, ny[1] - ny[0] - nh - 0.12, { flipV: true }, 1310);
+  pic(s, 'sc-fig-hub', { x: X0 + area + 0.45, y: 3.35, w: X1 - (X0 + area + 0.45) }, 'up|900|fig', '');
 }
 
-// =============================================================================================== 11. no single point of failure
+// =============================================================================================== 8. trust: pay data stays ours
 {
-  const s = add('LIGHT', 'Everyone', 'The month never waits on one person. Every role shares the same month, it is saved as the work happens, and when someone is on holiday a colleague covers their pages until they are back. Everyone sees where the close stands, so nobody has to chase anyone.');
-  eyebrow(s, 'Continuity');
-  title(s, 'A month that never waits *on one person*');
-  [['team', 'Shared by every role', 'One month, one set of numbers, for everyone who needs it.'], ['database', 'Saved as the work happens', 'Nothing lives in one person\'s spreadsheet; the history builds itself.'],
-    ['sync', 'Covered during holidays', 'A colleague takes over a role\'s pages until they are back.'], ['bell', 'Nobody chases', 'Everyone sees the close and their own deadlines.']]
-    .forEach((p, i) => point(s, p, M, 2.1 + i * 1.18, 6.2, { t: 300 + i * 150, th: 0.6, bg: i ? C.ink : C.blue }));
-  fig(s, 'hub', { x: 7.4, y: 2.2, w: R - 7.4 }, false, 500);
-}
-
-// =============================================================================================== 12. private by design
-pres.addSection({ title: 'Trust' });
-{
-  const s = add('DARK', 'Trust', 'The data is the most sensitive Member Care has: names, National IDs, results and money. It stays on our own computers and is sent nowhere. The shared data is encrypted with AES-256 and only accounts made in the tool can read it. Attachments carry no National IDs. Each role sees only what is theirs, a security review was done, and every change is logged.');
-  eyebrow(s, 'Private by design', true);
-  title(s, 'Your data *stays yours*');
-  const tiles = [['0', 'web requests', 'Nothing is sent anywhere: the data stays on our own computers.'], ['AES-256', 'encrypted shared data', 'Only accounts made in the tool can read it.'],
-    ['No IDs', 'in email attachments', 'National IDs are kept out of the files attached to emails.'], ['By role', 'what each person sees', 'An agent sees only their own page; a supervisor, only their team.'],
-    ['Reviewed', 'for security', 'Every finding fixed and covered by tests.'], ['Logged', 'every change', 'Results, rules and roles: who changed what, and when.']];
-  const tw = (R - M - 0.4) / 3;
-  tiles.forEach(([big, small, t], i) => {
-    const x = M + (i % 3) * (tw + 0.2), y = 1.95 + Math.floor(i / 3) * 2.45, d = 300 + i * 140;
-    card(s, x, y, tw, 2.25, { dark: true, t: d, fill: i === 0 ? C.blue : C.ink });
-    T(s, big, { x: x + 0.35, y: y + 0.24, w: tw - 0.7, h: 0.78, fontSize: 36, bold: true, color: C.white, valign: 'top', objectName: `up|${d}|big` });
-    T(s, small, { x: x + 0.35, y: y + 1.0, w: tw - 0.7, h: 0.32, fontSize: 14, bold: true, color: C.white, objectName: `up|${d}|small` });
-    T(s, t, { x: x + 0.35, y: y + 1.36, w: tw - 0.7, h: 0.7, fontSize: 13, color: i === 0 ? C.white : C.dmuted, valign: 'top', objectName: `up|${d}|t` });
+  const sec = SEC('trust'), s = add('SHOW', sec);
+  eyebrow(s, sec.eyebrow); title(s, sec);
+  const area = 8.55, h = 1.95;
+  sec.tiles.forEach((t, i) => {
+    const top = i < 3, n = top ? 3 : 2, w = (area - (n - 1) * 0.22) / n, x = X0 + (top ? i : i - 3) * (w + 0.22), y = top ? 2.2 : 2.2 + h + 0.22, d = 300 + i * 120, on = i === 0;
+    card(s, x, y, w, h, { t: d, ...(on ? { fill: C.blue } : {}) });
+    T(s, t.b, { x: x + 0.28, y: y + 0.22, w: w - 0.56, h: 0.62, fontSize: 30, bold: true, color: on ? C.white : C.ink, objectName: `up|${d}|b` });
+    T(s, t.s, { x: x + 0.28, y: y + 0.86, w: w - 0.56, h: 0.26, fontSize: 11.5, bold: true, color: on ? C.white : C.ink2, objectName: `up|${d}|s` });
+    T(s, t.p, { x: x + 0.28, y: y + 1.14, w: w - 0.56, h: 0.7, fontSize: 10.5, color: on ? 'E3EEFB' : C.muted, valign: 'top', lineSpacingMultiple: 1.08, objectName: `up|${d}|p` });
   });
+  pic(s, 'sc-fig-vault', { x: X0 + area + 0.55, y: 2.45, w: X1 - (X0 + area + 0.55) }, 'up|900|fig', '');
 }
 
-// =============================================================================================== 13. proof
+// =============================================================================================== 9. what's next: ready for the next bonus
 {
-  const s = add('LIGHT', 'Trust', 'It is tested like a product. A hundred people used it at the same time on one shared folder: every change reached everyone else, and none was lost. Every role\'s pages are checked, in light and dark, and every calculation, email and permission is tested before each change ships.');
-  eyebrow(s, 'Built to be right');
-  title(s, 'Tested like a *product*');
-  const stats = [['100', 'people at the same time', 'tested: every change reached everyone, none lost'], ['7', 'roles', 'every page checked,\nin light and dark']];
-  const cw = (R - M - 0.35) / 2;
-  stats.forEach(([n, h, t], i) => {
-    const x = M + i * (cw + 0.35), d = 300 + i * 200, on = i === 0;
-    card(s, x, 2.15, cw, 3.55, { t: d, fill: on ? C.blue : C.soft, px: on ? undefined : C.blue });
-    T(s, n, { x: x + 0.4, y: 2.5, w: cw - 0.8, h: 1.2, fontSize: 60, bold: true, color: on ? C.white : C.ink, objectName: `up|${d}|n` });
-    T(s, h, { x: x + 0.4, y: 3.85, w: cw - 0.8, h: 0.4, fontSize: 17, bold: true, color: on ? C.white : C.ink, objectName: `up|${d}|h` });
-    T(s, t, { x: x + 0.4, y: 4.3, w: cw - 0.8, h: 1.0, fontSize: 13, color: on ? C.white : C.muted, valign: 'top', objectName: `up|${d}|t` });
+  const sec = SEC('start'), s = add('SHOW', sec);
+  eyebrow(s, sec.eyebrow); title(s, sec);
+  sec.steps.forEach((st, i) => {
+    const y = 2.3 + i * 0.98, d = 300 + i * 150;
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: X0, y: y + 0.02, w: 0.4, h: 0.4, rectRadius: 0.06, fill: { color: i ? C.ink : C.blue }, line: { type: 'none' }, objectName: `up|${d}|n` });
+    T(s, String(i + 1), { x: X0, y: y + 0.02, w: 0.4, h: 0.4, fontSize: 13, bold: true, color: C.white, align: 'center', valign: 'middle', objectName: `up|${d}|nt` });
+    T(s, st.b, { x: X0 + 0.62, y: y - 0.02, w: 6.6, h: 0.34, fontSize: 14, bold: true, color: C.ink, objectName: `up|${d}|h` });
+    T(s, st.p, { x: X0 + 0.62, y: y + 0.32, w: 6.6, h: 0.5, fontSize: 11, color: C.muted, valign: 'top', lineSpacingMultiple: 1.08, objectName: `up|${d}|p` });
   });
-  dot(s, 'shield', M, 6.08, 0.5, C.ink, 'white', 900);
-  T(s, 'Every calculation, email and permission is covered by tests that run before each change ships.', { x: M + 0.7, y: 6.1, w: 10.5, h: 0.46, fontSize: 14, color: C.ink2, valign: 'middle', objectName: 'up|900|same' });
-}
-
-// =============================================================================================== 14. what changes
-pres.addSection({ title: 'Launch plan' });
-{
-  const s = add('LIGHT', 'Launch plan', 'What changes for Member Care, in one view: time moves from assembling to coaching; mistakes are settled before anything goes out; questions about pay are answered in a click; the whole month is visible to every role; and the month no longer rests on one person.');
-  eyebrow(s, 'What changes');
-  title(s, 'What changes for *Member Care*');
-  const hd = (t, o = {}) => ({ text: t, options: { bold: true, color: C.white, fill: { color: o.fill || C.ink }, fontSize: 13, fontFace: FONT, valign: 'middle', margin: [0.08, 0.2, 0.08, 0.2] } });
-  const c = (t, o = {}) => ({ text: t, options: { color: o.color || C.ink2, bold: !!o.bold, fontSize: 13, fontFace: FONT, fill: { color: o.fill || C.white }, valign: 'middle', margin: [0.08, 0.2, 0.08, 0.2] } });
-  const rows = [['Time', 'Assembling and checking by hand', 'Spent on coaching and service'], ['Accuracy', 'Mistakes found after the emails', 'Settled before anything goes out'],
-    ['Questions about pay', 'Worked out again on request', 'Answered in a click'], ['Visibility', 'Status gathered by email and calls', 'The whole month at a glance'],
-    ['Continuity', 'The month in one person\'s files', 'Shared, saved and covered']];
-  s.addTable([[hd(''), hd('Before'), hd('With Cadence', { fill: C.blue })], ...rows.map((r, i) => [c(r[0], { bold: true, color: C.ink, fill: i % 2 ? C.white : C.row }), c(r[1], { color: C.muted, fill: i % 2 ? C.white : C.row }), c(r[2], { bold: true, color: C.ink, fill: i % 2 ? C.white : C.row })])],
-    { x: M, y: 2.05, w: 8.6, colW: [2.3, 3.05, 3.25], rowH: [0.55, 0.78, 0.78, 0.78, 0.78, 0.78], border: { type: 'solid', color: C.line, pt: 0.75 }, objectName: 'up|300|table' });
-  card(s, 9.35, 2.05, R - 9.35, 4.45, { fill: C.blue, t: 600 });
-  dot(s, 'sparkle', 9.7, 2.4, 0.52, C.white, 'blue', 600);
-  T(s, 'Same team, same rules: a better month.', { x: 9.7, y: 3.2, w: R - 10.05, h: 1.6, fontSize: 24, bold: true, color: C.white, valign: 'top', lineSpacingMultiple: 1.02, objectName: 'up|600|sum' });
-  T(s, 'Month end runs on one shared truth instead of people and spreadsheets.', { x: 9.7, y: 4.95, w: R - 10.05, h: 1.1, fontSize: 13, color: C.white, valign: 'top', lineSpacingMultiple: 1.05, objectName: 'up|600|sum-t' });
-}
-
-// =============================================================================================== 15. what comes next
-{
-  const s = add('END', 'Launch plan', 'What comes next, in three steps: run the next month end in Cadence, with the old way beside it for one month; measure what it gives back, hours, corrections and questions about pay, against the month before; then make it how Member Care closes every month. Next: opening it from anywhere, phones included. Thank you, and questions.');
-  pixels(s, [[11.95, 1.08, 0.40, C.red], [12.55, 1.72, 0.16, C.pink], [6.80, 5.98, 0.28, C.lav], [12.32, 5.84, 0.22, C.orange], [7.08, 1.38, 0.14, C.blue]], 120);
-  pic(s, 'laptop-dark', { x: 7.0, y: 1.95, w: 5.6 }, 90, 'up|250|laptop');
-  eyebrow(s, 'What comes next', true);
-  title(s, 'Ready for *the next close*');
-  [['Run the next month end in Cadence', 'every role in one place, the old way beside it for one month.'], ['Measure what it gives back', 'hours, corrections and questions about pay, against the month before.'], ['Make it how we close', 'every month, every role, one shared truth.']].forEach(([h, t], i) => {
-    const y = 2.9 + i * 0.98, d = 300 + i * 160;
-    s.addShape(pres.shapes.RECTANGLE, { x: M, y, w: 0.52, h: 0.52, fill: { color: i === 0 ? C.blue : C.edge }, line: { type: 'none' }, objectName: `up|${d}|n${i}` });
-    T(s, String(i + 1), { x: M, y, w: 0.52, h: 0.52, fontSize: 15, bold: true, color: C.white, align: 'center', valign: 'middle', objectName: `up|${d}|n${i}t` });
-    T(s, h, { x: M + 0.75, y: y - 0.04, w: 5.6, h: 0.34, fontSize: 16, bold: true, color: C.white, objectName: `up|${d}|h${i}` });
-    T(s, t, { x: M + 0.75, y: y + 0.3, w: 5.6, h: 0.32, fontSize: 13, color: C.dmuted, objectName: `up|${d}|t${i}` });
-  });
-  dot(s, 'globe', M + 0.06, 5.8, 0.4, C.edge, 'white', 800);
-  T(s, [{ text: 'Next: ', options: { bold: true, color: C.white } }, { text: 'open it from anywhere, phones included.', options: { color: C.dmuted } }], { x: M + 0.75, y: 5.8, w: 5.4, h: 0.4, fontSize: 13, valign: 'middle', objectName: 'up|800|next' });
-  T(s, runs('Thank *you*'), { x: M, y: 6.42, w: 4, h: 0.5, fontSize: 22, color: C.white, objectName: 'fade|950|thanks' });
+  T(s, runs([sec.thanks]), { x: X0, y: 5.45, w: 6, h: 0.75, fontSize: 30, color: C.ink, objectName: 'up|900|thanks' });
+  pic(s, 'sc-fig-laptop', { x: 8.25, y: 1.7, w: 4.1 }, 'up|700|fig', '');
 }
 
 // ---- write, then the theme, the transitions and the motion (pptxgenjs writes neither)

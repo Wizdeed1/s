@@ -475,6 +475,7 @@ const Auth = (() => {
   }
   async function signOut() {
     commitActive(); ss.set('wf-session', null);
+    try { document.dispatchEvent(new Event('mc-signout')); } catch (e) { /* none */ }   // what the page holds for this session goes (rbx.js)
     if (folder() || ring) { location.reload(); return; }   // the data stays only in the signed-in window
     user = null; pending = null; await countAccounts(); setMode(count ? 'signin' : 'create');
   }

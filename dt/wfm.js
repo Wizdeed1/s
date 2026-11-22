@@ -431,8 +431,40 @@ function clearFiles(){
   state.files = {}; state.unmatched = []; markDirty();
 }
 
+/* The agent → brand map of the last build (each agent's name in lower case → 'A' | 'B' | 'C'): the next run pairs the
+   adherence files by agent with it. It names the agents, so this module keeps it in memory only. The builder keeps it in the
+   shared data with every other record about people (WFM.onTeams, WFM.setTeams: in the shared folder it is encrypted with
+   the team's key). Earlier versions kept it in this browser's storage in plain text: that copy is read into this
+   session once, then removed as the page opens, and again on sign-out (WFM.forgetTeams). */
+const OLD_TEAMS = 'wfm.agentTeams.v1';
+const teamKeyOf = n => agentKey(n).toLowerCase();
+let agentTeams = null;   // Map, at least 10 agents, or null
+let teamsSig = '';       // the map last handed to the builder or taken from it: an unchanged map is not saved again
+let teamsOwn = false;    // this session built its own map (or moved a file by hand): a copy read later does not replace it
+let teamsOut = null;     // the builder's hook: told [{ n, t }] each time the map changes, null when it is forgotten
+/** [{ n, t }] (or the old { name: 'A' } object) → a Map of at least 10 agents, else null. Read as untrusted: names are
+ *  text of at most 120 characters, brands A, B or C, at most 5000 agents. */
+function teamsMap(list){
+  const m = new Map();
+  const add = (n, t) => { if(typeof n !== 'string' || TEAM_KEYS.indexOf(t) < 0) return; const k = teamKeyOf(n); if(k && k.length <= 120) m.set(k, t); };
+  if(Array.isArray(list)) list.slice(0, 5000).forEach(x => { if(x && typeof x === 'object') add(x.n, x.t); });
+  else if(list && typeof list === 'object') Object.keys(list).slice(0, 5000).forEach(k => add(k, list[k]));
+  return m.size >= 10 ? m : null;
+}
+const teamsSigOf = m => JSON.stringify([...m].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)));
+const teamsList = m => [...m].map(([n, t]) => ({ n, t }));
+function tellTeams(){ if(teamsOut) try{ teamsOut(agentTeams ? teamsList(agentTeams) : null); }catch(e){} }
+function forgetOldTeams(){ try{ localStorage.removeItem(OLD_TEAMS); }catch(e){} }
+/** Forget the map. `byHand`: a file was moved by hand, so the map paired them wrongly; the builder drops its kept copy too. */
+function forgetTeams(byHand){
+  agentTeams = null; teamsSig = ''; teamsOwn = !!byHand; forgetOldTeams();
+  if(byHand) tellTeams();
+}
+try{ agentTeams = teamsMap(JSON.parse(localStorage.getItem(OLD_TEAMS) || 'null')); }catch(e){ agentTeams = null; }
+forgetOldTeams();
+
 /** After the files are in, check which adherence file belongs to which brand.
- *  1. the agent → brand map saved from a previous build, else
+ *  1. the agent → brand map of a previous build (above), else
  *  2. the brand of the queue each agent answered on in the interactions export.
  *  Files are re-paired only when every one clearly holds another brand's agents. */
 function reconcileAdhTeams(){
@@ -440,14 +472,7 @@ function reconcileAdhTeams(){
   const present = TEAM_KEYS.filter(k => F['adh' + k]);
   if(present.length < 2) return;
   const cfg = readConfig();
-  let agentTeam = new Map();
-
-  try{
-    const stored = JSON.parse(localStorage.getItem('wfm.agentTeams.v1') || 'null');
-    if(stored && Object.keys(stored).length >= 10){
-      for(const [k,v] of Object.entries(stored)) agentTeam.set(k, v);
-    }
-  }catch(e){}
+  const agentTeam = agentTeams || new Map();
 
   if(!agentTeam.size && F.interactions){
     const T = F.interactions;
@@ -457,8 +482,8 @@ function reconcileAdhTeams(){
         const tk = teamOfText(cell(T,r,cQ).split(';')[0] || '', cfg);
         if(!tk) continue;
         cell(T,r,cU).split(';').forEach(p => {
-          const u = p.replace(/\s*\(.*?\)/g,'').trim();
-          if(u) agentTeam.set(u.toLowerCase(), tk);
+          const u = teamKeyOf(p.replace(/\s*\(.*?\)/g,''));
+          if(u) agentTeam.set(u, tk);
         });
       }
     }
@@ -467,7 +492,7 @@ function reconcileAdhTeams(){
 
   const majority = t => {
     const ci = col(t,'agent','agentname','user'); const n = { A:0, B:0, C:0 };
-    for(const r of t.data){ const k = agentTeam.get(cell(t,r,ci).toLowerCase()); if(n[k] !== undefined) n[k]++; }
+    for(const r of t.data){ const k = agentTeam.get(teamKeyOf(cell(t,r,ci))); if(n[k] !== undefined) n[k]++; }
     const tot = n.A + n.B + n.C;
     const best = TEAM_KEYS.slice().sort((a,b) => n[b] - n[a])[0];
     return tot >= 3 && n[best] * 2 > tot ? best : null;
@@ -2007,11 +2032,15 @@ function build(){
   const html = renderReport(M);
   if(!WM.check(html)) throw new Error('the author watermark is missing from the output, so the report was not built.');
   state.model = M; state.html = html; state.dirty = false;
-  // Keep the agent → brand map so the adherence files can be paired by agent next time.
+  // Keep the agent → brand map so the adherence files can be paired by agent next time: in memory, and handed to the
+  // builder (when it changed) to keep in the shared data. Never in this browser's storage.
   try{
-    const tm = {};
-    M.agents.forEach((a, name) => { if(a.team) tm[name.toLowerCase()] = a.team; });
-    if(Object.keys(tm).length >= 10) localStorage.setItem('wfm.agentTeams.v1', JSON.stringify(tm));
+    const tm = teamsMap([...M.agents].map(([name, a]) => ({ n: name, t: a.team })));
+    if(tm){
+      agentTeams = tm; teamsOwn = true;
+      const sig = teamsSigOf(tm);
+      if(sig !== teamsSig){ teamsSig = sig; tellTeams(); }
+    }
   }catch(e){}
   state.buildNote = `Built in ${Math.round(performance.now() - t0)} ms from ${M.totalRows.toLocaleString()} rows.`;
   runChecks(M);
@@ -2426,7 +2455,7 @@ function renderSlots(){
     const a = state.files[from], other = state.files[to];
     if(other){ state.files[from] = other; other._brandHow = 'hand'; } else delete state.files[from];
     state.files[to] = a; a._brandHow = 'hand';
-    try{ localStorage.removeItem('wfm.agentTeams.v1'); }catch(e){}
+    forgetTeams(true);   // the map paired these files wrongly: not used again, and the builder's copy goes too
     markDirty(); changed(true);
     toast(teamName(cfg, to.slice(-1)) + ' now reads ' + a.fileName + '.');
   });
@@ -2567,9 +2596,22 @@ root.WFM = {
   /** Titles of whatever still needs attention, for the dot on the tab. */
   issues: () => { if(!state.html) runChecks(); return (state.checks || []).filter(c => c.tone !== 'ok').map(c => c.title); },
   hasFiles: () => Object.keys(state.files).length > 0 || state.unmatched.length > 0,
+  /** The agent → brand map the next run pairs the adherence files with. The builder keeps it in the shared data:
+   *  `onTeams(fn)`: fn([{ n, t }]) after a build that changed it, fn(null) when a file moved by hand made it wrong.
+   *  `setTeams(list)`: the copy kept there, read for this session (a map this session built stays). -> agents taken.
+   *  `forgetTeams()`: on sign-out; any copy an older version left in this browser's storage goes too. */
+  onTeams: fn => { teamsOut = typeof fn === 'function' ? fn : null; },
+  setTeams: list => {
+    if(teamsOwn) return 0;
+    const m = teamsMap(list);
+    if(m){ agentTeams = m; teamsSig = teamsSigOf(m); }
+    return m ? m.size : 0;
+  },
+  forgetTeams: () => forgetTeams(false),
   panel,
   // for tests
-  _state: state, _build: build, _eml: buildEml, _csv: exceptionsCsv, _settings: () => SET
+  _state: state, _build: build, _eml: buildEml, _csv: exceptionsCsv, _settings: () => SET,
+  _teams: () => (agentTeams ? teamsList(agentTeams) : null)
 };
 
 })(window);

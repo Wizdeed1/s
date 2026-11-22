@@ -142,6 +142,14 @@ finding with the synthetic test data, fix it at the right place, and leave a tes
   - Never in plain shared files or a team copy.
 - ANI (callers' numbers) is never stored. The daily review shows them in that day's report and CSV unless its setting
   **Mask customer numbers** is on (off by default). Suggest turning it on; do not change the default without asking.
+- No list of staff taken from the data goes in the browser's own storage. The WFM Daily Review's agent → brand map is the
+  shared record `config/agentTeams` (locked in the data folder), held in memory while the page is open (`dt/wfm.js`,
+  `js/rbx.js`). The copy older versions kept in plain text (`wfm.agentTeams.v1`) is removed as the page opens and on
+  sign-out.
+  - Test: `node test/wfmmap.cjs out/mc.html <dir>`: the record is locked on disk, nothing in the browser's storage
+    names an agent after a build, and the next run still pairs the adherence files by agent.
+  - Still in the browser's storage: Search's last 30 typed queries (`mc-find:<account>`), which can be names; and, without
+    a data folder, the whole store (`wf-db`, the `mc-uploads` IndexedDB).
 - Tests and fixtures are synthetic only: a first name and an initial, made-up 10-digit IDs, `example.com`.
 - Never `console.log` records.
 
@@ -194,6 +202,7 @@ export NODE_PATH=$(npm root -g)                # Playwright with Chromium for th
 node test/xss.cjs out/mc.html /tmp/xss         # injection, emails, CSV, no network (a few minutes)
 node test/trust.cjs out/mc.html /tmp/trust     # planted accounts in the shared folder
 node test/datafolder.cjs out/mc.html /tmp/df   # backups: rounds, older files, made-up counts
+node test/wfmmap.cjs out/mc.html /tmp/wfmmap   # no staff names in the browser's storage (the WFM Daily Review's map)
 grep -o 'https\?://[^"<> ]*' out/mc.html | sort -u    # only namespaces and licence links
 ```
 

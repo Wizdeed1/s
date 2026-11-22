@@ -627,6 +627,7 @@ async function rbBoot() {
   if (RB.ready) return true;
   await rbLoad();
   if (state.db) await Promise.race([dhReady, new Promise(r => setTimeout(r, 4000))]);   // the shared history first
+  if (state.db) await Promise.race([rbTeamsLoad(), new Promise(r => setTimeout(r, 4000))]);   // the agents' brands, before any adherence file comes in
   if (RB.ready) return true;
   RB.bag = rbEmptyBag(); rbSetDate(rbE().ymdLocal(new Date(Date.now() - 86400000)), false);   // yesterday: on a Sunday that is Saturday, so the Thu–Sat report switches on by itself
   rbHist(); RB.ready = true;
@@ -757,6 +758,25 @@ function rbDayOf(M) {
   const d = M.dept || {};
   return { date: M.cfg.date, agents: o, dept: { adh: d.adherence, conf: d.conformance, occ: d.occupancy, cov: d.coverage, sched: d.scheduled, worked: d.worked, ans: d.answered } };
 }
+// ---------------------------------------------------------------- the WFM Daily Review's agent → brand map (config/agentTeams)
+// The next run pairs the adherence files by agent with the brands of the last build (dt/wfm.js holds the map in memory). It names
+// the agents, so it is kept as every other record about people is: in the shared data (in the shared folder, encrypted with the
+// team's key), never in this browser's storage. Read once when the builder opens, before any file reaches the WFM Daily Review.
+const RB_TEAMS = 'config/agentTeams';
+async function rbTeamsLoad() {
+  if (!state.db || !window.WFM || !window.WFM.setTeams) return;
+  try { const s = await state.db.doc(RB_TEAMS).get(), x = s && s.exists ? s.data() : null; if (x && Array.isArray(x.agents)) window.WFM.setTeams(x.agents); }
+  catch (e) { /* this session's own map, else the Interactions export */ }
+}
+/** a build changed the map ([{ n, t }]), or a file moved by hand made it wrong (null) */
+function rbTeamsSave(list) {
+  if (!state.db || !canDailySave()) return;
+  const body = list ? { agents: list, at: new Date().toISOString(), by: whoNow() } : null;
+  queueWrite(RB_TEAMS, () => (body ? state.db.doc(RB_TEAMS).set(body) : state.db.doc(RB_TEAMS).delete())).catch(() => {});
+}
+if (window.WFM && window.WFM.onTeams) window.WFM.onTeams(rbTeamsSave);
+document.addEventListener('mc-signout', () => { if (window.WFM && window.WFM.forgetTeams) window.WFM.forgetTeams(); });   // and any copy an older version left in this browser
+
 function rbExportHistory() { rbSave('member-care-history-' + todayIso() + '.json', new Blob([JSON.stringify(rbHist(), null, 1)], { type: 'application/json' })); }
 /** a history file or a Report Builder page dropped anywhere: read and shown first in the Brands' history box (the Report builder's
     History card, or Emails › Daily brand emails), never written before "Import into the tool" */

@@ -4,6 +4,10 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const Forms = require(path.join(__dirname, '..', 'js', 'forms.js'));
 const pages = b => (Buffer.from(b).toString('latin1').match(/\/Type \/Page\b/g) || []).length;
+const zlib = require('node:zlib');
+/** every piece of text the PDF shows, its streams inflated */
+const drawn = b => { const out = []; for (const m of Buffer.from(b).toString('latin1').matchAll(/stream\n([\s\S]*?)\nendstream/g)) { let t = m[1]; try { t = zlib.inflateSync(Buffer.from(t, 'latin1')).toString('latin1'); } catch (e) { /* not deflated */ } for (const x of t.matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g)) if (x[1]) out.push(x[1]); } return out; };   // an empty string shows nothing
+const minus = (a, b) => { const left = [...b]; return a.filter(x => { const i = left.indexOf(x); if (i < 0) return true; left.splice(i, 1); return false; }); };
 const res = [['DRC-CSAT', '>= 85%', '85%', 'Ranking 5 of 5'], ['Quality Observations', '>= 95%', '94.67%', 'Ranking 4 of 5'], ['AHT', '<= 150', '158.8', 'Ranking 4 of 5'],
   ['Empowerment Utilization', '>= 95%', '96%', 'Ranking 5 of 5'], ['Call Reason & FCR Accuracy', '>= 95%', '100%', 'Ranking 5 of 5'], ['Adherence', '>= 95%', '94.63%', 'Ranking 4 of 5'],
   ['Tardiness', '<= 4', '58', 'Ranking 1 of 5'], ['Final % (scorecard)', '', '84%', 'Ranking 4.20']].map(([metric, target, result, status]) => ({ metric, target, result, status }));
@@ -24,6 +28,13 @@ const ok = async (name, fn) => { try { await fn(); n++; console.log('ok', name);
   await ok('a long one, with last month\'s follow-up, four actions, the supervisor\'s final and the signature: still one page', async () => assert.equal(pages(await Forms.oneToOne(long)), 1));
   await ok('more writing than a page holds: the full form, over more pages, so nothing is cut', async () => assert.ok(pages(await Forms.oneToOne(huge)) >= 2));
   await ok('the final form is as it was (its own layout)', async () => assert.ok(pages(await Forms.finalForm({ ...usual, findings: 'x', outcome: 'verbal', actionPlan: 'y' })) >= 1));
+  await ok('the final form with no manager\'s name (none ships with the tool): the title alone, the name left blank to write in', async () => {
+    const f = { ...usual, findings: 'x', outcome: 'verbal', actionPlan: 'y', managerTitle: 'Member Care Senior Manager' };
+    const none = drawn(await Forms.finalForm({ ...f, manager: '' })), named = drawn(await Forms.finalForm({ ...f, manager: 'Hana S.' })), bare = drawn(await Forms.finalForm({ ...usual, findings: 'x', outcome: 'verbal', actionPlan: 'y' }));
+    assert.ok(none.includes('MEMBER CARE SENIOR MANAGER'), 'the title is on the form');
+    assert.deepEqual(minus(named, none), ['Hana S.']); assert.deepEqual(minus(none, named), []);   // the name is the only difference
+    assert.deepEqual(minus(bare, none), []); assert.deepEqual(minus(none, bare), []);   // a form with no manager at all: the same
+  });
   console.log(`${n} checks passed${failed ? `, ${failed} failed` : ''}`);
   if (failed) process.exit(1);
 })();

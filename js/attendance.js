@@ -78,7 +78,7 @@ function lev(a, b) {
   for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
   return d[m][n];
 }
-/** "Abdulla Nasweef VP" vs "Abdulla Nasweef": every roster token found in the file name (or the other way round). */
+/** "Lina Alexample VP" vs "Lina Alexample": every roster token found in the file name (or the other way round). */
 function looseScore(a, b) {
   const ta = normName(a).replace(/[^a-z\s]/g, '').split(' ').filter(t => t.length > 1), tb = normName(b).replace(/[^a-z\s]/g, '').split(' ').filter(t => t.length > 1);
   if (ta.length < 2 || tb.length < 2) return 0;

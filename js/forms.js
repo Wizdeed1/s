@@ -419,7 +419,7 @@ async function finalForm(f) {
   d.heading('Agent acknowledgement and signatures', 0);
   d.para(f.statement || STATEMENT, { size: 9 });
   if (f.agentSig && f.agentSig.comment) d.box("Agent's comment when signing", f.agentSig.comment, 26);
-  d.signatures([{ role: 'Agent', name: f.agent.name, sig: f.agentSig || null }, { role: 'Supervisor', name: f.supervisor, sig: f.spvSig || null }, { role: f.managerTitle || 'Member Care Senior Manager', name: f.manager || 'Mohammed Alshubily' }]);
+  d.signatures([{ role: 'Agent', name: f.agent.name, sig: f.agentSig || null }, { role: 'Supervisor', name: f.supervisor, sig: f.spvSig || null }, { role: f.managerTitle || 'Member Care Senior Manager', name: f.manager || '' }]);
   if (f.agentSig) d.para(`Signed electronically by the agent in the MC tool on ${f.agentSig.when || f.agentSig.date || ''}${f.agentSig.ref ? ` · signature ${f.agentSig.ref}` : ''}.`, { size: 7.6, color: GREY });
   d.footer(); return d.pdf.bytes();
 }

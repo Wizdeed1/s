@@ -93,7 +93,7 @@ function watchShared(db) {
   live('steps', sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data(); }); state.calMarks = o; });
   live('cover', coverLoaded);
   watchDaily(db); watchInter(db);
-  try { db.doc('config/contacts').get().then(s => { if (s.exists) state.contacts = s.data(); }).catch(() => {}); } catch (e) { /* none */ }
+  try { db.doc('config/contacts').get().then(s => { if (s.exists) { state.contacts = s.data(); if (state.ws === 'cycle') renderWs(); } }).catch(() => {}); } catch (e) { /* none: the drafts open with nobody in To */ }
   try { db.doc('config/inclist').get().then(s => { if (s.exists) { const d = s.data(); if (d && Array.isArray(d.items)) { state.incList = d; if (state.ws === 'cycle') renderWs(); } } }).catch(() => {}); } catch (e) { /* the usual list */ }
   try { db.doc('config/spvcard').get().then(s => { if (s.exists) state.spvCard = s.data(); }).catch(() => {}); } catch (e) { /* none */ }
   try { db.doc('config/calendar').get().then(s => { if (s.exists) { state.calCfg = s.data(); if (state.ws !== 'build') renderWs(); } }).catch(() => {}); } catch (e) { /* none */ }

@@ -42,7 +42,7 @@ const KIND_BY = Object.fromEntries([...KINDS, ...XKINDS].map(k => [k.kind, k]));
 const ROLE_NAME = { admin: 'Admin', user: 'WFM analyst', wfm: 'WFM manager', senior: 'Senior manager', spv: 'Supervisor', quality: 'Quality team', agent: 'Agent', pending: 'Waiting for access' };
 const STEPS = ['import', 'review', 'export', 'email'];
 const REVIEW_TABS = ['checks', 'issues', 'people', 'kpi', 'preview', 'history'];   // what to decide first, then the names, the people, the KPI results, the workbook, the past months
-const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], dedFrom: 13, dedTo: 12, incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: 'Mohammed Alshubily', managerTitle: 'Member Care Senior Manager' };
+const DEFAULTS = { target: 0.95, floor: 0.5, inactiveMin: 6, dedBrands: ['Virgin'], dedTeams: ['CC'], dedFrom: 13, dedTo: 12, incFullAdhTeams: ['CT'], attTplTeams: ['TS', 'MG', 'CT', 'QA', 'DE', 'WF'], hideNoSched: true, manager: '', managerTitle: 'Member Care Senior Manager' };
 const prevMonth = (() => { const t = new Date(); return t.getMonth() === 0 ? { y: t.getFullYear() - 1, m: 12 } : { y: t.getFullYear(), m: t.getMonth() }; })();
 const state = {
   step: 'import', tab: 'checks',
@@ -2262,9 +2262,9 @@ async function xlLogo() {
 }
 const logoTag = (src, maxW = 140) => { const L = state.logo; if (!L) return ''; const w = Math.min(maxW, L.w), h = Math.round(w * L.h / L.w); return `<p class="MsoNormal" style="margin:0in"><img width="${w}" height="${h}" style="width:${w}px;height:${h}px" src="${src}" alt="Logo"></p>`; };
 
-// ---------------------------------------------------------------- the incentive email (Mohammed's text) and the final emails
+// ---------------------------------------------------------------- the incentive email (the senior manager's text) and the final emails
 const INC_DEFAULTS = {
-  to: 'KSA-Member Care Champion <MemberCareChampion.ksa@beyond.one>; KSA-FRiENDi MC Champions <FriendiMCChampions@virginmobile.sa>; KSA-Member Care Management Team <MemberCareManagementTeam.ksa@beyond.one>',
+  to: '',
   cc: '', greeting: 'Dear Champions,', sign: 'Thanks and good luck', attach: true,
 };
 const incLabel = (y, m) => `${MON[m - 1]} - ${y}`;
@@ -2529,7 +2529,7 @@ function renderForm() {
     h += fld('Action plan', ta('actionPlan', f.actionPlan, 3));
     h += `<div class="grid2 tight">${fld('Review date', inp('reviewDate', f.reviewDate, 'type="date"'))}<div></div></div>`;
     h += fld('Note under the outcome', ta('consequence', f.consequence, 2));
-    h += `<div class="grid2 tight">${fld('Manager signing', inp('manager', f.manager))}${fld('Manager title', inp('managerTitle', f.managerTitle))}</div>`;
+    h += `<div class="grid2 tight">${fld('Manager signing', inp('manager', f.manager, 'placeholder="Name (the title alone when empty)"'))}${fld('Manager title', inp('managerTitle', f.managerTitle))}</div>`;
   } else {
     h += safeHtml(fuFormHtml, f);
     h += by.has('discussion') ? agentBox('What was discussed', 'discussion') : fld('What was discussed', ta('discussion', f.discussion, 4, acct ? ph : ''));
@@ -2632,8 +2632,8 @@ function attStripHtml(pid) {
 
 // ---------------------------------------------------------------- emails: deduction and incentive, for review and final
 const MAIL_DEFAULTS = {
-  to: 'KSA-Member Care Management Team <MemberCareManagementTeam.ksa@beyond.one>; Mohammed Alshubily <Mohammed.Alshubily@beyond.one>; Rasha Mugaddam <rasha.mogaddam@beyond.one>',
-  cc: 'Essam AlZahrani <essam.alzhrani@beyond.one>',
+  to: '',
+  cc: '',
   greeting: 'Hello, Team.',
   intro: 'Please review the data below and notify me if there are any changes.',
   introFinal: 'Please find below the final data after the review.',
@@ -3007,7 +3007,7 @@ function renderEmail() {
     ${inc && md.changes && md.changes.length ? `<details class="revchg"><summary>What changed for ${plural(md.changes.length, 'person', 'people')}, for you to check (the email does not list it)</summary><ul class="ilist">${md.changes.slice(0, 300).map(c => `<li><span class="nm" dir="auto">${esc(c.n)}</span><span class="sg">${esc(c.what)}</span></li>`).join('')}</ul></details>` : ''}`;
   // form
   const setv = (id, v) => { const el = $(id); if (document.activeElement !== el && el.value !== v) el.value = v; };
-  setv('mTo', cfg.to); setv('mCc', cfg.cc); setv('mSubject', md.subject); setv('mDeadline', mailDeadlineIso());
+  setv('mTo', cfg.to); setv('mCc', cfg.cc); mToHint(); setv('mSubject', md.subject); setv('mDeadline', mailDeadlineIso());
   setv('mGreeting', cfg.greeting); setv('mSign', cfg.sign); setv('mIntro', inc ? '' : fin ? state.mail.introFinal : state.mail.intro);
   $('fIntro').hidden = inc; $('fDeadline').hidden = fin; $('fAbs').hidden = inc; $('fZeros').hidden = inc; $('fChanges').hidden = !fin || inc;
   const s = state.settings;
@@ -3735,10 +3735,11 @@ function closeDrawer() {
 }
 function openPerson(id) { commitActive(); state.personId = id; renderPerson(); openDrawer('dPerson'); }
 let tt = null, toastFn = null;
-function toast(msg, action) {
+/** msg; action: a button { label, fn }; ms: how long it stays (a longer message stays longer) */
+function toast(msg, action, ms) {
   $('toastMsg').textContent = msg; const a = $('toastAct');
   toastFn = action ? action.fn : null; a.hidden = !action; if (action) a.textContent = action.label;
-  $('toast').hidden = false; clearTimeout(tt); tt = setTimeout(() => { $('toast').hidden = true; toastFn = null; }, action ? 7000 : 3500);
+  $('toast').hidden = false; clearTimeout(tt); tt = setTimeout(() => { $('toast').hidden = true; toastFn = null; }, ms || (action ? 7000 : 3500));
 }
 function setSeg(el, f) { [...el.querySelectorAll('button')].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === f))); }
 
@@ -3972,7 +3973,13 @@ $('revPicker').addEventListener('change', e => { const f = e.target.files[0]; e.
 $('mSrc').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailPick = f; lastMailHtml = ''; renderWs(); const b = $('mSrc').querySelector(`[data-f="${f}"]`); if (b) b.focus(); });
 $('mStage').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.f; if (!f) return; state.mailStage = f; lastMailHtml = ''; renderEmail(); renderSteps(); });
 let mailRaf = 0; const mailRender = () => { cancelAnimationFrame(mailRaf); mailRaf = requestAnimationFrame(renderEmail); };
-for (const [id, key] of [['mTo', 'to'], ['mCc', 'cc'], ['mGreeting', 'greeting'], ['mSign', 'sign']]) $(id).addEventListener('input', e => { mailCfg()[key] = e.target.value; mailRender(); persistMail(); });
+for (const [id, key] of [['mTo', 'to'], ['mCc', 'cc'], ['mGreeting', 'greeting'], ['mSign', 'sign']]) $(id).addEventListener('input', e => { mailCfg()[key] = e.target.value; if (key === 'to') mToHint(); mailRender(); persistMail(); });
+/** under To: nobody in it yet (the tool ships with no address) says so, and that what is typed is kept for every month */
+function mToHint() {
+  const el = $('mToHint'), none = !addrList(mailCfg().to).length; if (!el) return;
+  el.textContent = none ? 'Nobody yet: type the addresses, separated by a semicolon. They are kept in the shared data for every month.' : 'Separate addresses with a semicolon.';
+  el.classList.toggle('bad', none);
+}
 $('mIntro').addEventListener('input', e => { state.mail[state.mailStage === 'final' ? 'introFinal' : 'intro'] = e.target.value; mailRender(); persistMail(); });
 $('mSubject').addEventListener('input', e => { state.mailSubjects[doneKey()] = e.target.value; mailRender(); });
 $('mDeadline').addEventListener('change', e => { state.mailDeadline = e.target.value || null; mailRender(); });
@@ -4010,13 +4017,14 @@ $('emlBtn').addEventListener('click', async () => {
   if (cm.md.attach && mailCfg().attach) { try { const bytes = await attachmentBytes(cm.inc); if (bytes) attach = { name: cm.md.attach.name, bytes }; } catch (e) { toast('Could not make the attachment: ' + (e && e.message ? e.message : e)); return; } }
   const logo = state.logo && state.mailLogo ? state.logo : null;
   const ed = mailEdited(), bytes = enc8.encode(emlFile({ to: cm.to, cc: cm.cc, subject: cm.md.subject, text: ed ? ed.text : cm.text, html: ed ? ed.html : cm.html(logo ? 'cid:logo@mc' : null, false), attach, logo: ed ? null : logo }));
+  const noTo = cm.to.length ? '' : ' Its To line is empty: type the addresses in To on this page, and every month\'s email has them.';
   let c = await saveRaw(fn, new Blob([bytes], { type: 'message/rfc822' }));
   if (c === 'rejected_extension' || c === 'extension_not_enabled') {
     const zn = fn.replace(/\.eml$/, '.zip');
     c = await saveRaw(zn, new Blob([await Core.writeZip([{ name: fn, data: bytes }])], { type: 'application/zip' }));
-    if (c === 'ok') { markSent('Downloaded'); toast(`Saved ${zn}. This view cannot save .eml files directly, so it is inside the zip: open the zip, then the .eml. Nothing was sent.`); return; }
+    if (c === 'ok') { markSent('Downloaded'); toast(`Saved ${zn}. This view cannot save .eml files directly, so it is inside the zip: open the zip, then the .eml. Nothing was sent.${noTo}`, null, noTo ? 12000 : 0); return; }
   }
-  if (c === 'ok') { markSent('Downloaded'); toast(`Saved ${fn}. Open it to get a ready-to-send Outlook draft. Nothing was sent.`); } else toast(saveMsg(c, fn));
+  if (c === 'ok') { markSent('Downloaded'); toast(`Saved ${fn}. Open it to get a ready-to-send Outlook draft. Nothing was sent.${noTo}`, null, noTo ? 12000 : 0); } else toast(saveMsg(c, fn));
 });
 
 // notifications: the bell's drawer and Review › Checks show the same checks, with the same actions

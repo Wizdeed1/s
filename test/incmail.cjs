@@ -74,10 +74,21 @@ const today = () => '2026-10-20';   // the page's clock (below): the day the lat
   // the attachment and the review draft
   const [att] = await Promise.all([s.waitForEvent('download', { timeout: 30000 }), s.click('#attBtn')]);
   ok(att.suggestedFilename() === 'MC_all_team_incentive _data -2026-09.xlsx', `Save attachment: ${att.suggestedFilename()}`);
+  // no address ships with the tool: To is empty and says so, the draft still downloads (nobody in To) with a message that says where
+  // the addresses are typed; once typed (made-up here), the draft has them and they are kept for every month
+  const to0 = await s.evaluate(() => { const h = document.getElementById('mToHint'); return { to: document.getElementById('mTo').value, hint: h.textContent, bad: h.classList.contains('bad') }; });
+  ok(to0.to === '' && /^Nobody yet: type the addresses/.test(to0.hint) && to0.bad, `To starts empty and says so ("${to0.hint}")`);
   const [eml] = await Promise.all([s.waitForEvent('download', { timeout: 30000 }), s.click('#emlBtn')]);
   const emlPath = path.join(out, 'incentive-review.eml'); await eml.saveAs(emlPath);
   const emlText = fs.readFileSync(emlPath, 'utf8');
-  ok(/^Subject: Sep 2026 incentive Data for review/m.test(emlText) && /filename="MC_all_team_incentive _data -2026-09\.xlsx"/.test(emlText) && /MemberCareChampion\.ksa@beyond\.one/.test(emlText), 'Download .eml: the review draft to the champions, with the file attached');
+  ok(/^Subject: Sep 2026 incentive Data for review/m.test(emlText) && /filename="MC_all_team_incentive _data -2026-09\.xlsx"/.test(emlText) && /^X-Unsent: 1/m.test(emlText) && !/^To:/m.test(emlText), 'Download .eml: the review draft to the champions, with the file attached and nobody in To yet');
+  const t0 = await s.textContent('#toastMsg');
+  ok(/Its To line is empty: type the addresses in To on this page/.test(t0), `the message says the To line is empty and where to type the addresses ("${t0.slice(-90)}")`);
+  await s.fill('#mTo', 'MC Champions <champions@example.com>');
+  const [eml1] = await Promise.all([s.waitForEvent('download', { timeout: 30000 }), s.click('#emlBtn')]);
+  const emlPath1 = path.join(out, 'incentive-review-to.eml'); await eml1.saveAs(emlPath1);
+  const to1 = await s.evaluate(() => ({ to: window.__mc.state.incMail.to, hint: document.getElementById('mToHint').textContent }));
+  ok(/^To: "MC Champions" <champions@example\.com>/m.test(fs.readFileSync(emlPath1, 'utf8')) && to1.to === 'MC Champions <champions@example.com>' && /^Separate addresses/.test(to1.hint), 'typed in To: the draft has it, and it is kept for the next email');
   // the final: compared with the review saved a moment ago
   await s.click('#mStage [data-f="final"]'); await s.waitForTimeout(300);
   const fin = await s.evaluate(() => ({ h: document.getElementById('h-email').textContent, rev: document.getElementById('revState').textContent.replace(/\s+/g, ' '), rows: document.querySelector('#mailHead').textContent.replace(/\s+/g, ' ') }));
@@ -120,6 +131,11 @@ const today = () => '2026-10-20';   // the page's clock (below): the day the lat
     return { pos: pos.map(name), zero: zero.map(name), none: none.name, tot: pos.reduce((a, pid) => a + Math.round(map.get(pid).earned), 0) };
   });
   await s.waitForSelector('#cycleBody [data-mail4="final"]:not([disabled])', { timeout: 10000 });
+  // no address and no signer's name ship with the tool: the Email addresses card says how many are empty, who signs holds the four
+  // designations with no names, and the step says its email has no address yet
+  const ct = await s.evaluate(() => { const d = document.querySelector('#cycleBody details[data-det="ct"]'); return { sum: d.querySelector('summary').textContent, sig: d.querySelector('[data-signers]').value, cap: (document.querySelector('#st-form .stcap') || {}).textContent || '' }; });
+  ok(ct.sum === 'Email addresses · 4 not filled in yet' && ct.sig === '| VP-Group Member Care\n| HR Director\n| Finance Director\n| CEO' && /To the WFM manager \(no address yet: fill it in Email addresses, under Set once\)/.test(ct.cap),
+    `with nothing filled in: "${ct.sum}", who signs as four designations, and the step says where the address goes`);
   const [fd] = await Promise.all([s.waitForEvent('download', { timeout: 30000 }), s.click('#cycleBody [data-mail4="final"]')]);
   const fe = path.join(out, 'final-form.eml'); await fd.saveAs(fe);
   const raw = fs.readFileSync(fe, 'utf8'), parts = raw.split(/\r\n--mc(?:alt)?_[a-z0-9]+(?:--)?\r\n/);
@@ -131,6 +147,23 @@ const today = () => '2026-10-20';   // the page's clock (below): the day the lat
   const xn = xb.map(r => String((r || [])[1] || '')).filter(n => fx.pos.includes(n) || fx.zero.includes(n) || n === fx.none);
   ok(xn.length === 3 && xn.every(n => fx.pos.includes(n)), `the Excel file the same: ${xn.join(', ')}`);
   await s.waitForFunction(() => /Left off the form: 3 people with an earned SR of 0 or none/.test(document.getElementById('toastMsg').textContent), null, { timeout: 8000 }).then(() => ok(true, 'the page says who was left off: 3 people with an earned SR of 0 or none'), () => ok(false, 'the page says who was left off'));
+  const sig = html.match(/Designation Signature Date (.*?)$/), xs = xb.findIndex(r => r && r[2] === 'Designation'), xsig = xs < 0 ? [] : xb.slice(xs + 1).filter(r => r && r[2]).map(r => `${r[0] ?? ''}|${r[2]}`);
+  ok(!/^To:/m.test(raw) && sig && /^VP-Group Member Care HR Director Finance Director CEO\b/.test(sig[1]) && xsig.join(' / ') === '|VP-Group Member Care / |HR Director / |Finance Director / |CEO',
+    `the final result form with no address and no names yet: nobody in To, the four designations signing with the names blank (${xsig.join(' / ')})`);
+  // the VP typed once in the card (made-up): the results for review go to them; the management team (Cc) still has no address, and
+  // the message says so, with a button to the card
+  await s.evaluate(() => { document.querySelector('#cycleBody details[data-det="ct"]').open = true; });
+  await s.fill('#cycleBody [data-contact="vp"]', 'VP Example <vp@example.com>'); await s.press('#cycleBody [data-contact="vp"]', 'Tab');
+  await s.waitForFunction(() => document.querySelector('#cycleBody details[data-det="ct"] summary').textContent === 'Email addresses · 3 not filled in yet', null, { timeout: 5000 });
+  const [rv] = await Promise.all([s.waitForEvent('download', { timeout: 30000 }), s.click('#cycleBody [data-mail4="review"]')]);
+  const rp = path.join(out, 'results-review.eml'); await rv.saveAs(rp); const rvt = fs.readFileSync(rp, 'utf8');
+  await s.waitForFunction(() => /^Saved Results for review/.test(document.getElementById('toastMsg').textContent), null, { timeout: 8000 }).catch(() => {});
+  const rt = await s.evaluate(() => ({ t: document.getElementById('toastMsg').textContent, a: document.getElementById('toastAct').hidden ? '' : document.getElementById('toastAct').textContent }));
+  ok(/^To: "VP Example" <vp@example\.com>/m.test(rvt) && !/^Cc:/m.test(rvt) && /No address yet for the management team \(Cc\): fill it in on Supervisors › Month close › Email addresses \(under Set once\)\.$/.test(rt.t) && rt.a === 'Email addresses',
+    `the results for review: to the VP typed in the card, no Cc yet, and the message says so ("${rt.t.slice(-110)}", button: ${rt.a})`);
+  await s.evaluate(() => { const d = document.querySelector('#cycleBody details[data-det="ct"]'); d.open = false; window.scrollTo(0, 0); }); await s.click('#toastAct'); await s.waitForTimeout(400);
+  const fc = await s.evaluate(() => ({ open: document.querySelector('#cycleBody details[data-det="ct"]').open, focus: document.activeElement && document.activeElement.dataset.contact }));
+  ok(fc.open && fc.focus === 'form', `its button opens the card on the first empty address (${fc.focus})`);
 
   ok(!errs.length, `no errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
   await b.close();

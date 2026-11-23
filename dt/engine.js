@@ -148,21 +148,22 @@
     return (rows || []).map(r => ({ 'Date': r['Date'], 'Duration': r['Duration'], 'Queue': String(r['Queue'] || '').trim() ? 'queue' : '',
       'Flow Name': flows }));
   }
-  /* The IVR numbers, counted as the WFM team counts them from that export (November 2026): every row is a call into the IVR. The
-     calls with no queue (the Queue column blank) stayed in the IVR; those that ended within 40 s (0 s to 40 s, 40 s itself in)
-     were deflected, out of the calls with no queue. A call that reached a queue was transferred to an agent, out of all the calls. */
+  /* The IVR numbers, counted as the WFM team counts them from that export (23 November 2026): every row is a call into the IVR.
+     The calls with no queue (the Queue column blank) stayed in the IVR; those that ended within 40 s (0 s to 40 s, 40 s itself in)
+     are taken off them, and what is left was deflected, out of all the calls. A call that reached a queue was transferred to an
+     agent, out of all the calls. */
   const IVR_DEFLECT_S = 40;
   function ivrInteractions(rows) {
     const secs = v => (/:/.test(String(v)) ? dur(v) : num(v));
-    let calls = 0, noQueue = 0, deflected = 0, queued = 0;
+    let calls = 0, noQueue = 0, quick = 0, queued = 0;
     (rows || []).forEach(r => {
       calls++;
       if (String(r['Queue'] || '').trim()) { queued++; return; }
       noQueue++;
       const d = secs(r['Duration']);
-      if (d !== null && d >= 0 && d <= IVR_DEFLECT_S) deflected++;
+      if (d !== null && d >= 0 && d <= IVR_DEFLECT_S) quick++;
     });
-    return { calls: calls, noQueue: noQueue, deflected: deflected, queued: queued, within: IVR_DEFLECT_S };
+    return { calls: calls, noQueue: noQueue, quick: quick, deflected: noQueue - quick, queued: queued, within: IVR_DEFLECT_S };
   }
 
   /* Data Actions Performance export: the actions of the IVR's own flow (Action Category = the flow's name), Customer Type

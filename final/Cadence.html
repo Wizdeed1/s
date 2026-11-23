@@ -5321,21 +5321,22 @@ body.presenting .shtry-out { position: static; }
     return (rows || []).map(r => ({ 'Date': r['Date'], 'Duration': r['Duration'], 'Queue': String(r['Queue'] || '').trim() ? 'queue' : '',
       'Flow Name': flows }));
   }
-  /* The IVR numbers, counted as the WFM team counts them from that export (November 2026): every row is a call into the IVR. The
-     calls with no queue (the Queue column blank) stayed in the IVR; those that ended within 40 s (0 s to 40 s, 40 s itself in)
-     were deflected, out of the calls with no queue. A call that reached a queue was transferred to an agent, out of all the calls. */
+  /* The IVR numbers, counted as the WFM team counts them from that export (23 November 2026): every row is a call into the IVR.
+     The calls with no queue (the Queue column blank) stayed in the IVR; those that ended within 40 s (0 s to 40 s, 40 s itself in)
+     are taken off them, and what is left was deflected, out of all the calls. A call that reached a queue was transferred to an
+     agent, out of all the calls. */
   const IVR_DEFLECT_S = 40;
   function ivrInteractions(rows) {
     const secs = v => (/:/.test(String(v)) ? dur(v) : num(v));
-    let calls = 0, noQueue = 0, deflected = 0, queued = 0;
+    let calls = 0, noQueue = 0, quick = 0, queued = 0;
     (rows || []).forEach(r => {
       calls++;
       if (String(r['Queue'] || '').trim()) { queued++; return; }
       noQueue++;
       const d = secs(r['Duration']);
-      if (d !== null && d >= 0 && d <= IVR_DEFLECT_S) deflected++;
+      if (d !== null && d >= 0 && d <= IVR_DEFLECT_S) quick++;
     });
-    return { calls: calls, noQueue: noQueue, deflected: deflected, queued: queued, within: IVR_DEFLECT_S };
+    return { calls: calls, noQueue: noQueue, quick: quick, deflected: noQueue - quick, queued: queued, within: IVR_DEFLECT_S };
   }
 
   /* Data Actions Performance export: the actions of the IVR's own flow (Action Category = the flow's name), Customer Type
@@ -10425,21 +10426,23 @@ root.WFM = {
     ctx.strokeStyle = stroke; ctx.lineWidth = bw; ctx.strokeRect(x + bw / 2, y + bw / 2, w - bw, h - bw);
   }
 
-  /* What the card says. s: { brand, flow, date, span, calls, noQueue, deflected, queued, within (from the Interactions export of
-     the IVR's flow: the calls, those with no queue, those of them that ended within `within` seconds, those that reached a queue),
+  /* What the card says. s: { brand, flow, date, span, calls, noQueue, quick, deflected, queued, within (from the Interactions
+     export of the IVR's flow: the calls, those with no queue, those of them that ended within `within` seconds, the others (the
+     calls with no queue less the quick ones: the deflected), those that reached a queue),
      lists, firstName, afterOut, afterMs, busyOut: [{name, n}], busyMs: [{name, n}] (the Flow Outcome and Milestone exports, when
      dropped), daFile, actions, runs, errorsN, errors: [{name, runs, errors, rate}] (the Data Actions export: every action that
      failed, the most errors first) }. The names are the team's: IVR Summary daily report, IVR Calls, IVR deflection, Transfer to
-     Agent, Errors. IVR deflection is out of the calls with no queue; Transfer to Agent out of all the calls (November 2026). */
+     Agent, Errors. IVR deflection and Transfer to Agent are both out of all the calls (23 November 2026). */
   const errPct = r => (r == null ? '–' : r <= 0 ? '0%' : r < 0.0005 ? '<0.1%' : r < 0.1 ? Math.round(r * 1000) / 10 + '%' : Math.round(100 * r) + '%');
   const andList = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
   function cardText(s) {
     const title = 'IVR Summary daily report' + (s.date ? ' · ' + s.date : '');
     const sub = [s.flow ? s.flow + ' flow' : 'Flow not named in the export', s.span].filter(Boolean).join(' · ');
-    const er = s.runs ? s.errorsN / s.runs : null, calls = s.calls || 0, nq = s.noQueue || 0, within = s.within || 40;
+    const er = s.runs ? s.errorsN / s.runs : null, calls = s.calls || 0, within = s.within || 40;
     const tiles = {
       calls: { lab: 'IVR Calls', val: fmt(calls), note: 'calls into ' + (s.flow || 'the IVR') },
-      defl: { lab: 'IVR deflection · 0–' + within + 's', val: pctOf(s.deflected || 0, nq), note: fmt(s.deflected) + ' of ' + fmt(nq) + ' calls with no queue' },
+      defl: { lab: 'IVR deflection · over ' + within + 's', val: pctOf(s.deflected || 0, calls),
+        note: fmt(s.deflected) + ' of ' + fmt(calls) + ' calls (' + fmt(s.noQueue) + ' with no queue, less ' + fmt(s.quick) + ' within ' + within + ' s)' },
       agent: { lab: 'Transfer to Agent', val: pctOf(s.queued || 0, calls), note: fmt(s.queued) + ' of ' + fmt(calls) + ' calls reached a queue' },
       errors: !s.daFile ? { lab: 'Errors', val: '–', note: 'no data actions export' }
         : !s.actions ? { lab: 'Errors', val: '–', note: 'no data actions for ' + (s.flow || 'this flow') }
@@ -10447,7 +10450,7 @@ root.WFM = {
     };
     const order = [tiles.calls, tiles.defl, tiles.agent, tiles.errors];
     const sources = ['Interactions' + (s.flow ? ' (' + s.flow + ')' : '')].concat(s.daFile ? ['Data Actions Performance'] : [], s.lists ? ['Flow Outcome Detail', 'Flow Milestone Detail'] : []);
-    const foot = 'IVR deflection = calls with no queue that ended within ' + within + ' s, of all calls with no queue. Transfer to Agent = calls that reached a queue, of all IVR calls.'
+    const foot = 'IVR deflection = calls with no queue, less those that ended within ' + within + ' s, of all IVR calls. Transfer to Agent = calls that reached a queue, of all IVR calls.'
       + (s.daFile ? ' Errors = data action runs that failed, of all the flow’s runs, Customer Type included.' : '')
       + ' Source: Genesys ' + andList(sources) + (sources.length > 1 ? ' exports' : ' export') + (s.date ? ', ' + s.date : '') + '.';
     return { title: title, sub: sub, tiles: tiles, order: order, foot: foot };
@@ -33374,9 +33377,9 @@ for (const page of [$('wfmDm'), $('wfmRb')]) {
 // ---------------------------------------------------------------- the IVR scorecard: the day's IVR numbers as a picture for Teams (Member Care Report Builder 15.8's card)
 const RB_IVR_BRAND = { virgin: 'Virgin Mobile', postpaid: 'Virgin Mobile', friendi: 'FRiENDi mobile', fpay: 'FRiENDi PAY' };
 let rbIvrCur = null;
-/** the card's model, as the builder gives it to its scorecard: the brand and flow, the day; the calls, those with no queue and
-    those of them that ended within 40 s (the deflection), those that reached a queue (the transfers) (the Interactions export of
-    the IVR's flow); the errors of its data actions, Customer Type included
+/** the card's model, as the builder gives it to its scorecard: the brand and flow, the day; the calls, those with no queue, those
+    of them that ended within 40 s and the others (the deflection), those that reached a queue (the transfers) (the Interactions
+    export of the IVR's flow); the errors of its data actions, Customer Type included
     (the Data Actions export); the top 5 outcomes and milestones when those exports were dropped too */
 function rbIvrCard(key, p, x) {
   const E = rbE(), R = rbR(), S = window.Scorecard, flows = x.flows || [], skipped = x.skippedMilestones || [], ix = x.ix || {};
@@ -33384,7 +33387,7 @@ function rbIvrCard(key, p, x) {
     brand: flows.length ? S.brandOf(flows[0]) : RB_IVR_BRAND[key], flow: flows.join(', '),
     date: p.multi ? R.niceRange(p.start, p.end) : R.dayShort(p.end, p.end) + ', ' + R.niceRange(p.end, p.end),
     span: p.multi ? R.dayShort(p.start, p.end) + ' · ' + p.days.length + ' days' : '24 hours', slug: p.multi ? p.start + '_to_' + p.end : p.end,
-    calls: ix.calls || 0, noQueue: ix.noQueue || 0, deflected: ix.deflected || 0, queued: ix.queued || 0, within: ix.within || 40,
+    calls: ix.calls || 0, noQueue: ix.noQueue || 0, quick: ix.quick || 0, deflected: ix.deflected || 0, queued: ix.queued || 0, within: ix.within || 40,
     lists: !!x.lists, firstName: x.topOutcome ? x.topOutcome.name : '',
     afterOut: x.topOutcome ? 'After ' + x.topOutcome.name + ' · ' + E.fmtInt(x.topOutcome.attempts) : '',
     afterMs: skipped.length ? 'After ' + skipped.map(o => o.name + ' · ' + E.fmtInt(o.hits)).join(', ') : '',

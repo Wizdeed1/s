@@ -83,21 +83,23 @@
     ctx.strokeStyle = stroke; ctx.lineWidth = bw; ctx.strokeRect(x + bw / 2, y + bw / 2, w - bw, h - bw);
   }
 
-  /* What the card says. s: { brand, flow, date, span, calls, noQueue, deflected, queued, within (from the Interactions export of
-     the IVR's flow: the calls, those with no queue, those of them that ended within `within` seconds, those that reached a queue),
+  /* What the card says. s: { brand, flow, date, span, calls, noQueue, quick, deflected, queued, within (from the Interactions
+     export of the IVR's flow: the calls, those with no queue, those of them that ended within `within` seconds, the others (the
+     calls with no queue less the quick ones: the deflected), those that reached a queue),
      lists, firstName, afterOut, afterMs, busyOut: [{name, n}], busyMs: [{name, n}] (the Flow Outcome and Milestone exports, when
      dropped), daFile, actions, runs, errorsN, errors: [{name, runs, errors, rate}] (the Data Actions export: every action that
      failed, the most errors first) }. The names are the team's: IVR Summary daily report, IVR Calls, IVR deflection, Transfer to
-     Agent, Errors. IVR deflection is out of the calls with no queue; Transfer to Agent out of all the calls (November 2026). */
+     Agent, Errors. IVR deflection and Transfer to Agent are both out of all the calls (23 November 2026). */
   const errPct = r => (r == null ? '–' : r <= 0 ? '0%' : r < 0.0005 ? '<0.1%' : r < 0.1 ? Math.round(r * 1000) / 10 + '%' : Math.round(100 * r) + '%');
   const andList = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
   function cardText(s) {
     const title = 'IVR Summary daily report' + (s.date ? ' · ' + s.date : '');
     const sub = [s.flow ? s.flow + ' flow' : 'Flow not named in the export', s.span].filter(Boolean).join(' · ');
-    const er = s.runs ? s.errorsN / s.runs : null, calls = s.calls || 0, nq = s.noQueue || 0, within = s.within || 40;
+    const er = s.runs ? s.errorsN / s.runs : null, calls = s.calls || 0, within = s.within || 40;
     const tiles = {
       calls: { lab: 'IVR Calls', val: fmt(calls), note: 'calls into ' + (s.flow || 'the IVR') },
-      defl: { lab: 'IVR deflection · 0–' + within + 's', val: pctOf(s.deflected || 0, nq), note: fmt(s.deflected) + ' of ' + fmt(nq) + ' calls with no queue' },
+      defl: { lab: 'IVR deflection · over ' + within + 's', val: pctOf(s.deflected || 0, calls),
+        note: fmt(s.deflected) + ' of ' + fmt(calls) + ' calls (' + fmt(s.noQueue) + ' with no queue, less ' + fmt(s.quick) + ' within ' + within + ' s)' },
       agent: { lab: 'Transfer to Agent', val: pctOf(s.queued || 0, calls), note: fmt(s.queued) + ' of ' + fmt(calls) + ' calls reached a queue' },
       errors: !s.daFile ? { lab: 'Errors', val: '–', note: 'no data actions export' }
         : !s.actions ? { lab: 'Errors', val: '–', note: 'no data actions for ' + (s.flow || 'this flow') }
@@ -105,7 +107,7 @@
     };
     const order = [tiles.calls, tiles.defl, tiles.agent, tiles.errors];
     const sources = ['Interactions' + (s.flow ? ' (' + s.flow + ')' : '')].concat(s.daFile ? ['Data Actions Performance'] : [], s.lists ? ['Flow Outcome Detail', 'Flow Milestone Detail'] : []);
-    const foot = 'IVR deflection = calls with no queue that ended within ' + within + ' s, of all calls with no queue. Transfer to Agent = calls that reached a queue, of all IVR calls.'
+    const foot = 'IVR deflection = calls with no queue, less those that ended within ' + within + ' s, of all IVR calls. Transfer to Agent = calls that reached a queue, of all IVR calls.'
       + (s.daFile ? ' Errors = data action runs that failed, of all the flow’s runs, Customer Type included.' : '')
       + ' Source: Genesys ' + andList(sources) + (sources.length > 1 ? ' exports' : ' export') + (s.date ? ', ' + s.date : '') + '.';
     return { title: title, sub: sub, tiles: tiles, order: order, foot: foot };

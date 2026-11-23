@@ -1165,9 +1165,9 @@ for (const page of [$('wfmDm'), $('wfmRb')]) {
 // ---------------------------------------------------------------- the IVR scorecard: the day's IVR numbers as a picture for Teams (Member Care Report Builder 15.8's card)
 const RB_IVR_BRAND = { virgin: 'Virgin Mobile', postpaid: 'Virgin Mobile', friendi: 'FRiENDi mobile', fpay: 'FRiENDi PAY' };
 let rbIvrCur = null;
-/** the card's model, as the builder gives it to its scorecard: the brand and flow, the day; the calls, those with no queue and
-    those of them that ended within 40 s (the deflection), those that reached a queue (the transfers) (the Interactions export of
-    the IVR's flow); the errors of its data actions, Customer Type included
+/** the card's model, as the builder gives it to its scorecard: the brand and flow, the day; the calls, those with no queue, those
+    of them that ended within 40 s and the others (the deflection), those that reached a queue (the transfers) (the Interactions
+    export of the IVR's flow); the errors of its data actions, Customer Type included
     (the Data Actions export); the top 5 outcomes and milestones when those exports were dropped too */
 function rbIvrCard(key, p, x) {
   const E = rbE(), R = rbR(), S = window.Scorecard, flows = x.flows || [], skipped = x.skippedMilestones || [], ix = x.ix || {};
@@ -1175,7 +1175,7 @@ function rbIvrCard(key, p, x) {
     brand: flows.length ? S.brandOf(flows[0]) : RB_IVR_BRAND[key], flow: flows.join(', '),
     date: p.multi ? R.niceRange(p.start, p.end) : R.dayShort(p.end, p.end) + ', ' + R.niceRange(p.end, p.end),
     span: p.multi ? R.dayShort(p.start, p.end) + ' · ' + p.days.length + ' days' : '24 hours', slug: p.multi ? p.start + '_to_' + p.end : p.end,
-    calls: ix.calls || 0, noQueue: ix.noQueue || 0, deflected: ix.deflected || 0, queued: ix.queued || 0, within: ix.within || 40,
+    calls: ix.calls || 0, noQueue: ix.noQueue || 0, quick: ix.quick || 0, deflected: ix.deflected || 0, queued: ix.queued || 0, within: ix.within || 40,
     lists: !!x.lists, firstName: x.topOutcome ? x.topOutcome.name : '',
     afterOut: x.topOutcome ? 'After ' + x.topOutcome.name + ' · ' + E.fmtInt(x.topOutcome.attempts) : '',
     afterMs: skipped.length ? 'After ' + skipped.map(o => o.name + ' · ' + E.fmtInt(o.hits)).join(', ') : '',

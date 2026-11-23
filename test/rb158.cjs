@@ -5,16 +5,17 @@
 //    Milestone Detail, Data Actions Performance) and FRiENDi Pay's Ticket Summary Details: each recognised and listed by brand and
 //    day; the Interactions export goes to the IVR, not to the WFM Daily Review, and only what the card counts of each call is kept
 //    (no caller's number, no agent's name); Recognise files sends the IVR exports there.
-// 3. The IVR numbers (for the IVR scorecard), as the WFM team counts them from the Interactions export: every row a call; deflected
-//    under 30 s and 60 s = no queue and a duration from 0 s to 30 s (60 s), of all the calls; transferred = an agent took it. The
-//    top outcomes and milestones (their exports were dropped too), and the data actions with errors, Customer Type included, the
-//    most errors first. No brand email has an IVR box (the WFM team took it out), nor a check about it.
+// 3. The IVR numbers (for the IVR scorecard), as the WFM team counts them from the Interactions export (November 2026): every row
+//    a call; deflected = no queue and a duration from 0 s to 40 s, of the calls with no queue; transferred to an agent = the call
+//    reached a queue, of all the calls. The top outcomes and milestones (their exports were dropped too), and the data actions with
+//    errors, Customer Type included, the most errors first. No brand email has an IVR box (the WFM team took it out), nor a check
+//    about it.
 // 4. MC Leaders: the tickets to exclude of the report day: read, left out of the email, the ones not found named; Clear the list.
 // 5. Emails › Daily brand emails: the Virgin email still has IVR scorecard; it opens the card in a drawer of the tool's own, with
 //    Copy for Teams and Download PNG (a PNG of the card is saved), and Open in Outlook (.eml): the IVR Summary Daily Report email
-//    with the card written into its body as text and tables (no picture of it), in the shape Word keeps: the calls beside the two
-//    deflections (one cell over their rows), the transfers and the errors (their share of the data action runs, the count under
-//    it), and every action that failed with its errors.
+//    with the card written into its body as text and tables (no picture of it), in the shape Word keeps: the calls beside the
+//    deflection and the transfers (one cell over their rows), the errors across the card (their share of the data action runs, the
+//    count under it), and every action that failed with its errors.
 // Usage: node test/rb158.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
@@ -35,8 +36,8 @@ const files = {
   'Data_Actions_Performance_-_2026-10-08T070812.120.csv': csv([['Interval Start', 'Interval End', 'Action Category', 'Action Name', 'Executions', 'Error %', 'Aggregate or Detailed'],
     [D0, D1, 'Virgin Main IVR', 'Get Balance', 500, 0.02, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Check Customer', 800, 0, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Customer_Type', 3000, 0.03, 'Detailed'], [D0, D1, 'Virgin Main IVR', 'Create Callback', 30, 0.1, 'Detailed'],
     [D0, D1, 'Another Flow', 'Lookup', 10, 0.5, 'Detailed'], [D0, D1, '', '', 1340, 0.01, 'Aggregate']]),
-  // the IVR's own Interactions export (filtered by its flow), made up: 40 calls; 20 an agent took from a queue, 2 left in a queue
-  // (one of them within a minute: not deflected), 18 with no queue: 6 ended within 30 s, 5 more within 60 s, 7 later
+  // the IVR's own Interactions export (filtered by its flow), made up: 40 calls; 22 reached a queue (20 an agent took, 2 left in the
+  // queue, one of them within 40 s: not deflected), 18 with no queue: 7 ended within 40 s (30 s and 31 s among them), 11 later
   'Interactions_-_2026-10-08T070912.120.csv': csv([['Full Export Completed', 'Partial Result Timestamp', 'Filters', 'Media Type', 'Users', 'Remote', 'Date', 'Duration', 'Direction', 'Queue', 'Wrap-up', 'ANI', 'Disconnect Type', 'Error Code'],
     ...[...Array.from({ length: 20 }, (_, i) => [`Agent ${String.fromCharCode(65 + i)}.`, 'Virgin_Ar', 100 + 7 * i, 'Agent']), ['', 'Virgin_En', 45, 'External'], ['', 'Virgin_En', 80, 'External'],
       ...[0.8, 5, 12.5, 18, 25, 30, 31, 45, 52, 59.9, 60, 61.2, 75, 90, 120, 200, 300, 61].map(d => ['', '', d, d > 250 ? 'System' : 'External'])]
@@ -75,9 +76,9 @@ const files = {
     `the exports recognised: ${F.join(' | ')}`);
   const kept = await p.evaluate(() => { const RB = window.__mc.rb(), r = ((RB.bag.dated.ivrInt || {}).virgin || {})['2026-10-07'] || [], wfm = window.WFM && window.WFM.state ? JSON.stringify(Object.keys(window.WFM.state.files || {})) : '';
     return { n: r.length, keys: [...new Set(r.flatMap(x => Object.keys(x)))].sort().join(), leak: JSON.stringify(r).match(/tel:|Agent [A-Z]\.|Virgin_|Mobile Number|session\.inactive/g) || [], wfm }; });
-  ok(kept.n === 40 && kept.keys === 'Date,Duration,Flow Name,Queue,Users' && !kept.leak.length && !/interactions/.test(kept.wfm),
+  ok(kept.n === 40 && kept.keys === 'Date,Duration,Flow Name,Queue' && !kept.leak.length && !/interactions/.test(kept.wfm),
     `  the Interactions export of the IVR's flow: for the IVR, not the WFM Daily Review; of each of its ${kept.n} calls only ${kept.keys} (no number, no name${kept.leak.length ? '; found: ' + kept.leak.join(', ') : ''})`);
-  const U = await p.evaluate(() => { const r = (q, d, u) => ({ Queue: q, Duration: d, Users: u }); return window.Engine.ivrInteractions([r('', '0', ''), r('', '30', ''), r('', '30.001', ''), r('', '60', ''), r('', '60.5', ''), r('Virgin_Ar', '10', ''), r('Virgin_Ar', '200', 'Agent A.'), r('', '00:00:45', '')]); });
+  const U = await p.evaluate(() => { const r = (q, d, u) => ({ Queue: q, Duration: d, Users: u }); return window.Engine.ivrInteractions([r('', '0', ''), r('', '40', ''), r('', '40.001', ''), r('', '00:00:39', ''), r('', '60', ''), r('Virgin_Ar', '10', ''), r('Virgin_Ar', '200', 'Agent A.'), r('', '', '')]); });
   // the Data Actions export as Genesys writes it today: an Errors column (the count itself), other categories (Genesys Cloud Data
   // Actions) and the roll-ups left out
   const DA = await p.evaluate(() => { const r = (c, n, x, e, er, a) => ({ 'Aggregate or Detailed': a || 'Detailed', 'Action Category': c, 'Action Name': n, 'Executions': x, 'Error %': e, 'Errors': er });
@@ -85,7 +86,8 @@ const files = {
       r('Genesys Cloud Data Actions', 'Insert Welcome', '435', '1.00', '435'), r('Flow X', '', '4604', '0.00', '20', 'Aggregate'), r('', '', '5039', '0.09', '455', '')], ['Flow X'], 'virgin');
     return { all: o.all.map(e => `${e.name} ${e.errors}/${e.runs}`).join(','), runs: o.runs, errors: o.errors, actions: o.actions }; });
   ok(DA.all === 'Customer_Type 16/2889,Survey Rating 4/1015' && DA.runs === 4604 && DA.errors === 20 && DA.actions === 3, `  the Errors column read as the count (0.00% with 4 errors kept), another category and the roll-ups left out (${DA.all}: ${DA.errors} of ${DA.runs} runs)`);
-  ok(U.calls === 8 && U.u30 === 2 && U.u60 === 5 && U.agent === 1, `  the rule: no queue and 0 s to 30 s (30 s itself in, 30.001 s out), 0 s to 60 s, a queued call never deflected, a duration as 00:00:45 read too (${U.u30} and ${U.u60} of ${U.calls}, ${U.agent} transfer)`);
+  ok(U.calls === 8 && U.noQueue === 6 && U.deflected === 3 && U.queued === 2 && U.within === 40,
+    `  the rule: deflected = no queue and 0 s to 40 s (40 s itself in, 40.001 s out, 00:00:39 read too), of the calls with no queue (one with no duration counted, not deflected); a queued call never deflected and always a transfer, an agent's name or not (${U.deflected} of ${U.noQueue} deflected, ${U.queued} of ${U.calls} queued)`);
   ok(await p.evaluate(() => window.__mc.rb().date) === '2026-10-07', 'the report day follows the exports: 7 Oct 2026');
   await p.setInputFiles('#recogPicker', paths[1]); await p.waitForSelector('#dRecog:not([hidden]) .rcard', { timeout: 20000 }); await p.waitForTimeout(300);
   const rk = await p.evaluate(() => { const c = document.querySelector('#dRecog .rcard'); return { lead: c.querySelector('.rlead').textContent.replace(/\s+/g, ' '), all: c.textContent, use: (c.querySelector('[data-ruse]') || {}).textContent || '' }; });
@@ -99,7 +101,7 @@ const files = {
   const ivr = await p.evaluate(() => { const x = (window.__mc.rb().data.virgin || {}).ivr; return x && { ix: x.ix || {}, lists: x.lists, out: x.topOutcomes.map(o => o.name).join(','), ms: x.topMilestones.map(o => o.name).join(','), skip: x.skippedMilestones.map(o => o.name).join(','),
     errs: (x.errorsAll || []).map(e => `${e.name} ${e.errors}/${e.runs}`).join(','), runs: x.runs, errorsN: x.errorsN, actions: x.actions }; });
   const ix = (ivr && ivr.ix) || {};
-  ok(ix.calls === 40 && ix.u60 === 11 && ix.u30 === 6 && ix.agent === 20, `Virgin's IVR, from the Interactions export: ${ix.calls} calls, ${ix.u60} with no queue ended within 60 s and ${ix.u30} within 30 s (a queued call within a minute not counted), ${ix.agent} an agent took`);
+  ok(ix.calls === 40 && ix.noQueue === 18 && ix.deflected === 7 && ix.queued === 22, `Virgin's IVR, from the Interactions export: ${ix.calls} calls; ${ix.noQueue} with no queue, ${ix.deflected} of them ended within 40 s; ${ix.queued} reached a queue (two an agent did not take among them; a queued call within 40 s not deflected)`);
   ok(ivr && ivr.lists && ivr.out === 'Balance Inquiry,Bill Payment,Data Bundle,Language,Recharge' && ivr.ms === 'Self Service Balance,Self Service Recharge,Promo Played,Agent Callback' && ivr.skip === 'Customer Type Check',
     `  the top five outcomes after the first menu, and the top milestones without the number check (${ivr && ivr.skip}), ReachedAgent, ReachAgent or a Transfer (${ivr && ivr.ms}): their exports were dropped too`);
   ok(ivr && ivr.errs === 'Customer_Type 90/3000,Get Balance 10/500,Create Callback 3/30' && ivr.errorsN === 103 && ivr.runs === 4330 && ivr.actions === 4,
@@ -131,10 +133,10 @@ const files = {
   await p.click('#wfmDm [data-rba="ivr"]'); await p.waitForSelector('#dIvr:not([hidden]) #ivrImg', { timeout: 10000 }); await p.waitForTimeout(400);
   const card = await p.evaluate(() => { const i = document.getElementById('ivrImg'); return { w: i.naturalWidth, h: i.naturalHeight, alt: i.alt, sub: document.getElementById('ivrSub').textContent, title: document.getElementById('h-ivr').textContent }; });
   ok(card.w === 1280 && card.h > 600 && /Balance Inquiry/.test(card.alt) && /Virgin Mobile · /.test(card.sub), `IVR scorecard: the card in a drawer of the tool's own (${card.w}×${card.h}), described for screen readers`);
-  const names = ['IVR Summary daily report · Wed, 7 Oct 2026.', 'Virgin Main IVR flow · 24 hours.', 'IVR Calls: 40, calls into Virgin Main IVR.', 'IVR deflection · under 60s: 28%, 11 of 40 calls.', 'IVR deflection · under 30s: 15%, 6 of 40 calls.',
-    'Transfer to Agent: 50%, 20 transfers.', 'Errors: 2.4%, 103 errors of 4,330 data action runs.', 'Top milestones: Self Service Balance 250, Self Service Recharge 100, Promo Played 80, Agent Callback 30.',
+  const names = ['IVR Summary daily report · Wed, 7 Oct 2026.', 'Virgin Main IVR flow · 24 hours.', 'IVR Calls: 40, calls into Virgin Main IVR.', 'IVR deflection · 0–40s: 39%, 7 of 18 calls with no queue.',
+    'Transfer to Agent: 55%, 22 of 40 calls reached a queue.', 'Errors: 2.4%, 103 errors of 4,330 data action runs.', 'Top milestones: Self Service Balance 250, Self Service Recharge 100, Promo Played 80, Agent Callback 30.',
     'Data action errors: Customer_Type 90 errors, 3% of 3,000 runs; Get Balance 10 errors, 2% of 500 runs; Create Callback 3 errors, 10% of 30 runs.'];
-  ok(names.every(t => card.alt.includes(t)) && !/visits to|abandoned left out|worst:|ReachedAgent|ReachAgent|Transfer_Billing/.test(card.alt), `  the team's names on the card: the calls, the deflection under 60 s and 30 s, the transfers, the errors, every failing action: "${card.alt.slice(0, 220)}…"${names.filter(t => !card.alt.includes(t)).map(t => ' MISSING: ' + t).join('')}`);
+  ok(names.every(t => card.alt.includes(t)) && !/visits to|abandoned left out|worst:|ReachedAgent|ReachAgent|Transfer_Billing|under 60s|under 30s/.test(card.alt), `  the team's names on the card: the calls, the deflection within 40 s of the calls with no queue (no 60 s or 30 s any more), the transfers (queued calls), the errors, every failing action: "${card.alt.slice(0, 220)}…"${names.filter(t => !card.alt.includes(t)).map(t => ' MISSING: ' + t).join('')}`);
   await p.screenshot({ path: path.join(out, 'rb158-scorecard.png') });
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.click('#dIvr [data-ivr="save"]')]);
   const png = path.join(out, dl.suggestedFilename()); await dl.saveAs(png); const head = fs.readFileSync(png).subarray(0, 8).toString('hex');
@@ -156,15 +158,15 @@ const files = {
     const d = new DOMParser().parseFromString(h.replace(/</g, ' <'), 'text/html'), dark = [...d.querySelectorAll('td[bgcolor="#201e1d"]')].map(td => +td.getAttribute('width'));
     return { txt: d.body.textContent.replace(/\s+/g, ' '), dark, imgs: d.images.length };
   }, html);
-  const said = ['IVR SCORECARD IVR Summary daily report · Wed, 7 Oct 2026 Virgin Main IVR flow · 24 hours', 'IVR CALLS 40 calls into Virgin Main IVR', 'IVR DEFLECTION · UNDER 60S 28% 11 of 40 calls',
-    'IVR DEFLECTION · UNDER 30S 15% 6 of 40 calls', 'TRANSFER TO AGENT 50% 20 transfers', 'ERRORS 2.4% 103 errors of 4,330 data action runs', 'TOP 5 OUTCOMES · ATTEMPTS After Main Menu · 1,000 Balance Inquiry 300 Bill Payment 120 Data Bundle 80 Language 60 Recharge 40',
+  const said = ['IVR SCORECARD IVR Summary daily report · Wed, 7 Oct 2026 Virgin Main IVR flow · 24 hours', 'IVR CALLS 40 calls into Virgin Main IVR', 'IVR DEFLECTION · 0–40S 39% 7 of 18 calls with no queue',
+    'TRANSFER TO AGENT 55% 22 of 40 calls reached a queue', 'ERRORS 2.4% 103 errors of 4,330 data action runs', 'TOP 5 OUTCOMES · ATTEMPTS After Main Menu · 1,000 Balance Inquiry 300 Bill Payment 120 Data Bundle 80 Language 60 Recharge 40',
     'TOP 5 MILESTONES · HITS After Customer Type Check · 900 Self Service Balance 250 Self Service Recharge 100 Promo Played 80 Agent Callback 30',
     'DATA ACTION ERRORS · VIRGIN MAIN IVR Customer_Type 90 errors 3% of 3,000 runs Get Balance 10 errors 2% of 500 runs Create Callback 3 errors 10% of 30 runs',
-    'IVR deflection = calls with no queue that ended within 60 s or 30 s, of all IVR calls. Transfer to Agent = calls an agent took. Errors = data action runs that failed, of all the flow’s runs, Customer Type included.'];
+    'IVR deflection = calls with no queue that ended within 40 s, of all calls with no queue. Transfer to Agent = calls that reached a queue, of all IVR calls. Errors = data action runs that failed, of all the flow’s runs, Customer Type included.'];
   const missing = said.filter(x => !mt.txt.includes(x));
-  const order = ['IVR CALLS', 'IVR DEFLECTION · UNDER 60S', 'IVR DEFLECTION · UNDER 30S', 'TRANSFER TO AGENT', 'ERRORS'].map(x => mt.txt.indexOf(x));
-  ok(!missing.length && mt.imgs === 1 && !/ReachedAgent|Transfer_Billing/.test(mt.txt) && order.every((v, i) => v >= 0 && (!i || v > order[i - 1])) && /<td width="339"[^>]*rowspan="3"/.test(html),
-    `  the card in the body as text: the calls beside the two deflections (one cell over their rows), the transfers, the errors, both top 5 lists and every failing action, Customer Type included${missing.length ? '; missing: ' + missing.join(' | ') : ''}`);
+  const order = ['IVR CALLS', 'IVR DEFLECTION · 0–40S', 'TRANSFER TO AGENT', 'ERRORS'].map(x => mt.txt.indexOf(x));
+  ok(!missing.length && mt.imgs === 1 && !/ReachedAgent|Transfer_Billing|UNDER 60S|UNDER 30S/.test(mt.txt) && order.every((v, i) => v >= 0 && (!i || v > order[i - 1])) && /<td width="339"[^>]*rowspan="3"/.test(html) && /<td width="688"[^>]*colspan="3"/.test(html),
+    `  the card in the body as text: the calls beside the deflection and the transfers (one cell over their rows), the errors across the card, both top 5 lists and every failing action, Customer Type included${missing.length ? '; missing: ' + missing.join(' | ') : ''}`);
   ok(mt.dark.join() === '280,112,75,56,37,280,112,90,34', `  the bars as table cells, each as long as its number against the top one (${mt.dark.join(', ')} of 280 px)`);
   // the shape Word keeps (Outlook writes mail with Word): a table never ends a cell, two tables never touch, every paragraph has its text's size
   const from = html.indexOf('padding:.5in 42.0pt .5in 42.0pt">'), mail = html.slice(from, html.indexOf('border-top:solid #F1F5F9', from));

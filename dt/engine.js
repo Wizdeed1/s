@@ -141,29 +141,28 @@
     const h = payload.headers || [], has = n => h.indexOf(n) >= 0, r = (payload.rows || [])[0];
     return has('Filters') && has('Duration') && has('Queue') && !!r && flowsFromFilters(r['Filters']).length > 0;
   }
-  /* what the card counts of each call, and nothing else (no caller's number, no agent's name): its date, its duration, whether
-     it reached a queue and whether an agent took it; the flow, so the card can name it */
+  /* what the card counts of each call, and nothing else (no caller's number, no agent's name): its date, its duration and whether
+     it reached a queue; the flow, so the card can name it */
   function ivrInteractionRows(rows) {
     const flows = flowsFromFilters(((rows || [])[0] || {})['Filters']).join(', ');
     return (rows || []).map(r => ({ 'Date': r['Date'], 'Duration': r['Duration'], 'Queue': String(r['Queue'] || '').trim() ? 'queue' : '',
-      'Users': String(r['Users'] || '').trim() ? 'agent' : '', 'Flow Name': flows }));
+      'Flow Name': flows }));
   }
-  /* The IVR numbers, counted as the WFM team counts them from that export: every row is a call into the IVR; a call with no queue
-     that ended between 0 s and 30 s (or 60 s) was deflected; a call an agent took (Users) was transferred to an agent. */
+  /* The IVR numbers, counted as the WFM team counts them from that export (November 2026): every row is a call into the IVR. The
+     calls with no queue (the Queue column blank) stayed in the IVR; those that ended within 40 s (0 s to 40 s, 40 s itself in)
+     were deflected, out of the calls with no queue. A call that reached a queue was transferred to an agent, out of all the calls. */
+  const IVR_DEFLECT_S = 40;
   function ivrInteractions(rows) {
     const secs = v => (/:/.test(String(v)) ? dur(v) : num(v));
-    let calls = 0, u30 = 0, u60 = 0, agent = 0, noQueue = 0;
+    let calls = 0, noQueue = 0, deflected = 0, queued = 0;
     (rows || []).forEach(r => {
       calls++;
-      if (String(r['Users'] || '').trim()) agent++;
-      if (String(r['Queue'] || '').trim()) return;
+      if (String(r['Queue'] || '').trim()) { queued++; return; }
       noQueue++;
       const d = secs(r['Duration']);
-      if (d === null || !(d >= 0)) return;
-      if (d <= 30) u30++;
-      if (d <= 60) u60++;
+      if (d !== null && d >= 0 && d <= IVR_DEFLECT_S) deflected++;
     });
-    return { calls: calls, u30: u30, u60: u60, agent: agent, noQueue: noQueue };
+    return { calls: calls, noQueue: noQueue, deflected: deflected, queued: queued, within: IVR_DEFLECT_S };
   }
 
   /* Data Actions Performance export: the actions of the IVR's own flow (Action Category = the flow's name), Customer Type

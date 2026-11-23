@@ -83,29 +83,29 @@
     ctx.strokeStyle = stroke; ctx.lineWidth = bw; ctx.strokeRect(x + bw / 2, y + bw / 2, w - bw, h - bw);
   }
 
-  /* What the card says. s: { brand, flow, date, span, calls, u30, u60, agent (from the Interactions export of the IVR's flow),
+  /* What the card says. s: { brand, flow, date, span, calls, noQueue, deflected, queued, within (from the Interactions export of
+     the IVR's flow: the calls, those with no queue, those of them that ended within `within` seconds, those that reached a queue),
      lists, firstName, afterOut, afterMs, busyOut: [{name, n}], busyMs: [{name, n}] (the Flow Outcome and Milestone exports, when
      dropped), daFile, actions, runs, errorsN, errors: [{name, runs, errors, rate}] (the Data Actions export: every action that
      failed, the most errors first) }. The names are the team's: IVR Summary daily report, IVR Calls, IVR deflection, Transfer to
-     Agent, Errors. */
+     Agent, Errors. IVR deflection is out of the calls with no queue; Transfer to Agent out of all the calls (November 2026). */
   const errPct = r => (r == null ? '–' : r <= 0 ? '0%' : r < 0.0005 ? '<0.1%' : r < 0.1 ? Math.round(r * 1000) / 10 + '%' : Math.round(100 * r) + '%');
   const andList = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
   function cardText(s) {
     const title = 'IVR Summary daily report' + (s.date ? ' · ' + s.date : '');
     const sub = [s.flow ? s.flow + ' flow' : 'Flow not named in the export', s.span].filter(Boolean).join(' · ');
-    const er = s.runs ? s.errorsN / s.runs : null, calls = s.calls || 0;
+    const er = s.runs ? s.errorsN / s.runs : null, calls = s.calls || 0, nq = s.noQueue || 0, within = s.within || 40;
     const tiles = {
       calls: { lab: 'IVR Calls', val: fmt(calls), note: 'calls into ' + (s.flow || 'the IVR') },
-      d60: { lab: 'IVR deflection · under 60s', val: pctOf(s.u60, calls), note: fmt(s.u60) + ' of ' + fmt(calls) + ' calls' },
-      d30: { lab: 'IVR deflection · under 30s', val: pctOf(s.u30, calls), note: fmt(s.u30) + ' of ' + fmt(calls) + ' calls' },
-      agent: { lab: 'Transfer to Agent', val: pctOf(s.agent, calls), note: fmt(s.agent) + ' transfers' },
+      defl: { lab: 'IVR deflection · 0–' + within + 's', val: pctOf(s.deflected || 0, nq), note: fmt(s.deflected) + ' of ' + fmt(nq) + ' calls with no queue' },
+      agent: { lab: 'Transfer to Agent', val: pctOf(s.queued || 0, calls), note: fmt(s.queued) + ' of ' + fmt(calls) + ' calls reached a queue' },
       errors: !s.daFile ? { lab: 'Errors', val: '–', note: 'no data actions export' }
         : !s.actions ? { lab: 'Errors', val: '–', note: 'no data actions for ' + (s.flow || 'this flow') }
         : { lab: 'Errors', val: errPct(er), note: fmt(s.errorsN) + (s.errorsN === 1 ? ' error' : ' errors') + ' of ' + fmt(s.runs) + ' data action runs', alert: er >= 0.05 }
     };
-    const order = [tiles.calls, tiles.d60, tiles.d30, tiles.agent, tiles.errors];
+    const order = [tiles.calls, tiles.defl, tiles.agent, tiles.errors];
     const sources = ['Interactions' + (s.flow ? ' (' + s.flow + ')' : '')].concat(s.daFile ? ['Data Actions Performance'] : [], s.lists ? ['Flow Outcome Detail', 'Flow Milestone Detail'] : []);
-    const foot = 'IVR deflection = calls with no queue that ended within 60 s or 30 s, of all IVR calls. Transfer to Agent = calls an agent took.'
+    const foot = 'IVR deflection = calls with no queue that ended within ' + within + ' s, of all calls with no queue. Transfer to Agent = calls that reached a queue, of all IVR calls.'
       + (s.daFile ? ' Errors = data action runs that failed, of all the flow’s runs, Customer Type included.' : '')
       + ' Source: Genesys ' + andList(sources) + (sources.length > 1 ? ' exports' : ' export') + (s.date ? ', ' + s.date : '') + '.';
     return { title: title, sub: sub, tiles: tiles, order: order, foot: foot };
@@ -123,26 +123,27 @@
     y = block(ctx, TS.sub, t.sub, X, y + 2, CW, draw);
     y += 18;
 
-    // the tiles as the WFM team lays them out: the calls on the left, as tall as the two deflections beside it (under 60 s above
-    // under 30 s); under them the transfers to an agent and the errors
-    const TW = (CW - 10) / 2, IW = TW - 4 - 28;
-    const inner = (k, big) => wrap(ctx, TS.lab, k.lab.toUpperCase(), IW).length * TS.lab.lh + 2 + (big ? TS.big.lh : TS.val.lh) + 1 + wrap(ctx, TS.note, k.note, IW).length * TS.note.lh;
-    const tileH = (k, big) => 2 + 12 + inner(k, big) + 11 + 2;
-    function tile(k, x, ty, h, big) {
+    // the tiles: the calls on the left, as tall as the deflection and the transfers beside it (one above the other); the errors
+    // under them, across the card
+    const TW = (CW - 10) / 2, inW = w => w - 4 - 28;
+    const inner = (k, big, w) => wrap(ctx, TS.lab, k.lab.toUpperCase(), inW(w)).length * TS.lab.lh + 2 + (big ? TS.big.lh : TS.val.lh) + 1 + wrap(ctx, TS.note, k.note, inW(w)).length * TS.note.lh;
+    const tileH = (k, big, w) => 2 + 12 + inner(k, big, w || TW) + 11 + 2;
+    function tile(k, x, ty, h, big, w) {
+      w = w || TW;
       if (!draw) return;
-      frame(ctx, x, ty, TW, h, k.alert ? COL.pink : COL.white, k.alert ? COL.red : COL.ink, 2);
-      const ix = x + 16;
-      let cy = big ? ty + (h - inner(k, true)) / 2 : ty + 14;
-      cy = block(ctx, TS.lab, k.lab.toUpperCase(), ix, cy, IW, true, k.alert ? COL.red2 : COL.mute);
-      cy = block(ctx, big ? TS.big : TS.val, k.val, ix, cy + 2, IW, true);
-      block(ctx, TS.note, k.note, ix, cy + 1, IW, true);
+      frame(ctx, x, ty, w, h, k.alert ? COL.pink : COL.white, k.alert ? COL.red : COL.ink, 2);
+      const ix = x + 16, iw = inW(w);
+      let cy = big ? ty + (h - inner(k, true, w)) / 2 : ty + 14;
+      cy = block(ctx, TS.lab, k.lab.toUpperCase(), ix, cy, iw, true, k.alert ? COL.red2 : COL.mute);
+      cy = block(ctx, big ? TS.big : TS.val, k.val, ix, cy + 2, iw, true);
+      block(ctx, TS.note, k.note, ix, cy + 1, iw, true);
     }
-    const hr = Math.max(tileH(T.d60), tileH(T.d30), Math.ceil((tileH(T.calls, true) - 10) / 2)), hl = 2 * hr + 10;
-    tile(T.calls, X, y, hl, true); tile(T.d60, X + TW + 10, y, hr); tile(T.d30, X + TW + 10, y + hr + 10, hr);
+    const hr = Math.max(tileH(T.defl), tileH(T.agent), Math.ceil((tileH(T.calls, true) - 10) / 2)), hl = 2 * hr + 10;
+    tile(T.calls, X, y, hl, true); tile(T.defl, X + TW + 10, y, hr); tile(T.agent, X + TW + 10, y + hr + 10, hr);
     y += hl + 10;
-    const hb = Math.max(tileH(T.agent), tileH(T.errors));
-    tile(T.agent, X, y, hb); tile(T.errors, X + TW + 10, y, hb);
-    y += hb;
+    const he = tileH(T.errors, false, CW);
+    tile(T.errors, X, y, he, false, CW);
+    y += he;
 
     // top 5 lists: name | bar | number (only when the Flow Outcome and Milestone exports were dropped too)
     function list(head, after, rows, y) {
@@ -262,22 +263,22 @@
       + line(t.title, 18, COL.ink, { bold: 1, ls: -0.3, mt: 4.5 })
       + line(t.sub, 10, COL.mute, { mt: 1.5 });
 
-    // the tiles as the team lays them out: the calls on the left, as tall as the two deflections beside it (one cell over three
-    // rows: under 60 s, the space, under 30 s), then the transfers and the errors; the cells of a row share its height
+    // the tiles as on the card: the calls on the left, as tall as the deflection and the transfers beside it (one cell over three
+    // rows: the deflection, the space, the transfers), then the errors across the card; the cells of a row share its height
     const TW = (W - 10) / 2;
-    const tile = (k, big, attrs) => {
+    const tile = (k, big, attrs, w) => {
       const bg = k.alert ? COL.pink : COL.white;
-      return cell(TW, line(k.lab.toUpperCase(), 7.5, k.alert ? COL.red2 : COL.mute, { bold: 1, ls: 0.9 })
+      return cell(w || TW, line(k.lab.toUpperCase(), 7.5, k.alert ? COL.red2 : COL.mute, { bold: 1, ls: 0.9 })
         + line(k.val, big ? 30 : 24, COL.ink, { bold: 1, ls: -0.45, mt: 1.5 })
         + line(k.note, 8.5, COL.mute, { mt: 0.75 }),
         `border:solid ${k.alert ? COL.red : COL.ink} 1.5pt;background:${bg};padding:${pt(12)} ${pt(16)} ${pt(11)} ${pt(16)}`, ` valign="${big ? 'middle' : 'top'}" bgcolor="${bg}"${attrs || ''}`);
     };
     const space = attrs => cell(10, gap(10), 'padding:0in', attrs || '');
-    const tiles = table(W, '<tr>' + tile(T.calls, true, ' rowspan="3"') + space(' rowspan="3"') + tile(T.d60) + '</tr>'
+    const tiles = table(W, '<tr>' + tile(T.calls, true, ' rowspan="3"') + space(' rowspan="3"') + tile(T.defl) + '</tr>'
       + `<tr><td style="padding:0in">${gap(10)}</td></tr>`
-      + '<tr>' + tile(T.d30) + '</tr>'
+      + '<tr>' + tile(T.agent) + '</tr>'
       + `<tr><td colspan="3" style="padding:0in">${gap(10)}</td></tr>`
-      + '<tr>' + tile(T.agent) + space() + tile(T.errors) + '</tr>');
+      + '<tr>' + tile(T.errors, false, ' colspan="3"', W) + '</tr>');
 
     // the top 5 lists: name | bar | number, a hairline above each row; a bar is a row of two cells, the dark one as long as the number
     const BW = 280, NUM = 92, NAME = W - BW - NUM;

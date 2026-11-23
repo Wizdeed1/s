@@ -518,8 +518,10 @@ async function finishTeam(k) {
   const pids = team.map(p => p._id).filter(agentHasAccount); if (pids.length) publishMonthToAgents(k, pids).catch(() => {});
   const C = contactsNow(), to = splitAddr(C.senior), cc = [addrOf(u.pid)].filter(Boolean);
   const rows = st.sort((a, b) => byExp({ exp: gname(a.p) }, { exp: gname(b.p) })).map(x => [esc(gname(effP(x.p._id) || x.p) || x.p.name), esc((FORM_STATUS.find(z => z[0] === x.os.st) || [, 'None'])[1]), esc(x.os.o && x.os.o.date ? Forms.fmtDate(x.os.o.date) : ''), x.os.o && sigState(x.os.o) === 'signed' ? 'Yes' : 'No']);
-  const html = mP(`Dear ${esc(firstName(splitAddr(C.senior)[0] || '') || 'Mohammed')},`) + mP(`I have finished the one-to-ones for my team for <b>${esc(ymLabel(k))}</b>: ${held} of ${team.length} held${signed ? `, ${signed} already signed by the agent in the tool` : ''}.`) + mTable(['Agent', 'One-to-one', 'Date', 'Signed by the agent'], rows) + mP('Everything is in the MC tool.') + mP('Best regards,');
-  await saveEml(`${body.name} - one-to-ones done - ${ymLabel(k)}`, { to, cc, subject: `${body.name} | ${ymLabel(k)} one-to-ones done (${held}/${team.length})`, html });
+  const dear = firstName(splitAddr(C.senior)[0] || '') || firstName(state.settings.manager || '') || 'Senior Manager';   // no name ships with the tool
+  const html = mP(`Dear ${esc(dear)},`) + mP(`I have finished the one-to-ones for my team for <b>${esc(ymLabel(k))}</b>: ${held} of ${team.length} held${signed ? `, ${signed} already signed by the agent in the tool` : ''}.`) + mTable(['Agent', 'One-to-one', 'Date', 'Signed by the agent'], rows) + mP('Everything is in the MC tool.') + mP('Best regards,');
+  await saveEml(`${body.name} - one-to-ones done - ${ymLabel(k)}`, { to, cc, subject: `${body.name} | ${ymLabel(k)} one-to-ones done (${held}/${team.length})`, html,
+    hint: to.length ? '' : `The senior manager's address is not filled in yet, so the draft has nobody in To: add it in Outlook. The senior manager fills it in once on ${CONTACTS_AT}.` });
   return 'ok';
 }
 async function reopenTeam(k) {
@@ -533,11 +535,11 @@ async function reopenTeam(k) {
 async function mailFormToAgent(f) {
   if (!f) return; const p = state.roster.find(x => x._id === f.pid); if (!p) return;
   const to = addrOf(f.pid), u = Auth.user() || {}, cc = u.pid ? [addrOf(u.pid)].filter(Boolean) : [];
-  if (!to) toast(`${f.agent.name} has no email in the roster yet: the draft has no recipient.`);
   try {
     const bytes = await formPdf(f), first = String(f.agent.name || '').split(' ')[0];
     const html = mP(`Dear ${esc(first)},`) + mP(`Please find attached your ${f.kind === 'final' ? 'final form' : 'one-to-one form'} for <b>${esc(f.period || '')}</b>.`) + mP(agentHasAccount(f.pid) ? (f.verdict ? 'My final comment is on it: please read it and sign it on your own page in the MC tool.' : 'Please fill in your part on your own page in the MC tool and send it to me.') : 'Please read it and let me know if anything is not right.') + mP('Best regards,');
-    await saveEml(`${f.kind === 'final' ? 'Final form' : 'One-to-one'} - ${f.agent.name} - ${f.period}`, { to: to ? [to] : [], cc, subject: `Your ${f.kind === 'final' ? 'final form' : 'one-to-one'} | ${f.period}`, html, files: [{ name: formFile(f), bytes, type: 'application/pdf' }] });
+    await saveEml(`${f.kind === 'final' ? 'Final form' : 'One-to-one'} - ${f.agent.name} - ${f.period}`, { to: to ? [to] : [], cc, subject: `Your ${f.kind === 'final' ? 'final form' : 'one-to-one'} | ${f.period}`, html, files: [{ name: formFile(f), bytes, type: 'application/pdf' }],
+      hint: to ? '' : `${f.agent.name} has no email in the roster yet: the draft has nobody in To. Add the address in Outlook (and in the roster's Email column for next time).` });
   } catch (e) { toast('Could not make the email: ' + (e && e.message ? e.message : e)); }
 }
 /** a line in the month's cycle log (the senior manager sees it) */

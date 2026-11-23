@@ -113,8 +113,8 @@ const DEFAULTS = {
   teamBName:'FRiENDi', teamBShifts:'8, 14, 16',
   teamCName:'FRiENDi Pay', teamCShifts:'8, 14, 16',
   tgtSL:'85', tgtAbn:'3', tgtAdh:'95', tgtAht:'150',
-  sigName:"Dia'a Banjar", sigEmail:'Diaa.Banjar@Beyond.One',
-  sendTo:'MemberCareManagementTeam.ksa@beyond.one; mc.operations@virginmobile.sa; voiceofcustomer@virginmobile.sa; friendiquality@virginmobile.sa',
+  sigName:'', sigEmail:'',   // none ship with the tool: typed once in the settings below and kept in this browser
+  sendTo:'',
   greeting:'Hi Management Team,',
   thTardy:'0', thAbsent:'180', thGap:'20', thHold:'30', thRona:'60', thShort:'10', thEarly:'15', thMinCalls:'5', thRepeat:'3',
   optShortNames:true, optHideEmpty:true, optMethod:true, optMask:false, optPoster:true
@@ -136,8 +136,6 @@ function loadSettings(){
   SET = Object.assign({}, DEFAULTS);
   FIELDS.forEach(f => { if(o[f] !== undefined && o[f] !== '') SET[f] = String(o[f]); });
   TOGGLES.forEach(f => { if(o[f] !== undefined) SET[f] = !!o[f]; });
-  if(SET.sendTo === 'friendiquality@virginmobile.sa; MemberCareManagementTeam.ksa@beyond.one; voiceofcustomer@virginmobile.sa; mc.operations@virginmobile.sa')
-    SET.sendTo = DEFAULTS.sendTo;
 }
 function saveSettings(){
   // anything the stand-alone builder stored (its masthead logo, say) is kept as it was
@@ -2301,7 +2299,7 @@ function exceptionsCsv(){
 /* ══ 10 · THE TAB ══
    The builder hands the panel element and a few hooks; everything else lives here. */
 let H = {};
-const toast = (m) => { if(H.toast) H.toast(m); };
+const toast = (...a) => { if(H.toast) H.toast(...a); };   // the message, and the page's button and time when given
 let host = null, previewTimer = null;
 
 function fieldHtml(label, key, opts){
@@ -2332,8 +2330,8 @@ function panelHtml(){
         + `<label class="fld"><span>Review date</span><input type="date" id="wfmDate" value="${esc(state.date)}"></label>`
         + `<div class="fld"><span>${days.length > 1 ? 'One review per day — pick the day' : 'Covers'}</span>${dayChips || `<div class="hint" style="margin:6px 0 0">Inbound voice for every brand, from the day-start hour to the day-end hour.</div>`}</div>`
       + `</div>`
-      + `<div class="row2">${fieldHtml('Greeting', 'greeting')}${fieldHtml('Your name (signature)', 'sigName')}</div>`
-      + `<div class="row2">${fieldHtml('Your email', 'sigEmail', { type:'email' })}${fieldHtml('Send to · filled into To in the .eml, separate with ;', 'sendTo')}</div>`
+      + `<div class="row2">${fieldHtml('Greeting', 'greeting')}${fieldHtml('Your name (signature)', 'sigName', { ph:'Your name (WFM when empty)' })}</div>`
+      + `<div class="row2">${fieldHtml('Your email', 'sigEmail', { type:'email', ph:'name@company.com' })}${fieldHtml('Send to · filled into To in the .eml, separate with ;', 'sendTo', { ph:'name@company.com; …' })}</div>`
       + `<details class="acc"><summary>Brands, shifts and targets</summary><div class="wfm-g4">`
         + fieldHtml('Brand A name', 'teamAName') + fieldHtml('Brand A shift starts · hours', 'teamAShifts')
         + fieldHtml('Brand B name', 'teamBName') + fieldHtml('Brand B shift starts · hours', 'teamBShifts')
@@ -2497,7 +2495,8 @@ function wire(){
     btn.disabled = true; btn.textContent = SET.optPoster ? 'Drawing poster…' : 'Saving…';
     try{
       download(`WFM_Daily_Review_${state.date}.eml`, await buildEml(), 'message/rfc822');
-      toast('Saved. Double-click the .eml file and Outlook opens it as a new email, ready to send.');
+      const noTo = !readConfig().sendTo.length;   // no address ships with the tool: the draft opens with nobody in To
+      toast('Saved. Double-click the .eml file and Outlook opens it as a new email, ready to send.' + (noTo ? ' Its To line is empty: type the addresses in Send to, above (kept in this browser), or add them in Outlook.' : ''), null, noTo ? 12000 : 0);
     }catch(err){ console.error(err); toast('Could not build the Outlook file: ' + err.message); }
     finally{ btn.disabled = false; btn.textContent = label; }
   };

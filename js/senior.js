@@ -85,10 +85,10 @@ function renderCycle() {
   // set once: the supervisors' scorecard and the email addresses (and the month close's due days)
   const editor = can ? `<details class="card sced"${state.scEdit ? ' open' : ''} data-det="sc"><summary>Supervisor scorecard · ${plural(its.length, 'item')} · weights ${+(its.reduce((a, it) => a + (+it.weight || 0), 0) * 100).toFixed(1)}%</summary>${scEditorHtml(card)}</details>` : '';
   const C0 = contactsNow();
-  const contacts = can ? `<details class="card"${state.ctEdit ? ' open' : ''} data-det="ct"><summary>Email addresses</summary><div class="grid2 tight">
-    ${[['vp', 'VP (results for review)'], ['form', 'Final result form (to)'], ['senior', 'Senior manager (gets the supervisors\' "done" emails)'], ['mgmt', 'Management team (in copy)'], ['wfm', 'WFM (in copy of the supervisors\' emails)']].map(([f, l]) => `<div class="field"><span class="lbl">${esc(l)}</span><input class="cell" data-contact="${f}" value="${esc(C0[f] || '')}" spellcheck="false" placeholder="Name <name@company.com>"></div>`).join('')}
-    <div class="field"><span class="lbl">Final result form: who signs (one per line: name | designation)</span><textarea class="cell" data-signers rows="4" spellcheck="false">${esc(signersNow().map(x => x.join(' | ')).join('\n'))}</textarea></div></div>
-    <p class="hint">Supervisors' and agents' addresses come from the roster's Email column.</p></details>` : '';
+  const contacts = can ? `<details class="card"${state.ctEdit ? ' open' : ''} data-det="ct"><summary>${ctSummaryHtml()}</summary><div class="grid2 tight">
+    ${[['vp', 'VP (results for review)'], ['form', 'Final result form (to)'], ['senior', 'Senior manager (gets the supervisors\' "done" emails)'], ['mgmt', 'Management team (in copy)'], ['wfm', 'WFM (in copy of the supervisors\' emails)']].map(([f, l]) => `<div class="field"><span class="lbl">${esc(l)}</span><input class="cell" data-contact="${f}" value="${esc(C0[f] || '')}" spellcheck="false" placeholder="Name <name@company.com>${f === 'wfm' ? ' (if any)' : ''}"></div>`).join('')}
+    <div class="field"><span class="lbl">Final result form: who signs (one per line: name | designation)</span><textarea class="cell" data-signers rows="4" spellcheck="false">${esc(signersNow().map(x => (x[0] ? x.join(' | ') : '| ' + x[1])).join('\n'))}</textarea></div></div>
+    <p class="hint">Kept in the shared data for everyone, and used by every month's emails; until an address is filled in, its emails open with nobody in To or Cc. Supervisors' and agents' addresses come from the roster's Email column. Who signs: a line with no name before the bar (| CEO) prints the designation alone, with the name left blank.</p></details>` : '';
   // the month close, step by step, in the order it is done: each step says if it is done (and when, by whom) and has its own action
   const sent = C.sent || {}, sentTxt = x => (sent[x] ? `Prepared ${fmtWhen(sent[x].at)}${sent[x].by ? ' by ' + sent[x].by : ''}` : '');
   const incSent = x => (sent[x] ? `${sent[x].how || 'Prepared'} ${fmtWhen(sent[x].at)}${sent[x].by ? ' by ' + sent[x].by : ''}` : '');
@@ -96,6 +96,7 @@ function renderCycle() {
   const calDone = id => !!(CS[id] && CS[id].st === 'done'), calNote = id => { const x = CS[id]; return !x ? '' : x.done || x.st === 'past' ? calStateText(x) : x.note || ''; };
   const past = k < closeMonthNow(), calPast = id => !!(CS[id] && CS[id].st === 'past');   // a month closed before: a step not recorded is not "next"
   const who = f => esc(splitAddr(contactsNow()[f]).map(a => a.replace(/\s*<.*$/, '')).join(', ')), dis = can ? '' : ' disabled', btn = on => `btn sm${on ? ' primary' : ''}`;
+  const toWho = (f, role) => who(f) || `${role} <span class="bad">(no address yet: fill it in Email addresses, under Set once)</span>`;
   const L = [
     { id: 'st-increv', short: 'Incentive data for review', title: 'Send the incentive data for review', done: !!sent.incReview, skip: past, note: incSent('incReview') || (past ? 'Not recorded' : ''),
       cap: 'To the champions: the incentive file the WFM analysts built (attendance, adherence and AHT, without National IDs), with the review deadline.',
@@ -111,13 +112,13 @@ function renderCycle() {
       acts: () => `<button class="btn sm" data-mail4="warn"${can && notYet.length ? '' : ' disabled'}>Deadline reminder</button>`,
       body: `${safeHtml(spvDoneHtml, k)}${notes}${safeHtml(objSeniorHtml, k)}`, open: true },   // who finished: the page's own content, open unless the person closes it
     { id: 'st-review', short: 'Results for review', title: 'Send the results for review', done: calDone('review'), skip: calPast('review'), note: sentTxt('review') || calNote('review'),
-      cap: `To ${who('vp') || 'the VP'}: “Hi All”, with the ID, name, final % and earned SR of everyone on the incentive list who earned it, and the same table as an Excel file.`,
+      cap: `To ${toWho('vp', 'the VP')}: “Hi All”, with the ID, name, final % and earned SR of everyone on the incentive list who earned it, and the same table as an Excel file.`,
       acts: on => `<button class="${btn(on)}" data-mail4="review"${dis}>Make the email</button>`, body: can ? safeHtml(incListHtml, k) : '' },
     { id: 'st-final', short: 'Finalize', title: 'Finalize the month', done: calDone('final'), skip: calPast('final'), note: calNote('final'),
       cap: 'On Results: decide who is eligible where the rules say otherwise, then Finalize. After that only you can change the results.',
       acts: on => `<button class="${btn(on)}" data-cycgo="results">Open Results</button>` },
     { id: 'st-form', short: 'Final result form', title: 'Send the final result form', done: calDone('finalmail'), skip: calPast('finalmail'), note: sentTxt('final') || calNote('finalmail'),
-      cap: `To ${who('form') || 'the WFM manager'}: everyone on the incentive list who earned it (0 or no earned SR left off), with their final % and earned SR, the month's total, the table the VP, HR, Finance and the CEO sign, and the same form as an Excel file.${monthLocked(k) ? '' : ' Finalize the month first.'}`,
+      cap: `To ${toWho('form', 'the WFM manager')}: everyone on the incentive list who earned it (0 or no earned SR left off), with their final % and earned SR, the month's total, the table the VP, HR, Finance and the CEO sign, and the same form as an Excel file.${monthLocked(k) ? '' : ' Finalize the month first.'}`,
       acts: on => `<button class="${btn(on)}" data-mail4="final"${dis}>Make the email</button>` },
     { id: 'st-incfin', short: 'Final incentive data', title: 'Send the final incentive data', done: !!sent.incFinal, skip: past, note: incSent('incFinal') || (past ? 'Not recorded' : ''),
       cap: 'To the champions after the review deadline, with the final incentive file.',
@@ -226,6 +227,20 @@ function resultsList(k, onlyEligible) {
     .map(x => ({ id: Core.cleanId(x.p ? (effP(x.p._id) || x.p).nid : x.r.id) || idText(x.r.id), name: x.p ? normSpace(x.p.name) : x.r.n, brand: x.p ? x.p.brand : x.r.brand, team: x.p ? x.p.team : x.r.team, spv: x.p ? supName(x.p.spv) : '', fin: x.r.fin, earned: x.r.earned, el: x.r._el || null, adj: x.r._adj || null }))
     .sort((a, b) => String(a.name).localeCompare(String(b.name)));
 }
+/** the Email addresses card's title, with how many of the addresses the emails need are still empty (the tool ships with none) */
+function ctSummaryHtml() { const C = contactsNow(), n = CONTACT_NEED.filter(f => !splitAddr(C[f]).length).length; return `Email addresses${n ? ` · <span class="bad">${n} not filled in yet</span>` : ''}`; }
+/** the month close's Email addresses card (under Set once), open and in view: where an email with an address missing sends the
+    senior manager (the button on its message, and Search) */
+function openContacts() {
+  if (!canCycle()) { toast(`The senior manager fills in the email addresses on ${CONTACTS_AT}.`); return; }
+  state.ctEdit = true; state.cycTab = 'close'; if (state.ws !== 'cycle') setWs('cycle'); else renderWs();
+  requestAnimationFrame(() => {
+    const d = $('cycleBody').querySelector('details[data-det="ct"]'); if (!d) return;
+    d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const empty = [...d.querySelectorAll('[data-contact]')].find(i => !normSpace(i.value)); if (empty) empty.focus({ preventScroll: true });
+  });
+}
+const CT_FIX = { label: 'Email addresses', fn: openContacts };
 async function mail4(kind) {
   const k = wsMonthNow(); if (!k || !canCycle()) return;
   const C = cycleOf(k), dl = C.deadline, R = cycleRows(k), con = contactsNow(), me = whoNow(), M = ymLabel(k);
@@ -233,20 +248,22 @@ async function mail4(kind) {
   let ok = false;
   if (kind === 'ready') {
     if (!dl) { toast('Set the deadline first (One-to-ones due, above).'); $('cycleBar').querySelector('[data-deadline]').focus(); return; }
-    const to = supEmails(R); if (!to.length) toast('No supervisor has an email in the roster yet: the draft has no recipient.');
+    const to = supEmails(R);
     const rows = R.map(r => { const map = rowsByPid(k), L = r.team.map(p => map.get(p._id)).filter(Boolean); return [esc(r.name), String(r.team.length), pct1(mean(L.map(x => x.fin))), pct(mean(L.map(x => x.adh)), 1)]; });
     const html = mP('Dear Team Leaders,') + mP(`The <b>${esc(M)}</b> results are ready in the MC tool. Please hold the one-to-one with each of your agents and record it in the tool by <b>${esc(Forms.fmtDate(dl))}</b>. Agents with an account read and sign their form on their own page.`)
       + mP('When your whole team is done, press <b>Finish my team</b> on your Team page; I am told straight away.') + mTable(['Team leader', 'Agents', 'Team final %', 'Team adherence'], rows, ['', 'r', 'r', 'r']) + sign;
-    ok = await saveEml(`One-to-ones ready - ${M}`, { to, cc: splitAddr(con.wfm), subject: `MC ${M} | One-to-ones are ready (deadline ${Forms.fmtDate(dl)})`, html });
+    ok = await saveEml(`One-to-ones ready - ${M}`, { to, cc: splitAddr(con.wfm), subject: `MC ${M} | One-to-ones are ready (deadline ${Forms.fmtDate(dl)})`, html,
+      hint: to.length ? '' : 'No supervisor has an email in the roster yet, so the draft has nobody in To: add them in the roster\'s Email column.' });
   }
   if (kind === 'warn') {
     const L = R.filter(r => !r.done); if (!L.length) { toast('Every supervisor has finished.'); return; }
-    const to = supEmails(L); if (!to.length) toast('These supervisors have no email in the roster: the draft has no recipient.');
+    const to = supEmails(L);
     const days = dl ? Math.ceil((new Date(dl + 'T23:59:59') - Date.now()) / 86400000) : null;
     const html = mP('Dear Team Leaders,') + mP(`A reminder that the <b>${esc(M)}</b> one-to-ones are ${dl ? (days < 0 ? `<b>overdue since ${esc(Forms.fmtDate(dl))}</b>` : `due on <b>${esc(Forms.fmtDate(dl))}</b>${days <= 1 ? ' (tomorrow at the latest)' : ''}`) : 'due'}. Your team is not finished in the MC tool yet:`)
       + mTable(['Team leader', 'One-to-ones held', 'Signed by the agent'], L.map(r => [esc(r.name), `${r.held} of ${r.team.length}`, String(r.signed)]), ['', 'r', 'r'])
       + mP('Please finish them and press <b>Finish my team</b> on your Team page.') + sign;
-    ok = await saveEml(`Deadline reminder - ${M}`, { to, cc: splitAddr(con.wfm), subject: `Reminder | ${M} one-to-ones ${dl ? (days < 0 ? 'overdue' : `due ${Forms.fmtDate(dl)}`) : 'due'}`, html });
+    ok = await saveEml(`Deadline reminder - ${M}`, { to, cc: splitAddr(con.wfm), subject: `Reminder | ${M} one-to-ones ${dl ? (days < 0 ? 'overdue' : `due ${Forms.fmtDate(dl)}`) : 'due'}`, html,
+      hint: to.length ? '' : 'These supervisors have no email in the roster yet, so the draft has nobody in To: add them in the roster\'s Email column.' });
   }
   if (kind === 'final') {   // the people on the incentive list who earned it: an earned SR of 0 or none is left off the form
     const all = incRows(k).filter(x => x.pid); if (!all.length) { toast('The incentive list is empty: add the people below.'); return; }
@@ -256,28 +273,26 @@ async function mail4(kind) {
     if (off) setTimeout(() => toast(`Left off the form: ${plural(off, 'person', 'people')} with an earned SR of 0 or none.`), 2600);
     const tot = L.reduce((a, x) => a + (finalEarned(x) || 0), 0), title = finalTitle(k), signers = signersNow();   // the total is the column's sum
     let bytes = null; try { bytes = await finalFormXlsx(title, L, tot, signers); } catch (e) { toast('Could not make the Excel file: ' + (e && e.message ? e.message : e)); }
-    const to = splitAddr(con.form); if (!to.length) toast('No address for the final result form yet (Email addresses, below): the draft has no recipient.');
-    ok = await saveEml(title, { to, cc: [], subject: title, html: finalFormHtml(title, L, tot, signers), files: bytes ? [{ name: `${fileSafe(title)}.xlsx`, bytes }] : [] });
+    const gap = contactGap('form');   // no address yet: the draft opens with nobody in To, and the message says where it is filled in
+    ok = await saveEml(title, { to: splitAddr(con.form), cc: [], subject: title, html: finalFormHtml(title, L, tot, signers), files: bytes ? [{ name: `${fileSafe(title)}.xlsx`, bytes }] : [], hint: gap, fix: gap ? CT_FIX : null });
   }
   if (kind === 'review') {   // as the senior manager writes it: "Hi All", the people on the incentive list who earned it
     const L = incRows(k).filter(x => x.pid && (finalEarned(x) || 0) > 0); if (!L.length) { toast(`Nobody on the incentive list has an earned SR for ${M} yet.`); return; }
     const [y, m] = k.split('-').map(Number), label = `${MON[m - 1]} ${y}`;
     let bytes = null; try { bytes = await reviewXlsx(L); } catch (e) { toast('Could not make the Excel file: ' + (e && e.message ? e.message : e)); }
-    ok = await saveEml(`Results for review - ${M}`, { to: splitAddr(con.vp), cc: splitAddr(con.mgmt), subject: `MC Incentive ${M} | For review`, html: reviewMailHtml(label, L), files: bytes ? [{ name: `MC Incentive - ${M} - for review.xlsx`, bytes }] : [] });
+    const gap = contactGap('vp', 'mgmt');
+    ok = await saveEml(`Results for review - ${M}`, { to: splitAddr(con.vp), cc: splitAddr(con.mgmt), subject: `MC Incentive ${M} | For review`, html: reviewMailHtml(label, L), files: bytes ? [{ name: `MC Incentive - ${M} - for review.xlsx`, bytes }] : [], hint: gap, fix: gap ? CT_FIX : null });
   }
   if (ok) cycleUpdate(k, c => { c.sent = { ...(c.sent || {}), [kind]: { at: new Date().toISOString(), by: me } }; }, `Prepared the "${{ ready: 'one-to-ones ready', warn: 'deadline reminder', review: 'results for review', final: 'final result form' }[kind]}" email`);
 }
 
 // ---------------------------------------------------------------- the incentive list: who is on the results email and the final result form
-// The usual list, as on the senior manager's own form; each name is found in the roster and shown as the tool has it (the
-// system name). People can be added and removed by hand; once changed, the list is kept in the shared data.
-const INC_NAMES0 = ['Abdulaziz Abdulqader Henawi', 'Areej Sebaih', 'Ashraf Abdulrahman Tahir Fallatah', 'Asma Yousef Altwaim', 'Abdulrahman Alasmari', 'Arwa Alamri', 'Sarah Almaddani', 'Saud Alghamdi',
-  'Tala Alsharif', 'Ibrahim Almabaadi', 'Basil Mulla', 'Rajwa Ghaith', "Dia'a Hamed Banjar", 'Nawaf AlSulaimani', 'Saleh Al Thubyani', 'Thamer AlQabsani', 'Shaima Alaslani', 'Hadeel Hakami', 'Haneen Fageera',
-  'Lamiaa Abdulrahman Battekh', 'Joud Alrefaei', 'Wasan Alalasi', 'Mazen Mohammad Malayo', 'Mazen Naser Mohammed Alskait', 'Nawaf Al Harbi', 'Musab Mohammed Ghazi Al-Otaibi', 'Musab Mubarak',
-  'Ohoud Bassam Hussain Abdulmuhsen', 'Omniah Abu Alkhair', 'Rawabi Ahmed', 'Abdullah Alamri', 'Dhari Bin Jarallah', 'Ayman Al Juhani', 'Fahad Khawaji', 'Khaled Zein Aldeen', 'Riaal Basrawi',
-  'Subhia Alsubail', 'Tawfiq Hussain Dakel Alobaidi', 'Turki Alshehri', 'Ziyad Abdulaziz Ali Alghamdi'];
+// No list ships with the tool (no real names in the code): the list starts with nobody, the senior manager adds the people once
+// on the month close, and the list is kept in the shared data (config/inclist). Each person is shown as the tool has them (the
+// system name).
+const INC_NAMES0 = [];
 const lev1 = (a, b) => { if (a === b) return 0; if (Math.abs(a.length - b.length) > 1) return 2; let i = 0; while (i < a.length && a[i] === b[i]) i++; return a.slice(i + 1) === b.slice(i + 1) || a.slice(i) === b.slice(i + 1) || a.slice(i + 1) === b.slice(i) ? 1 : 2; };
-/** first names alike, and the family name found in the other name (spellings differ: Sarah / Sara, Sebaih / Subah) */
+/** first names alike, and the family name found in the other name (spellings differ: Sarah / Sara, Saleh / Salih) */
 function looseScore(a, b) {
   const A = nameToks(a), B = nameToks(b); if (A.length < 2 || B.length < 2 || A[0][0] !== B[0][0]) return 0;
   const near = (x, y) => x === y || (x.length >= 2 && y.length >= 2 && lev1(x, y) <= 1);
@@ -334,7 +349,7 @@ function incListHtml(k) {
   return `<details class="card inclist"${state.incOpen ? ' open' : ''} data-det="inc"><summary>Incentive list · ${plural(n, 'person', 'people')}${miss ? ` · <span class="bad">${miss} not found</span>` : ''}${state.incList ? ' · changed by hand' : ''}</summary>
     <p class="cap">Who is on the results email (those who earned an incentive) and on the final result form, in this order, with their names as the tool has them (the system names). Add or remove people here.</p>
     <ol class="ilist incl">${rows || '<li class="subtle">Nobody yet.</li>'}</ol>
-    <div class="formbtns"><select class="cell" data-incadd aria-label="Add a person">${opts('Add a person…', q => q.status !== 'Inactive')}</select>${state.incList ? '<button class="btn sm ghost" data-increset>Back to the usual list</button>' : ''}</div></details>`;
+    <div class="formbtns"><select class="cell" data-incadd aria-label="Add a person">${opts('Add a person…', q => q.status !== 'Inactive')}</select>${state.incList && INC_NAMES0.length ? '<button class="btn sm ghost" data-increset>Back to the usual list</button>' : ''}</div></details>`;
 }
 /** the results for review, as the senior manager writes it: "Hi All", the month, the red-header table */
 function reviewMailHtml(label, L) {
@@ -363,8 +378,9 @@ async function reviewXlsx(L) {
 // A range pasted from his Excel: "Final result For Aug. 2026 Incentive", the red header (ID, Name, Final %, Earned SR), one row a
 // Virgin person with the final % and the earned SR, the month's total in red, then the table the VP, HR, Finance and the CEO sign.
 // The same form goes with it as an Excel file (same columns, widths, colours and borders).
-const SIGNERS0 = [['Rasha Mogaddam', 'VP-Group Member Care'], ['Ahmed Alremali', 'HR Director'], ['Islam Aref', 'Finance Director'], ['Yaarob AlSayegh', 'CEO']];
-function signersNow() { const L = String(contactsNow().signers || '').split('\n').map(l => l.split('|').map(normSpace)).filter(x => x[0]); return L.length ? L.map(x => [x[0], x[1] || '']) : SIGNERS0; }
+const SIGNERS0 = [['', 'VP-Group Member Care'], ['', 'HR Director'], ['', 'Finance Director'], ['', 'CEO']];   // the designations; the names are typed on the month close
+/** [[name, designation]]: one a line as typed ("name | designation"; "| designation" with no name), else the four designations */
+function signersNow() { const L = String(contactsNow().signers || '').split('\n').map(l => l.split('|').map(normSpace)).filter(x => x[0] || x[1]); return L.length ? L.map(x => [x[0], x[1] || '']) : SIGNERS0; }
 const signRows = i => (i < 2 ? 2 : 3);   // as in his form: two rows for the first two, three for the others
 function finalTitle(k) { const [y, m] = k.split('-').map(Number), mo = MON[m - 1] + (MON[m - 1] !== MONTH_LONG[m - 1] ? '.' : ''); return `Final result For ${mo} ${y} Incentive`; }
 /** a person's earned SR on the form: 0 when not eligible, empty when the tool has none */
@@ -388,7 +404,7 @@ function finalFormHtml(title, L, tot, signers) {
   R.push(`<tr style="height:.2in">${cell(0, ver(NB, 8, 'white', true), { cs: 2, c: true, bg: RED })}${cell(2, ver('Designation', 8, 'white', true), { bg: RED })}${cell(3, ver('Signature', 8, 'white', true), { c: true, bg: RED })}${cell(4, ver('Date', 8, 'white', true), { c: true, bg: RED })}${gap('.2in')}</tr>`);
   signers.forEach(([n, d], i) => {
     const rs = signRows(i);
-    R.push(`<tr style="height:.2in">${cell(0, ver(esc(n), 8, 'black', true), { cs: 2, rs, c: true, va: 1 })}${cell(2, ver(esc(d), 8, 'black', true), { rs, c: true, va: 1 })}${cell(3, ver(NB, 8), { rs, c: true })}${cell(4, ver(NB, 8), { rs, c: true })}${gap('.2in')}</tr>`);
+    R.push(`<tr style="height:.2in">${cell(0, ver(n ? esc(n) : NB, 8, 'black', true), { cs: 2, rs, c: true, va: 1 })}${cell(2, ver(esc(d), 8, 'black', true), { rs, c: true, va: 1 })}${cell(3, ver(NB, 8), { rs, c: true })}${cell(4, ver(NB, 8), { rs, c: true })}${gap('.2in')}</tr>`);
     for (let j = 1; j < rs; j++) R.push(`<tr style="height:.2in">${gap('.2in')}</tr>`);
   });
   return `<table class="MsoNormalTable" border="0" cellspacing="0" cellpadding="0" width="${px(567.35)}" style="width:567.35pt;border-collapse:collapse">${R.join('')}</table><p class="MsoNormal">&nbsp;</p><p class="MsoNormal">&nbsp;</p>`;
@@ -413,7 +429,7 @@ async function finalFormXlsx(title, L, tot, signers) {
   W.set(r, 1, null, sSigHead); W.set(r, 2, null, sSigHead); W.merge(r, 1, r, 2); W.set(r, 3, 'Designation', sSigHeadL); W.set(r, 4, 'Signature', sSigHead); W.set(r, 5, 'Date', sSigHead); W.heights[r] = 16.5; r++;
   signers.forEach(([n, d], i) => {
     const rs = signRows(i), r2 = r + rs - 1;
-    for (let rr = r; rr <= r2; rr++) { for (let c = 1; c <= 3; c++) W.set(rr, c, rr === r && c !== 2 ? (c === 1 ? n : d) : null, sSig); W.set(rr, 4, null, sSigBox); W.set(rr, 5, null, sSigBox); W.heights[rr] = 15.75; }
+    for (let rr = r; rr <= r2; rr++) { for (let c = 1; c <= 3; c++) W.set(rr, c, rr === r && c !== 2 ? (c === 1 ? n : d) || null : null, sSig); W.set(rr, 4, null, sSigBox); W.set(rr, 5, null, sSigBox); W.heights[rr] = 15.75; }
     W.merge(r, 1, r2, 2); W.merge(r, 3, r2, 3); W.merge(r, 4, r2, 4); W.merge(r, 5, r2, 5);
     r = r2 + 1;
   });
@@ -492,17 +508,28 @@ $('cycleBody').addEventListener('change', e => {
     const val = v == null ? null : spvItemUnit(it) === 'pct' ? v / 100 : v, pid = t.dataset.man;
     cycleUpdate(k, c => { c.manual = c.manual || {}; c.manual[pid] = { ...(c.manual[pid] || {}) }; if (val == null) delete c.manual[pid][it.id]; else c.manual[pid][it.id] = val; }, `${it.name} for ${supName(pid)}: ${raw || 'empty'}`); return;
   }
-  if (t.matches('[data-signers]')) {
-    const v = String(t.value || '').split('\n').map(l => l.split('|').map(normSpace).filter(Boolean).slice(0, 2).join(' | ')).filter(Boolean).join('\n');
-    state.contacts = { ...(state.contacts || {}), signers: v };
-    if (state.db) queueWrite('config/contacts', () => state.db.doc('config/contacts').set({ ...contactsNow(), at: new Date().toISOString(), by: whoNow() })).catch(() => {});
-    toast(v ? 'Saved: the final result form shows these people.' : 'Back to the usual four: VP, HR Director, Finance Director and CEO.'); renderWs(); return;
+  if (t.matches('[data-signers]')) {   // "name | designation" a line; "| designation" keeps the designation with no name
+    const v = String(t.value || '').split('\n').map(l => { const [n = '', d = ''] = l.split('|').map(normSpace); return d ? `${n} | ${d}`.trim() : n; }).filter(Boolean).join('\n');
+    saveContact('signers', v);
+    toast(v ? 'Saved: the final result form shows these people.' : 'Back to the usual four designations (VP, HR Director, Finance Director and CEO), with the names left blank.'); renderWs(); return;
   }
   if (t.matches('[data-contact]')) {
     const f = t.dataset.contact, v = splitAddr(t.value).join('; ');
     if (v && !splitAddr(v).every(a => /@/.test(a))) { toast('Type addresses like Name <name@company.com>, separated by a semicolon.'); return; }
-    state.contacts = { ...(state.contacts || {}), [f]: v };
-    if (state.db) queueWrite('config/contacts', () => state.db.doc('config/contacts').set({ ...contactsNow(), at: new Date().toISOString(), by: whoNow() })).catch(() => {});
+    saveContact(f, v);
+    const sm = t.closest('details[data-det="ct"]'); if (sm && sm.firstElementChild) sm.firstElementChild.innerHTML = ctSummaryHtml();   // no new drawing: the next field keeps the focus
     toast('Saved');
   }
 });
+/** one contact (or who signs) changed: merged into the record as it is stored now, so an address another senior manager saved,
+    or one this browser has not read yet, is kept */
+function saveContact(f, v) {
+  state.contacts = { ...(state.contacts || {}), [f]: v };
+  if (!state.db) return;
+  const d = state.db.doc('config/contacts');
+  queueWrite('config/contacts', async () => {
+    let cur = null; try { const sn = await d.get(); cur = sn && sn.exists ? sn.data() || {} : {}; } catch (e) { cur = null; }
+    const body = { ...CONTACTS0, ...(cur || state.contacts || {}), [f]: v, at: new Date().toISOString(), by: whoNow() };
+    await d.set(body); state.contacts = body;
+  }).catch(() => {});
+}

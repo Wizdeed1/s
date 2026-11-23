@@ -7,7 +7,8 @@ one-to-ones, objections, the senior manager's review and final, the month close,
 This repository holds the v33 source restored from *MC Monthly Report Builder.md* (Part 2), with the **Option A**
 layout built on top of it (following Apple's Human Interface Guidelines), now in the **Beyond One** brand (see below), and
 the October and November 2026 additions below. Every calculation, output, email
-template, role, permission and storage format is the same as v33 **by default**: the new counting settings start at what
+template, role, permission and storage format is the same as v33 **by default** (except that no person's name or address ships
+with the tool any more: see *No real names or addresses in the code*): the new counting settings start at what
 v33 did (tests compare 10,000 synthetic people against the v33 code), and the only permissions added on request are that the
 WFM analyst shares the Emails page with the WFM manager, that the WFM team (and admins) can export and import all the data, and
 that the admin can view every role's interface (a preview that saves nothing) and has the Showcase page.
@@ -16,6 +17,39 @@ address (see the security review below).
 
 **The built file:** [`final/Cadence.html`](final/Cadence.html). Open it in
 Microsoft Edge or Google Chrome; it goes in the common folder next to the **MC Data** folder, as before.
+
+## No real names or addresses in the code (November 2026)
+
+The code no longer carries a colleague's name or work address as a default value. Those values live only in the shared data,
+where the tool has always kept what was typed, and what is saved there wins over a default, so a team that has them saved sees no
+change. What now ships empty, and where it is filled in once:
+
+| What | Ships as | Filled in on | Kept in |
+|---|---|---|---|
+| The month close's addresses: the VP, the final result form, the senior manager, the management team, the WFM copy | empty | **Supervisors › Month close › Email addresses** (under *Set once*); Search finds it as *contacts* | the shared data (`config/contacts`) |
+| Who signs the final result form | the four designations (VP-Group Member Care, HR Director, Finance Director, CEO), no names | the same card, *who signs*: one a line, `name \| designation`; `\| CEO` keeps the designation alone | `config/contacts` |
+| The incentive list | empty | **Supervisors › Month close › Incentive list**: *Add a person* | `config/inclist` |
+| The deduction and incentive emails' To and Cc | empty | **Emails** and **Supervisors › Incentive email**: To and Cc | `config/email`, `config/email-inc` |
+| The manager who signs the final form | the title (*Member Care Senior Manager*), no name | **Settings › Final form: manager signing** (and each form's *Manager signing*) | `config/settings` |
+| The WFM Daily Review's signature, email and Send to | empty (the signature then reads *WFM*) | **WFM team › Report builder**, the WFM Daily Review's settings | each browser (`wfm.console.v2`), as before |
+
+Until one is filled in, nothing stops. Every draft still opens in Outlook, with nobody in To (or Cc), and the message after
+saving it says the To line is empty, what is missing and where it is filled in; for the senior manager it has an **Email
+addresses** button that opens the card on the first empty address. The card's title counts the addresses still empty, the
+month close's steps say *(no address yet: …)*, the Emails page says *Nobody yet* under To, and the final result form and the
+final form print the title with the name left blank to write in. A supervisor's *Finish my team* email greets the senior
+manager by the first name in their address, else the one in Settings, else *Dear Senior Manager*.
+
+On the way: a change in the Email addresses card is merged into the record as it is stored at that moment, so an address
+another senior manager saved, or one this browser has not read yet, is kept (until now the record was written whole, and the
+defaults hid that); the card redraws when the record arrives; a *who signs* line with no name keeps its designation in its own
+column; the WFM Daily Review no longer rewrites one old Send to list. The comments and help texts that used colleagues' names as
+spelling examples use made-up ones, the search words that were people's names are gone, and the tests stay synthetic (first name
+and initial, example.com). The WFM Daily Review keeps its author's credit and watermark as they were.
+
+Tests: `test/incmail.cjs` (To empty and said so; the drafts with nobody in To and the message with where; a made-up address
+typed once and kept; the card's count, *who signs* as designations and its button), `test/onepage.cjs` (the final form with no
+manager's name: the title alone, nothing else changed), `test/updparse.test.cjs`.
 
 ## The glass look (November 2026)
 
@@ -331,7 +365,7 @@ Every role's pages read in the order the work is done, the most urgent first, in
 | Area | What you see now |
 |---|---|
 | Steps | A page that holds a month's work shows it as **numbered steps** down a line: each step has its title, what it is for, its button and its own cards, says when it is done (a tick, with when and by whom) and marks the **next** one. What is there to look things up, and what is set once, come after the steps under small headings. Due dates stay in the bell. |
-| Supervisors (senior manager) | **Month close** is eight steps: 1 the incentive data for review, 2 the results on the agents' pages, 3 the one-to-one deadline and "One-to-ones are ready", 4 who finished and the objections (with the deadline reminder), 5 the results for review with the incentive list, 6 Finalize on Results, 7 the final result form (only the people on the incentive list who earned it: an earned SR of 0 or none is left off, and the page says how many), 8 the final incentive data. Then **To look things up** (the supervisors' results) and **Set once** (the scorecard, the email addresses, the due days). The page's list of sections starts with the numbered steps. |
+| Supervisors (senior manager) | **Month close** is eight steps: 1 the incentive data for review, 2 the results on the agents' pages, 3 the one-to-one deadline and "One-to-ones are ready", 4 who finished and the objections (with the deadline reminder), 5 the results for review with the incentive list, 6 Finalize on Results, 7 the final result form (only the people on the incentive list who earned it: an earned SR of 0 or none is left off, and the page says how many), 8 the final incentive data. Then **To look things up** (the supervisors' results) and **Set once** (the scorecard, the email addresses, which ship empty and say how many are still to fill in, the due days). The page's list of sections starts with the numbered steps. |
 | Quality | Six steps: the EVAL template with IDs, the Final EVAL (the drop zone), the names to link, the DRC-CSAT (when a scorecard has it), the check of the quality KPIs, the accepted objections to fix. |
 | Results | The month's tiles and every agent first, then **By team and by supervisor**, then **Tools** (Reconcile with the old Excel, the changes by hand). |
 | Numbered tabs | WFM team's month is **1 Import, 2 Review, 3 Export, 4 Emails**; a supervisor's Team is **1 Attendance, 2 Objections, 3 One-to-ones** (then Finish my team). Review's tabs follow the work: Checks, Issues, People, KPI results, Preview, History. Import groups its cards: 1 the four Genesys exports, 2 attendance, 3 IDs and KPI inputs. |
@@ -606,7 +640,7 @@ node test/showcase.cjs "final/Cadence.html" "final/Cadence - Showcase.html" test
 node tools/loadtest/run.cjs 100 120 15 45 3000                 # not a suite: how many people at the same time on one shared folder (saves lost, errors, how soon a save reaches the others)
 node test/rb158.cjs "final/Cadence.html" test/shots             # Report builder as 15.8: built-in history under this browser's, IVR exports (the IVR flow's Interactions export kept to what the card counts; no IVR box in the emails), tickets to exclude, IVR scorecard (calls, deflection within 40 s of the calls with no queue, transfers = queued calls, errors with Customer Type; drawer, Download PNG, the IVR Summary Daily Report .eml with the card as text and tables)
 node test/incedits.cjs "final/Cadence.html" /tmp/exports test/shots   # corrections from anywhere reach the month being built and the incentive file (also with the incentive email's file open); Export and the incentive email say when the kept file is older; Refresh data on every page
-node test/incmail.cjs "final/Cadence.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see); the final result form with only those who earned it
+node test/incmail.cjs "final/Cadence.html" test/shots exportsDir   # Supervisors › Incentive email: the analysts' saved incentive file, review and final (the old body; what changed is the sender's to see); the final result form with only those who earned it; with no address in the tool, To empty and said so, the drafts with nobody in To and where to fill it in, the Email addresses card and its button, who signs as designations only
 node test/steps.cjs "final/Cadence.html" test/shots            # every page in the month's order: the sidebar, the numbered steps (Supervisors, Quality), the dashboard's priority, the agent's waiting one-to-one first
 node test/ctflow.cjs "final/Cadence.html" /tmp/exports test/shots   # the CT team's incentive workbook on Import: its days, its Utilization in the CT scorecard (the KPI file wins), never the IDs file, Remove and Undo
 node test/smartlink.cjs "final/Cadence.html" /tmp/exports test/shots   # Export › Smart-Link attendance: FRiENDi and FRiENDi Pay only, Smart-Link's sheet and formulas, a late day as Attend with its minutes, the shared month's corrections, Saved workbooks

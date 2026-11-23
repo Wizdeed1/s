@@ -1,6 +1,6 @@
 // ================================================================ NAMES FROM OTHER FILES: the tool works out who is who
-// The quality EVAL, the interactions export, the daily review and the KPI file each name people their own way ("Areej Sebaih" for
-// "Areej Yasser Subah", "Basil Mulla" for "Basil Kamel Abdulsatar Mulla", "Tawifg" for "Tawfiq"). Every name is compared with each
+// The quality EVAL, the interactions export, the daily review and the KPI file each name people their own way ("Sara Saleh" for
+// "Sara Ahmed Salih", "Lina Alexample" for "Lina Fahad Majed Alexample", "Yousif" for "Yousef"). Every name is compared with each
 // roster person's name, Genesys name and work email: the first name, then the family name by how it sounds, then the names in
 // between, with the brand and the team as a check. A name is linked only when one person clearly fits best and nobody else fits
 // almost as well, and each person takes one name; a name linked before keeps its link. The rest are offered with the likely
@@ -66,7 +66,7 @@ const NameLink = (() => {
     let fam = 0, at = -1;
     for (let j = 1; j < C.length; j++) {
       let v = Math.max(word(lastT, C[j]), last2 ? word(last2, C[j]) : 0, j + 1 < C.length ? word(lastT, C[j] + C[j + 1]) : 0);
-      if (!v && f >= 0.97) { const a = sound(noAl(lastT)), b = sound(noAl(C[j])); if (a.length >= 2 && a === b) v = 0.8; }   // "Sebaih" and "Subah" sound alike, with the same first name
+      if (!v && f >= 0.97) { const a = sound(noAl(lastT)), b = sound(noAl(C[j])); if (a.length >= 2 && a === b) v = 0.8; }   // "Saleh" and "Salih" sound alike, with the same first name
       const w = v * (j === C.length - 1 ? 1 : 0.97);   // the family name is usually last
       if (w > fam) { fam = w; at = j; }
     }

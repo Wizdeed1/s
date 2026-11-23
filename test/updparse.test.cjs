@@ -67,7 +67,7 @@ r = T('nawal friendi absent on 10 Oct');
 ok(one(r) === 'p2: 10-10=Absent', 'the brand narrows it to one');
 r = T('nawal SM absent on 10 Oct');
 ok(one(r) === 'p3: 10-10=Absent', 'the team narrows it to one');
-r = T('Hi Diaa,\nrayan absent\nrayan on 10 Oct\nrayan SL and absent on 10 Oct\nset xyz qwerty as absent on 4 oct\nThanks');
+r = T('Hi Sami,\nrayan absent\nrayan on 10 Oct\nrayan SL and absent on 10 Oct\nset xyz qwerty as absent on 4 oct\nThanks');
 ok(r.bad.length === 3 && /no day/.test(r.bad[0].why) && /no value/.test(r.bad[1].why) && /two different values/.test(r.bad[2].why), `lines with no day, no value or two values: not read, with why (${r.bad.map(b => b.why.split(':')[0]).join('; ')})`);
 ok(r.groups.length === 1 && !r.groups[0].pid && /nobody called "xyz qwerty"/.test(r.groups[0].why), 'a name nobody has: said so');
 r = T('rayan absent on 10 Oct');

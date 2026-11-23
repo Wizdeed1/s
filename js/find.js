@@ -32,7 +32,7 @@ function ftok(q, w, partial) {
   if (w.startsWith(q)) return partial ? (q.length >= 2 || w.length <= 3 ? 0.9 : 0.62) : q.length >= 3 ? 0.8 : 0;
   if (q.length >= 4 && w.length >= 4) {
     const a = nameSkel(q), b = nameSkel(w);
-    if (a.length >= 3 && a === b) return 0.85;   // Mohamed / Muhammad, Alshubily / Alshubaily
+    if (a.length >= 3 && a === b) return 0.85;   // Mohamed / Muhammad, Yousef / Yousif
     const d = flev(q, w, 2); if (d === 1) return 0.8; if (d === 2 && q.length >= 7) return 0.66;
     if (partial && a.length >= 3 && b.startsWith(a)) return 0.7;
   }
@@ -189,8 +189,9 @@ function findPages(role) {
   if (W.includes('results')) add('results', 'Results', 'results|final results|finalize|finalise|eligibility page', 'Results', go('results'));
   if (W.includes('cycle')) {
     add('cycle', 'Supervisors', 'supervisors page|cycle|progress|supervisors progress|spv scorecards|supervisor scorecards', 'Supervisors', go('cycle'));
-    if (canCycle()) add('incmail', 'Incentive email to the champions (for review, final)', 'incentive email|incentive data|incentive data email|incentive file|champions email|send the incentive|mohammed email|incentive for review|incentive final', 'Supervisors', () => openIncMail());
-    add('mail4', 'The four emails (one-to-ones ready, review, deadline warning, final result form)', 'four emails|one to ones ready|ready email|review email|results for review|deadline warning|final email|final form|final result form|signature|signatures|rasha|vp|ceo', 'Supervisors', go('cycle'));
+    if (canCycle()) add('incmail', 'Incentive email to the champions (for review, final)', 'incentive email|incentive data|incentive data email|incentive file|champions email|send the incentive|senior manager email|incentive for review|incentive final', 'Supervisors', () => openIncMail());
+    add('mail4', 'The four emails (one-to-ones ready, review, deadline warning, final result form)', 'four emails|one to ones ready|ready email|review email|results for review|deadline warning|final email|final form|final result form|signature|signatures|vp|ceo', 'Supervisors', go('cycle'));
+    if (canCycle()) add('contacts', 'Email addresses for the month close emails, and who signs the final result form', 'contacts|contact|email addresses|addresses|recipients|who gets the emails|who signs|signers|to and cc', 'Supervisors', () => openContacts());
     if (canCycle()) add('calendar', 'Month close: the day each step is due', 'month close|calendar|close calendar|closing|deadlines|due days|timeline|late steps', 'Supervisors', () => todayGo('cal'));
     add('objsenior', 'Objections and the dispute rate per team', 'objections|objection|disputes|dispute rate|complaints|escalated', 'Supervisors', () => { setWs('cycle'); scrollTo_('#cycleBody .objcard'); });
     add('rules', 'Incentive rules (scorecards, bases, who earns it), in force from a month', 'incentive rules|rules|governance|bases|eligibility rules|minimum final|rule history|new rules', 'Supervisors', () => openRules());

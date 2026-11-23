@@ -203,11 +203,10 @@ async function signNow() {
 async function mailSigned() {
   const f = state.signForm, M = state.me; if (!f || !M) return;
   const P = M.prof || {}, me = P.email ? `${P.name} <${P.email}>` : '', spv = P.spvEmail ? `${P.spvName} <${P.spvEmail}>` : '';
-  if (!me && !spv) toast('There is no email for you or your supervisor in the roster yet: add the recipients in Outlook.');
   try {
     const bytes = await formPdf(f), first = String(P.spvName || '').split(' ')[0] || 'Team Leader';
     const html = mP(`Dear ${esc(first)},`) + mP(`Please find attached my signed ${f.kind === 'final' ? 'final form' : 'one-to-one form'} for <b>${esc(f.period || '')}</b>, signed in the MC tool on ${esc(fmtWhen(M.sigs[f.id].at))}.`) + mP('Best regards,');
-    await saveEml(`Signed ${f.kind === 'final' ? 'final form' : 'one-to-one'} - ${f.period}`, { to: [me].filter(Boolean), cc: [spv].filter(Boolean), subject: `Signed ${f.kind === 'final' ? 'final form' : 'one-to-one'} | ${P.name || f.agent.name} | ${f.period}`, html, files: [{ name: formFile(f).replace(/\.pdf$/, ' - signed.pdf'), bytes, type: 'application/pdf' }] });
+    await saveEml(`Signed ${f.kind === 'final' ? 'final form' : 'one-to-one'} - ${f.period}`, { to: [me].filter(Boolean), cc: [spv].filter(Boolean), hint: me || spv ? '' : 'There is no email for you or your supervisor in the roster yet: add the recipients in Outlook.', subject: `Signed ${f.kind === 'final' ? 'final form' : 'one-to-one'} | ${P.name || f.agent.name} | ${f.period}`, html, files: [{ name: formFile(f).replace(/\.pdf$/, ' - signed.pdf'), bytes, type: 'application/pdf' }] });
   } catch (e) { toast('Could not make the email: ' + (e && e.message ? e.message : e)); }
 }
 /** the signature that goes on a form's PDF: only when the agent signed this very version */

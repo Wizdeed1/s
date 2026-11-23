@@ -374,20 +374,34 @@ function renderFresh() {
 setInterval(() => { if (!document.hidden) renderFresh(); }, 60000);
 
 // ---------------------------------------------------------------- contacts for the emails (the senior manager keeps them)
-const CONTACTS0 = { vp: 'Rasha Mugaddam <rasha.mogaddam@beyond.one>', senior: 'Mohammed Alshubily <mohammed.alshubily@beyond.one>', mgmt: 'KSA-Member Care Management Team <MemberCareManagementTeam.ksa@beyond.one>', wfm: '',
-  form: 'Essam AlZahrani <Essam.Alzhrani@beyond.one>' };   // form: who gets the final result form (as in the senior manager's own email)
+// No address ships with the tool: the senior manager types them once on Supervisors › Month close › Email addresses (under Set
+// once) and they are kept in the shared data (config/contacts) for everyone. Until then the drafts open with nobody in To or Cc,
+// and the tool says where to fill them in.
+const CONTACTS0 = { vp: '', senior: '', mgmt: '', wfm: '', form: '' };   // form: who gets the final result form
+const CONTACTS_AT = 'Supervisors › Month close › Email addresses (under Set once)';
+const CONTACT_NEED = ['vp', 'form', 'senior', 'mgmt'];   // the ones the emails need (the WFM copy is there only if wanted)
+const CONTACT_WHO = { vp: 'the VP', form: 'the final result form', senior: 'the senior manager', mgmt: 'the management team (Cc)', wfm: 'the WFM team (Cc)' };
 const contactsNow = () => ({ ...CONTACTS0, ...(state.contacts || {}) });
 const splitAddr = s => String(s || '').split(/[;,\n]+/).map(normSpace).filter(Boolean);
+/** what a month close email says when some of its contacts have no address yet ('' when they all have one) */
+function contactGap(...fs) {
+  const C = contactsNow(), L = fs.filter(f => !splitAddr(C[f]).length).map(f => CONTACT_WHO[f]); if (!L.length) return '';
+  return `No address yet for ${L.length > 1 ? `${L.slice(0, -1).join(', ')} and ${L[L.length - 1]}` : L[0]}: fill ${L.length > 1 ? 'them' : 'it'} in on ${CONTACTS_AT}.`;
+}
 /** "Name <email>" for a roster person, or '' when the roster has no email for them */
 function addrOf(pid) { const p = state.roster.find(x => x._id === pid); if (!p || !normSpace(p.email)) return ''; return `${gname(effP(p._id) || p) || p.name} <${normSpace(p.email)}>`; }
 /** a ready-to-send Outlook draft (.eml, opens as a new message) with any attachments; no logo and no name under the text,
- *  because Outlook adds the company signature to every new email */
-async function saveEml(name, { to, cc, subject, html, text, files }) {
+ *  because Outlook adds the company signature to every new email.
+ *  hint: what is missing (an address not filled in yet) and where it is filled in, said with the "Saved" message; fix: a button
+ *  for the toast ({ label, fn }) that goes there. With nobody in To and no hint, the message still says the To line is empty. */
+async function saveEml(name, { to, cc, subject, html, text, files, hint, fix }) {
   const logo = null, fn = name.replace(/[\\/:*?"<>|]/g, '') + '.eml';
   const bytes = enc8.encode(emlFile({ to: to || [], cc: cc || [], subject, text: text || htmlText(html), html: wrapMail(html, !!logo), attach: files || [], logo }));
+  const note = hint || ((to || []).length ? '' : 'Its To line is empty: add the address in Outlook before sending.');
+  const say = m => (note ? toast(`${m} ${note}`, fix || null, 12000) : toast(m));   // long enough to read
   let c = await saveRaw(fn, new Blob([bytes], { type: 'message/rfc822' }));
-  if (c === 'rejected_extension' || c === 'extension_not_enabled') { const zn = fn.replace(/\.eml$/, '.zip'); c = await saveRaw(zn, new Blob([await Core.writeZip([{ name: fn, data: bytes }])], { type: 'application/zip' })); if (c === 'ok') { toast(`Saved ${zn}: the .eml is inside the zip.`); return true; } }
-  toast(c === 'ok' ? `Saved ${fn}. Open it for a ready-to-send Outlook draft.` : saveMsg(c, fn));
+  if (c === 'rejected_extension' || c === 'extension_not_enabled') { const zn = fn.replace(/\.eml$/, '.zip'); c = await saveRaw(zn, new Blob([await Core.writeZip([{ name: fn, data: bytes }])], { type: 'application/zip' })); if (c === 'ok') { say(`Saved ${zn}: the .eml is inside the zip.`); return true; } }
+  if (c === 'ok') say(`Saved ${fn}. Open it for a ready-to-send Outlook draft.`); else toast(saveMsg(c, fn));
   return c === 'ok';
 }
 const htmlText = h => String(h || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|tr|li|h\d)>/gi, '\n').replace(/<\/t[dh]>/gi, '\t').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\n{3,}/g, '\n\n').trim();
@@ -447,7 +461,7 @@ function distributionPairs(input) {
   }
   return out;
 }
-/** Arabic names in Latin letters are spelt many ways (Juhani / Johani, Qabsani / Gabssani, Zein Aldeen / Zeinaldeen, Ghaith / Geath):
+/** Arabic names in Latin letters are spelt many ways (Yousef / Yousif, Qahtani / Gahtanni, Nour Aldeen / Nouraldeen, Ghanem / Ganim):
     compare their consonants, with Al / Bin joined or dropped */
 const nameSkel = w => String(w || '').replace(/gh/g, 'g').replace(/q/g, 'g').replace(/ph/g, 'f').replace(/[aeiouy]/g, '').replace(/(.)\1+/g, '$1');
 function nameToks(s) {
@@ -548,7 +562,7 @@ function openDistPaste() {
   if (!isBuilder()) return;
   mergePlan = null; $('h-confirm').textContent = 'Teams Distribution';
   $('confirmBody').innerHTML = `<p style="margin:0">Paste the Name / Team table from the Teams Distribution email (or from Excel), or drop the email (.msg) on Import.</p>
-    <textarea id="distText" rows="12" class="cell" placeholder="Name&#9;Team&#10;Ahmed Ali&#9;Mohammed&#10;…" spellcheck="false"></textarea>
+    <textarea id="distText" rows="12" class="cell" placeholder="Name&#9;Team&#10;Lina A.&#9;Omar&#10;…" spellcheck="false"></textarea>
     <p class="hint">Each row: the agent's name, then the team lead (a first name is enough when it is clear who it is). The tool matches both to the roster and shows the changes first.</p>
     <button class="btn primary" id="distRead">Read the table</button>`;
   $('confirmOk').disabled = true; $('confirmOk').textContent = 'Apply';

@@ -118,10 +118,10 @@
   }
   /* The daily record, as the brand emails' daily table: s.record = { monthName, within, from, many, months: [row], days: [row] },
      a row { label, calls, noQueue, quick, deflected, queued, da, runs, errorsN, mark }. Columns: the day (or the month), the calls,
-     those with no queue, those of them within 40 s, the deflected and their share of the calls, the queued and theirs, the data
-     action errors and their share of the runs. The days of the card's period are marked (red). */
-  const recHead = rec => ['Date', 'IVR calls', 'No queue', 'Within ' + (rec.within || 40) + 's', 'Deflected', 'Deflection', 'Queued', 'Transfer', 'Errors', 'Error rate'];
-  const recCells = r => [r.label, fmt(r.calls), fmt(r.noQueue), fmt(r.quick), fmt(r.deflected), pctOf(r.deflected || 0, r.calls), fmt(r.queued), pctOf(r.queued || 0, r.calls),
+     those with no queue that ended within 40 s, the deflection and the transfers (each a share of the calls), the data action
+     errors and their share of the runs. The days of the card's period are marked (red). */
+  const recHead = rec => ['Date', 'IVR calls', 'Within ' + (rec.within || 40) + 's', 'Deflection', 'Transfer', 'Errors', 'Error rate'];
+  const recCells = r => [r.label, fmt(r.calls), fmt(r.quick), pctOf(r.deflected || 0, r.calls), pctOf(r.queued || 0, r.calls),
     r.da ? fmt(r.errorsN) : '–', r.da ? errPct(r.runs ? r.errorsN / r.runs : null) : '–'];
   const recAfter = rec => (rec.months.length ? 'Monthly totals, then ' : '') + rec.monthName + ' day by day' + (rec.from ? ', from ' + rec.from : '')
     + ' · ' + (rec.many ? 'the report days' : 'the report day') + ' in red';
@@ -163,7 +163,7 @@
 
     // the daily record, above the top 5 lists: a dark heading row, the closed months, a rule and the month's label, then the days
     if (s.record && s.record.days.length) {
-      const rec = s.record, head = recHead(rec), W0 = 62, WN = (CW - W0) / 9, RH = 22, HH = 26;
+      const rec = s.record, head = recHead(rec), W0 = 62, WN = (CW - W0) / (head.length - 1), RH = 22, HH = 26;
       const colX = i => (i ? X + W0 + (i - 1) * WN : X), colW = i => (i ? WN : W0);
       const cell = (txt, i, top, h, st, color) => {
         if (!draw) return;
@@ -357,12 +357,12 @@
     // label between two rules, then the days; the report day in red
     let record = '';
     if (s.record && s.record.days.length) {
-      const rec = s.record, H = recHead(rec), W0 = 76, WN = (W - W0) / 9;
+      const rec = s.record, H = recHead(rec), W0 = 76, WN = (W - W0) / (H.length - 1);
       const td = (txt, i, o) => cell(i ? WN : W0, line(txt, o.size, o.color, { bold: o.bold, align: i ? 'right' : 'left' }),
         `${o.bg ? 'background:' + o.bg + ';' : ''}padding:${pt(5)} ${pt(i ? 7 : 8)} ${pt(5)} ${pt(i ? 3 : 8)}`, ` valign="middle"${i ? ' align="right"' : ''}${o.bg ? ` bgcolor="${o.bg}"` : ''}`);
       const headRow = '<tr>' + H.map((h, i) => td(h, i, { size: 7.5, color: COL.white, bold: 1, bg: COL.ink })).join('') + '</tr>';
       const rowOf = (r, n) => '<tr>' + recCells(r).map((v, i) => td(v, i, { size: 8.5, color: r.mark ? COL.red : COL.ink, bold: i === 0 || r.mark, bg: n % 2 ? COL.stripe : '' })).join('') + '</tr>';
-      const rule = (inner, extra) => `<tr>${cell(0, inner, `border-top:solid ${COL.ink} 1.5pt;${extra || 'padding:0in'}`, ` colspan="10"${extra ? ` bgcolor="${COL.track}"` : ''}`)}</tr>`;
+      const rule = (inner, extra) => `<tr>${cell(0, inner, `border-top:solid ${COL.ink} 1.5pt;${extra || 'padding:0in'}`, ` colspan="${H.length}"${extra ? ` bgcolor="${COL.track}"` : ''}`)}</tr>`;
       const sep = rec.months.length ? rule(line(rec.monthName + ' — daily', 7.5, COL.mute, { bold: 1 }), `border-bottom:solid ${COL.ink} 1.5pt;background:${COL.track};padding:${pt(5)} ${pt(8)} ${pt(5)} ${pt(8)}`) : '';
       record = gap(22) + line('DAILY RECORD', 8, COL.mute, { bold: 1, ls: 0.9 }) + line(recAfter(rec), 8.5, COL.mute, { mt: 1.5 }) + gap(6)
         + table(W, headRow + rec.months.map(rowOf).join('') + sep + rec.days.map(rowOf).join('') + rule(gap(1)));

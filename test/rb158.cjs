@@ -220,10 +220,10 @@ const files = {
   await p.click('#wfmDm [data-rba="ivr"]'); await p.waitForSelector('#dIvr:not([hidden]) #ivrImg', { timeout: 10000 }); await p.waitForTimeout(400);
   const card2 = await p.evaluate(() => ({ alt: document.getElementById('ivrImg').alt, h: document.getElementById('ivrImg').naturalHeight, st: document.getElementById('ivrStatus').textContent }));
   const recSaid = 'Daily record, Monthly totals, then October day by day, from 5 Oct · the report day in red: '
-    + 'Sep-26, IVR calls 10, No queue 6, Within 40s 3, Deflected 3, Deflection 30%, Queued 4, Transfer 40%, Errors –, Error rate –; '
-    + '05-Oct, IVR calls 20, No queue 12, Within 40s 5, Deflected 7, Deflection 35%, Queued 8, Transfer 40%, Errors 20, Error rate 1.3%; '
-    + '06-Oct, IVR calls 16, No queue 6, Within 40s 2, Deflected 4, Deflection 25%, Queued 10, Transfer 63%, Errors –, Error rate –; '
-    + '07-Oct, IVR calls 40, No queue 18, Within 40s 7, Deflected 11, Deflection 28%, Queued 22, Transfer 55%, Errors 103, Error rate 2.4%.';
+    + 'Sep-26, IVR calls 10, Within 40s 3, Deflection 30%, Transfer 40%, Errors –, Error rate –; '
+    + '05-Oct, IVR calls 20, Within 40s 5, Deflection 35%, Transfer 40%, Errors 20, Error rate 1.3%; '
+    + '06-Oct, IVR calls 16, Within 40s 2, Deflection 25%, Transfer 63%, Errors –, Error rate –; '
+    + '07-Oct, IVR calls 40, Within 40s 7, Deflection 28%, Transfer 55%, Errors 103, Error rate 2.4%.';
   const iRec = card2.alt.indexOf('Daily record'), iTop = card2.alt.indexOf('Top outcomes');
   ok(card2.alt.includes(recSaid) && iRec > card2.alt.indexOf('Errors: 2.4%') && iRec < iTop && /Daily record: 3 days of October/.test(card2.st),
     `  the card for 7 Oct: September's total, then October day by day from 5 Oct, 7 Oct in red, under the tiles and above the top 5 lists ("${card2.st}"; ${card2.h} px tall)${card2.alt.includes(recSaid) ? '' : ' GOT: ' + card2.alt.slice(iRec, iRec + 700)}`);
@@ -235,8 +235,8 @@ const files = {
   const eml2 = fs.readFileSync(await de2.path(), 'latin1'), parts2 = eml2.split(/\r\n--[^\r\n]+\r\n/).slice(1), hp = parts2.find(x => x.startsWith('Content-Type: text/html'));
   const html2 = hp ? body(hp).toString('utf8') : '';
   const mt2 = await p.evaluate(h => { const d = new DOMParser().parseFromString(h.replace(/</g, ' <'), 'text/html'); return d.body.textContent.replace(/\s+/g, ' '); }, html2);
-  const rowsSaid = ['DAILY RECORD Monthly totals, then October day by day, from 5 Oct · the report day in red Date IVR calls No queue Within 40s Deflected Deflection Queued Transfer Errors Error rate',
-    'Sep-26 10 6 3 3 30% 4 40% – –', 'October — daily', '05-Oct 20 12 5 7 35% 8 40% 20 1.3%', '06-Oct 16 6 2 4 25% 10 63% – –', '07-Oct 40 18 7 11 28% 22 55% 103 2.4%'];
+  const rowsSaid = ['DAILY RECORD Monthly totals, then October day by day, from 5 Oct · the report day in red Date IVR calls Within 40s Deflection Transfer Errors Error rate Sep-26',
+    'Sep-26 10 3 30% 40% – –', 'October — daily', '05-Oct 20 5 35% 40% 20 1.3%', '06-Oct 16 2 25% 63% – –', '07-Oct 40 7 28% 55% 103 2.4% '];
   const miss2 = rowsSaid.filter(x => !mt2.includes(x)), redDay = /color:#e10a0a">07-Oct</.test(html2.replace(/\s+/g, ' '));
   ok(!miss2.length && mt2.indexOf('DAILY RECORD') > mt2.indexOf('ERRORS 2.4%') && mt2.indexOf('DAILY RECORD') < mt2.indexOf('TOP 5 OUTCOMES') && redDay,
     `  the email: the record as a table under the tiles, above the top 5 lists, 7 Oct in red${miss2.length ? '; missing: ' + miss2.join(' | ') : ''}${redDay ? '' : ' (7 Oct not red)'}`);

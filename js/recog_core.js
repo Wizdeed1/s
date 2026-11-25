@@ -17,6 +17,7 @@ const KINDS = {
   attendance: { label: 'a supervisor\'s attendance sheet', short: 'attendance sheet', group: 'attendance', monthly: true, route: 'attendance', routes: ['attendance'] },
   ids: { label: 'the HR IDs file', short: 'IDs file', group: 'ids', route: 'ids', routes: ['ids', 'roster'] },
   roster: { label: 'a roster', short: 'roster', group: 'roster', route: 'roster', routes: ['roster'] },
+  joining: { label: 'HR\'s joining dates (a hire date for each person)', short: 'joining dates', group: 'roster', route: 'joining', routes: ['joining'] },
   kpiFile: { label: 'the KPI file', short: 'KPI file', group: 'kpi', monthly: true, route: 'kpi', routes: ['kpi'] },
   evalBook: { label: 'the quality team\'s Final EVAL', short: 'Final EVAL', group: 'eval', monthly: true, route: 'quality', routes: ['quality'] },
   finalResult: { label: 'the old final result of a month', short: 'old Excel file', group: 'old', old: true, monthly: true, route: 'compare', routes: ['compare'] },
@@ -60,6 +61,7 @@ const VOCAB = [
   ['team', ['team', 'teams', 'brand', 'الفريق', 'العلامه التجاريه', 'الماركه']],
   ['dep', ['dep', 'dept', 'department', 'القسم', 'الاداره']],
   ['status', ['status', 'employee status', 'الحاله']],
+  ['joined', ['joining date', 'join date', 'date of joining', 'doj', 'joined', 'joined on', 'hire date', 'hiring date', 'date of hire', 'date hired', 'hired on', 'date joined', 'employment date', 'date of employment', 'تاريخ الالتحاق', 'تاريخ التعيين', 'تاريخ المباشرة', 'تاريخ الانضمام']],
   ['sys', ['system name', 'genesys name', 'genesys']],
   ['email', ['email', 'e-mail', 'work email', 'email address', 'البريد الالكتروني']],
   ['spv', ['supervisor', 'team lead', 'team leader', 'leader', 'spv', 'direct manager', 'direct leader', 'lead', 'المشرف', 'قائد الفريق']],
@@ -288,6 +290,12 @@ function sheetCands(F, opts, dl) {
   const known = new Set((opts.kpiNames || []).map(kkey)), kcols = hdrS.filter(v => known.has(kkey(v)));
   if (kcols.length && F.hdr.some(v => /^(id|national id|name|agent name|employee name)$/i.test(normSpace(v))) && !evalLike)
     add('kpiFile', Math.min(0.95, 0.72 + 0.1 * new Set(kcols).size), [`${F.toks.has('id') ? 'ID' : 'Name'} with KPI columns: ${[...new Set(kcols)].slice(0, 4).join(', ')}`]);
+  // HR's joining dates: names with a hire date and none of a roster's own columns (a roster's Joining date column stays a roster);
+  // with a Team or Dep column it may be the HR IDs file too, which then comes first
+  if (F.toks.has('name') && F.toks.has('joined') && !any(F, 'status', 'sys', 'spv') && !meas && F.dateN < 7 && !evalLike && !kcols.length && !any(F, 'kpi', 'callqa', 'agentName')) {
+    const grp = any(F, 'team', 'dep');
+    add('joining', grp ? 0.84 : F.toks.has('id') ? 0.94 : 0.88, [`${['Name', F.toks.has('id') && 'National ID'].filter(Boolean).join(' and ')} with the date each joined (${normSpace(F.hdr[F.tokCols.get('joined')])})`]);
+  }
   // a roster or the HR IDs file
   if (F.toks.has('name') && F.toks.has('id')) {
     if (any(F, 'status', 'sys')) add('roster', (/^roster$/i.test(normSpace(F.sheet)) ? 0.96 : 0.88) + (any(F, 'email', 'spv') ? 0.03 : 0), [`Name and National ID with ${[F.toks.has('status') && 'Status', F.toks.has('sys') && 'System name', F.toks.has('email') && 'Email', F.toks.has('spv') && 'Supervisor'].filter(Boolean).join(', ')}`]);
@@ -424,7 +432,7 @@ function recognise(name, tables, opts = {}) {
     if (L2.length) { const nm = new Map(); L2.forEach(p => p.names.forEach(n => nm.set(normName(n), n))); people = { ...L2[0], n: nm.size, rows: L2.reduce((a, p) => a + p.rows, 0), names: [...nm.values()], sheet: L2.map(p => p.sheet).join(', ') }; }
   }
   const reasons = [...top.reasons];
-  if (people && people.n && ['finalResult', 'ids', 'roster', 'kpiFile', 'incentiveData', 'oldDeductionBook', 'attendance', 'distribution'].includes(top.kind))
+  if (people && people.n && ['finalResult', 'ids', 'roster', 'joining', 'kpiFile', 'incentiveData', 'oldDeductionBook', 'attendance', 'distribution'].includes(top.kind))
     reasons.push(`${people.n} ${people.n === 1 ? 'person' : 'people'}${people.withId ? (people.nid10 === people.rows ? ', each with a 10-digit National ID' : `, ${people.withId} with a National ID`) : ''}`);
   if (KINDS[top.kind] && KINDS[top.kind].monthly && top.kind !== 'unknown') {
     const fsrc = mo.month && mo.month.from;

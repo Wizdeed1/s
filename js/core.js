@@ -318,15 +318,24 @@ async function readXlsx(buf) {
   }
   return sheets;
 }
+const RX_R = /(?:^|\s)r="([^"]*)"/, RX_T = /(?:^|\s)t="([^"]*)"/, RX_S = /(?:^|\s)s="([^"]*)"/;
 function parseSheetXml(xml, sst, dateXf) {
   const rows = []; let rAuto = 0;
-  const sd = xml.match(/<sheetData\b[^>]*>([\s\S]*?)<\/sheetData>/); if (!sd) return rows;
-  for (const rm of sd[1].matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
-    const rAttr = attr(rm[1], 'r'); const r = rAttr ? +rAttr : rAuto + 1; rAuto = r;
+  const s0 = xml.indexOf('<sheetData'); if (s0 < 0) return rows;
+  const g = xml.indexOf('>', s0); if (g < 0 || xml[g - 1] === '/') return rows;   // <sheetData/>: nothing in it
+  const s1 = xml.indexOf('</sheetData>', g); if (s1 < 0) return rows;
+  let sd = xml.slice(g + 1, s1);
+  // the rows after the last value hold formatting only (a sheet formatted down to row 1,048,576): they are not read at all
+  const lastV = Math.max(sd.lastIndexOf('<v'), sd.lastIndexOf('<is>')); if (lastV < 0) return rows;
+  const endRow = sd.indexOf('</row>', lastV); if (endRow >= 0) sd = sd.slice(0, endRow + 6);
+  for (const rm of sd.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
+    const ra = RX_R.exec(rm[1]); const r = ra ? +ra[1] : rAuto + 1; rAuto = r;
+    const cells = rm[2];
+    if (!cells || (cells.indexOf('<v') < 0 && cells.indexOf('<is>') < 0)) continue;   // a row of formatting only: an empty row
     const row = []; let cAuto = 0;
-    for (const cm of (rm[2] || '').matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
-      const a = cm[1]; const rr = attr(a, 'r'); const c = rr ? colIdx(rr.replace(/\d+/g, '')) : cAuto + 1; cAuto = c;
-      const t = attr(a, 't'), s = +(attr(a, 's') || 0), body = cm[2] || '';
+    for (const cm of cells.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+      const a = cm[1]; const rx = RX_R.exec(a); const c = rx ? colIdx(rx[1].replace(/\d+/g, '')) : cAuto + 1; cAuto = c;
+      const tx = RX_T.exec(a), sx = RX_S.exec(a), t = tx ? tx[1] : null, s = sx ? +sx[1] : 0, body = cm[2] || '';
       const vm = body.match(/<v>([\s\S]*?)<\/v>/); const raw = vm ? xmlDecode(vm[1]) : null;
       let v = null;
       if (t === 's') v = raw != null ? (sst[+raw] ?? '') : null;
@@ -442,6 +451,33 @@ function resolveDates(cells) {
   return parsed.map(p => (p ? (swap && p.alt ? p.alt : { y: p.y, m: p.m, d: p.d }) : null)).map(p => (p && p.m >= 1 && p.m <= 12 && p.d >= 1 && p.d <= 31 ? p : null));
 }
 
+/** the column of the date someone joined: Joining date, Hire Date, Date of joining… (English and Arabic) */
+const JOIN_RE = /^(joining date|join date|date of joining|doj|joined|joined on|hire date|hiring date|date of hire|date hired|hired on|date joined|start date|joining|employment date|date of employment|تاريخ الالتحاق|تاريخ التعيين|تاريخ المباشرة|تاريخ المباشره|تاريخ الانضمام)$/i;
+/* HR's file of the staff's joining dates (Full Name, Colleague ID, National ID, Username, First / Middle / Last Name, Position,
+   Hire Date): a name and the day each joined, with what finds the person on the roster. The ID is a National ID column only (an
+   employee number, Colleague ID on SF or Employee ID, is never a National ID); the username is kept when it is an email address;
+   the first and last names find someone whose middle name the roster leaves out. null when the sheet has no name and no date column. */
+function parseJoining(rows) {
+  const isName = x => /^(full name|name|employee name|employee full name|agent name|staff name|member care champions?|الاسم|الاسم الكامل|اسم الموظف)$/i.test(x);
+  const h = headerRow(rows, r => r.some(x => isName(normSpace(x))) && r.some(x => JOIN_RE.test(normSpace(x))));
+  if (h < 0) return null;
+  const hdr = rows[h].map(x => normSpace(cellStr(x))), col = re => hdr.findIndex(x => re.test(x));
+  const nm = hdr.findIndex(isName), jd = col(JOIN_RE);
+  const id = col(/^(national\s*id|nid|national id\s*\/\s*iqama|national id (no\.?|number)|iqama|iqama (no\.?|number)|id (no\.?|number)|id|رقم الهوية|رقم الهويه|الهوية|الهويه|الهوية الوطنية|رقم الإقامة|رقم الاقامه|السجل المدني)$/i);
+  const em = col(/^(e-?mail|email address|work email|username|user name|new username|login)$/i);
+  const fn = col(/^first name$/i), mn = col(/^(middle name|second name|father'?s? name)$/i), ln = col(/^(last name|family name|surname)$/i);
+  const ps = col(/^(position|job title|title|designation|job)$/i);
+  const out = [];
+  for (const r of rows.slice(h + 1)) {
+    if (!r) continue;
+    const name = normSpace(r[nm]); if (!name || name.length > 120 || notAPerson(name) || /^total/i.test(name)) continue;
+    const mail = em >= 0 ? normSpace(r[em]).toLowerCase() : '';
+    out.push({ name, id: id >= 0 ? cleanId(r[id]) : '', email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail) ? mail : '', first: fn >= 0 ? normSpace(r[fn]) : '', middle: mn >= 0 ? normSpace(r[mn]) : '',
+      last: ln >= 0 ? normSpace(r[ln]) : '', position: ps >= 0 ? normSpace(r[ps]) : '', joined: cleanDate(r[jd]) });
+  }
+  return out;
+}
+
 function parseRoster(rows) {
   const h = headerRow(rows, r => r.some(x => /^(name|member care champions|agent name)$/i.test(x)) && r.some(x => /national\s*id|^id$/i.test(x)));
   if (h < 0) return null;
@@ -450,15 +486,17 @@ function parseRoster(rows) {
   const g = groupCols(hdr, body, ic.groups);
   const col = re => hdr.findIndex(x => re.test(normSpace(x)));
   const em = col(/^(e-?mail|email address|work email)$/i), sp = col(/^(supervisor|team lead(er)?|leader|spv|direct (manager|leader))$/i), bs = col(/^(incentive base|base|incentive base \(sr\))$/i);
-  const jd = col(/^(joining date|join date|date of joining|doj|joined|joined on|hire date|hiring date|date of hire|date joined|start date|joining)$/i);
+  const jd = col(JOIN_RE);
   const sc = col(/^(scorecard|kpi scorecard|kpi card|incentive scorecard|incentive card)$/i);   // a role's own card (CT-SPV, or its name)
-  return body.map(r => ({
+  const out = body.map(r => ({
     name: normSpace(r[ic.name]), id: cleanId(r[ic.id]), sys: ic.sys >= 0 ? normSpace(r[ic.sys]) : '',
     team: g.team >= 0 ? normTeam(r[g.team]) : '', dep: g.dep >= 0 ? normDep(r[g.dep]) : '',
     status: ic.status >= 0 ? normStatus(r[ic.status]) : '',
     email: em >= 0 ? normSpace(r[em]).toLowerCase() : '', spvName: sp >= 0 ? normSpace(r[sp]) : '', base: bs >= 0 && Number.isFinite(+r[bs]) && +r[bs] > 0 ? +r[bs] : null,
     joined: jd >= 0 ? cleanDate(r[jd]) : '', ...(sc >= 0 ? { card: normSpace(r[sc]) } : {}),
   }));
+  out.own = ic.sys >= 0 || ic.status >= 0 || ic.groups.length > 0 || sp >= 0 || bs >= 0 || sc >= 0;   // a roster's own columns (not just Name, ID, a date)
+  return out;
 }
 
 function parseGrid(rows) {
@@ -971,7 +1009,10 @@ function analyzeTables(name, all) {
     if (!d) { const x = parseTimeline(rows); if (x) d = { kind: 'timeline', data: x }; }
     if (!d) { const x = parseDayBlocks(rows); if (x) d = { kind: 'attendance', data: x }; }   // a team's day-by-day workbook (the CT incentive file), never a roster
     if (!d) { const x = parseGrid(rows); if (x) d = x.kind === 'deductionSheet' ? { kind: 'ignored', msg: 'Deduction sheet - not an input' } : { kind: x.kind, data: x }; }
-    if (!d) { const r = parseRoster(rows); if (r && r.length) d = { kind: 'roster', data: r }; }
+    if (!d) {   // a roster, or HR's joining dates: a name and a hire date with none of a roster's own columns (only the dates are taken)
+      const r = parseRoster(rows), j = !r || !r.length || !r.own ? parseJoining(rows) : null;
+      if (j && j.length) d = { kind: 'joining', data: j }; else if (r && r.length) d = { kind: 'roster', data: r };
+    }
     if (d) { d.sheet = t.name; out.push(d); }
   }
   if (!out.length) out.push({ kind: 'unknown', sheet: name, msg: 'Layout not recognised' });
@@ -1110,6 +1151,6 @@ function buildModel(dets, settings, overrides = {}) {
 
 return { DEP_ORDER, DEP_NAMES, MON, WD, normSpace, normName, cleanId, notAPerson, cleanDate, daysIn, ymdSerial, weekday, colName, ref, round6,
   readZip, writeZip, crc32, readXlsx, readXlsb, parseCSV, parseHeaderDate, adhVal, ahtSeconds, normAtt, attCat, normDep, normTeam, normStatus, parseAttTemplate, ATT_TPL_MARK,
-  analyzeFile, readTables, analyzeTables, parseDayBlocks, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
+  analyzeFile, readTables, analyzeTables, parseJoining, JOIN_RE, parseDayBlocks, guessMonth, parseGenesysAdhMulti, parsePerf, perfMonth, PERF_KEYS, computeDayReview, judgeDay, reviewMonth, buildModel, personKey, nameScore, computeDaily, parseLocalDT, WORK_CODES, ACTUAL_STATUSES };
 })();
 if (typeof module !== 'undefined') module.exports = Core;

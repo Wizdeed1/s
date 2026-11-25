@@ -20,6 +20,7 @@ const RC_ROUTE = {
   quality: { l: k => `Quality: the Final EVAL${k ? ` of ${ymLabel(k)}` : ''}`, can: () => canQuality() },
   kpi: { l: () => `the KPI file of ${ymLabel(monthKey())}`, can: () => isBuilder() },
   roster: { l: () => 'the roster (you see every change first)', can: () => isBuilder() },
+  joining: { l: () => 'the joining dates on the roster (you see every change first)', can: () => isBuilder() },
   distribution: { l: () => 'the Teams Distribution (you see who moves first)', can: () => isBuilder() },
   inter: { l: () => 'WFM team › Interactions', can: () => canInter() },
   rb: { l: () => 'WFM team › Report builder', can: () => canDailyTool() },
@@ -161,6 +162,7 @@ async function recogUse(i, route) {
     if (route === 'quality') { const ok = await tryEvalFile({ name: f.name, file: f }, null, k || undefined); if (!ok) toast(`${f.name} could not be read as the Final EVAL.`); else if (wsOfNow().includes('quality') && state.ws !== 'quality') setWs('quality'); return; }
     if (route === 'kpi') { const notes = []; if (await tryKpiFile({ name: f.name, file: f }, notes)) { refresh(); toast(`KPI file for ${ymLabel(monthKey())}: ${notes[0].kpi}`); } else toast(`${f.name} could not be read as the KPI file.`); return; }
     if (route === 'roster') { await importRosterFile(f, { recog: x.kind }); return; }
+    if (route === 'joining') { await importRosterFile(f, { recog: x.kind, join: true }); return; }
     if (route === 'distribution') { if (/\.msg$/i.test(f.name)) await importDistributionMsg(f); else { const sheets = await parseRaw(f.name, await f.arrayBuffer()), rows = (sheets[0] && sheets[0].rows) || []; showDistribution(distributionPairs(rows), f.name); } return; }
     if (route === 'inter') { await importInteractions(f); return; }
     if (route === 'rb') { state.wfmTab = 'builder'; if (state.ws !== 'wfm') setWs('wfm'); else renderWs(); await rbAddFiles([f]); return; }

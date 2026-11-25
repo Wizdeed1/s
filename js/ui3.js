@@ -427,7 +427,7 @@ async function addFiles(list, opts = {}) {
     return { it, dets, rec, inc: History.isIncentive(dets.map(d => d.sheet || '')) || !!(rec && rec.kind === 'incentiveData' && !opts.force) };
   }));
   const route = routeHistory(parsed);   // Genesys exports of other months go to the history, not to this month's slots
-  const old = [], ask = [], ASK = ['toolReport', 'roster', 'scorecard', 'distribution', 'logo', 'rbHistory', 'dailyCalls', 'dailySm', 'dailyQueue', 'tickets', 'wfmDaily', 'inter'];
+  const old = [], ask = [], ASK = ['toolReport', 'roster', 'joining', 'scorecard', 'distribution', 'logo', 'rbHistory', 'dailyCalls', 'dailySm', 'dailyQueue', 'tickets', 'wfmDaily', 'inter'];
   for (const x of parsed) {
     const { it } = x, R = x.rec, k = R && R.month ? ymKey(R.month.y, R.month.m) : '';
     if (x.inc) {
@@ -1108,11 +1108,13 @@ async function importRosterFile(file, o = {}) {
   toast(`Reading ${file.name}…`);
   let dets, buf;
   try { buf = await file.arrayBuffer(); dets = await parse(file.name, buf); } catch (e) { toast(`Could not read ${file.name}.`, { label: 'What is it?', fn: () => recogFiles([file], 'roster') }); return; }
-  const r = dets.find(d => d.kind === 'roster');
-  if (!r || !r.data.length) { toast(`No roster found in ${file.name}. It needs a header row with Name and National ID.`, { label: 'What is it?', fn: () => recogFiles([file], 'roster') }); return; }
+  const r = dets.find(d => d.kind === 'roster'), j = dets.find(d => d.kind === 'joining' && d.data && d.data.length);
+  if (j) { prepareJoining(j.data, file.name); return; }   // HR's hire dates: only the joining dates change
+  if (r && r.data.length && o.join) { prepareJoining(r.data, file.name); return; }   // chosen as joining dates in Recognise files
+  if (!r || !r.data.length) { toast(`No roster found in ${file.name}. It needs a header row with Name and National ID, or a name with a hire date (Hire Date, Joining date) for the joining dates.`, { label: 'What is it?', fn: () => recogFiles([file], 'roster') }); return; }
   if (!o.recog) {   // the old final result or the incentive data has Name and ID too: importing it would add its people as staff
     let v = null; try { const x = await parse(file.name, buf, true, 'recog', recogOpts()); v = x && x.rec; } catch (e) { v = null; }
-    if (v && v.level !== 'unsure' && !['roster', 'ids', 'distribution'].includes(v.kind)) { toast(`${file.name} looks like ${v.label}, not a roster: importing it would add ${plural(r.data.length, 'person', 'people')} as Virgin · CC.`); recogOpen([{ file, v }], 'roster'); return; }
+    if (v && v.level !== 'unsure' && !['roster', 'ids', 'joining', 'distribution'].includes(v.kind)) { toast(`${file.name} looks like ${v.label}, not a roster: importing it would add ${plural(r.data.length, 'person', 'people')} as Virgin · CC.`); recogOpen([{ file, v }], 'roster'); return; }
   }
   prepareMerge(r.data, file.name);
 }
@@ -1150,6 +1152,7 @@ function prepareMerge(rows, src) {
 }
 function applyMerge() {
   const plan = mergePlan; if (!plan) return;
+  if (plan.join) { applyJoining(plan); return; }
   if (plan.dist) { const n = applyDistribution(plan.dist.plan); mergePlan = null; closeDrawer(); $('h-confirm').textContent = 'Import roster'; toast(`Supervisors updated for ${plural(n, 'person', 'people')} from ${plan.src}`); return; }
   for (const u of plan.updates) updatePerson(u.id, u.patch, { quiet: true });
   let order = state.roster.reduce((a, p) => Math.max(a, p.order ?? 0), 0);
@@ -1163,6 +1166,75 @@ function applyMerge() {
 }
 
 
+/* HR's joining dates (People › Import roster, or Recognise files): only each person's joining date changes. A person is found by
+   National ID, else by the email, else by the name as written (or the first and last name alone), else by a name spelt another way
+   when one person on the roster comes clearly closest. A name that finds someone with another National ID is two people: nothing
+   changes. Nobody is added or taken off, no name, ID, brand or team changes, and a row without a date clears nothing. */
+function planJoining(rows) {
+  const R = rosterRows(), byId = new Map(), byMail = new Map(), byName = new Map(), idOf = p => Core.cleanId(p.nid);
+  for (const p of R) {
+    const id = idOf(p); if (id && !byId.has(id)) byId.set(id, p);
+    const m = normSpace(p.email).toLowerCase(); if (m && !byMail.has(m)) byMail.set(m, p);
+    for (const n of [p.name, p.sys, ...akaOf(p)]) { const k = normName(n); if (k && !byName.has(k)) byName.set(k, p); }
+  }
+  const names = p => [p.name, p.sys, ...akaOf(p)].filter(x => normSpace(x));
+  const close = (n, p) => Math.max(0, ...names(p).map(x => Math.max(Core.nameScore(n, x), distScore(n, x))));
+  const plan = { set: [], change: [], same: [], noDate: [], other: [], twice: [], notOn: [], rows: rows.length }, seen = new Set();
+  for (const r0 of rows) {
+    const r = { name: normSpace(r0.name), id: Core.cleanId(r0.id), email: normSpace(r0.email).toLowerCase(), first: normSpace(r0.first), last: normSpace(r0.last), position: normSpace(r0.position), joined: r0.joined || '' };
+    if (!r.name) continue;
+    const short = r.first && r.last ? `${r.first} ${r.last}` : '', otherId = p => !!(r.id && idOf(p) && idOf(p) !== r.id);
+    let p = (r.id && byId.get(r.id)) || null, how = p ? 'id' : '';
+    if (!p && r.email && byMail.has(r.email)) { p = byMail.get(r.email); how = 'email'; }
+    if (!p) { p = byName.get(normName(r.name)) || (short && byName.get(normName(short))) || null; how = p ? 'name' : ''; }
+    if (!p) {   // spelt another way: the one person clearly closest, who has no other National ID
+      let best = null, bs = 0, sec = 0;
+      for (const q of R) { if (seen.has(q._id) || otherId(q)) continue; const sc = Math.max(close(r.name, q), short ? close(short, q) : 0); if (sc > bs) { sec = bs; bs = sc; best = q; } else if (sc > sec) sec = sc; }
+      if (best && bs >= 0.8 && bs - sec >= 0.1) { p = best; how = 'similar'; }
+    }
+    if (!p) { plan.notOn.push(r); continue; }
+    if (how !== 'id' && otherId(p)) { plan.other.push({ r, p }); continue; }
+    if (seen.has(p._id)) { plan.twice.push({ r, p }); continue; }
+    seen.add(p._id);
+    if (!r.joined) { plan.noDate.push({ r, p }); continue; }
+    const was = normSpace(p.joined), x = { r, p, how, was, to: r.joined };
+    (was === r.joined ? plan.same : was ? plan.change : plan.set).push(x);
+  }
+  // who still has no joining date: the brands of the file first (HR's file of one brand leaves the others out)
+  const fb = plan.brands = [...new Set([...plan.set, ...plan.change, ...plan.same].map(x => normSpace(x.p.brand)).filter(Boolean))];
+  plan.still = R.filter(p => p.status !== 'Inactive' && !normSpace(p.joined) && !seen.has(p._id)).map((p, i) => [p, i]).sort((a, b) => (fb.includes(normSpace(b[0].brand)) - fb.includes(normSpace(a[0].brand))) || a[1] - b[1]).map(x => x[0]);
+  return plan;
+}
+function prepareJoining(rows, src) {
+  const P = planJoining(rows), n = P.set.length + P.change.length;
+  mergePlan = { join: P, src };
+  $('h-confirm').textContent = 'Joining dates';
+  const fd = d => Forms.fmtDate(d), HOW = { email: 'found by email', name: 'found by name', similar: 'similar name' };
+  const lim = (list, f, max = 12) => list.slice(0, max).map(f).join('') + (list.length > max ? `<li class="subtle">and ${list.length - max} more</li>` : '');
+  const by = x => (x.how !== 'id' ? ` · ${HOW[x.how]}${x.how === 'similar' || normName(x.r.name) !== normName(x.p.name) ? `: “${esc(x.r.name)}” in the file` : ''}` : '');
+  const sec = (title, list, f, note) => (list.length ? `<section class="sec"><h3>${title} · ${list.length}</h3>${note ? `<p class="hint" style="margin:0 0 6px">${note}</p>` : ''}<ul class="ilist">${lim(list, f)}</ul></section>` : '');
+  const li = (nm, sg) => `<li><span class="nm" dir="auto">${esc(nm)}</span><span class="sg">${sg}</span></li>`;
+  $('confirmBody').innerHTML = `<p style="margin:0">From <b>${esc(src)}</b>: ${plural(P.rows, 'person', 'people')} with ${P.rows === 1 ? 'a hire date' : 'hire dates'}. Only the joining date changes.</p>
+    <div class="minis"><div><b>${P.set.length}</b><span>new dates</span></div><div><b>${P.change.length}</b><span>changed</span></div><div><b>${P.same.length}</b><span>already right</span></div><div><b>${P.notOn.length}</b><span>not on the roster</span></div></div>
+    ${sec('Joining date added', P.set, x => li(x.p.name, `${esc(fd(x.to))}${by(x)}`))}
+    ${sec('Joining date changed', P.change, x => li(x.p.name, `${esc(fd(x.was))} → <b>${esc(fd(x.to))}</b>${by(x)}`))}
+    ${sec('Not on the roster', P.notOn, r => li(r.name, esc([r.position, r.id ? 'ID ' + r.id : ''].filter(Boolean).join(' · ') || '–')), 'Not added: the roster stays as it is. Add a person on People first if they should be on it.')}
+    ${sec('Same name, another National ID', P.other, x => li(x.r.name, `the file says ID ${esc(x.r.id)}; ${esc(x.p.name)} on the roster has ${esc(Core.cleanId(x.p.nid))}`), 'Not changed: these look like two different people.')}
+    ${sec('In the file twice', P.twice, x => li(x.r.name, `${esc(x.p.name)}: the first row is used`))}
+    ${sec('No date in the file', P.noDate, x => li(x.p.name, 'nothing changes'))}
+    ${P.still.length ? `<section class="sec"><h3>Still without a joining date · ${P.still.length}</h3><p class="hint" style="margin:0 0 6px">Active people on the roster who are not in this file${P.brands.length === 1 ? `, ${esc(P.brands[0])} first` : ''}. Months in the job is not checked for them.</p><ul class="ilist">${lim(P.still, p => li(p.name, esc([p.brand, p.team].filter(Boolean).join(' · ') || '–')), 8)}</ul></section>` : ''}
+    <p class="hint">Names, National IDs, brands and teams stay as they are, and nobody is added or taken off. The incentive's months in the job count from these dates. You can undo it right after.</p>`;
+  $('confirmOk').disabled = !n; $('confirmOk').textContent = n ? `Save ${plural(n, 'joining date')}` : 'Nothing to change';
+  openDrawer('dConfirm');
+}
+function applyJoining(M) {
+  const L = [...M.join.set, ...M.join.change], undo = [];
+  for (const x of L) { const prev = updatePerson(x.p._id, { joined: x.to }, { quiet: true }); if (prev) undo.push([x.p._id, normSpace(prev.joined)]); }
+  mergePlan = null; closeDrawer(); $('h-confirm').textContent = 'Import roster'; refresh();
+  if (undo.length) markFresh('roster', `joining dates for ${plural(undo.length, 'person', 'people')} from ${M.src}`);
+  toast(undo.length ? `Joining dates saved for ${plural(undo.length, 'person', 'people')} from ${M.src}.` : 'Nothing was changed.',
+    undo.length ? { label: 'Undo', fn: () => { for (const [id, was] of undo) updatePerson(id, { joined: was }, { quiet: true }); refresh(); toast(`The ${plural(undo.length, 'joining date')} put back as ${undo.length === 1 ? 'it was' : 'they were'}.`); } } : null);
+}
 
 // ================================================================ STAGE 1: attendance files, notifications, incentive, final emails, logo, forms
 // ---------------------------------------------------------------- attendance files (supervisors' sheets)
@@ -1835,7 +1907,7 @@ function kpiNotes(add) {
   const shown = state.model.filter(m => m.shown), noCard = [...new Set(shown.filter(m => !cardOf(m.p, monthKey()) && !['MG', 'OP'].includes(m.p.team)).map(m => m.p.team || '–'))];
   if (noCard.length) add({ id: 'kpi:nocard', sev: 'info', group: 'Scorecards', title: `No scorecard yet for ${noCard.join(', ')}`, body: 'Their KPI results are left out until a scorecard is added in Settings › Scorecards.' });
   const mm = rulesFor(monthKey()).elig.minMonths, noJoin = mm > 0 ? shown.filter(m => cardOf(m.p, monthKey()) && !m.p.joined) : [];
-  if (noJoin.length) add({ id: 'kpi:nojoin', sev: 'info', group: 'Scorecards', title: `No joining date for ${plural(noJoin.length, 'person', 'people')}`, body: `The incentive starts after ${mm} months in the job, counted from the joining date on the roster. Without one the rule is not checked: ${noJoin.slice(0, 6).map(m => m.exp).join(', ')}${noJoin.length > 6 ? ` and ${noJoin.length - 6} more` : ''}. Add it on each person's page (Edit), or import the roster with a "Joining date" column.` });
+  if (noJoin.length) add({ id: 'kpi:nojoin', sev: 'info', group: 'Scorecards', title: `No joining date for ${plural(noJoin.length, 'person', 'people')}`, body: `The incentive starts after ${mm} months in the job, counted from the joining date on the roster. Without one the rule is not checked: ${noJoin.slice(0, 6).map(m => m.exp).join(', ')}${noJoin.length > 6 ? ` and ${noJoin.length - 6} more` : ''}. Add it on each person's page (Edit), or import HR's hire date file on People › Import roster (only the joining dates change).` });
   const miss = new Map();
   for (const K of state.kpi.values()) for (const x of K.res.rows) if (x.r == null) { if (!miss.has(x.k.name)) miss.set(x.k.name, []); miss.get(x.k.name).push(K.m.exp); }
   if (!miss.size) return;

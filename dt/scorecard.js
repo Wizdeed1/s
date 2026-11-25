@@ -4,7 +4,7 @@
 (function (root) {
   'use strict';
   const CARD = { W: 640, X: 28, CW: 584 };
-  const COL = { ink: '#201e1d', mute: '#6f6c6a', red: '#e10a0a', red2: '#b30808', pink: '#fbe0dd', rule: '#eeeeee', track: '#f1efed', erule: '#f3cfc9', white: '#ffffff' };
+  const COL = { ink: '#201e1d', mute: '#6f6c6a', red: '#e10a0a', red2: '#b30808', pink: '#fbe0dd', rule: '#eeeeee', track: '#f1efed', erule: '#f3cfc9', white: '#ffffff', stripe: '#f7f6f5' };
   const FF = 'Arial, Helvetica, sans-serif';
   const TS = {
     eb:    { size: 11,   bold: 1, ls: 2,    lh: 12, color: COL.red },
@@ -21,7 +21,11 @@
     pill:  { size: 11.5, bold: 1,      lh: 12, color: COL.ink },
     runs:  { size: 11.5,               lh: 12, color: COL.mute },
     more:  { size: 11,                 lh: 14, color: COL.mute },
-    foot:  { size: 10.5,               lh: 15, color: COL.mute }
+    foot:  { size: 10.5,               lh: 15, color: COL.mute },
+    th:    { size: 9.5,  bold: 1,      lh: 11, color: COL.white },
+    td:    { size: 11,                 lh: 13, color: COL.ink },
+    tdb:   { size: 11,   bold: 1,      lh: 13, color: COL.ink },
+    sep:   { size: 9.5,  bold: 1,      lh: 11, color: COL.mute }
   };
   const HAS_LS = typeof CanvasRenderingContext2D !== 'undefined' && 'letterSpacing' in CanvasRenderingContext2D.prototype;
   const fmt = n => Math.round(n || 0).toLocaleString('en-US');
@@ -112,6 +116,16 @@
       + ' Source: Genesys ' + andList(sources) + (sources.length > 1 ? ' exports' : ' export') + (s.date ? ', ' + s.date : '') + '.';
     return { title: title, sub: sub, tiles: tiles, order: order, foot: foot };
   }
+  /* The daily record, as the brand emails' daily table: s.record = { monthName, within, from, many, months: [row], days: [row] },
+     a row { label, calls, noQueue, quick, deflected, queued, da, runs, errorsN, mark }. Columns: the day (or the month), the calls,
+     those with no queue, those of them within 40 s, the deflected and their share of the calls, the queued and theirs, the data
+     action errors and their share of the runs. The days of the card's period are marked (red). */
+  const recHead = rec => ['Date', 'IVR calls', 'No queue', 'Within ' + (rec.within || 40) + 's', 'Deflected', 'Deflection', 'Queued', 'Transfer', 'Errors', 'Error rate'];
+  const recCells = r => [r.label, fmt(r.calls), fmt(r.noQueue), fmt(r.quick), fmt(r.deflected), pctOf(r.deflected || 0, r.calls), fmt(r.queued), pctOf(r.queued || 0, r.calls),
+    r.da ? fmt(r.errorsN) : '–', r.da ? errPct(r.runs ? r.errorsN / r.runs : null) : '–'];
+  const recAfter = rec => (rec.months.length ? 'Monthly totals, then ' : '') + rec.monthName + ' day by day' + (rec.from ? ', from ' + rec.from : '')
+    + ' · ' + (rec.many ? 'the report days' : 'the report day') + ' in red';
+
   /* an error row: the action the errors belong to, a pill with how many, and the share of its runs that failed */
   const errPill = e => fmt(e.errors) + (e.errors === 1 ? ' error' : ' errors');
   const errRuns = e => errPct(e.rate) + ' of ' + fmt(e.runs) + ' runs';   // a small share with its tenth (0.6%), as the tile
@@ -146,6 +160,37 @@
     const he = tileH(T.errors, false, CW);
     tile(T.errors, X, y, he, false, CW);
     y += he;
+
+    // the daily record, above the top 5 lists: a dark heading row, the closed months, a rule and the month's label, then the days
+    if (s.record && s.record.days.length) {
+      const rec = s.record, head = recHead(rec), W0 = 62, WN = (CW - W0) / 9, RH = 22, HH = 26;
+      const colX = i => (i ? X + W0 + (i - 1) * WN : X), colW = i => (i ? WN : W0);
+      const cell = (txt, i, top, h, st, color) => {
+        if (!draw) return;
+        const w = textW(ctx, st, txt), tx = i ? colX(i) + colW(i) - 7 - w : colX(i) + 8;
+        drawText(ctx, st, txt, tx, top + (h - st.lh) / 2, color);
+      };
+      y = block(ctx, TS.h2, 'DAILY RECORD', X, y + 22, CW, draw);
+      y = block(ctx, TS.after, recAfter(rec), X, y + 2, CW, draw) + 8;
+      if (draw) { ctx.fillStyle = COL.ink; ctx.fillRect(X, y, CW, HH); }
+      head.forEach((h, i) => cell(h, i, y, HH, TS.th));
+      y += HH;
+      const row = (r, i) => {
+        if (draw && i % 2) { ctx.fillStyle = COL.stripe; ctx.fillRect(X, y, CW, RH); }
+        const red = r.mark ? COL.red : null;
+        recCells(r).forEach((v, j) => cell(v, j, y, RH, j === 0 || r.mark ? TS.tdb : TS.td, red));
+        y += RH;
+      };
+      rec.months.forEach(row);
+      if (rec.months.length) {
+        if (draw) { ctx.fillStyle = COL.ink; ctx.fillRect(X, y, CW, 2); ctx.fillStyle = COL.track; ctx.fillRect(X, y + 2, CW, RH); ctx.fillStyle = COL.ink; ctx.fillRect(X, y + 2 + RH, CW, 2); }
+        cell(rec.monthName + ' — daily', 0, y + 2, RH, TS.sep);
+        y += RH + 4;
+      }
+      rec.days.forEach(row);
+      if (draw) { ctx.fillStyle = COL.ink; ctx.fillRect(X, y, CW, 2); }
+      y += 2;
+    }
 
     // top 5 lists: name | bar | number (only when the Flow Outcome and Milestone exports were dropped too)
     function list(head, after, rows, y) {
@@ -232,6 +277,10 @@
   function alt(s) {
     const t = cardText(s);
     const parts = [t.title + '.', t.sub + '.'].concat(t.order.map(k => k.lab + ': ' + k.val + ', ' + k.note + '.'));
+    if (s.record && s.record.days.length) {
+      const H = recHead(s.record), say = r => recCells(r).map((v, i) => (i ? H[i] + ' ' + v : v)).join(', ');
+      parts.push('Daily record, ' + recAfter(s.record) + ': ' + s.record.months.concat(s.record.days).map(say).join('; ') + '.');
+    }
     if (s.lists && s.busyOut.length) parts.push('Top outcomes: ' + s.busyOut.map(r => r.name + ' ' + fmt(r.n)).join(', ') + '.');
     if (s.lists && s.busyMs.length) parts.push('Top milestones: ' + s.busyMs.map(r => r.name + ' ' + fmt(r.n)).join(', ') + '.');
     if (s.daFile && s.errors.length) parts.push('Data action errors: ' + s.errors.map(e => e.name + ' ' + errPill(e) + ', ' + errRuns(e)).join('; ') + '.');
@@ -304,6 +353,21 @@
     };
     const lists = s.lists ? gap(22) + list('Top 5 outcomes · attempts', s.afterOut, s.busyOut) + gap(16) + list('Top 5 milestones · hits', s.afterMs, s.busyMs) : '';
 
+    // the daily record above the top 5 lists, as the brand emails' daily table: a dark heading row, the closed months, the month's
+    // label between two rules, then the days; the report day in red
+    let record = '';
+    if (s.record && s.record.days.length) {
+      const rec = s.record, H = recHead(rec), W0 = 76, WN = (W - W0) / 9;
+      const td = (txt, i, o) => cell(i ? WN : W0, line(txt, o.size, o.color, { bold: o.bold, align: i ? 'right' : 'left' }),
+        `${o.bg ? 'background:' + o.bg + ';' : ''}padding:${pt(5)} ${pt(i ? 7 : 8)} ${pt(5)} ${pt(i ? 3 : 8)}`, ` valign="middle"${i ? ' align="right"' : ''}${o.bg ? ` bgcolor="${o.bg}"` : ''}`);
+      const headRow = '<tr>' + H.map((h, i) => td(h, i, { size: 7.5, color: COL.white, bold: 1, bg: COL.ink })).join('') + '</tr>';
+      const rowOf = (r, n) => '<tr>' + recCells(r).map((v, i) => td(v, i, { size: 8.5, color: r.mark ? COL.red : COL.ink, bold: i === 0 || r.mark, bg: n % 2 ? COL.stripe : '' })).join('') + '</tr>';
+      const rule = (inner, extra) => `<tr>${cell(0, inner, `border-top:solid ${COL.ink} 1.5pt;${extra || 'padding:0in'}`, ` colspan="10"${extra ? ` bgcolor="${COL.track}"` : ''}`)}</tr>`;
+      const sep = rec.months.length ? rule(line(rec.monthName + ' — daily', 7.5, COL.mute, { bold: 1 }), `border-bottom:solid ${COL.ink} 1.5pt;background:${COL.track};padding:${pt(5)} ${pt(8)} ${pt(5)} ${pt(8)}`) : '';
+      record = gap(22) + line('DAILY RECORD', 8, COL.mute, { bold: 1, ls: 0.9 }) + line(recAfter(rec), 8.5, COL.mute, { mt: 1.5 }) + gap(6)
+        + table(W, headRow + rec.months.map(rowOf).join('') + sep + rec.days.map(rowOf).join('') + rule(gap(1)));
+    }
+
     // data action errors, only when there are some: a pink box; every action that failed (Customer Type too), a pill with its
     // errors and the share of its runs that failed
     let errs = '';
@@ -323,7 +387,7 @@
     }
 
     // the parts one under the other, a paragraph of space between them; the footnote under a rule (the paragraph's own border)
-    return head + gap(18) + tiles + lists + gap(18)
+    return head + gap(18) + tiles + record + lists + gap(18)
       + (errs ? errs + gap(16) : '')
       + line(t.foot, 8, COL.mute, { box: `border-top:solid ${COL.ink} 1.5pt;padding:${pt(12)} 0in 0in 0in` });
   }

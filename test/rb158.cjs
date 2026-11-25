@@ -16,11 +16,27 @@
 //    with the card written into its body as text and tables (no picture of it), in the shape Word keeps: the calls beside the
 //    deflection and the transfers (one cell over their rows), the errors across the card (their share of the data action runs, the
 //    count under it), and every action that failed with its errors.
+// 6. The IVR's daily record: a week's Interactions export (30 Sep, 5 and 6 Oct) and one day's Data Actions export (5 Oct) dropped
+//    after the day's: each day kept on its own (ivr/virgin/days/<day>), the card for 7 Oct shows the closed month (September's
+//    total), then October day by day with 7 Oct in red, above the top 5 lists, and so does its email; Download Excel makes October's
+//    workbook: a dashboard with the four numbers, the highs and lows and three charts, the daily record with its formulas, the
+//    errors by action and day, every action day by day, the menus and the definitions; every part of it well formed.
 // Usage: node test/rb158.cjs page.html outDir
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path');
 const fixture = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8'), [page0, out] = process.argv.slice(2); fs.mkdirSync(out, { recursive: true });
 let bad = 0; const ok = (c, m) => { if (!c) bad++; console.log((c ? '✓ ' : '✗ ') + m); };
+/** the files of a zip (an .xlsx): name -> text */
+function unzip(buf) {
+  const zlib = require('node:zlib'), out = {}; let e = buf.length - 22; while (e >= 0 && buf.readUInt32LE(e) !== 0x06054b50) e--;
+  let at = buf.readUInt32LE(e + 16);
+  for (let i = 0, n = buf.readUInt16LE(e + 10); i < n; i++) {
+    const method = buf.readUInt16LE(at + 10), size = buf.readUInt32LE(at + 20), nl = buf.readUInt16LE(at + 28), xl = buf.readUInt16LE(at + 30), cl = buf.readUInt16LE(at + 32), off = buf.readUInt32LE(at + 42);
+    const name = buf.toString('utf8', at + 46, at + 46 + nl), start = off + 30 + buf.readUInt16LE(off + 26) + buf.readUInt16LE(off + 28), data = buf.subarray(start, start + size);
+    out[name] = (method === 8 ? zlib.inflateRawSync(data) : data).toString('utf8'); at += 46 + nl + xl + cl;
+  }
+  return out;
+}
 const csv = rows => rows.map(r => r.map(v => (/[",]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v)).join(',')).join('\r\n') + '\r\n';
 const D0 = '10/7/2026 12:00 AM', D1 = '10/8/2026 12:00 AM';   // Wednesday 7 October 2026, as Genesys writes it
 const files = {
@@ -155,7 +171,7 @@ const files = {
     `Open in Outlook (.eml): ${de.suggestedFilename()}, "IVR Summary Daily Report", the team's header and footer; its one picture is the moving Beyond One mark (no PNG of the card)`);
   // the card written into the body: the words and numbers as text, the bars as table cells as long as their numbers
   const mt = await p.evaluate(h => {
-    const d = new DOMParser().parseFromString(h.replace(/</g, ' <'), 'text/html'), dark = [...d.querySelectorAll('td[bgcolor="#201e1d"]')].map(td => +td.getAttribute('width'));
+    const d = new DOMParser().parseFromString(h.replace(/</g, ' <'), 'text/html'), dark = [...d.querySelectorAll('td[bgcolor="#201e1d"][style*="height:6.0pt"]')].map(td => +td.getAttribute('width'));
     return { txt: d.body.textContent.replace(/\s+/g, ' '), dark, imgs: d.images.length };
   }, html);
   const said = ['IVR SCORECARD IVR Summary daily report · Wed, 7 Oct 2026 Virgin Main IVR flow · 24 hours', 'IVR CALLS 40 calls into Virgin Main IVR', 'IVR DEFLECTION · OVER 40S 28% 11 of 40 calls (18 with no queue, less 7 within 40 s)',
@@ -175,6 +191,79 @@ const files = {
     `  written as Word keeps it: every cell ends with a paragraph, a paragraph between two tables, all ${sized.length} paragraphs sized`);
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   ok(await p.evaluate(() => document.getElementById('dIvr').hidden), 'Esc closes it');
+
+  // ---- 6. the IVR's daily record
+  const IH = ['Full Export Completed', 'Partial Result Timestamp', 'Filters', 'Media Type', 'Users', 'Remote', 'Date', 'Duration', 'Direction', 'Queue', 'Wrap-up', 'ANI', 'Disconnect Type', 'Error Code'];
+  const ivrRows = (md, plan) => plan.map(([q, d], i) => ['YES', '', 'Flows: Virgin Main IVR', 'voice', q ? 'Agent Z.' : '', 'Mobile Number, Example', `${md}/26 ${String(9 + (i % 3)).padStart(2, '0')}:${String(i).padStart(2, '0')} AM`, String(d), 'Inbound', q, '', `tel:+1000009${String(i).padStart(4, '0')}`, 'External', '']);
+  const plan = (queued, quick, long) => [...Array(queued).fill(['Virgin_Ar', 90]), ...Array(quick).fill(['', 20]), ...Array(long).fill(['', 75])];
+  const more = {
+    // 30 Sep: 10 calls, 4 queued, 6 with no queue (3 within 40 s); 5 Oct: 20, 8, 12 (5); 6 Oct: 16, 10, 6 (2)
+    'Interactions_-_2026-10-07T081012.120.csv': csv([IH, ...ivrRows('9/30', plan(4, 3, 3)), ...ivrRows('10/5', plan(8, 5, 7)), ...ivrRows('10/6', plan(10, 2, 4))]),
+    // 5 Oct only: 6 Oct has no Data Actions export
+    'Data_Actions_Performance_-_2026-10-06T081112.120.csv': csv([['Interval Start', 'Interval End', 'Action Category', 'Action Name', 'Executions', 'Error %', 'Aggregate or Detailed'],
+      ['10/5/2026 12:00 AM', '10/6/2026 12:00 AM', 'Virgin Main IVR', 'Customer_Type', 1000, 0.01, 'Detailed'], ['10/5/2026 12:00 AM', '10/6/2026 12:00 AM', 'Virgin Main IVR', 'Get Balance', 200, 0.05, 'Detailed'],
+      ['10/5/2026 12:00 AM', '10/6/2026 12:00 AM', 'Virgin Main IVR', 'Check Customer', 300, 0, 'Detailed']]),
+  };
+  const mp = Object.entries(more).map(([n, t]) => { const f = path.join(out, n); fs.writeFileSync(f, t); return f; });
+  await p.evaluate(() => { const S = window.__mc.state; S.wfmTab = 'builder'; window.__mc.setWs('wfm'); });
+  await p.waitForSelector('#wfmRb [data-rbpick]', { timeout: 30000, state: 'attached' });
+  const nf = await p.evaluate(() => window.__mc.rb().files.length);
+  await p.setInputFiles('#wfmRb [data-rbpick]', mp);
+  await p.waitForFunction(n => window.__mc.rb().files.length >= n, nf + 2, { timeout: 30000 }); await p.waitForTimeout(1500);
+  const recs = await p.evaluate(async () => { const sn = await window.__mc.state.db.collection('ivr/virgin/days').get(); return sn.docs.map(d => { const x = d.data(); return `${x.date} ${x.calls}/${x.noQueue}/${x.quick}/${x.deflected}/${x.queued} ${x.da ? x.errorsN + '/' + x.runs : 'no-da'}${x.by ? '' : ' (no by)'}${/tel:|Agent Z|Mobile Number/.test(JSON.stringify(x)) ? ' LEAK' : ''}`; }).sort(); });
+  ok(recs.join(' | ') === '2026-09-30 10/6/3/3/4 no-da | 2026-10-05 20/12/5/7/8 20/1500 | 2026-10-06 16/6/2/4/10 no-da | 2026-10-07 40/18/7/11/22 103/4330',
+    `the IVR's daily record: every day dropped kept on its own, the week's Interactions export split by day, the Data Actions where there was one, who and when, no number or name (${recs.join(' | ')})`);
+  const recDate = await p.evaluate(() => window.__mc.rb().date);
+  ok(recDate === '2026-10-07', `  the report day stays the latest (${recDate})`);
+  await p.evaluate(() => { const S = window.__mc.state; S.mailSub = 'daily'; S.dmActive = 'virgin'; S.wfmTab = 'emails'; window.__mc.setWs('wfm'); });
+  await p.waitForSelector('#wfmDm [data-rba="ivr"]', { timeout: 20000 });
+  await p.click('#wfmDm [data-rba="ivr"]'); await p.waitForSelector('#dIvr:not([hidden]) #ivrImg', { timeout: 10000 }); await p.waitForTimeout(400);
+  const card2 = await p.evaluate(() => ({ alt: document.getElementById('ivrImg').alt, h: document.getElementById('ivrImg').naturalHeight, st: document.getElementById('ivrStatus').textContent }));
+  const recSaid = 'Daily record, Monthly totals, then October day by day, from 5 Oct · the report day in red: '
+    + 'Sep-26, IVR calls 10, No queue 6, Within 40s 3, Deflected 3, Deflection 30%, Queued 4, Transfer 40%, Errors –, Error rate –; '
+    + '05-Oct, IVR calls 20, No queue 12, Within 40s 5, Deflected 7, Deflection 35%, Queued 8, Transfer 40%, Errors 20, Error rate 1.3%; '
+    + '06-Oct, IVR calls 16, No queue 6, Within 40s 2, Deflected 4, Deflection 25%, Queued 10, Transfer 63%, Errors –, Error rate –; '
+    + '07-Oct, IVR calls 40, No queue 18, Within 40s 7, Deflected 11, Deflection 28%, Queued 22, Transfer 55%, Errors 103, Error rate 2.4%.';
+  const iRec = card2.alt.indexOf('Daily record'), iTop = card2.alt.indexOf('Top outcomes');
+  ok(card2.alt.includes(recSaid) && iRec > card2.alt.indexOf('Errors: 2.4%') && iRec < iTop && /Daily record: 3 days of October/.test(card2.st),
+    `  the card for 7 Oct: September's total, then October day by day from 5 Oct, 7 Oct in red, under the tiles and above the top 5 lists ("${card2.st}"; ${card2.h} px tall)${card2.alt.includes(recSaid) ? '' : ' GOT: ' + card2.alt.slice(iRec, iRec + 700)}`);
+  await p.screenshot({ path: path.join(out, 'rb158-record.png') });
+  const [dl2] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.click('#dIvr [data-ivr="save"]')]);
+  await dl2.saveAs(path.join(out, 'IVR-Scorecard-record-' + dl2.suggestedFilename()));
+  // the email: the same record as a table, between the tiles and the top 5 lists
+  const [de2] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.click('#dIvr [data-ivr="eml"]')]);
+  const eml2 = fs.readFileSync(await de2.path(), 'latin1'), parts2 = eml2.split(/\r\n--[^\r\n]+\r\n/).slice(1), hp = parts2.find(x => x.startsWith('Content-Type: text/html'));
+  const html2 = hp ? body(hp).toString('utf8') : '';
+  const mt2 = await p.evaluate(h => { const d = new DOMParser().parseFromString(h.replace(/</g, ' <'), 'text/html'); return d.body.textContent.replace(/\s+/g, ' '); }, html2);
+  const rowsSaid = ['DAILY RECORD Monthly totals, then October day by day, from 5 Oct · the report day in red Date IVR calls No queue Within 40s Deflected Deflection Queued Transfer Errors Error rate',
+    'Sep-26 10 6 3 3 30% 4 40% – –', 'October — daily', '05-Oct 20 12 5 7 35% 8 40% 20 1.3%', '06-Oct 16 6 2 4 25% 10 63% – –', '07-Oct 40 18 7 11 28% 22 55% 103 2.4%'];
+  const miss2 = rowsSaid.filter(x => !mt2.includes(x)), redDay = /color:#e10a0a">07-Oct</.test(html2.replace(/\s+/g, ' '));
+  ok(!miss2.length && mt2.indexOf('DAILY RECORD') > mt2.indexOf('ERRORS 2.4%') && mt2.indexOf('DAILY RECORD') < mt2.indexOf('TOP 5 OUTCOMES') && redDay,
+    `  the email: the record as a table under the tiles, above the top 5 lists, 7 Oct in red${miss2.length ? '; missing: ' + miss2.join(' | ') : ''}${redDay ? '' : ' (7 Oct not red)'}`);
+  // Download Excel: October's workbook for the stakeholders
+  const [dx] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), p.click('#dIvr [data-ivr="xlsx"]')]);
+  const xlsxP = path.join(out, dx.suggestedFilename()); await dx.saveAs(xlsxP);
+  const Z = unzip(fs.readFileSync(xlsxP)), zparts = Object.keys(Z);
+  const wbx = Z['xl/workbook.xml'] || '', sheetNames = [...wbx.matchAll(/<sheet name="([^"]+)"/g)].map(m => m[1]);
+  ok(dx.suggestedFilename() === 'IVR Daily Record - Virgin Mobile - Oct 2026.xlsx' && sheetNames.join() === 'Dashboard,Daily record,Errors by action,Error detail,Menus,About',
+    `Download Excel: ${dx.suggestedFilename()}, sheets ${sheetNames.join(', ')}`);
+  const xmlBad = await p.evaluate(px => Object.entries(px).filter(([n, t]) => new DOMParser().parseFromString(t, 'application/xml').getElementsByTagName('parsererror').length).map(([n]) => n), Object.fromEntries(zparts.filter(n => /\.(xml|rels)$/.test(n)).map(n => [n, Z[n]])));
+  ok(!xmlBad.length && ['xl/charts/chart1.xml', 'xl/charts/chart2.xml', 'xl/charts/chart3.xml', 'xl/drawings/drawing1.xml', 'xl/worksheets/_rels/sheet1.xml.rels'].every(n => zparts.includes(n))
+    && (Z['xl/drawings/drawing1.xml'].match(/<c:chart /g) || []).length === 3 && /chart\+xml/.test(Z['[Content_Types].xml']),
+    `  every part well formed (${zparts.length} parts${xmlBad.length ? '; not: ' + xmlBad.join(', ') : ''}), three charts on the dashboard`);
+  const s2 = Z['xl/worksheets/sheet2.xml'] || '', cellOf = (x, r) => { const m = x.match(new RegExp(`<c r="${r}"[^>]*?(?:/>|>(.*?)</c>)`)); return m ? m[1] || '' : null; };
+  const vOf = (x, r) => { const c = cellOf(x, r); const m = c && c.match(/<v>([^<]*)<\/v>|<t[^>]*>([^<]*)<\/t>/); return m ? m[1] ?? m[2] : null; }, fOf = (x, r) => { const c = cellOf(x, r); const m = c && c.match(/<f>([^<]*)<\/f>/); return m ? m[1] : null; };
+  const dr = ['B5', 'C5', 'D5', 'E5', 'G5', 'I5', 'J5', 'B6', 'I6', 'B7', 'J7', 'B8', 'E8', 'G8', 'I8', 'J8'].map(r => `${r}=${vOf(s2, r)}`).join(' ');
+  ok(dr === 'B5=20 C5=12 D5=5 E5=7 G5=8 I5=1500 J5=20 B6=16 I6=null B7=40 J7=103 B8=76 E8=22 G8=40 I8=5830 J8=123'
+    && fOf(s2, 'E5') === 'C5-D5' && fOf(s2, 'F5') === 'IF(B5&gt;0,E5/B5,&quot;&quot;)' && fOf(s2, 'H7') === 'IF(B7&gt;0,G7/B7,&quot;&quot;)' && fOf(s2, 'B8') === 'SUM(B5:B7)' && fOf(s2, 'K8') === 'IF(N(I8)&gt;0,J8/I8,&quot;&quot;)'
+    && /No Data Actions export that day/.test(cellOf(s2, 'L6') || '') && /type="dataBar"/.test(s2) && (s2.match(/type="colorScale"/g) || []).length === 3,
+    `  Daily record: the days, their formulas (deflected, the shares, the month to date), 6 Oct without a Data Actions export, a bar in the calls and three colour scales (${dr})`);
+  const s1 = Z['xl/worksheets/sheet1.xml'] || '', s3 = Z['xl/worksheets/sheet3.xml'] || '';
+  ok(/IVR daily record · October 2026/.test(s1) && /Sep-26/.test(s1) && fOf(s1, 'B6') === "'Daily record'!B8" && fOf(s1, 'E6') === "'Daily record'!F8" && /MATCH\(MAX\('Daily record'!F5:F7\)/.test(s1),
+    '  Dashboard: the month\'s four numbers from the Daily record, the highs and the lows found by formulas, September in the earlier months');
+  const acts = [...s3.matchAll(/<c r="A(\d+)"[^>]*t="inlineStr"><is><t[^>]*>([^<]*)<\/t>/g)].filter(m => +m[1] >= 5).map(m => m[2]);
+  ok(acts.slice(0, 4).join() === 'Customer_Type,Get Balance,Create Callback,All the flow&apos;s data actions'.replace('&apos;', "'") || acts.slice(0, 4).join() === "Customer_Type,Get Balance,Create Callback,All the flow's data actions",
+    `  Errors by action: the actions that failed this month, the most errors first, then the flow's total (${acts.slice(0, 4).join(', ')})`);
   console.log(errs.length ? errs.join('\n') : 'no errors'); if (bad || errs.length) process.exitCode = 1;
   console.log(bad ? `${bad} failed` : 'all passed');
   await b.close();

@@ -189,7 +189,27 @@
       .map(a => ({ name: a.name, runs: a.runs, errors: Math.max(1, Math.round(a.errs)), rate: a.errs / a.runs }))
       .sort((a, b) => b.errors - a.errors || b.rate - a.rate);
     const runs = acts.reduce((t, a) => t + a.runs, 0), errors = all.reduce((t, a) => t + a.errors, 0);
-    return { list: all.slice(0, 5), all: all, actions: acts.length, runs: runs, errors: errors, from: flows && flows.length ? flows.join(', ') : null };
+    // every action of the flow, failed or not, [name, runs, errors]: the IVR's daily record keeps them, so a month's error rate of an
+    // action counts all its runs
+    const every = acts.map(a => [a.name, a.runs, a.errs > 0 && a.runs > 0 ? Math.max(1, Math.round(a.errs)) : 0]).sort((x, y) => y[2] - x[2] || y[1] - x[1]);
+    return { list: all.slice(0, 5), all: all, every: every, actions: acts.length, runs: runs, errors: errors, from: flows && flows.length ? flows.join(', ') : null };
+  }
+
+  /* One day of the IVR, as its daily record keeps it (ivr/<brand>/days/<day>): the day's numbers from the Interactions export of the
+     IVR's flow (iRows), the Data Actions export (dRows, all flows: the flow's own actions are taken), and the Flow Outcome and Flow
+     Milestone exports (oRows, mRows) when they were dropped too. Counts and names only: no caller, no agent. */
+  function ivrDay(iRows, dRows, oRows, mRows, brand) {
+    const ix = ivrInteractions(iRows), flows = flowNames((iRows || []).concat(oRows || [], mRows || []));
+    const out = { flow: flows.join(', '), calls: ix.calls, noQueue: ix.noQueue, quick: ix.quick, deflected: ix.deflected, queued: ix.queued, within: ix.within, da: false };
+    if (dRows && dRows.length) {
+      const e = dataActionErrors(dRows, flows, brand);
+      Object.assign(out, { da: true, runs: e.runs, errorsN: e.errors, actions: e.actions, acts: e.every });
+    }
+    if ((oRows && oRows.length) || (mRows && mRows.length)) {
+      const sm = ivrSummary(oRows, mRows);
+      Object.assign(out, { lists: true, first: sm.topOutcome, outcomes: sm.topOutcomes, milestones: sm.topMilestones });
+    }
+    return out;
   }
 
   function classify(name, kind, payload) {
@@ -869,7 +889,7 @@
 
   root.Engine = {
     parseCsv, dur, num, fmtDur, fmtPct, fmtInt, excelDate, ymd, ymdLocal,
-    classify, brandFromFlow, ivrSummary, flowNames, dataActionErrors, flowsFromFilters, isIvrInteractions, ivrInteractionRows, ivrInteractions, totalRow, voiceFromCalls, q85FromQueue, nonVoiceFromSm,
+    classify, brandFromFlow, ivrSummary, flowNames, dataActionErrors, flowsFromFilters, isIvrInteractions, ivrInteractionRows, ivrInteractions, ivrDay, totalRow, voiceFromCalls, q85FromQueue, nonVoiceFromSm,
     historyRows, ticketRows, sliceHistory, sliceTickets, contactMix, topReasons,
     tally, parsePastedTickets, intervalDate, rowDate, monthKey, mean, averageRow,
     addDays, dayDiff, weekday, dateRange, parseStamp, rowStamp, splitByDay, inDates,

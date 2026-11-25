@@ -5,8 +5,9 @@
 // WFM manager's WFM team › Daily emails: he reads them, writes the SLA insight and sends them. The builder's own modules make every
 // email (they are in the page: script#rb-code), so the emails come out exactly as the stand-alone builder made them. Each day's
 // numbers still go to the shared history, and building the WFM Daily Review still keeps each agent's day.
-Object.assign(state, { rbPrefs: {}, rbIn: {}, dmail: {}, dmBrands: {}, dmSel: '', dmActive: 'postpaid', rbActive: 'leaders', rbVer: 0 });
+Object.assign(state, { rbPrefs: {}, rbIn: {}, dmail: {}, dmBrands: {}, dmSel: '', dmActive: 'postpaid', rbActive: 'leaders', rbVer: 0, ivrDays: {} });
 const RB_BRANDS = ['postpaid', 'virgin', 'friendi', 'fpay'];
+const RB_IVR = ['virgin', 'friendi', 'fpay'];   // the IVRs (Virgin Postpaid shares Virgin Mobile's)
 const RB_MINE = ['leaders', 'wfm'];
 const RB_RULES = [['all', 'Average of all rows incl. total'], ['facebook', 'Facebook queues only'], ['total', 'Total row only'], ['weighted', 'Weighted by volume']];
 const RB_DAYF = { insight: 1, subject: 1, intro: 1, asaOverride: 1, exclude: 1 };   // kept per report day
@@ -364,6 +365,76 @@ function rbRebuild() {
   }
   rbRender();
   if (canDailyTool() && rbHasBrandData()) rbPublishSoon();
+  if (canDailyTool()) rbIvrRecord();
+}
+
+// ---------------------------------------------------------------- the IVR's daily record: ivr/<brand>/days/<day>
+/** every day with an Interactions export of an IVR's flow in the builder is kept as that day's numbers (counts and the names of the
+    data actions only: no caller, no agent), so the IVR scorecard shows the month day by day and the workbook is made from them. Days
+    dropped together (a week's Interactions export, each day's Data Actions export) are kept each on its own. A day dropped again (a
+    newer export) is written again; a day that did not change is not. */
+const rbIvrPlain = x => { const { at, by, ...r } = x || {}; return r; };
+function rbIvrRecord() {
+  if (!state.db || !RB.bag) return;
+  const E = rbE(), bag = RB.bag, at = new Date().toISOString(), by = whoNow(), da = (bag.ivrDa || {}).all || {};
+  RB.ivrSig = RB.ivrSig || {};
+  for (const b of RB_IVR) {
+    const byDay = (bag.ivrInt || {})[b] || {};
+    for (const d of Object.keys(byDay).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x))) {
+      const rec = Object.assign(E.ivrDay(byDay[d], da[d], ((bag.ivrOut || {})[b] || {})[d], ((bag.ivrMs || {})[b] || {})[d], b), { date: d, brand: b });
+      const sig = JSON.stringify(rec), k = b + '|' + d;
+      if (RB.ivrSig[k] === sig) continue;
+      RB.ivrSig[k] = sig;
+      if (JSON.stringify(rbIvrPlain((state.ivrDays[b] || {})[d])) === sig) continue;
+      const doc = { ...rec, at, by };
+      (state.ivrDays[b] = state.ivrDays[b] || {})[d] = doc;
+      queueWrite(`ivr/${b}/days/${d}`, () => state.db.doc(`ivr/${b}/days/${d}`).set(doc)).catch(() => { delete RB.ivrSig[k]; });
+    }
+  }
+}
+let ivrWatching = false;
+function watchIvrDays(db) {
+  if (ivrWatching || !db) return; ivrWatching = true;
+  for (const b of RB_IVR) {
+    try {
+      db.collection(`ivr/${b}/days`).onSnapshot(sn => {
+        const o = {}; sn.docs.forEach(d => { const x = d.data(); if (x && /^\d{4}-\d{2}-\d{2}$/.test(x.date || '')) o[x.date] = x; });
+        state.ivrDays[b] = o; state.rbVer++;
+      }, () => {});
+    } catch (e) { /* none */ }
+  }
+}
+/** a day or a month of the record as the scorecard and the workbook read it */
+function rbIvrRow(x) {
+  return { calls: x.calls || 0, noQueue: x.noQueue || 0, quick: x.quick || 0, deflected: x.deflected || 0, queued: x.queued || 0, da: !!x.da, runs: x.da ? x.runs || 0 : 0, errorsN: x.da ? x.errorsN || 0 : 0 };
+}
+/** the months of the record before month mk, of its year: each month's days added up */
+function rbIvrMonths(all, mk) {
+  const by = {};
+  Object.keys(all).filter(d => d.slice(0, 7) < mk && d.slice(0, 4) === mk.slice(0, 4)).sort().forEach(d => {
+    const m = d.slice(0, 7), r = rbIvrRow(all[d]), t = by[m] = by[m] || { key: m, days: 0, calls: 0, noQueue: 0, quick: 0, deflected: 0, queued: 0, da: false, runs: 0, errorsN: 0 };
+    t.days++; ['calls', 'noQueue', 'quick', 'deflected', 'queued', 'runs', 'errorsN'].forEach(f => { t[f] += r[f]; }); t.da = t.da || r.da;
+  });
+  return Object.values(by).map(t => Object.assign(t, { label: MON[+t.key.slice(5) - 1] + '-' + t.key.slice(2, 4) }));
+}
+/** the scorecard's daily record: the closed months of the year (their totals), then the report month day by day up to the report day,
+    the days of the card's period marked. The card's own day is taken from the card when the record does not have it yet. */
+function rbIvrAll(b, p, x) {
+  const all = Object.assign({}, state.ivrDays[b] || {}), ix = (x && x.ix) || null;
+  if (!p.multi && !all[p.end] && ix) all[p.end] = { date: p.end, flow: (x.flows || []).join(', '), calls: ix.calls, noQueue: ix.noQueue, quick: ix.quick, deflected: ix.deflected, queued: ix.queued, within: ix.within,
+    da: !!x.daFile, runs: x.runs, errorsN: x.errorsN, actions: x.actions, acts: (x.errorsAll || []).map(e => [e.name, e.runs, e.errors]) };
+  return all;
+}
+function rbIvrRecordOf(b, p, x) {
+  const all = rbIvrAll(b, p, x), mk = p.end.slice(0, 7), ix = (x && x.ix) || null;
+  const days = Object.keys(all).filter(d => d.slice(0, 7) === mk && d <= p.end).sort();
+  const dayLabel = d => d.slice(8) + '-' + MON[+d.slice(5, 7) - 1];
+  return {
+    month: mk, monthName: MONTH_LONG[+mk.slice(5) - 1], within: (ix && ix.within) || 40, many: p.multi,
+    from: days.length && days[0].slice(8) !== '01' ? +days[0].slice(8) + ' ' + MON[+days[0].slice(5, 7) - 1] : '',
+    months: rbIvrMonths(all, mk),
+    days: days.map(d => Object.assign(rbIvrRow(all[d]), { key: d, label: dayLabel(d), mark: d >= p.start && d <= p.end })),
+  };
 }
 function rbLeadersModel(p, dk) {
   const model = rbB().buildLeaders(p, RB.data.leaders, {}), lp = state.rbPrefs.leaders || {};
@@ -443,6 +514,7 @@ function watchDailyMail(db) {
       rbSendRender();
     }, () => { dmWatching = false; });
   } catch (e) { dmWatching = false; }
+  watchIvrDays(db);
 }
 function dmBrandsOf(dk) {
   if (!dk || !state.db) return null;
@@ -1181,6 +1253,7 @@ function rbIvrCard(key, p, x) {
     afterMs: skipped.length ? 'After ' + skipped.map(o => o.name + ' · ' + E.fmtInt(o.hits)).join(', ') : '',
     busyOut: (x.topOutcomes || []).map(o => ({ name: o.name, n: o.attempts })), busyMs: (x.topMilestones || []).map(o => ({ name: o.name, n: o.hits })),
     daFile: !!x.daFile, actions: x.actions || 0, runs: x.runs || 0, errorsN: x.errorsN || 0, errors: x.errorsAll || [],
+    record: rbIvrRecordOf(key === 'postpaid' ? 'virgin' : key, p, x),
   };
 }
 /** the IVR Summary Daily Report email, laid out as the WFM team sends it: a light page, a white card with a navy header (MC Workforce,
@@ -1215,16 +1288,29 @@ function rbIvrOpen(c) {
   if (!x.ix) { toast('The IVR scorecard counts from the Interactions export of the IVR\'s flow: in Genesys, export the day\'s Interactions filtered by the flow (Flows: VirginMobilePhase2) and drop it here.'); return; }
   const s = rbIvrCard(c.key, c.period, x), cv = window.Scorecard.draw(s, 2);
   const slug = (s.brand || 'IVR').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'IVR';
-  const cur = rbIvrCur = { name: `IVR-Scorecard-${slug}-${s.slug || 'report'}.png`, blob: null, day: s.slug || 'report', s, png: cv.toDataURL('image/png'), alt: window.Scorecard.alt(s) };
+  const cur = rbIvrCur = { name: `IVR-Scorecard-${slug}-${s.slug || 'report'}.png`, blob: null, day: s.slug || 'report', s, png: cv.toDataURL('image/png'), alt: window.Scorecard.alt(s),
+    ivr: c.key === 'postpaid' ? 'virgin' : c.key, p: c.period, x };
   cur.ready = new Promise(res => cv.toBlob(b => { cur.blob = b; res(b); }, 'image/png'));
   const img = $('ivrImg'); img.src = cur.png; img.alt = cur.alt;
   $('ivrSub').textContent = `${rbName(c.key)} · ${s.date}`;
-  $('ivrStatus').textContent = (x.gapDays || []).length ? `No IVR Interactions export for ${x.gapDays.join(', ')}: the card counts the other days only.` : '';
+  const rec = s.record, recSay = rec.days.length ? `Daily record: ${plural(rec.days.length, 'day')} of ${rec.monthName}.` : '';
+  $('ivrStatus').textContent = (x.gapDays || []).length ? `No IVR Interactions export for ${x.gapDays.join(', ')}: the card counts the other days only. ${recSay}` : recSay;
   openDrawer('dIvr');
 }
 document.addEventListener('click', async e => {
   const b = e.target.closest && e.target.closest('#dIvr [data-ivr]'); if (!b || !rbIvrCur) return;
   const cur = rbIvrCur, st = $('ivrStatus'), blocked = 'Copying was blocked: right-click the picture and choose Copy image, or download the PNG.';
+  if (b.dataset.ivr === 'xlsx') {   // the month's daily record as a workbook for the stakeholders
+    const rec = cur.s.record, mk = rec.month, all = rbIvrAll(cur.ivr, cur.p, cur.x);
+    const days = Object.keys(all).filter(d => d.slice(0, 7) === mk).sort().map(d => all[d]);
+    if (!days.length) { st.textContent = `Nothing is recorded for ${rec.monthName} yet: drop the day's IVR exports in the Report builder.`; return; }
+    const name = `IVR Daily Record - ${cur.s.brand} - ${MON[+mk.slice(5) - 1]} ${mk.slice(0, 4)}.xlsx`;
+    try {
+      const bytes = await IvrBook.build({ brand: cur.s.brand, flow: cur.s.flow, month: mk, days, months: rbIvrMonths(all, mk), made: new Date(), by: whoNow(), logo: await xlLogo() });
+      if (await rbSave(name, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Saved ${name}.`)) st.textContent = `Saved ${name}: ${plural(days.length, 'day')} of ${rec.monthName}.`;
+    } catch (err) { st.textContent = 'The workbook could not be made: ' + ((err && err.message) || err); }
+    return;
+  }
   if (b.dataset.ivr === 'eml') {   // the IVR Summary Daily Report email, as the WFM team sends it
     const name = `IVR-Summary-Daily-Report-${cur.day}.eml`, said = `Saved ${name}. Double-click it and Outlook opens it as a new mail, ready to send.`;
     try { if (await rbSave(name, new Blob([rbEml(rbIvrMailHtml(cur), 'IVR Summary Daily Report')], { type: 'message/rfc822' }), said)) st.textContent = said; }

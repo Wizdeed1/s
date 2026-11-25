@@ -32,7 +32,7 @@ class Styles {
     const key = JSON.stringify(st); if (this.cache.has(key)) return this.cache.get(key);
     const f = this._font(st.font), fi = this._fill(st.fill), b = this._border(st.border, st.bstyle), n = this._numFmt(st.numFmt);
     const a = st.align || {};
-    const al = `<alignment${a.h ? ` horizontal="${a.h}"` : ''} vertical="${a.v || 'center'}"${a.wrap ? ' wrapText="1"' : ''}/>`;
+    const al = `<alignment${a.h ? ` horizontal="${a.h}"` : ''} vertical="${a.v || 'center'}"${a.wrap ? ' wrapText="1"' : ''}${a.indent ? ` indent="${a.indent}"` : ''}/>`;
     this.xfs.push(`<xf numFmtId="${n}" fontId="${f}" fillId="${fi}" borderId="${b}" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">${al}</xf>`);
     const id = this.xfs.length - 1; this.cache.set(key, id); return id;
   }
@@ -104,7 +104,9 @@ class Sheet {
     if (this.filter) out.push(`<autoFilter ref="${this.filter}"/>`);
     if (this.merges.length) out.push(`<mergeCells count="${this.merges.length}">${this.merges.map(m => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>`);
     let pr = 1;
+    // r.type 'raw': a rule written whole (a data bar, a colour scale), its priority where it says @P
     for (const r of this.cf) out.push(r.type === 'dup' ? `<conditionalFormatting sqref="${r.sqref}"><cfRule type="duplicateValues" dxfId="${r.dxfId}" priority="${pr++}"/></conditionalFormatting>`
+      : r.type === 'raw' ? `<conditionalFormatting sqref="${r.sqref}">${r.xml.replace(/@P/g, () => pr++)}</conditionalFormatting>`
       : `<conditionalFormatting sqref="${r.sqref}"><cfRule type="expression" dxfId="${r.dxfId}" priority="${pr++}"${r.stop ? ' stopIfTrue="1"' : ''}><formula>${esc(r.formula)}</formula></cfRule></conditionalFormatting>`);
     // a list (d.list), or a date or whole number between f1 and f2 (d.type 'date' | 'whole'), with an optional error message, and an
     // optional note shown when the cell is chosen (d.prompt, with d.promptTitle)
@@ -112,8 +114,8 @@ class Sheet {
     const dvXml = d => (d.type ? `<dataValidation type="${d.type}" operator="between" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''}${tip(d)} sqref="${d.sqref}"><formula1>${esc(d.f1)}</formula1><formula2>${esc(d.f2)}</formula2></dataValidation>`
       : `<dataValidation type="list" allowBlank="1" showErrorMessage="1"${d.error ? ` errorTitle="${esc(d.errorTitle || 'Not allowed')}" error="${esc(d.error)}"` : ''}${tip(d)} sqref="${d.sqref}"><formula1>${esc(d.list)}</formula1></dataValidation>`);
     if (this.dv.length) out.push(`<dataValidations count="${this.dv.length}">${this.dv.map(dvXml).join('')}</dataValidations>`);
-    // this.print = { landscape }: printed as wide as one page (as many pages down as it needs)
-    out.push('<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>' + (this.print ? `<pageSetup orientation="${this.print.landscape ? 'landscape' : 'portrait'}" fitToWidth="1" fitToHeight="0"/>` : '') + (this._drawing ? '<drawing r:id="rId1"/>' : '') + '</worksheet>');
+    // this.print = { landscape, onePage }: printed as wide as one page (as many pages down as it needs, or on one page)
+    out.push('<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>' + (this.print ? `<pageSetup orientation="${this.print.landscape ? 'landscape' : 'portrait'}" fitToWidth="1" fitToHeight="${this.print.onePage ? 1 : 0}"/>` : '') + (this._drawing ? '<drawing r:id="rId1"/>' : '') + '</worksheet>');
     return out.join('');
   }
   /** the company logo, floating at row r of column c (it never covers a formula; cells stay as they are) */
